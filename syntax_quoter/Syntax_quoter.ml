@@ -113,11 +113,18 @@ module Exp = struct
 
   let rec sort ~loc = function
     | Sort.Ap (pos, name, sorts) ->
-      let sorts = sorts |> List.map ~f:(sort ~loc) |> list ~loc in
       [%expr
-        Lvca_syntax.Sort.Ap ([%e commented ~loc pos], [%e str ~loc name], [%e sorts])]
+        Lvca_syntax.Sort.Ap
+          ([%e commented ~loc pos], [%e str ~loc name], [%e ap_list ~loc sorts])]
     | Sort.Name (pos, name) ->
       [%expr Lvca_syntax.Sort.Name ([%e commented ~loc pos], [%e str ~loc name])]
+
+  and ap_list ~loc = function
+    | Sort.Nil info -> [%expr Lvca_syntax.Sort.Nil [%e commented ~loc info]]
+    | Cons (info, x, xs) ->
+      [%expr
+        Lvca_syntax.Sort.Cons
+          ([%e commented ~loc info], [%e sort ~loc x], [%e ap_list ~loc xs])]
   ;;
 
   let sort_slot ~loc = function

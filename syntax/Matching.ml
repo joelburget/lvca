@@ -114,7 +114,7 @@ let produce_sort_env lang sort =
         (Printf.sprintf "sort (%s) must be defined, not in externals" sort_name)
     | _, Some (Abstract_syntax.Sort_def.Sort_def (ty_vars, _op_defs)) ->
       let ty_vars = ty_vars |> List.map ~f:(fun (name, _kind) -> name) in
-      (match List.zip ty_vars args with
+      (match List.zip ty_vars (Sort.Ap_list.to_list args) with
       | List.Or_unequal_lengths.Unequal_lengths ->
         invariant_violation ~here:[%here] "sort / args unequal lengths"
       | Ok alist -> SMap.of_alist_exn alist)

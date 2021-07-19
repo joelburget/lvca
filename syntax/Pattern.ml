@@ -192,11 +192,7 @@ let check lang ~pattern_sort ~var_sort =
         | None -> Ok String.Map.empty
         | Some msg -> Error (Check_failure.err msg))
       | Operator (_, op_name, subpats) ->
-        let sort_name, sort_args =
-          match sort with
-          | Sort.Name (_, sort_name) -> sort_name, []
-          | Sort.Ap (_, sort_name, sort_args) -> sort_name, sort_args
-        in
+        let sort_name, sort_args = Sort.split sort in
         (match lookup_operator sort_name op_name with
         | None ->
           Error

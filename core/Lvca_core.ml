@@ -25,7 +25,7 @@ module Type = struct
   let rec equal ~info_eq x y =
     match x, y with
     | Arrow xs, Arrow ys -> List.equal (equal ~info_eq) xs ys
-    | Sort x, Sort y -> Sort.equal info_eq x y
+    | Sort x, Sort y -> Sort.equal ~info_eq x y
     | _, _ -> false
   ;;
 
@@ -1199,7 +1199,11 @@ let%test_module "Evaluation / inference" =
               ; Operator_def.Operator_def
                   ( "cons"
                   , [ Valence.Valence ([], a)
-                    ; Valence.Valence ([], Sort.Ap (None, "list", [ a ]))
+                    ; Valence.Valence
+                        ( []
+                        , Sort.Ap
+                            (None, "list", Sort.Ap_list.of_list ~default_info:None [ a ])
+                        )
                     ] )
               ] ) )
       ]

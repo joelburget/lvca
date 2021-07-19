@@ -229,7 +229,9 @@ let sort_head = function Sort.Name (_, name) | Sort.Ap (_, name, _) -> name
 let rec all_sort_names = function
   | Sort.Name (_, name) -> SSet.singleton name
   | Sort.Ap (_, name, args) ->
-    Set.union (SSet.singleton name) (args |> List.map ~f:all_sort_names |> SSet.union_list)
+    Set.union
+      (SSet.singleton name)
+      (args |> Sort.Ap_list.to_list |> List.map ~f:all_sort_names |> SSet.union_list)
 ;;
 
 (* Returns a mapping from the name of each sort defined in this language to
@@ -505,7 +507,7 @@ module Helpers (Context : Builder_context) = struct
         | Sort.Ap (_, _, args) ->
           pexp_apply
             (pexp_ident { txt; loc })
-            (List.map args ~f:(fun sort -> Nolabel, go sort))
+            (args |> Sort.Ap_list.to_list |> List.map ~f:(fun sort -> Nolabel, go sort))
         | Name _ -> pexp_ident { txt; loc })
     in
     pexp_apply (go sort) args

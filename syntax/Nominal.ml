@@ -310,11 +310,7 @@ module Term = struct
           | None -> None
           | Some msg -> Some (Check_failure.err msg))
         | Operator (_, operator_name, op_scopes) ->
-          let sort_name, sort_args =
-            match expected_sort with
-            | Sort.Name (_, sort_name) -> sort_name, []
-            | Sort.Ap (_, sort_name, sort_args) -> sort_name, sort_args
-          in
+          let sort_name, sort_args = Sort.split expected_sort in
           (match lookup_operator sort_name operator_name with
           | None ->
             Some

@@ -753,18 +753,42 @@ module Lang =
                                               { start = 245; finish = 249 }));
                                       comment = None
                                     })), "list",
-                                 [Lvca_syntax.Sort.Name
+                                 (Lvca_syntax.Sort.Cons
                                     (((let open Lvca_provenance.Commented in
                                          {
                                            range =
                                              (Some
                                                 (let open Lvca_provenance.Range in
                                                    {
-                                                     start = 250;
-                                                     finish = 256
+                                                     start = 245;
+                                                     finish = 249
                                                    }));
                                            comment = None
-                                         })), "string")])))])])));
+                                         })),
+                                      (Lvca_syntax.Sort.Name
+                                         (((let open Lvca_provenance.Commented in
+                                              {
+                                                range =
+                                                  (Some
+                                                     (let open Lvca_provenance.Range in
+                                                        {
+                                                          start = 250;
+                                                          finish = 256
+                                                        }));
+                                                comment = None
+                                              })), "string")),
+                                      (Lvca_syntax.Sort.Nil
+                                         ((let open Lvca_provenance.Commented in
+                                             {
+                                               range =
+                                                 (Some
+                                                    (let open Lvca_provenance.Range in
+                                                       {
+                                                         start = 245;
+                                                         finish = 249
+                                                       }));
+                                               comment = None
+                                             }))))))))])])));
             ("term",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -781,18 +805,42 @@ module Lang =
                                                { start = 276; finish = 280 }));
                                        comment = None
                                      })), "list",
-                                  [Lvca_syntax.Sort.Name
+                                  (Lvca_syntax.Sort.Cons
                                      (((let open Lvca_provenance.Commented in
                                           {
                                             range =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 281;
-                                                      finish = 285
+                                                      start = 276;
+                                                      finish = 280
                                                     }));
                                             comment = None
-                                          })), "term")])))])])));
+                                          })),
+                                       (Lvca_syntax.Sort.Name
+                                          (((let open Lvca_provenance.Commented in
+                                               {
+                                                 range =
+                                                   (Some
+                                                      (let open Lvca_provenance.Range in
+                                                         {
+                                                           start = 281;
+                                                           finish = 285
+                                                         }));
+                                                 comment = None
+                                               })), "term")),
+                                       (Lvca_syntax.Sort.Nil
+                                          ((let open Lvca_provenance.Commented in
+                                              {
+                                                range =
+                                                  (Some
+                                                     (let open Lvca_provenance.Range in
+                                                        {
+                                                          start = 276;
+                                                          finish = 280
+                                                        }));
+                                                comment = None
+                                              }))))))))])])));
             ("mut_a",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -1733,15 +1781,39 @@ module List_lang =
                                              { start = 66; finish = 70 }));
                                      comment = None
                                    })), "list",
-                                [Lvca_syntax.Sort.Name
+                                (Lvca_syntax.Sort.Cons
                                    (((let open Lvca_provenance.Commented in
                                         {
                                           range =
                                             (Some
                                                (let open Lvca_provenance.Range in
-                                                  { start = 71; finish = 72 }));
+                                                  { start = 66; finish = 70 }));
                                           comment = None
-                                        })), "a")])))])])));
+                                        })),
+                                     (Lvca_syntax.Sort.Name
+                                        (((let open Lvca_provenance.Commented in
+                                             {
+                                               range =
+                                                 (Some
+                                                    (let open Lvca_provenance.Range in
+                                                       {
+                                                         start = 71;
+                                                         finish = 72
+                                                       }));
+                                               comment = None
+                                             })), "a")),
+                                     (Lvca_syntax.Sort.Nil
+                                        ((let open Lvca_provenance.Commented in
+                                            {
+                                              range =
+                                                (Some
+                                                   (let open Lvca_provenance.Range in
+                                                      {
+                                                        start = 66;
+                                                        finish = 70
+                                                      }));
+                                              comment = None
+                                            }))))))))])])));
             ("list_external",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -1758,18 +1830,42 @@ module List_lang =
                                                { start = 105; finish = 109 }));
                                        comment = None
                                      })), "list",
-                                  [Lvca_syntax.Sort.Name
+                                  (Lvca_syntax.Sort.Cons
                                      (((let open Lvca_provenance.Commented in
                                           {
                                             range =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 110;
-                                                      finish = 116
+                                                      start = 105;
+                                                      finish = 109
                                                     }));
                                             comment = None
-                                          })), "string")])))])])));
+                                          })),
+                                       (Lvca_syntax.Sort.Name
+                                          (((let open Lvca_provenance.Commented in
+                                               {
+                                                 range =
+                                                   (Some
+                                                      (let open Lvca_provenance.Range in
+                                                         {
+                                                           start = 110;
+                                                           finish = 116
+                                                         }));
+                                                 comment = None
+                                               })), "string")),
+                                       (Lvca_syntax.Sort.Nil
+                                          ((let open Lvca_provenance.Commented in
+                                              {
+                                                range =
+                                                  (Some
+                                                     (let open Lvca_provenance.Range in
+                                                        {
+                                                          start = 105;
+                                                          finish = 109
+                                                        }));
+                                                comment = None
+                                              }))))))))])])));
             ("list_predefined",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -1786,18 +1882,42 @@ module List_lang =
                                                { start = 153; finish = 157 }));
                                        comment = None
                                      })), "list",
-                                  [Lvca_syntax.Sort.Name
+                                  (Lvca_syntax.Sort.Cons
                                      (((let open Lvca_provenance.Commented in
                                           {
                                             range =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 158;
-                                                      finish = 168
+                                                      start = 153;
+                                                      finish = 157
                                                     }));
                                             comment = None
-                                          })), "predefined")])))])])));
+                                          })),
+                                       (Lvca_syntax.Sort.Name
+                                          (((let open Lvca_provenance.Commented in
+                                               {
+                                                 range =
+                                                   (Some
+                                                      (let open Lvca_provenance.Range in
+                                                         {
+                                                           start = 158;
+                                                           finish = 168
+                                                         }));
+                                                 comment = None
+                                               })), "predefined")),
+                                       (Lvca_syntax.Sort.Nil
+                                          ((let open Lvca_provenance.Commented in
+                                              {
+                                                range =
+                                                  (Some
+                                                     (let open Lvca_provenance.Range in
+                                                        {
+                                                          start = 153;
+                                                          finish = 157
+                                                        }));
+                                                comment = None
+                                              }))))))))])])));
             ("list_list_a",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([("a", None)],
@@ -1814,30 +1934,82 @@ module List_lang =
                                                { start = 200; finish = 204 }));
                                        comment = None
                                      })), "list",
-                                  [Lvca_syntax.Sort.Ap
+                                  (Lvca_syntax.Sort.Cons
                                      (((let open Lvca_provenance.Commented in
                                           {
                                             range =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 206;
-                                                      finish = 210
+                                                      start = 200;
+                                                      finish = 204
                                                     }));
                                             comment = None
-                                          })), "list",
-                                       [Lvca_syntax.Sort.Name
+                                          })),
+                                       (Lvca_syntax.Sort.Ap
                                           (((let open Lvca_provenance.Commented in
                                                {
                                                  range =
                                                    (Some
                                                       (let open Lvca_provenance.Range in
                                                          {
-                                                           start = 211;
-                                                           finish = 212
+                                                           start = 206;
+                                                           finish = 210
                                                          }));
                                                  comment = None
-                                               })), "a")])])))])])));
+                                               })), "list",
+                                            (Lvca_syntax.Sort.Cons
+                                               (((let open Lvca_provenance.Commented in
+                                                    {
+                                                      range =
+                                                        (Some
+                                                           (let open Lvca_provenance.Range in
+                                                              {
+                                                                start = 206;
+                                                                finish = 210
+                                                              }));
+                                                      comment = None
+                                                    })),
+                                                 (Lvca_syntax.Sort.Name
+                                                    (((let open Lvca_provenance.Commented in
+                                                         {
+                                                           range =
+                                                             (Some
+                                                                (let open Lvca_provenance.Range in
+                                                                   {
+                                                                    start =
+                                                                    211;
+                                                                    finish =
+                                                                    212
+                                                                   }));
+                                                           comment = None
+                                                         })), "a")),
+                                                 (Lvca_syntax.Sort.Nil
+                                                    ((let open Lvca_provenance.Commented in
+                                                        {
+                                                          range =
+                                                            (Some
+                                                               (let open Lvca_provenance.Range in
+                                                                  {
+                                                                    start =
+                                                                    206;
+                                                                    finish =
+                                                                    210
+                                                                  }));
+                                                          comment = None
+                                                        }))))))),
+                                       (Lvca_syntax.Sort.Nil
+                                          ((let open Lvca_provenance.Commented in
+                                              {
+                                                range =
+                                                  (Some
+                                                     (let open Lvca_provenance.Range in
+                                                        {
+                                                          start = 200;
+                                                          finish = 204
+                                                        }));
+                                                comment = None
+                                              }))))))))])])));
             ("list_list_string_1",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -1854,30 +2026,82 @@ module List_lang =
                                                { start = 256; finish = 260 }));
                                        comment = None
                                      })), "list",
-                                  [Lvca_syntax.Sort.Ap
+                                  (Lvca_syntax.Sort.Cons
                                      (((let open Lvca_provenance.Commented in
                                           {
                                             range =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 262;
-                                                      finish = 266
+                                                      start = 256;
+                                                      finish = 260
                                                     }));
                                             comment = None
-                                          })), "list",
-                                       [Lvca_syntax.Sort.Name
+                                          })),
+                                       (Lvca_syntax.Sort.Ap
                                           (((let open Lvca_provenance.Commented in
                                                {
                                                  range =
                                                    (Some
                                                       (let open Lvca_provenance.Range in
                                                          {
-                                                           start = 267;
-                                                           finish = 273
+                                                           start = 262;
+                                                           finish = 266
                                                          }));
                                                  comment = None
-                                               })), "string")])])))])])));
+                                               })), "list",
+                                            (Lvca_syntax.Sort.Cons
+                                               (((let open Lvca_provenance.Commented in
+                                                    {
+                                                      range =
+                                                        (Some
+                                                           (let open Lvca_provenance.Range in
+                                                              {
+                                                                start = 262;
+                                                                finish = 266
+                                                              }));
+                                                      comment = None
+                                                    })),
+                                                 (Lvca_syntax.Sort.Name
+                                                    (((let open Lvca_provenance.Commented in
+                                                         {
+                                                           range =
+                                                             (Some
+                                                                (let open Lvca_provenance.Range in
+                                                                   {
+                                                                    start =
+                                                                    267;
+                                                                    finish =
+                                                                    273
+                                                                   }));
+                                                           comment = None
+                                                         })), "string")),
+                                                 (Lvca_syntax.Sort.Nil
+                                                    ((let open Lvca_provenance.Commented in
+                                                        {
+                                                          range =
+                                                            (Some
+                                                               (let open Lvca_provenance.Range in
+                                                                  {
+                                                                    start =
+                                                                    262;
+                                                                    finish =
+                                                                    266
+                                                                  }));
+                                                          comment = None
+                                                        }))))))),
+                                       (Lvca_syntax.Sort.Nil
+                                          ((let open Lvca_provenance.Commented in
+                                              {
+                                                range =
+                                                  (Some
+                                                     (let open Lvca_provenance.Range in
+                                                        {
+                                                          start = 256;
+                                                          finish = 260
+                                                        }));
+                                                comment = None
+                                              }))))))))])])));
             ("list_list_string_2",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -1894,18 +2118,42 @@ module List_lang =
                                                { start = 317; finish = 328 }));
                                        comment = None
                                      })), "list_list_a",
-                                  [Lvca_syntax.Sort.Name
+                                  (Lvca_syntax.Sort.Cons
                                      (((let open Lvca_provenance.Commented in
                                           {
                                             range =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 329;
-                                                      finish = 335
+                                                      start = 317;
+                                                      finish = 328
                                                     }));
                                             comment = None
-                                          })), "string")])))])])));
+                                          })),
+                                       (Lvca_syntax.Sort.Name
+                                          (((let open Lvca_provenance.Commented in
+                                               {
+                                                 range =
+                                                   (Some
+                                                      (let open Lvca_provenance.Range in
+                                                         {
+                                                           start = 329;
+                                                           finish = 335
+                                                         }));
+                                                 comment = None
+                                               })), "string")),
+                                       (Lvca_syntax.Sort.Nil
+                                          ((let open Lvca_provenance.Commented in
+                                              {
+                                                range =
+                                                  (Some
+                                                     (let open Lvca_provenance.Range in
+                                                        {
+                                                          start = 317;
+                                                          finish = 328
+                                                        }));
+                                                comment = None
+                                              }))))))))])])));
             ("list_list_predefined_1",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -1922,30 +2170,82 @@ module List_lang =
                                                { start = 386; finish = 390 }));
                                        comment = None
                                      })), "list",
-                                  [Lvca_syntax.Sort.Ap
+                                  (Lvca_syntax.Sort.Cons
                                      (((let open Lvca_provenance.Commented in
                                           {
                                             range =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 392;
-                                                      finish = 396
+                                                      start = 386;
+                                                      finish = 390
                                                     }));
                                             comment = None
-                                          })), "list",
-                                       [Lvca_syntax.Sort.Name
+                                          })),
+                                       (Lvca_syntax.Sort.Ap
                                           (((let open Lvca_provenance.Commented in
                                                {
                                                  range =
                                                    (Some
                                                       (let open Lvca_provenance.Range in
                                                          {
-                                                           start = 397;
-                                                           finish = 407
+                                                           start = 392;
+                                                           finish = 396
                                                          }));
                                                  comment = None
-                                               })), "predefined")])])))])])));
+                                               })), "list",
+                                            (Lvca_syntax.Sort.Cons
+                                               (((let open Lvca_provenance.Commented in
+                                                    {
+                                                      range =
+                                                        (Some
+                                                           (let open Lvca_provenance.Range in
+                                                              {
+                                                                start = 392;
+                                                                finish = 396
+                                                              }));
+                                                      comment = None
+                                                    })),
+                                                 (Lvca_syntax.Sort.Name
+                                                    (((let open Lvca_provenance.Commented in
+                                                         {
+                                                           range =
+                                                             (Some
+                                                                (let open Lvca_provenance.Range in
+                                                                   {
+                                                                    start =
+                                                                    397;
+                                                                    finish =
+                                                                    407
+                                                                   }));
+                                                           comment = None
+                                                         })), "predefined")),
+                                                 (Lvca_syntax.Sort.Nil
+                                                    ((let open Lvca_provenance.Commented in
+                                                        {
+                                                          range =
+                                                            (Some
+                                                               (let open Lvca_provenance.Range in
+                                                                  {
+                                                                    start =
+                                                                    392;
+                                                                    finish =
+                                                                    396
+                                                                  }));
+                                                          comment = None
+                                                        }))))))),
+                                       (Lvca_syntax.Sort.Nil
+                                          ((let open Lvca_provenance.Commented in
+                                              {
+                                                range =
+                                                  (Some
+                                                     (let open Lvca_provenance.Range in
+                                                        {
+                                                          start = 386;
+                                                          finish = 390
+                                                        }));
+                                                comment = None
+                                              }))))))))])])));
             ("list_list_predefined_2",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -1962,18 +2262,42 @@ module List_lang =
                                                { start = 459; finish = 470 }));
                                        comment = None
                                      })), "list_list_a",
-                                  [Lvca_syntax.Sort.Name
+                                  (Lvca_syntax.Sort.Cons
                                      (((let open Lvca_provenance.Commented in
                                           {
                                             range =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 471;
-                                                      finish = 481
+                                                      start = 459;
+                                                      finish = 470
                                                     }));
                                             comment = None
-                                          })), "predefined")])))])])))]
+                                          })),
+                                       (Lvca_syntax.Sort.Name
+                                          (((let open Lvca_provenance.Commented in
+                                               {
+                                                 range =
+                                                   (Some
+                                                      (let open Lvca_provenance.Range in
+                                                         {
+                                                           start = 471;
+                                                           finish = 481
+                                                         }));
+                                                 comment = None
+                                               })), "predefined")),
+                                       (Lvca_syntax.Sort.Nil
+                                          ((let open Lvca_provenance.Commented in
+                                              {
+                                                range =
+                                                  (Some
+                                                     (let open Lvca_provenance.Range in
+                                                        {
+                                                          start = 459;
+                                                          finish = 470
+                                                        }));
+                                                comment = None
+                                              }))))))))])])))]
         }
     module Predefined =
       struct
