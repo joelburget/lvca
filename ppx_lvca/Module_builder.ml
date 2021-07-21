@@ -1874,7 +1874,9 @@ module Sig (Context : Builder_context) = struct
     in
     let partitioned_sorts = partition_sort_defs sort_defs in
     let type_sigs =
-      List.map sort_defs ~f:(fun (sort_name, sort_def) ->
+      List.map
+        sort_defs
+        ~f:(fun (sort_name, (Syn.Sort_def.Sort_def (vars, _op_defs) as sort_def)) ->
           let mk_ty info =
             Individual_type_sig.mk
               ~prims
@@ -1884,23 +1886,59 @@ module Sig (Context : Builder_context) = struct
               sort_name
               sort_def
           in
+          let plain_nominal_args =
+            List.map vars ~f:(fun _ -> [%type: Lvca_syntax.Nominal.Term.Plain.t])
+          in
+          let nominal_args info =
+            List.map vars ~f:(fun _ -> [%type: [%t info] Lvca_syntax.Nominal.Term.t])
+          in
+          let taken = List.map vars ~f:fst |> SSet.of_list in
+          let info_v = generate_unique_name ~base:"info" taken in
+          let taken = Set.add taken info_v in
+          let t = ptyp_constr { txt = Lident "t"; loc } in
+          let plain_t =
+            ptyp_constr { txt = unflatten [ "Plain"; "t" ]; loc } plain_nominal_args
+          in
           let type_ =
             pmty_signature
               [ mk_ty With_info
+              ; (let t = t plain_nominal_args in
+                 [%sigi:
+                   module Plain : [%m
+                   pmty_signature
+                     [ mk_ty Plain
+                     ; [%sigi: val pp : [%t t] Fmt.t]
+                     ; [%sigi: val ( = ) : [%t t] -> [%t t] -> bool]
+                     ; [%sigi: val parse : [%t t] Lvca_parsing.t]
+                     ; [%sigi: val jsonify : [%t t] Lvca_util.Json.serializer]
+                     ; [%sigi: val unjsonify : [%t t] Lvca_util.Json.deserializer]
+                     ]]])
               ; [%sigi:
-                  module Plain : [%m
-                  pmty_signature
-                    [ mk_ty Plain
-                    ; [%sigi: val pp : t Fmt.t]
-                    ; [%sigi: val ( = ) : t -> t -> bool]
-                    ; [%sigi: val parse : t Lvca_parsing.t]
-                    ; [%sigi: val jsonify : t Lvca_util.Json.serializer]
-                    ; [%sigi: val unjsonify : t Lvca_util.Json.deserializer]
-                    ]]]
-              ; [%sigi: val to_plain : _ t -> Plain.t]
-              ; [%sigi: val of_plain : Plain.t -> unit t]
-              ; [%sigi: val info : 'info t -> 'info]
-              ; [%sigi: val map_info : f:('a -> 'b) -> 'a t -> 'b t]
+                  val to_plain
+                    :  [%t t (ptyp_any :: nominal_args (ptyp_var info_v))]
+                    -> [%t plain_t]]
+              ; [%sigi:
+                  val of_plain
+                    :  [%t plain_t]
+                    -> [%t t ([%type: unit] :: nominal_args [%type: unit])]]
+              ; (let var_args = List.map vars ~f:(fun (name, _kind) -> ptyp_var name) in
+                 [%sigi: val info : [%t t (ptyp_var info_v :: var_args)] -> 'info])
+              ; (let args info_v =
+                   List.map vars ~f:(fun _ ->
+                       [%type: [%t info_v] Lvca_syntax.Nominal.Term.t])
+                 in
+                 let a_v, b_v =
+                   match
+                     Sequence.take (generate_unique_names taken) 2 |> Sequence.to_list
+                   with
+                   | [ x; y ] -> ptyp_var x, ptyp_var y
+                   | _ -> Lvca_util.invariant_violation ~here:[%here] "expected two names"
+                 in
+                 [%sigi:
+                   val map_info
+                     :  f:([%t a_v] -> [%t b_v])
+                     -> [%t t (a_v :: args a_v)]
+                     -> [%t t (b_v :: args b_v)]])
               ]
           in
           psig_module
