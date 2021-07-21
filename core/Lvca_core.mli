@@ -10,8 +10,34 @@ open Lvca_util
 
 (** {1 Types} *)
 
-module Lang : [%lvca.abstract_syntax_module_sig {|
+module Sort_model : [%lvca.abstract_syntax_module_sig
+{|
+string : *  // Module Primitive.String
+
+t :=
+  | Ap(string; ap_list)
+  | Name(string)
+
+ap_list :=
+  | Nil()
+  | Cons(t; ap_list)
+|}]
+
+module List_model : [%lvca.abstract_syntax_module_sig "list a := Nil() | Cons(a; list a)"]
+
+module Lang : [%lvca.abstract_syntax_module_sig
+{|
+sort : *  // module Sort_model
+nominal : *  // module Nominal.Term
+list : * -> *  // module List_model
+
 is_rec := Rec() | No_rec()
+
+ty := Sort(sort) | Arrow(ty; ty)
+
+term :=
+  | Term(nominal)
+  | Ap(term; list term)
 |}]
 
 module Type : sig

@@ -9,8 +9,43 @@ module SMap = Lvca_util.String.Map
 
 let ( >> ) = Lvca_util.( >> )
 
-module Lang = [%lvca.abstract_syntax_module {|is_rec := Rec() | No_rec()|}]
+module Sort_model =
+[%lvca.abstract_syntax_module
+{|
+string : *  // Module Primitive.String
+
+t :=
+  | Ap(string; ap_list)
+  | Name(string)
+
+ap_list :=
+  | Nil()
+  | Cons(t; ap_list)
+|}]
+
+module List_model = [%lvca.abstract_syntax_module "list a := Nil() | Cons(a; list a)"]
+
+module Lang =
+[%lvca.abstract_syntax_module
+{|
+sort : *  // module Sort_model
+nominal : *  // module Nominal.Term
+list : * -> *  // module List_model
+
+is_rec := Rec() | No_rec()
+
+ty := Sort(sort) | Arrow(ty; ty)
+
+term :=
+  | Term(nominal)
+  | Ap(term; list term)
+|}]
+
 module Is_rec = Nominal.Convertible.Extend (Lang.Is_rec)
+
+module Ty = struct
+  include Nominal.Convertible.Extend (Lang.Ty)
+end
 
 module Type = struct
   type 'info t =

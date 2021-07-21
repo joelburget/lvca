@@ -44,7 +44,7 @@ module Kind = struct
       <?> "kind declaration"
     ;;
 
-    let%test_module _ =
+    let%test_module "parsing" =
       (module struct
         let pp_decl ppf (name, decl) = Fmt.pf ppf "%s: %a" name pp decl
 
@@ -259,10 +259,10 @@ module Arity = struct
   let instantiate env = List.map ~f:(Valence.instantiate env)
 
   let parse ~comment =
-    Lvca_parsing.(Ws.(parens (sep_by (char ';') (Valence.parse ~comment)) <?> "arity"))
+    Lvca_parsing.(Ws.parens (sep_by (Ws.char ';') (Valence.parse ~comment)) <?> "arity")
   ;;
 
-  let%test_module _ =
+  let%test_module "parsing" =
     (module struct
       let tm = Sort.Name (Commented.none, "tm")
       let tm_v = Valence.Valence ([], tm)
@@ -296,48 +296,54 @@ module Arity = struct
         | Error msg -> Stdio.print_string msg
       ;;
 
-      let%expect_test _ =
-        expect_okay "(tm[tm]. tm[tm]. tm)";
-        [%expect]
-      ;;
-
-      let%expect_test _ =
-        expect_okay "((foo bar)[baz quux]. tm)";
-        [%expect]
-      ;;
-
+      let%expect_test _ = expect_okay "(tm[tm]. tm[tm]. tm)"
+      let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)"
+      let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)"
+      (* let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)  // comment" *)
       let%test_unit _ = assert (test_parse_with parse "()" = [])
+      (* let%test_unit _ = assert (test_parse_with parse "()  // comment" = []) *)
     end)
   ;;
 end
 
 module Operator_def = struct
-  type 'info t = Operator_def of string * 'info Arity.t
+  type 'info t = Operator_def of 'info * string * 'info Arity.t
 
-  let equal ~info_eq (Operator_def (name1, arity1)) (Operator_def (name2, arity2)) =
-    String.(name1 = name2) && Arity.equal ~info_eq arity1 arity2
+  let equal
+      ~info_eq
+      (Operator_def (info1, name1, arity1))
+      (Operator_def (info2, name2, arity2))
+    =
+    info_eq info1 info2 && String.(name1 = name2) && Arity.equal ~info_eq arity1 arity2
   ;;
 
-  let map_info ~f (Operator_def (name, arity)) =
-    Operator_def (name, Arity.map_info ~f arity)
+  let map_info ~f (Operator_def (info, name, arity)) =
+    Operator_def (f info, name, Arity.map_info ~f arity)
   ;;
 
-  let kind_check env (Operator_def (_name, arity)) =
+  let kind_check env (Operator_def (_info, _name, arity)) =
     arity |> List.fold ~init:env ~f:Valence.kind_check
   ;;
 
-  let pp_generic ~open_loc ~close_loc ppf (Operator_def (name, arity)) =
-    Fmt.pf ppf "%s%a" name (Arity.pp_generic ~open_loc ~close_loc) arity
+  let pp_generic ~open_loc ~close_loc ppf (Operator_def (info, name, arity)) =
+    open_loc ppf info;
+    Fmt.pf ppf "%s%a" name (Arity.pp_generic ~open_loc ~close_loc) arity;
+    close_loc ppf info
   ;;
 
   let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
 
   let parse ~comment =
     let open Lvca_parsing in
-    lift2
-      (fun ident arity -> Operator_def (ident, arity))
-      Ws.identifier
-      (Arity.parse ~comment)
+    Ws.identifier
+    >>== (fun Parse_result.{ value = ident; range = ident_range } ->
+           Arity.parse ~comment
+           >>= fun arity ->
+           option' comment
+           >>|| fun { value = comment; range } ->
+           let range = Opt_range.union ident_range range in
+           let info = Commented.{ range; comment } in
+           Parse_result.{ value = Operator_def (info, ident, arity); range })
     <?> "operator definition"
   ;;
 
@@ -347,7 +353,7 @@ module Operator_def = struct
         let ( = ) = equal ~info_eq:(fun _ _ -> true) in
         assert (
           test_parse_with (parse ~comment:Lvca_parsing.no_comment) "foo()"
-          = Operator_def ("foo", []))
+          = Operator_def (Commented.none, "foo", []))
       ;;
     end)
   ;;
@@ -442,43 +448,37 @@ module Sort_def = struct
 
   let%test_module _ =
     (module struct
-      let ( = ) = Tuple2.equal String.( = ) (equal ~info_eq:(fun _ _ -> true))
       let parse = parse ~comment:Lvca_parsing.no_comment
 
       let test_parse str =
         test_parse_with parse str |> Tuple2.map2 ~f:(map_info ~f:Commented.get_range)
       ;;
 
-      let%test_unit _ =
-        assert (
-          test_parse {|foo := foo()|}
-          = ("foo", Sort_def ([], [ Operator_def ("foo", []) ])))
+      let parse_print str =
+        let pp ppf (name, sort_def) = pp ppf ~name sort_def in
+        str |> test_parse |> Fmt.pr "%a\n" pp
       ;;
 
-      let%test_unit _ =
-        assert (
-          test_parse {|foo x := foo()|}
-          = ("foo", Sort_def ([ "x", None ], [ Operator_def ("foo", []) ])))
+      let%expect_test _ =
+        parse_print {|foo := foo()|};
+        [%expect "foo := foo()"]
       ;;
 
-      let tm_def =
-        let tm = Sort.Name (None, "tm") in
-        let tm_v = Valence.Valence ([], tm) in
-        let integer = Sort.Name (None, "integer") in
-        let integer_v = Valence.Valence ([], integer) in
-        ( "tm"
-        , Sort_def
-            ( []
-            , [ Operator_def ("add", [ tm_v; tm_v ])
-              ; Operator_def ("lit", [ integer_v ])
-              ] ) )
+      let%expect_test _ =
+        parse_print {|foo x := foo()|};
+        [%expect {|foo x := foo()|}]
       ;;
 
-      let%test_unit _ =
-        assert (test_parse {|tm :=
+      let%expect_test _ =
+        parse_print {|tm :=
   | add(tm; tm)
   | lit(integer)
-      |} = tm_def)
+    |};
+        [%expect {|
+    tm :=
+      | add(tm; tm)
+      | lit(integer)
+    |}]
       ;;
 
       let%expect_test _ =
@@ -487,9 +487,10 @@ module Sort_def = struct
           Sort_def
             ( []
             , [ Operator_def.Operator_def
-                  ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
+                  ((), "foo", [ Valence ([], Sort.Name ((), "integer")) ])
               ; Operator_def
-                  ( "bar"
+                  ( ()
+                  , "bar"
                   , [ Valence
                         ( [ Sort_pattern { pattern_sort = foo; var_sort = foo }
                           ; Sort_binding foo
@@ -511,7 +512,7 @@ module Sort_def = struct
           Sort_def
             ( []
             , [ Operator_def.Operator_def
-                  ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
+                  ((), "foo", [ Valence ([], Sort.Name ((), "integer")) ])
               ] )
         in
         Fmt.pr "%a" (pp ~name:"foo") sort_def;
@@ -523,7 +524,7 @@ module Sort_def = struct
           Sort_def
             ( [ "a", None ]
             , [ Operator_def.Operator_def
-                  ("foo", [ Valence ([], Sort.Name ((), "integer")) ])
+                  ((), "foo", [ Valence ([], Sort.Name ((), "integer")) ])
               ] )
         in
         Fmt.pr "%a" (pp ~name:"foo") sort_def;
@@ -579,7 +580,7 @@ let lookup_operator { externals = _; sort_defs } sort_name op_name =
         if String.(name = sort_name) then Some def else None)
   in
   let%map result =
-    List.find operator_defs ~f:(fun (Operator_def (op_def_name, _)) ->
+    List.find operator_defs ~f:(fun (Operator_def (_, op_def_name, _)) ->
         String.(op_def_name = op_name))
   in
   vars, result
@@ -644,8 +645,9 @@ let%test_module _ =
       ( "tm"
       , Sort_def.Sort_def
           ( []
-          , [ Operator_def ("add", [ tm_v; tm_v ]); Operator_def ("lit", [ integer_v ]) ]
-          ) )
+          , [ Operator_def ((), "add", [ tm_v; tm_v ])
+            ; Operator_def ((), "lit", [ integer_v ])
+            ] ) )
     ;;
 
     let parse = parse ~comment:Lvca_parsing.c_comment
@@ -735,10 +737,15 @@ let%test_module "Parser" =
 
     let%test _ =
       parse "bool := true() | false()"
+      (*     0123456789012345678901234 *)
       = { externals = []
         ; sort_defs =
             [ ( "bool"
-              , Sort_def ([], [ Operator_def ("true", []); Operator_def ("false", []) ]) )
+              , Sort_def
+                  ( []
+                  , [ Operator_def (Opt_range.mk 8 12, "true", [])
+                    ; Operator_def (Opt_range.mk 17 22, "false", [])
+                    ] ) )
             ]
         }
     ;;
@@ -770,26 +777,27 @@ let%test_module "Parser" =
         [ ( "ty"
           , Sort_def.Sort_def
               ( []
-              , [ Operator_def ("bool", [])
-                ; Operator_def ("arr", [ ty_valence; ty_valence ])
+              , [ Operator_def ((), "bool", [])
+                ; Operator_def ((), "arr", [ ty_valence; ty_valence ])
                 ] ) )
         ; ( "tm"
           , Sort_def
               ( []
-              , [ Operator_def ("app", [ tm_valence; tm_valence ])
-                ; Operator_def ("lam", [ Valence ([ Sort_binding tm_sort ], tm_sort) ])
+              , [ Operator_def ((), "app", [ tm_valence; tm_valence ])
+                ; Operator_def ((), "lam", [ Valence ([ Sort_binding tm_sort ], tm_sort) ])
                 ] ) )
         ; ( "foo"
           , Sort_def
               ( [ "x", Some (Kind ((), 1)) ]
               , [ Operator_def
-                    ( "foo"
+                    ( ()
+                    , "foo"
                     , [ Valence
                           ( [ Sort_pattern { pattern_sort = foo_sort; var_sort = x_sort } ]
                           , x_sort )
                       ; Valence ([ Sort_binding x_sort ], x_sort)
                       ] )
-                ; Operator_def ("bar", [ Valence ([], x_sort) ])
+                ; Operator_def ((), "bar", [ Valence ([], x_sort) ])
                 ] ) )
         ]
       in

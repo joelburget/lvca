@@ -138,7 +138,7 @@ let get_children_concrete_sorts lang sort =
     Map.find_exn lang.Unordered.sort_defs sort_name
   in
   op_defs
-  |> List.map ~f:(fun (Operator_def (name, arity)) ->
+  |> List.map ~f:(fun (Operator_def (_, name, arity)) ->
          let subsorts =
            arity
            |> List.map ~f:(fun (Valence (binders, body_sort) as v) ->
@@ -250,7 +250,7 @@ let rec check_matrix lang sorts matrix =
       Map.find_exn lang.Unordered.sort_defs (sort_name head_sort)
     in
     let is_signature =
-      List.for_all op_defs ~f:(fun (Operator_def (name, _arity)) ->
+      List.for_all op_defs ~f:(fun (Operator_def (_, name, _arity)) ->
           Set.mem head_ctors name)
     in
     if is_signature
@@ -259,9 +259,9 @@ let rec check_matrix lang sorts matrix =
       head_ctors
       |> Set.to_list
       |> List.find_map ~f:(fun ctor_name ->
-             let (Operator_def (_, ctor_arity)) =
+             let (Operator_def (_, _, ctor_arity)) =
                op_defs
-               |> List.find_exn ~f:(fun (Operator_def (name, _arity)) ->
+               |> List.find_exn ~f:(fun (Operator_def (_, name, _arity)) ->
                       String.(name = ctor_name))
              in
              let ctor_arity = List.length ctor_arity in
@@ -276,10 +276,10 @@ let rec check_matrix lang sorts matrix =
                if Set.is_empty head_ctors
                then ignore
                else (
-                 let (Operator_def (ctor_name, ctor_arity)) =
+                 let (Operator_def (_, ctor_name, ctor_arity)) =
                    op_defs
                    (* Find an operator not listed *)
-                   |> List.find_exn ~f:(fun (Operator_def (name, _)) ->
+                   |> List.find_exn ~f:(fun (Operator_def (_, name, _)) ->
                           not (Set.mem head_ctors name))
                  in
                  let wildcards = List.map ctor_arity ~f:(fun _ -> ignore) in
@@ -339,7 +339,7 @@ let rec compile_matrix lang sorts matrix =
         in
         (* is every constructor covered? *)
         let is_signature =
-          List.for_all op_defs ~f:(fun (Operator_def (name, _arity)) ->
+          List.for_all op_defs ~f:(fun (Operator_def (_, name, _arity)) ->
               Set.mem head_ctors name)
         in
         let%bind default_case =

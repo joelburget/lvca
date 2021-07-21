@@ -223,7 +223,7 @@ let check check_prim lang sort =
                   "BindingAwarePattern.check: failed to find operator %s in sort %s"
                   op_name
                   sort_name))
-        | Some (sort_vars, Operator_def (_, arity)) ->
+        | Some (sort_vars, Operator_def (_, _, arity)) ->
           (* TODO: kind check *)
           let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
           let sort_env = SMap.of_alist_exn (List.zip_exn sort_vars sort_args) in

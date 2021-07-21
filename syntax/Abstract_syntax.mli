@@ -94,7 +94,7 @@ end
 
 module Operator_def : sig
   type 'info t =
-    | Operator_def of string * 'info Arity.t
+    | Operator_def of 'info * string * 'info Arity.t
         (** An operator is defined by its tag and arity. *)
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
