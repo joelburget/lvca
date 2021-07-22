@@ -18,3 +18,5 @@ let pp pp_comment =
     ; field "range" get_range Opt_range.pp
     ]
 ;;
+
+let of_opt_range range = { comment = None; range }
