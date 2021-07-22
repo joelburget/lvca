@@ -4,6 +4,8 @@ open Base
 open Lvca_provenance
 open Lvca_util
 
+let comment = Lvca_parsing.c_comment
+
 let test_parse_with p str =
   Lvca_parsing.(parse_string (whitespace *> p) str) |> Result.ok_or_failwith
 ;;
@@ -49,11 +51,7 @@ module Kind = struct
         let pp_decl ppf (name, decl) = Fmt.pf ppf "%s: %a" name pp decl
 
         let%expect_test _ =
-          let x =
-            test_parse_with
-              (decl ~comment:Lvca_parsing.c_comment)
-              "foo: * -> * // comment"
-          in
+          let x = test_parse_with (decl ~comment) "foo: * -> * // comment" in
           Fmt.pr "%a" pp_decl x;
           [%expect {|foo: * -> *|}]
         ;;
@@ -61,7 +59,7 @@ module Kind = struct
         let%expect_test _ =
           let x =
             test_parse_with
-              (many (t ~comment:Lvca_parsing.c_comment))
+              (many (t ~comment))
               {|
               * -> * // comment 1
               * // comment 2
@@ -87,7 +85,7 @@ module Kind = struct
         let%expect_test _ =
           let x =
             test_parse_with
-              (many (decl ~comment:Lvca_parsing.c_comment))
+              (many (decl ~comment))
               {|
             foo: * -> * // comment 1
             bar: * -> * // comment 2
@@ -278,7 +276,7 @@ module Arity = struct
            >>|| fun { value = comment; range = comment_range } ->
            let range = Opt_range.union range comment_range in
            let value = Arity (Commented.{ range; comment }, valences) in
-           Parse_result.{ value; range })
+           { value; range })
     <?> "arity"
   ;;
 
@@ -290,7 +288,7 @@ module Arity = struct
       let integer = Sort.Name (none, "integer")
       let integer_v = Valence.Valence ([], integer)
       let ( = ) = equal ~info_eq:(fun _ _ -> true)
-      let parse = parse ~comment:Lvca_parsing.no_comment
+      let parse = parse ~comment
 
       let%test_unit _ =
         assert (test_parse_with parse "(integer)" = Arity (none, [ integer_v ]))
@@ -331,7 +329,12 @@ module Arity = struct
       let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)"
       let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)  // comment"
       let%test_unit _ = assert (test_parse_with parse "()" = Arity (none, []))
-      (* let%test_unit _ = assert (test_parse_with parse "()  // comment" = []) *)
+
+      let%test_unit _ =
+        assert (
+          test_parse_with parse "()  // comment"
+          = Arity (Commented.{ range = Opt_range.mk 6 14; comment = Some " comment" }, []))
+      ;;
     end)
   ;;
 end
@@ -384,20 +387,20 @@ module Operator_def = struct
       let%test_unit _ =
         let info1 = Commented.{ range = Opt_range.mk 0 5; comment = None } in
         let info2 = Commented.{ range = Opt_range.mk 3 5; comment = None } in
-        let parsed = test_parse_with (parse ~comment:Lvca_parsing.no_comment) "foo()" in
+        let parsed = test_parse_with (parse ~comment) "foo()" in
         assert (parsed = Operator_def (info1, "foo", Arity (info2, [])))
       ;;
 
-      (*
       let%test_unit _ =
-        let info = Commented.{ range = Opt_range.mk 0 16; comment = Some " comment" } in
+        let outer_info = Commented.{ range = Opt_range.mk 0 16; comment = None } in
+        let inner_info =
+          Commented.{ range = Opt_range.mk 3 16; comment = Some " comment" }
+        in
         let str = "foo() // comment" in
         (*         01234567890123456 *)
-        assert (
-          test_parse_with (parse ~comment:Lvca_parsing.no_comment) str
-          = Operator_def (info, "foo", []))
+        let parsed = test_parse_with (parse ~comment) str in
+        assert (parsed = Operator_def (outer_info, "foo", Arity (inner_info, [])))
       ;;
-      *)
     end)
   ;;
 end
@@ -491,10 +494,9 @@ module Sort_def = struct
 
   let%test_module _ =
     (module struct
-      let parse = parse ~comment:Lvca_parsing.no_comment
-
       let test_parse str =
-        test_parse_with parse str |> Tuple2.map2 ~f:(map_info ~f:Commented.get_range)
+        test_parse_with (parse ~comment) str
+        |> Tuple2.map2 ~f:(map_info ~f:Commented.get_range)
       ;;
 
       let parse_print str =
@@ -695,12 +697,10 @@ let%test_module _ =
             ] ) )
     ;;
 
-    let parse = parse ~comment:Lvca_parsing.c_comment
-
     let%test_unit _ =
       let parsed =
         test_parse_with
-          parse
+          (parse ~comment)
           {|
 integer : *
 
@@ -721,7 +721,7 @@ empty :=
     ;;
 
     let kind_check str =
-      let lang = test_parse_with parse str in
+      let lang = test_parse_with (parse ~comment) str in
       match kind_check lang with
       | Ok map ->
         Stdio.printf "okay\n";
@@ -767,20 +767,15 @@ let%test_module "Parser" =
   (module struct
     open Lvca_provenance
 
-    let parse =
-      test_parse_with (parse ~comment:Lvca_parsing.no_comment)
-      >> map_info ~f:Commented.get_range
-    ;;
-
-    (* let ( = ) = equal Opt_range.( = ) *)
+    let parse = test_parse_with (parse ~comment) >> map_info ~f:Commented.get_range
     let tm_sort = Sort.Name ((), "tm")
     let tm_valence = Valence.Valence ([], tm_sort)
     let ty_sort = Sort.Name ((), "ty")
     let ty_valence = Valence.Valence ([], ty_sort)
     let foo_sort = Sort.Name ((), "foo")
     let x_sort = Sort.Name ((), "x")
+    let ( = ) = equal Opt_range.( = )
 
-    (*
     let%test _ =
       parse "bool := true() | false()"
       (*     0123456789012345678901234 *)
@@ -789,13 +784,14 @@ let%test_module "Parser" =
             [ ( "bool"
               , Sort_def
                   ( []
-                  , [ Operator_def (Opt_range.mk 8 12, "true", [])
-                    ; Operator_def (Opt_range.mk 17 22, "false", [])
+                  , [ Operator_def
+                        (Opt_range.mk 8 14, "true", Arity (Opt_range.mk 12 14, []))
+                    ; Operator_def
+                        (Opt_range.mk 17 24, "false", Arity (Opt_range.mk 22 24, []))
                     ] ) )
             ]
         }
     ;;
-    *)
 
     let ( = ) = equal Unit.( = )
 
@@ -803,11 +799,11 @@ let%test_module "Parser" =
       parse
         {|
       integer : *
-      list : * -> *
+      list : * -> *  // comment
 
       ty :=
-        | bool()
-        | arr(ty; ty)
+        | bool()  // comment
+        | arr(ty; ty)  // comment
 
       tm :=
         | app(tm; tm)
