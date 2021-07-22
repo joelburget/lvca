@@ -78,7 +78,7 @@ end
 
 (** An arity specifies the arguments to an operator. *)
 module Arity : sig
-  type 'info t = 'info Valence.t list
+  type 'info t = Arity of 'info * 'info Valence.t list
 
   val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
   val map_info : f:('a -> 'b) -> 'a t -> 'b t

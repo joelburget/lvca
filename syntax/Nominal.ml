@@ -331,7 +331,7 @@ module Term = struct
             { message
             ; stack = { term = Either.Second tm; sort = expected_sort } :: stack
             })
-    and check_slots var_sorts valences scopes =
+    and check_slots var_sorts (Arity (_, valences)) scopes =
       match List.zip scopes valences with
       | Unequal_lengths ->
         Some

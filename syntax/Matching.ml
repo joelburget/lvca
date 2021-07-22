@@ -138,19 +138,18 @@ let get_children_concrete_sorts lang sort =
     Map.find_exn lang.Unordered.sort_defs sort_name
   in
   op_defs
-  |> List.map ~f:(fun (Operator_def (_, name, arity)) ->
+  |> List.map ~f:(fun (Operator_def (_, name, Arity (_, valences))) ->
          let subsorts =
-           arity
-           |> List.map ~f:(fun (Valence (binders, body_sort) as v) ->
-                  if not (List.is_empty binders)
-                  then
-                    invariant_violation
-                      ~here:[%here]
-                      (Fmt.str
-                         "valence is not a simple sort: %a"
-                         Abstract_syntax.Valence.pp
-                         v)
-                  else Sort.instantiate sort_env body_sort)
+           List.map valences ~f:(fun (Valence (binders, body_sort) as v) ->
+               if not (List.is_empty binders)
+               then
+                 invariant_violation
+                   ~here:[%here]
+                   (Fmt.str
+                      "valence is not a simple sort: %a"
+                      Abstract_syntax.Valence.pp
+                      v)
+               else Sort.instantiate sort_env body_sort)
          in
          name, subsorts)
   |> SMap.of_alist_exn
@@ -259,7 +258,7 @@ let rec check_matrix lang sorts matrix =
       head_ctors
       |> Set.to_list
       |> List.find_map ~f:(fun ctor_name ->
-             let (Operator_def (_, _, ctor_arity)) =
+             let (Operator_def (_, _, Arity (_, ctor_arity))) =
                op_defs
                |> List.find_exn ~f:(fun (Operator_def (_, name, _arity)) ->
                       String.(name = ctor_name))
@@ -276,7 +275,7 @@ let rec check_matrix lang sorts matrix =
                if Set.is_empty head_ctors
                then ignore
                else (
-                 let (Operator_def (_, ctor_name, ctor_arity)) =
+                 let (Operator_def (_, ctor_name, Arity (_, ctor_arity))) =
                    op_defs
                    (* Find an operator not listed *)
                    |> List.find_exn ~f:(fun (Operator_def (_, name, _)) ->

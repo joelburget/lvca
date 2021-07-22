@@ -231,7 +231,7 @@ let check check_prim lang sort =
     in
     Result.map_error result ~f:(fun Check_failure.{ message; stack } ->
         Check_failure.{ message; stack = { term = pat; sort } :: stack })
-  and check_slots valences scopes =
+  and check_slots (Arity (_, valences)) scopes =
     match List.zip scopes valences with
     | Unequal_lengths ->
       Error
