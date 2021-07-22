@@ -143,7 +143,7 @@ module List = struct
 
   let rec unsnoc lst =
     match lst with
-    | [] -> failwith "unsnoc empty list"
+    | [] -> invariant_violation ~here:[%here] "unsnoc empty list"
     | [ x ] -> [], x
     | x :: lst' ->
       let front, last = unsnoc lst' in
