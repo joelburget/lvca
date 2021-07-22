@@ -144,12 +144,16 @@ module Exp = struct
     [%expr Lvca_syntax.Abstract_syntax.Valence.Valence ([%e sort_slots], [%e body_sort])]
   ;;
 
-  let arity ~loc valences = valences |> List.map ~f:(valence ~loc) |> list ~loc
+  let arity ~loc (Arity.Arity (info, valences)) =
+    let valences = valences |> List.map ~f:(valence ~loc) |> list ~loc in
+    [%expr
+      Lvca_syntax.Abstract_syntax.Arity.Arity ([%e commented ~loc info], [%e valences])]
+  ;;
 
-  let operator_def ~loc (Operator_def.Operator_def (name, arity')) =
+  let operator_def ~loc (Operator_def.Operator_def (info, name, arity')) =
     [%expr
       Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
-        ([%e str ~loc name], [%e arity ~loc arity'])]
+        ([%e commented ~loc info], [%e str ~loc name], [%e arity ~loc arity'])]
   ;;
 
   let kind ~loc (Kind.Kind (pos, n)) =

@@ -268,7 +268,9 @@ let get_sort_ref_info sort_defs =
          let vars = List.map vars ~f:fst |> SSet.of_list in
          let sort_deps =
            op_defs
-           |> List.map ~f:(fun (Syn.Operator_def.Operator_def (_name, arity)) ->
+           |> List.map
+                ~f:(fun (Syn.Operator_def.Operator_def (_info, _name, Arity (_, arity)))
+                   ->
                   arity
                   |> List.map ~f:(fun (Syn.Valence.Valence (_sort_slots, body_sort)) ->
                          let sort_name = sort_head body_sort in
@@ -301,7 +303,9 @@ let partition_sort_defs sort_defs =
     |> Hashtbl.of_alist_exn (module String)
   in
   List.iter sort_defs ~f:(fun (_sort_name, Syn.Sort_def.Sort_def (_vars, op_defs)) ->
-      List.iter op_defs ~f:(fun (Syn.Operator_def.Operator_def (_name, arity)) ->
+      List.iter
+        op_defs
+        ~f:(fun (Syn.Operator_def.Operator_def (_info, _name, Arity (_, arity))) ->
           List.iter arity ~f:(fun (Syn.Valence.Valence (sort_slots, _body_sort)) ->
               List.iter sort_slots ~f:(fun slot ->
                   let sort =
@@ -715,11 +719,10 @@ module Helpers (Context : Builder_context) = struct
     |> List.map
          ~f:(fun (name, Abstract_syntax.Kind.Kind (Commented.{ comment; _ }, _kind)) ->
            let m_opt =
-             comment
-             |> Option.bind ~f:(fun comment ->
-                    match Lvca_parsing.parse_string parse_external_module comment with
-                    | Ok m -> Some m
-                    | Error _ -> None)
+             Option.bind comment ~f:(fun comment ->
+                 match Lvca_parsing.parse_string parse_external_module comment with
+                 | Ok m -> Some m
+                 | Error _ -> None)
            in
            name, m_opt)
     |> SMap.of_alist_exn
@@ -738,7 +741,7 @@ module Ctor_decl (Context : Builder_context) = struct
       ~var_names
       ~mutual_sorts
       ~prims
-      (Syn.Operator_def.Operator_def (op_name, arity))
+      (Syn.Operator_def.Operator_def (_info, op_name, Arity (_, arity)))
     =
     let pattern_type =
       match info with
@@ -858,7 +861,7 @@ module Operator_pat (Context : Builder_context) = struct
       ?(match_info = false)
       ?(match_non_info = true)
       ?(name_base = "x")
-      (Syn.Operator_def.Operator_def (op_name, arity))
+      (Syn.Operator_def.Operator_def (_info, op_name, Arity (_, arity)))
     =
     if not (is_valid_ocaml_constr_name op_name)
     then Location.raise_errorf ~loc "Invalid OCaml operator name: %s" op_name;
@@ -914,7 +917,7 @@ module Operator_exp (Context : Builder_context) = struct
       ?(f = false)
       sort_defs (* Sorts being defined together *)
       fun_defn (* The name of the function being defined *)
-      (Syn.Operator_def.Operator_def (op_name, arity))
+      (Syn.Operator_def.Operator_def (_info, op_name, Arity (_, arity)))
     =
     let v = evar_allocator "x" in
     let pattern_converter =
@@ -1168,7 +1171,7 @@ module To_nominal (Context : Builder_context) = struct
       ~var_names
       ~prims
       sort_defs
-      (Syn.Operator_def.Operator_def (op_name, arity))
+      (Syn.Operator_def.Operator_def (_info, op_name, Arity (_, arity)))
     =
     (* TODO: change to name "info" *)
     let info = evar "x0" in
@@ -1272,7 +1275,7 @@ module Of_nominal (Context : Builder_context) = struct
 
     Note: we currently never map to [Primitive].
   *)
-  let mk_nominal_pat (Syn.Operator_def.Operator_def (op_name, arity)) =
+  let mk_nominal_pat (Syn.Operator_def.Operator_def (_info, op_name, Arity (_, arity))) =
     (* TODO: change to name "info" *)
     let info = pvar "x0" in
     let v = pvar_allocator "x" in
@@ -1293,7 +1296,12 @@ module Of_nominal (Context : Builder_context) = struct
     ppat_construct { txt = operator; loc } body
   ;;
 
-  let mk_exp ~var_names ~prims sort_defs (Syn.Operator_def.Operator_def (op_name, arity)) =
+  let mk_exp
+      ~var_names
+      ~prims
+      sort_defs
+      (Syn.Operator_def.Operator_def (_info, op_name, Arity (_, arity)))
+    =
     let v = var_allocator "x" in
     let ev = v >> snd in
     let info = evar "x0" in
@@ -1397,7 +1405,7 @@ module Equal (Context : Builder_context) = struct
     let classify_sort =
       classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prims }
     in
-    let f (Syn.Operator_def.Operator_def (_op_name, arity) as op_def) =
+    let f (Syn.Operator_def.Operator_def (_info, _op_name, Arity (_, arity)) as op_def) =
       let lhs =
         let p1, p2 =
           ("x", "y")
