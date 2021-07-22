@@ -10,6 +10,24 @@ open Lvca_util
 
 (** {1 Types} *)
 
+module List_model : [%lvca.abstract_syntax_module_sig "list a := Nil() | Cons(a; list a)"]
+module Option_model : [%lvca.abstract_syntax_module_sig "option a := None() | Some(a)"]
+
+module Binding_aware_pattern_model : [%lvca.abstract_syntax_module_sig
+{|
+string : *  // module Primitive.String
+primitive : *  // module Primitive.All
+list : * -> *  // module List_model
+
+t :=
+  | Operator(string; list scope)
+  | Primitive(primitive)
+  | Var(string)
+  | Ignored(string)
+
+scope := Scope(list string; t)
+|}]
+
 module Sort_model : [%lvca.abstract_syntax_module_sig
 {|
 string : *  // Module Primitive.String
@@ -23,13 +41,13 @@ ap_list :=
   | Cons(t; ap_list)
 |}]
 
-module List_model : [%lvca.abstract_syntax_module_sig "list a := Nil() | Cons(a; list a)"]
-
 module Lang : [%lvca.abstract_syntax_module_sig
 {|
 sort : *  // module Sort_model
 nominal : *  // module Nominal.Term
 list : * -> *  // module List_model
+option : * -> *  // module Option_model
+binding_aware_pattern : * -> *  // module Binding_aware_pattern_model
 
 is_rec := Rec() | No_rec()
 
@@ -38,6 +56,11 @@ ty := Sort(sort) | Arrow(ty; ty)
 term :=
   | Term(nominal)
   | Ap(term; list term)
+  | Case(term; list case_scope)
+  | Lambda(ty; term. term)
+  | Let(is_rec; term; option ty; term. term)
+
+case_scope := Case_scope(binding_aware_pattern; term)
 |}]
 
 module Type : sig

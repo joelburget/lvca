@@ -9,6 +9,25 @@ module SMap = Lvca_util.String.Map
 
 let ( >> ) = Lvca_util.( >> )
 
+module Option_model = [%lvca.abstract_syntax_module "option a := None() | Some(a)"]
+module List_model = [%lvca.abstract_syntax_module "list a := Nil() | Cons(a; list a)"]
+
+module Binding_aware_pattern_model =
+[%lvca.abstract_syntax_module
+{|
+string : *  // module Primitive.String
+primitive : *  // module Primitive.All
+list : * -> *  // module List_model
+
+t :=
+  | Operator(string; list scope)
+  | Primitive(primitive)
+  | Var(string)
+  | Ignored(string)
+
+scope := Scope(list string; t)
+|}]
+
 module Sort_model =
 [%lvca.abstract_syntax_module
 {|
@@ -23,14 +42,14 @@ ap_list :=
   | Cons(t; ap_list)
 |}]
 
-module List_model = [%lvca.abstract_syntax_module "list a := Nil() | Cons(a; list a)"]
-
 module Lang =
 [%lvca.abstract_syntax_module
 {|
 sort : *  // module Sort_model
 nominal : *  // module Nominal.Term
 list : * -> *  // module List_model
+option : * -> *  // module Option_model
+binding_aware_pattern : * -> *  // module Binding_aware_pattern_model
 
 is_rec := Rec() | No_rec()
 
@@ -39,6 +58,11 @@ ty := Sort(sort) | Arrow(ty; ty)
 term :=
   | Term(nominal)
   | Ap(term; list term)
+  | Case(term; list case_scope)
+  | Lambda(ty; term. term)
+  | Let(is_rec; term; option ty; term. term)
+
+case_scope := Case_scope(binding_aware_pattern; term)
 |}]
 
 module Is_rec = Nominal.Convertible.Extend (Lang.Is_rec)
@@ -1213,6 +1237,7 @@ let%test_module "Evaluation / inference" =
     let parse_type str =
       Lvca_parsing.parse_string (Type.parse ~comment:(Lvca_parsing.fail "no comment")) str
       |> Result.ok_or_failwith
+      |> Type.map_info ~f:(Fn.const None)
     ;;
 
     open Abstract_syntax
@@ -1223,23 +1248,27 @@ let%test_module "Evaluation / inference" =
       [ ( "bool"
         , Sort_def.Sort_def
             ( []
-            , [ Operator_def.Operator_def ("true", [])
-              ; Operator_def.Operator_def ("false", [])
+            , [ Operator_def.Operator_def (None, "true", Arity (None, []))
+              ; Operator_def.Operator_def (None, "false", Arity (None, []))
               ] ) )
       ; ( "list"
         , let a = Sort.Name (None, "a") in
           Sort_def.Sort_def
             ( [ "a", Some (Kind.Kind (None, 1)) ]
-            , [ Operator_def.Operator_def ("nil", [])
+            , [ Operator_def.Operator_def (None, "nil", Arity (None, []))
               ; Operator_def.Operator_def
-                  ( "cons"
-                  , [ Valence.Valence ([], a)
-                    ; Valence.Valence
-                        ( []
-                        , Sort.Ap
-                            (None, "list", Sort.Ap_list.of_list ~default_info:None [ a ])
-                        )
-                    ] )
+                  ( None
+                  , "cons"
+                  , Arity
+                      ( None
+                      , [ Valence.Valence ([], a)
+                        ; Valence.Valence
+                            ( []
+                            , Sort.Ap
+                                ( None
+                                , "list"
+                                , Sort.Ap_list.of_list ~default_info:None [ a ] ) )
+                        ] ) )
               ] ) )
       ]
     ;;

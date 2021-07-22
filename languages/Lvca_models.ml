@@ -49,22 +49,6 @@ pattern :=
   | Ignored(string)
 |}]
 
-module Binding_aware_pattern_model =
-[%lvca.abstract_syntax_module
-{|
-string : *
-primitive : *
-list : * -> *
-
-t :=
-  | Operator(string; list scope)
-  | Primitive(primitive)
-  | Var(string)
-  | Ignored(string)
-
-scope := Scope(list string; t)
-|}]
-
 module Nominal_model =
 [%lvca.abstract_syntax_module
 {|
