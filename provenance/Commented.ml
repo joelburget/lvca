@@ -20,3 +20,12 @@ let pp pp_comment =
 ;;
 
 let of_opt_range range = { comment = None; range }
+
+module Properties = struct
+  let round_trip range =
+    let range' = range |> of_opt_range |> get_range in
+    Lvca_util.Property_result.check
+      Opt_range.(range' = range)
+      (Fmt.str "%a <> %a" Opt_range.pp range' Opt_range.pp range)
+  ;;
+end

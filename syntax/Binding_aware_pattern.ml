@@ -338,13 +338,14 @@ module Properties = struct
   let to_string = Fmt.to_to_string pp
 
   let string_round_trip1 t =
-    match t |> to_string |> parse with
+    let str = to_string t in
+    match parse str with
     | Ok t' ->
       let t' = erase t' in
       Property_result.check
         (equal ~info_eq:Unit.( = ) t' t)
         (Fmt.str "%a <> %a" pp t' pp t)
-    | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
+    | Error msg -> Failed (Fmt.str {|parse_string %S: %s|} str msg)
   ;;
 
   let string_round_trip2 str =
@@ -359,9 +360,7 @@ module Properties = struct
         | Error msg -> Failed msg
         | Ok t' ->
           let str'' = t' |> erase |> to_string in
-          Property_result.check
-            String.(str'' = str')
-            (Fmt.str {|"%s" <> "%s"|} str'' str'))
+          Property_result.check String.(str'' = str') (Fmt.str {|%S <> %S|} str'' str'))
   ;;
 end
 
