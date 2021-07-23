@@ -711,7 +711,10 @@ module Helpers (Context : Builder_context) = struct
     *> Ws.string "module"
     *> sep_by1
          (No_ws.char '.')
-         (many1 (Ws.satisfy Char.is_alphanum) >>| String.of_char_list)
+         (No_ws.satisfy Char.is_uppercase
+         >>= fun c0 ->
+         many (Ws.satisfy Char.(fun c -> is_alphanum c || c = '_' || c = '\''))
+         >>| fun cs -> String.of_char_list (c0 :: cs))
   ;;
 
   let prims_of_externals externals =
