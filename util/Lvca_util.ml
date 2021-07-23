@@ -380,3 +380,12 @@ module Tuple4 = struct
   module Int = Make (Int) (Int) (Int) (Int)
   module Bool = Make (Bool) (Bool) (Bool) (Bool)
 end
+
+module Property_result = struct
+  type t =
+    | Ok
+    | Uninteresting
+    | Failed of string
+
+  let check b msg = if b then Ok else Failed msg
+end

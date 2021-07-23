@@ -331,6 +331,7 @@ let parse_no_comment = parse ~comment:Lvca_parsing.no_comment
 let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
 
 module Properties = struct
+  open Util
   open Property_result
 
   let parse = Lvca_parsing.parse_string parse_no_comment

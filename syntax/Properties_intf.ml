@@ -1,3 +1,5 @@
+open Lvca_util
+
 module type Parse_pretty_s = sig
   type 'info t
 
