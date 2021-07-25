@@ -17,37 +17,37 @@ module Binding_aware_pattern_model : [%lvca.abstract_syntax_module_sig
 {|
 string : *  // module Primitive.String
 primitive : *  // module Primitive.All
-list : * -> *  // module List_model
+list : * -> *  // module List_model.List
 
-t :=
+pattern :=
   | Operator(string; list scope)
   | Primitive(primitive)
   | Var(string)
   | Ignored(string)
 
-scope := Scope(list string; t)
+scope := Scope(list string; pattern)
 |}]
 
 module Sort_model : [%lvca.abstract_syntax_module_sig
 {|
 string : *  // Module Primitive.String
 
-t :=
+sort :=
   | Ap(string; ap_list)
   | Name(string)
 
 ap_list :=
   | Nil()
-  | Cons(t; ap_list)
+  | Cons(sort; ap_list)
 |}]
 
 module Lang : [%lvca.abstract_syntax_module_sig
 {|
-sort : *  // module Sort_model
+sort : *  // module Sort_model.Sort
 nominal : *  // module Nominal.Term
-list : * -> *  // module List_model
-option : * -> *  // module Option_model
-binding_aware_pattern : * -> *  // module Binding_aware_pattern_model
+list : * -> *  // module List_model.List
+option : * -> *  // module Option_model.Option
+binding_aware_pattern : * -> *  // module Binding_aware_pattern_model.Pattern
 
 is_rec := Rec() | No_rec()
 

@@ -17,39 +17,39 @@ module Binding_aware_pattern_model =
 {|
 string : *  // module Primitive.String
 primitive : *  // module Primitive.All
-list : * -> *  // module List_model
+list : * -> *  // module List_model.List
 
-t :=
+pattern :=
   | Operator(string; list scope)
   | Primitive(primitive)
   | Var(string)
   | Ignored(string)
 
-scope := Scope(list string; t)
+scope := Scope(list string; pattern)
 |}]
 
 module Sort_model =
 [%lvca.abstract_syntax_module
 {|
-string : *  // Module Primitive.String
+string : *  // module Primitive.String
 
-t :=
+sort :=
   | Ap(string; ap_list)
   | Name(string)
 
 ap_list :=
   | Nil()
-  | Cons(t; ap_list)
+  | Cons(sort; ap_list)
 |}]
 
 module Lang =
 [%lvca.abstract_syntax_module
 {|
-sort : *  // module Sort_model
+sort : *  // module Sort_model.Sort
 nominal : *  // module Nominal.Term
-list : * -> *  // module List_model
-option : * -> *  // module Option_model
-binding_aware_pattern : * -> *  // module Binding_aware_pattern_model
+list : * -> *  // module List_model.List
+option : * -> *  // module Option_model.Option
+binding_aware_pattern : * -> *  // module Binding_aware_pattern_model.Pattern
 
 is_rec := Rec() | No_rec()
 
@@ -72,80 +72,67 @@ module Ty = struct
 end
 
 module Type = struct
-  type 'info t =
-    | Arrow of 'info t list (* TODO: or should we handle just a pair? *)
-    | Sort of 'info Sort.t
-
-  let rec map_info ~f = function
-    | Arrow ts -> Arrow (List.map ~f:(map_info ~f) ts)
-    | Sort sort -> Sort (Sort.map_info ~f sort)
-  ;;
-
-  let rec equal ~info_eq x y =
-    match x, y with
-    | Arrow xs, Arrow ys -> List.equal (equal ~info_eq) xs ys
-    | Sort x, Sort y -> Sort.equal ~info_eq x y
-    | _, _ -> false
-  ;;
-
-  let pp_generic ~open_loc ~close_loc ppf =
-    let rec go need_parens ppf = function
-      | Arrow ts ->
-        let fmt = Fmt.(list ~sep:(any " -> ") (go true)) in
-        let fmt = if need_parens then Fmt.parens fmt else fmt in
-        fmt ppf ts
-      | Sort s -> Sort.pp_generic ~open_loc ~close_loc ppf s
-    in
-    go false ppf
-  ;;
-
-  let pp ty = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ty
+  include Lang.Ty
+  include Ty
+  module Sort = Nominal.Convertible.Extend (Sort_model.Sort)
 
   module Parse = struct
     open Lvca_parsing
 
-    let rec go tys =
-      match Lvca_util.List.unsnoc tys with pre, Arrow tys' -> pre @ go tys' | _ -> tys
+    let rec arrow = function
+      | [] ->
+        Lvca_util.invariant_violation
+          ~here:[%here]
+          "arrow must be called with a non-empty list"
+      | [ sort ] -> sort
+      | tys ->
+        let pre, sort = Lvca_util.List.unsnoc tys in
+        Arrow (Commented.none, arrow pre, sort)
     ;;
-
-    let normalize ty = match ty with Sort _ -> ty | Arrow tys -> Arrow (go tys)
 
     let t ~comment =
-      let t =
-        fix (fun t ->
-            let atom = Ws.parens t <|> (Sort.parse ~comment >>| fun sort -> Sort sort) in
-            sep_by1 (Ws.string "->") atom >>| function [ t ] -> t | ts -> Arrow ts)
-      in
-      t >>| normalize <?> "core type"
+      fix (fun t ->
+          let atom =
+            Ws.parens t
+            <|> (Sort.parse ~comment >>| fun sort -> Sort (Sort.info sort, sort))
+          in
+          sep_by1 (Ws.string "->") atom >>| arrow)
+      <?> "core type"
     ;;
 
-    let%test_module "normalize" =
+    let%test_module "arrow" =
       (module struct
-        let ( = ) = equal ~info_eq:Unit.( = )
-        let s = Sort.Name ((), "s")
+        let ( = ) = equal ~info_eq:(Commented.equal String.( = ))
+        let none = Commented.none
+        let s = Sort_model.Sort.Name (none, (none, "s"))
+        let sort s = Sort (none, s)
 
-        let%test _ = normalize (Sort s) = Sort s
-        let%test _ = normalize (Arrow [ Sort s; Sort s ]) = Arrow [ Sort s; Sort s ]
+        let%test _ = arrow [ sort s ] = sort s
 
         let%test _ =
-          normalize (Arrow [ Arrow [ Sort s; Sort s ]; Sort s ])
+          arrow [ sort s; sort s ] = Arrow (none, Sort (none, s), Sort (none, s))
+        ;;
+
+        (*
+        let%test _ =
+          arrow [ Arrow [ Sort s; Sort s ]; Sort s ]
           = Arrow [ Arrow [ Sort s; Sort s ]; Sort s ]
         ;;
 
         let%test _ =
-          normalize (Arrow [ Sort s; Arrow [ Sort s; Sort s ] ])
-          = Arrow [ Sort s; Sort s; Sort s ]
+          arrow [ Sort s; Arrow [ Sort s; Sort s ] ] = Arrow [ Sort s; Sort s; Sort s ]
         ;;
 
         let%test _ =
-          normalize (Arrow [ Sort s; Arrow [ Sort s; Arrow [ Sort s; Sort s ] ] ])
+          arrow [ Sort s; Arrow [ Sort s; Arrow [ Sort s; Sort s ] ] ]
           = Arrow [ Sort s; Sort s; Sort s; Sort s ]
         ;;
 
         let%test _ =
-          normalize (Arrow [ Arrow [ Sort s; Sort s ]; Arrow [ Sort s; Sort s ] ])
+          arrow [ Arrow [ Sort s; Sort s ]; Arrow [ Sort s; Sort s ] ]
           = Arrow [ Arrow [ Sort s; Sort s ]; Sort s; Sort s ]
         ;;
+        *)
       end)
     ;;
   end
@@ -601,7 +588,7 @@ let infer_term type_env tm =
       | Float _ -> "float"
       | Char _ -> "char"
     in
-    Ok (Type.Sort (Sort.Name (None, name)))
+    Ok (Lang.Ty.Sort (None, Sort_model.Sort.Name (None, (None, name))))
   | Var (_, v) ->
     (match Map.find type_env v with
     | Some ty -> Ok ty
@@ -618,8 +605,8 @@ let rec check ({ type_env; syntax } as env) tm ty =
   match tm with
   | Term.Term tm' ->
     (match ty with
-    | Type.Arrow _ -> Some Check_error.{ env; tm; ty; error = Term_isnt_arrow }
-    | Sort sort ->
+    | Lang.Ty.Arrow _ -> Some Check_error.{ env; tm; ty; error = Term_isnt_arrow }
+    | Sort (_, sort) ->
       (match Nominal.Term.check syntax sort tm' with
       | None -> None
       | Some err -> Some Check_error.{ env; tm; ty; error = Failed_check_term err }))
@@ -860,7 +847,7 @@ let%test_module "Parsing" =
 
     let%test _ =
       parse {|\(x : bool) -> x|}
-      = Lambda ((), Type.Sort (Name ((), "bool")), Scope ("x", var "x"))
+      = Lambda ((), Lang.Ty.Sort ((), Name ((), ((), "bool"))), Scope ("x", var "x"))
     ;;
 
     let%test _ =
@@ -928,7 +915,7 @@ let%test_module "Core parsing" =
 
     let t_operator tag children = Nominal.Term.Operator ((), tag, children)
     let meaning x = Term.Core_app ((), c_var "meaning", [ x ])
-    let ty = Type.Sort (Name ((), "ty"))
+    let ty = Lang.Ty.Sort ((), Name ((), ((), "ty")))
 
     let dynamics =
       Term.Lambda
@@ -1338,7 +1325,10 @@ let%test_module "Evaluation / inference" =
       [%expect {| checked |}]
     ;;
 
-    let type_env = SMap.of_alist_exn [ "x", Type.Sort (Sort.Name (None, "a")) ]
+    let type_env =
+      SMap.of_alist_exn
+        [ "x", Lang.Ty.Sort (None, Sort_model.Sort.Name (None, (None, "a"))) ]
+    ;;
 
     let%expect_test _ =
       infer ~type_env "x";
