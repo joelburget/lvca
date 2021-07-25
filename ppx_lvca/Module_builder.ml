@@ -1696,11 +1696,11 @@ module Individual_type_module (Context : Builder_context) = struct
                Nonrecursive
                [ value_binding ~pat:(pvar fun_name) ~expr:wrapper_fun ])
     in
-    (*
     let taken = vars |> List.map ~f:fst |> SSet.of_list in
     let _taken, unique_var_names =
       List.fold_map vars ~init:taken ~f:(fun taken (name, _) ->
-          let name' = generate_unique_name ~base:(name ^ "'") taken in
+          (* let name' = generate_unique_name ~base:(name ^ "'") taken in *)
+          let name' = generate_unique_name ~base:("_" ^ name) taken in
           let taken = Set.add taken name' in
           taken, name')
     in
@@ -1712,6 +1712,7 @@ module Individual_type_module (Context : Builder_context) = struct
       in
       pstr_value Nonrecursive [ value_binding ~pat ~expr ]
     in
+    (*
     let mk_helper name =
       pexp_apply (evar name) (List.map unique_var_names ~f:(fun var -> Nolabel, evar var))
     in
@@ -1721,27 +1722,33 @@ module Individual_type_module (Context : Builder_context) = struct
     let of_nominal = mk_helper "of_nominal" in
     *)
     let plain_mod =
-      (*
       let equal =
         plain_fun_def
-          "equal"
-          [ "x"; "y" ]
+          (if List.is_empty vars then "=" else "equal")
+          [ "_x"; "_y" ]
+          [%expr false (* TODO *)]
+        (*
           [%expr
             let x = x |> [%e of_plain] |> [%e to_nominal] in
             let y = y |> [%e of_plain] |> [%e to_nominal] in
             Lvca_syntax.Nominal.Term.(equal ~info_eq:Base.Unit.( = ) (erase x) (erase y))]
+            *)
       in
       let jsonify =
         plain_fun_def
           "jsonify"
-          [ "tm" ]
+          [ "_tm" ]
+          (*
           [%expr
             tm |> [%e of_plain] |> [%e to_nominal] |> Lvca_syntax.Nominal.Term.jsonify]
+          *)
+          [%expr Lvca_util.Json.Int 1 (* TODO *)]
       in
       let unjsonify =
         plain_fun_def
           "unjsonify"
-          [ "json" ]
+          [ "_json" ]
+          (*
           [%expr
             json
             |> Lvca_syntax.Nominal.Term.unjsonify
@@ -1749,18 +1756,24 @@ module Individual_type_module (Context : Builder_context) = struct
                    match [%e of_nominal] tm with
                    | Ok tm -> Some ([%e to_plain] tm)
                    | Error _ -> None)]
+                   *)
+          [%expr None (* TODO *)]
       in
       let pp =
         plain_fun_def
           "pp"
-          [ "ppf"; "tm" ]
+          [ "ppf"; "_tm" ]
+          (*
           [%expr
             tm |> [%e of_plain] |> [%e to_nominal] |> Lvca_syntax.Nominal.Term.pp ppf]
+            *)
+          [%expr Fmt.pf ppf "TODO"]
       in
       let parse =
         plain_fun_def
           "parse"
           []
+          (*
           [%expr
             let parse_prim =
               Lvca_parsing.fail "Generated parser parse_prim always fails"
@@ -1771,18 +1784,17 @@ module Individual_type_module (Context : Builder_context) = struct
               match [%e of_nominal] tm with
               | Ok tm -> return ([%e to_plain] tm)
               | Error _ -> fail "Generated parser failed nominal conversion")]
+              *)
+          [%expr Lvca_parsing.fail "TODO"]
       in
-      *)
       [%stri
         module Plain = struct
           [%%i plain_type_decl]
-          (*
           [%%i equal]
           [%%i jsonify]
           [%%i unjsonify]
           [%%i pp]
           [%%i parse]
-          *)
         end]
     in
     let expr = pmod_structure (info_type_decl :: fun_defs @ [ plain_mod ]) in
@@ -1907,22 +1919,20 @@ module Sig (Context : Builder_context) = struct
               [ mk_ty With_info
               ; [%sigi:
                   module Plain : [%m
-                  (*
                   let declare name ~f =
                     declare name ~init:(f (t unique_vars_1)) ~f:(fun (v1, _v2) -> f v1)
                   in
-                  *)
                   pmty_signature
                     [ mk_ty Plain
-                      (*
                     ; declare "pp" ~f:(fun ty -> [%type: [%t ty] Fmt.t])
-                    ; declare "equal" ~f:(fun ty -> [%type: [%t ty] -> [%t ty] -> bool])
+                    ; declare
+                        (if List.is_empty vars then "=" else "equal")
+                        ~f:(fun ty -> [%type: [%t ty] -> [%t ty] -> bool])
                     ; declare "parse" ~f:(fun ty -> [%type: [%t ty] Lvca_parsing.t])
                     ; declare "jsonify" ~f:(fun ty ->
                           [%type: [%t ty] Lvca_util.Json.serializer])
                     ; declare "unjsonify" ~f:(fun ty ->
                           [%type: [%t ty] Lvca_util.Json.deserializer])
-                    *)
                     ]]]
               ; declare
                   "to_plain"

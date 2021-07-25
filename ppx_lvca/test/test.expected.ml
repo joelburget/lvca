@@ -134,9 +134,19 @@ module List_model :
         | Nil of 'info 
         | Cons of 'info * 'a * ('info, 'a) Wrapper.Types.list 
       module Plain :
-      sig type 'a t =
-            | Nil 
-            | Cons of 'a * 'a Wrapper.Plain.list  end
+      sig
+        type 'a t =
+          | Nil 
+          | Cons of 'a * 'a Wrapper.Plain.list 
+        val pp : 'a_ Fmt.t -> 'a_ t Fmt.t
+        val equal : ('a_ -> 'a_ -> bool) -> 'a_ t -> 'a_ t -> bool
+        val parse : 'a_ Lvca_parsing.t -> 'a_ t Lvca_parsing.t
+        val jsonify :
+          'a_ Lvca_util.Json.serializer -> 'a_ t Lvca_util.Json.serializer
+        val unjsonify :
+          'a_ Lvca_util.Json.deserializer ->
+            'a_ t Lvca_util.Json.deserializer
+      end
       val to_plain : ('a_ -> 'a__) -> (_, 'a_) t -> 'a__ Plain.t
       val of_plain : ('a_ -> 'a__) -> 'a_ Plain.t -> (unit, 'a__) t
       val to_nominal :
@@ -347,6 +357,11 @@ module List_model :
             type 'a t = 'a Wrapper.Plain.list =
               | Nil 
               | Cons of 'a * 'a Wrapper.Plain.list 
+            let equal _a _x _y = false
+            let jsonify _a _tm = Lvca_util.Json.Int 1
+            let unjsonify _a _json = None
+            let pp _a ppf _tm = Fmt.pf ppf "TODO"
+            let parse _a = Lvca_parsing.fail "TODO"
           end
       end
   end 
@@ -1440,6 +1455,11 @@ module Lang =
               | Bar of (Pattern.Plain.t * Lvca_syntax.Single_var.Plain.t *
               Wrapper.Plain.foo) 
               | Foo_var of string 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
           end
       end
     module Nat =
@@ -1458,6 +1478,11 @@ module Lang =
             type t = Wrapper.Plain.nat =
               | Z 
               | S of Wrapper.Plain.nat 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
           end
       end
     module Pair =
@@ -1474,6 +1499,11 @@ module Lang =
           struct
             type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair =
               | Pair of 'a * 'b 
+            let equal _a _b _x _y = false
+            let jsonify _a _b _tm = Lvca_util.Json.Int 1
+            let unjsonify _a _b _json = None
+            let pp _a _b ppf _tm = Fmt.pf ppf "TODO"
+            let parse _a _b = Lvca_parsing.fail "TODO"
           end
       end
     module Pair_plus =
@@ -1490,6 +1520,11 @@ module Lang =
           struct
             type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair_plus =
               | PairPlus of 'a * 'b * Wrapper.Plain.foo 
+            let equal _a _b _x _y = false
+            let jsonify _a _b _tm = Lvca_util.Json.Int 1
+            let unjsonify _a _b _json = None
+            let pp _a _b ppf _tm = Fmt.pf ppf "TODO"
+            let parse _a _b = Lvca_parsing.fail "TODO"
           end
       end
     module Nonempty =
@@ -1508,6 +1543,11 @@ module Lang =
             type t = Wrapper.Plain.nonempty =
               | Nonempty of Primitive.String.Plain.t *
               Primitive.String.Plain.t List_model.List.Plain.t 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
           end
       end
     module Term =
@@ -1525,6 +1565,11 @@ module Lang =
           struct
             type t = Wrapper.Plain.term =
               | Operator of Wrapper.Plain.term List_model.List.Plain.t 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
           end
       end
     module Mut_a =
@@ -1541,6 +1586,11 @@ module Lang =
           struct
             type t = Wrapper.Plain.mut_a =
               | Mut_a of Wrapper.Plain.mut_b 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
           end
       end
     module Mut_b =
@@ -1557,6 +1607,11 @@ module Lang =
           struct
             type t = Wrapper.Plain.mut_b =
               | Mut_b of Wrapper.Plain.mut_a 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
           end
       end
     module Ifz =
@@ -1578,6 +1633,11 @@ module Lang =
               | Ifz of Wrapper.Plain.ifz * (Lvca_syntax.Single_var.Plain.t *
               Wrapper.Plain.ifz) * Wrapper.Plain.ifz 
               | Ifz_var of string 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
           end
       end
   end
@@ -2724,8 +2784,15 @@ module List_lang =
         let to_nominal = Wrapper.To_nominal.predefined
         let of_nominal = Wrapper.Of_nominal.predefined
         module Plain =
-          struct type t = Wrapper.Plain.predefined =
-                   | Predefined  end
+          struct
+            type t = Wrapper.Plain.predefined =
+              | Predefined 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
+          end
       end
     module List =
       struct
@@ -2743,6 +2810,11 @@ module List_lang =
             type 'a t = 'a Wrapper.Plain.list =
               | Nil 
               | Cons of 'a * 'a Wrapper.Plain.list 
+            let equal _a _x _y = false
+            let jsonify _a _tm = Lvca_util.Json.Int 1
+            let unjsonify _a _json = None
+            let pp _a ppf _tm = Fmt.pf ppf "TODO"
+            let parse _a = Lvca_parsing.fail "TODO"
           end
       end
     module List_external =
@@ -2761,6 +2833,11 @@ module List_lang =
             type t = Wrapper.Plain.list_external =
               | List_external of Lvca_syntax.Nominal.Term.Plain.t
               Wrapper.Plain.list 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
           end
       end
     module List_predefined =
@@ -2779,6 +2856,11 @@ module List_lang =
             type t = Wrapper.Plain.list_predefined =
               | List_predefined of Wrapper.Plain.predefined
               Wrapper.Plain.list 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
           end
       end
     module List_list_a =
@@ -2796,6 +2878,11 @@ module List_lang =
           struct
             type 'a t = 'a Wrapper.Plain.list_list_a =
               | List_list_a of 'a Wrapper.Plain.list Wrapper.Plain.list 
+            let equal _a _x _y = false
+            let jsonify _a _tm = Lvca_util.Json.Int 1
+            let unjsonify _a _json = None
+            let pp _a ppf _tm = Fmt.pf ppf "TODO"
+            let parse _a = Lvca_parsing.fail "TODO"
           end
       end
     module List_list_string_1 =
@@ -2815,6 +2902,11 @@ module List_lang =
             type t = Wrapper.Plain.list_list_string_1 =
               | List_list_string_1 of Lvca_syntax.Nominal.Term.Plain.t
               Wrapper.Plain.list Wrapper.Plain.list 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
           end
       end
     module List_list_string_2 =
@@ -2833,6 +2925,11 @@ module List_lang =
             type t = Wrapper.Plain.list_list_string_2 =
               | List_list_string_2 of Lvca_syntax.Nominal.Term.Plain.t
               Wrapper.Plain.list_list_a 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
           end
       end
     module List_list_predefined_1 =
@@ -2852,6 +2949,11 @@ module List_lang =
             type t = Wrapper.Plain.list_list_predefined_1 =
               | List_list_predefined_1 of Wrapper.Plain.predefined
               Wrapper.Plain.list Wrapper.Plain.list 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
           end
       end
     module List_list_predefined_2 =
@@ -2870,6 +2972,11 @@ module List_lang =
             type t = Wrapper.Plain.list_list_predefined_2 =
               | List_list_predefined_2 of Wrapper.Plain.predefined
               Wrapper.Plain.list_list_a 
+            let (=) _x _y = false
+            let jsonify _tm = Lvca_util.Json.Int 1
+            let unjsonify _json = None
+            let pp ppf _tm = Fmt.pf ppf "TODO"
+            let parse = Lvca_parsing.fail "TODO"
           end
       end
   end
@@ -2911,9 +3018,17 @@ module type Is_rec_sig  =
       type 'info t =
         | Rec of 'info 
         | No_rec of 'info 
-      module Plain : sig type t =
-                           | Rec 
-                           | No_rec  end
+      module Plain :
+      sig
+        type t =
+          | Rec 
+          | No_rec 
+        val pp : t Fmt.t
+        val (=) : t -> t -> bool
+        val parse : t Lvca_parsing.t
+        val jsonify : t Lvca_util.Json.serializer
+        val unjsonify : t Lvca_util.Json.deserializer
+      end
       val to_plain : _ t -> Plain.t
       val of_plain : Plain.t -> unit t
       val to_nominal : 'infoa t -> 'infoa Lvca_syntax.Nominal.Term.t
@@ -2933,6 +3048,11 @@ module type Is_rec_sig  =
         type t =
           | Sort of Lvca_syntax.Nominal.Term.Plain.t 
           | Arrow of Wrapper.Plain.ty * Wrapper.Plain.ty 
+        val pp : t Fmt.t
+        val (=) : t -> t -> bool
+        val parse : t Lvca_parsing.t
+        val jsonify : t Lvca_util.Json.serializer
+        val unjsonify : t Lvca_util.Json.deserializer
       end
       val to_plain : _ t -> Plain.t
       val of_plain : Plain.t -> unit t
@@ -2947,8 +3067,16 @@ module type Is_rec_sig  =
     sig
       type 'info t =
         | Mut_a of 'info * 'info Wrapper.Types.mut_b 
-      module Plain : sig type t =
-                           | Mut_a of Wrapper.Plain.mut_b  end
+      module Plain :
+      sig
+        type t =
+          | Mut_a of Wrapper.Plain.mut_b 
+        val pp : t Fmt.t
+        val (=) : t -> t -> bool
+        val parse : t Lvca_parsing.t
+        val jsonify : t Lvca_util.Json.serializer
+        val unjsonify : t Lvca_util.Json.deserializer
+      end
       val to_plain : _ t -> Plain.t
       val of_plain : Plain.t -> unit t
       val to_nominal : 'infoa t -> 'infoa Lvca_syntax.Nominal.Term.t
@@ -2962,8 +3090,16 @@ module type Is_rec_sig  =
     sig
       type 'info t =
         | Mut_b of 'info * 'info Wrapper.Types.mut_a 
-      module Plain : sig type t =
-                           | Mut_b of Wrapper.Plain.mut_a  end
+      module Plain :
+      sig
+        type t =
+          | Mut_b of Wrapper.Plain.mut_a 
+        val pp : t Fmt.t
+        val (=) : t -> t -> bool
+        val parse : t Lvca_parsing.t
+        val jsonify : t Lvca_util.Json.serializer
+        val unjsonify : t Lvca_util.Json.deserializer
+      end
       val to_plain : _ t -> Plain.t
       val of_plain : Plain.t -> unit t
       val to_nominal : 'infoa t -> 'infoa Lvca_syntax.Nominal.Term.t
