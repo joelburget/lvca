@@ -7,6 +7,7 @@ module SSet = Util.String.Set
 module SMap = Util.String.Map
 module Syn = Abstract_syntax
 module Graph = Directed_graph.Make (Base.String)
+module Tuple2 = Util.Tuple2
 
 let ( >> ), ( << ) = Util.(( >> ), ( << ))
 
@@ -235,8 +236,11 @@ let rec all_sort_names = function
 ;;
 
 (* Returns a mapping from the name of each sort defined in this language to
-   the name of each sort it uses without passing through an external. This is
-   used to determine dependencies between sorts.
+   the name of each sort it uses without passing through an opaque external.
+   This is used to determine dependencies between sorts.
+
+   Note: opaque here meaning mapped to Lvca_syntax.Nominal.Term. The
+   alternative is if this type is mapped to another module via pragma.
 
    We don't count bound variable types.
 
@@ -260,30 +264,33 @@ let rec all_sort_names = function
    represented as [x maybe] but [list x] is represented as [Nominal.Term.t]. We
    only want the former for dependency-graph-building purposes.
    *)
-let get_sort_ref_info sort_defs =
-  (* Sorts defined in this language, not externals. *)
-  let known_sorts = sort_defs |> List.map ~f:fst |> SSet.of_list in
-  sort_defs
-  |> List.map ~f:(fun (sort_name, Syn.Sort_def.Sort_def (vars, op_defs)) ->
-         let vars = List.map vars ~f:fst |> SSet.of_list in
-         let sort_deps =
-           op_defs
-           |> List.map
-                ~f:(fun (Syn.Operator_def.Operator_def (_info, _name, Arity (_, arity)))
-                   ->
-                  arity
-                  |> List.map ~f:(fun (Syn.Valence.Valence (_sort_slots, body_sort)) ->
-                         let sort_name = sort_head body_sort in
-                         if Set.mem known_sorts sort_name
-                         then all_sort_names body_sort
-                         else SSet.singleton sort_name)
-                  |> SSet.union_list)
-           |> SSet.union_list
-         in
-         (* Only add if it's a known sort name (not an external) and not shadowed by a var. *)
-         let sort_deps = Set.diff (Set.inter sort_deps known_sorts) vars in
-         sort_name, Set.to_list sort_deps)
-  |> SMap.of_alist_exn
+let get_sort_ref_info ~prims ~sort_defs =
+  let prim_list = prims |> Map.filter ~f:Option.is_some |> Map.keys in
+  let known_sorts_1 = sort_defs |> List.map ~f:fst |> SSet.of_list in
+  let known_sorts_2 = SSet.of_list prim_list in
+  let known_sorts = Set.union known_sorts_1 known_sorts_2 in
+  let sort_deps =
+    List.map sort_defs ~f:(fun (sort_name, Syn.Sort_def.Sort_def (vars, op_defs)) ->
+        let vars = vars |> List.map ~f:fst |> SSet.of_list in
+        let sort_deps =
+          op_defs
+          |> List.map
+               ~f:(fun (Syn.Operator_def.Operator_def (_info, _name, Arity (_, arity))) ->
+                 arity
+                 |> List.map ~f:(fun (Syn.Valence.Valence (_sort_slots, body_sort)) ->
+                        let sort_name = sort_head body_sort in
+                        if Set.mem known_sorts sort_name
+                        then all_sort_names body_sort
+                        else SSet.singleton sort_name)
+                 |> SSet.union_list)
+          |> SSet.union_list
+        in
+        (* Only add if it's a known sort name (not an external) and not
+            shadowed by a var. *)
+        let sort_deps = Set.diff (Set.inter sort_deps known_sorts_1) vars in
+        sort_name, Set.to_list sort_deps)
+  in
+  SMap.of_alist_exn sort_deps
 ;;
 
 type has_info =
@@ -506,6 +513,11 @@ module Helpers (Context : Builder_context) = struct
         | None -> Predefined_sort info))
   ;;
 
+  let nominal_term = [ "Lvca_syntax"; "Nominal"; "Term" ]
+  let nominal_operator = [ "Lvca_syntax"; "Nominal"; "Term"; "Operator" ]
+  let nominal_operator' = unflatten nominal_operator
+  let nominal_plain = [ "Lvca_syntax"; "Nominal"; "Term"; "Plain" ]
+
   (** Make the type corresponding to a sort in a constructor declaration. Eg:
 
       [ nonempty := Nonempty (string; list string) ]
@@ -546,78 +558,19 @@ module Helpers (Context : Builder_context) = struct
         let mod_name = match info with With_info -> "Types" | _ -> "Plain" in
         ptyp_constr { txt = unflatten [ "Wrapper"; mod_name; name ]; loc } info_args
       | External_sort mods_opt ->
-        let mods =
+        let module_path, args =
           match mods_opt with
-          | Some mods -> mods
-          | None -> [ "Lvca_syntax"; "Nominal"; "Term" ]
+          | Some mods -> mods, info_args @ List.map sort_args ~f:go
+          | None -> nominal_term, info_args
         in
-        let ty_name =
+        let module_path =
           match context.info with
-          | With_info -> mods @ [ "t" ]
-          | _ -> mods @ [ "Plain"; "t" ]
+          | With_info -> module_path
+          | _ -> module_path @ [ "Plain" ]
         in
-        ptyp_constr { txt = unflatten ty_name; loc } info_args
+        ptyp_constr { txt = unflatten (module_path @ [ "t" ]); loc } args
     in
     go sort
-  ;;
-
-  (** Get an identifier for an external fun. *)
-  let external_fun mods_opt supported_fun =
-    let mods =
-      match mods_opt with
-      | None -> [ "Lvca_syntax"; "Nominal"; "Term" ]
-      | Some mods -> mods
-    in
-    match supported_fun with
-    | Supported_function.Fun_to_plain ->
-      pexp_ident { txt = unflatten (mods @ [ "to_plain" ]); loc }
-    | Fun_of_plain -> pexp_ident { txt = unflatten (mods @ [ "of_plain" ]); loc }
-    | Fun_map_info -> pexp_ident { txt = unflatten (mods @ [ "map_info" ]); loc }
-    | Fun_of_nominal ->
-      (match mods_opt with
-      | None -> [%expr fun x -> Ok x]
-      | Some _ -> pexp_ident { txt = unflatten (mods @ [ "of_nominal" ]); loc })
-    | Fun_to_nominal ->
-      (match mods_opt with
-      | None -> [%expr fun x -> x]
-      | Some _ -> pexp_ident { txt = unflatten (mods @ [ "to_nominal" ]); loc })
-    | Fun_equal -> [%expr fun x -> x]
-    | Fun_info -> pexp_ident { txt = unflatten (mods @ [ "info" ]); loc }
-  ;;
-
-  (** Apply an external function to variable v *)
-  let external_fun_app mods_opt v supported_fun =
-    let mods =
-      match mods_opt with
-      | None -> [ "Lvca_syntax"; "Nominal"; "Term" ]
-      | Some mods -> mods
-    in
-    match supported_fun with
-    | Supported_function.Fun_to_plain ->
-      let f = pexp_ident { txt = unflatten (mods @ [ "to_plain" ]); loc } in
-      [%expr [%e f] [%e v]]
-    | Fun_of_plain ->
-      let f = pexp_ident { txt = unflatten (mods @ [ "of_plain" ]); loc } in
-      [%expr [%e f] [%e v]]
-    | Fun_map_info ->
-      let f = pexp_ident { txt = unflatten (mods @ [ "map_info" ]); loc } in
-      [%expr [%e f] ~f [%e v]]
-    | Fun_of_nominal ->
-      (match mods_opt with
-      | None -> v
-      | Some _ ->
-        let f = pexp_ident { txt = unflatten (mods @ [ "of_nominal" ]); loc } in
-        [%expr [%e f] [%e v]])
-    | Fun_to_nominal ->
-      (match mods_opt with
-      | None -> v
-      | Some _ ->
-        let f = pexp_ident { txt = unflatten (mods @ [ "to_nominal" ]); loc } in
-        [%expr [%e f] [%e v]])
-    | Fun_equal -> v
-    | Fun_info ->
-      let f = pexp_ident { txt = unflatten (mods @ [ "info" ]); loc } in
-      [%expr [%e f] [%e v]]
   ;;
 
   (** Make a function application for a sort expression, eg in map_info:
@@ -639,25 +592,35 @@ module Helpers (Context : Builder_context) = struct
     let rec go sort =
       let loc = sort |> Sort.info |> Commented.get_range |> update_loc in
       let txt = Lident (sort_head sort) in
-      match classify_sort sort with
-      | External_sort mods -> external_fun mods fun_defn
-      | Variable | Mutual_sort | Predefined_sort _ ->
-        (match sort with
+      let apply sort_fun =
+        match sort with
         | Sort.Ap (_, _, args) ->
           pexp_apply
-            (pexp_ident { txt; loc })
+            sort_fun
             (args |> Sort.Ap_list.to_list |> List.map ~f:(fun sort -> Nolabel, go sort))
-        | Name _ -> pexp_ident { txt; loc })
+        | Name _ -> sort_fun
+      in
+      match classify_sort sort with
+      | External_sort None ->
+        pexp_ident
+          { txt = unflatten (nominal_term @ [ Supported_function.fun_name fun_defn ])
+          ; loc
+          }
+      | External_sort (Some mods) ->
+        apply
+          (pexp_ident
+             { txt = unflatten (mods @ [ Supported_function.fun_name fun_defn ]); loc })
+      | Variable | Mutual_sort | Predefined_sort _ -> apply (pexp_ident { txt; loc })
     in
     pexp_apply (go sort) args
   ;;
 
-  let labelled_fun name = pexp_fun (Labelled name) None (ppat_var { txt = name; loc })
+  let labelled_fun name = pexp_fun (Labelled name) None (pvar name)
   let labelled_arg name = Labelled name, pexp_ident { txt = Lident name; loc }
 
   (* Make a function taking an f_* argument *)
   let f_fun ?(used = true) var_name =
-    pexp_fun Nolabel None (ppat_var { txt = (if used then "" else "_") ^ var_name; loc })
+    pexp_fun Nolabel None (pvar ((if used then "" else "_") ^ var_name))
   ;;
 
   let nominal_convertible_s =
@@ -869,7 +832,7 @@ module Operator_pat (Context : Builder_context) = struct
     if not (is_valid_ocaml_constr_name op_name)
     then Location.raise_errorf ~loc "Invalid OCaml operator name: %s" op_name;
     let var_ix = ref 0 in
-    let v ix = ppat_var { txt = Printf.sprintf "%s%d" name_base ix; loc } in
+    let v ix = pvar (Printf.sprintf "%s%d" name_base ix) in
     let contents =
       arity
       |> List.map ~f:(fun (Syn.Valence.Valence (slots, _)) ->
@@ -935,10 +898,7 @@ module Operator_exp (Context : Builder_context) = struct
       classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prims }
     in
     let body_arg sort =
-      let v = v () in
-      match classify_sort sort with
-      | External_sort mods -> external_fun_app mods v fun_defn
-      | _ -> mk_sort_app ~fun_defn ~classify_sort ~args:(f_args @ [ Nolabel, v ]) sort
+      mk_sort_app ~fun_defn ~classify_sort ~args:(f_args @ [ Nolabel, v () ]) sort
     in
     let contents =
       arity
@@ -1029,7 +989,7 @@ module To_plain (Context : Builder_context) = struct
       | _ -> op_defs
     in
     let expr = List.fold_right arg_names ~init:(pexp_function op_defs) ~f:f_fun in
-    value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
+    value_binding ~pat:(pvar sort_name) ~expr
   ;;
 end
 
@@ -1082,7 +1042,7 @@ module Of_plain (Context : Builder_context) = struct
     let expr =
       List.fold_right (List.map ~f:fst vars) ~init:(pexp_function op_defs) ~f:f_fun
     in
-    value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
+    value_binding ~pat:(pvar sort_name) ~expr
   ;;
 end
 
@@ -1135,7 +1095,7 @@ module Map_info (Context : Builder_context) = struct
     in
     let init = op_defs |> pexp_function |> labelled_fun "f" in
     let expr = List.fold_right (List.map ~f:fst vars) ~init ~f:f_fun in
-    value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
+    value_binding ~pat:(pvar sort_name) ~expr
   ;;
 end
 
@@ -1144,8 +1104,6 @@ module To_nominal (Context : Builder_context) = struct
   open Ast
   open Helpers (Context)
   module Operator_pat = Operator_pat (Context)
-
-  let operator = unflatten [ "Lvca_syntax"; "Nominal"; "Term"; "Operator" ]
 
   (* Eg:
 
@@ -1183,10 +1141,7 @@ module To_nominal (Context : Builder_context) = struct
       classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prims }
     in
     let body_arg sort =
-      let v = v () in
-      match classify_sort sort with
-      | External_sort mods_opt -> external_fun_app mods_opt v Fun_to_nominal
-      | _ -> mk_sort_app ~fun_defn:Fun_to_nominal ~classify_sort ~args:[ Nolabel, v ] sort
+      mk_sort_app ~fun_defn:Fun_to_nominal ~classify_sort ~args:[ Nolabel, v () ] sort
     in
     let mk_scope (Syn.Valence.Valence (slots, body_sort)) =
       let args =
@@ -1201,7 +1156,7 @@ module To_nominal (Context : Builder_context) = struct
     in
     let children = arity |> List.map ~f:mk_scope |> Syntax_quoter.Exp.list ~loc in
     let body = mk_exp_tuple' [ info; estring op_name; children ] in
-    pexp_construct { txt = operator; loc } body
+    pexp_construct { txt = nominal_operator'; loc } body
   ;;
 
   let mk
@@ -1235,7 +1190,7 @@ module To_nominal (Context : Builder_context) = struct
     let expr =
       List.fold_right (List.map ~f:fst vars) ~init:(pexp_function op_defs) ~f:f_fun
     in
-    value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
+    value_binding ~pat:(pvar sort_name) ~expr
   ;;
 end
 
@@ -1244,8 +1199,6 @@ module Of_nominal (Context : Builder_context) = struct
   open Ast
   open Helpers (Context)
   module Operator_pat = Operator_pat (Context)
-
-  let operator = unflatten [ "Lvca_syntax"; "Nominal"; "Term"; "Operator" ]
 
   (* Eg:
 
@@ -1296,7 +1249,7 @@ module Of_nominal (Context : Builder_context) = struct
     in
     let children = List.map arity ~f:mk_scope |> Syntax_quoter.Pat.list ~loc in
     let body = mk_pat_tuple' [ info; pstring op_name; children ] in
-    ppat_construct { txt = operator; loc } body
+    ppat_construct { txt = nominal_operator'; loc } body
   ;;
 
   let mk_exp
@@ -1316,7 +1269,6 @@ module Of_nominal (Context : Builder_context) = struct
     let body_arg ev sort =
       match classify_sort sort with
       | External_sort None -> None
-      | External_sort (Some mods) -> Some (external_fun_app (Some mods) ev Fun_of_nominal)
       | _ ->
         Some
           (mk_sort_app ~fun_defn:Fun_of_nominal ~classify_sort ~args:[ Nolabel, ev ] sort)
@@ -1383,9 +1335,7 @@ module Of_nominal (Context : Builder_context) = struct
                   { txt = Lident (var_ctor_name sort_name); loc }
                   (Some [%expr info, name])]]
     in
-    let fallthrough =
-      case ~lhs:(ppat_var { txt = "tm"; loc }) ~guard ~rhs:[%expr Error tm]
-    in
+    let fallthrough = case ~lhs:(pvar "tm") ~guard ~rhs:[%expr Error tm] in
     let matching_cases =
       match Hashtbl.find partitioned_sorts sort_name with
       | Some Bound -> matching_cases @ [ var_case ]
@@ -1393,7 +1343,7 @@ module Of_nominal (Context : Builder_context) = struct
     in
     let init = matching_cases @ [ fallthrough ] |> pexp_function in
     let expr = List.fold_right (List.map ~f:fst vars) ~init ~f:f_fun in
-    value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
+    value_binding ~pat:(pvar sort_name) ~expr
   ;;
 end
 
@@ -1412,7 +1362,7 @@ module Equal (Context : Builder_context) = struct
       let lhs =
         let p1, p2 =
           ("x", "y")
-          |> Lvca_util.Tuple2.map ~f:(fun name_base ->
+          |> Tuple2.map ~f:(fun name_base ->
                  Operator_pat.mk ~has_info:With_info ~match_info:true ~name_base op_def)
         in
         [%pat? [%p p1], [%p p2]]
@@ -1422,8 +1372,7 @@ module Equal (Context : Builder_context) = struct
           let var_ix = ref 0 in
           let mk_xy () =
             ("x", "y")
-            |> Lvca_util.Tuple2.map ~f:(fun base ->
-                   evar (Printf.sprintf "%s%d" base !var_ix))
+            |> Tuple2.map ~f:(fun base -> evar (Printf.sprintf "%s%d" base !var_ix))
           in
           arity
           |> List.map ~f:(fun (Syn.Valence.Valence (slots, body_sort)) ->
@@ -1463,12 +1412,12 @@ module Equal (Context : Builder_context) = struct
     let init =
       branches
       |> pexp_match [%expr t1, t2]
-      |> pexp_fun Nolabel None (ppat_var { txt = "t2"; loc })
-      |> pexp_fun Nolabel None (ppat_var { txt = "t1"; loc })
+      |> pexp_fun Nolabel None (pvar "t2")
+      |> pexp_fun Nolabel None (pvar "t1")
       |> labelled_fun "info_eq"
     in
     let expr = List.fold_right (List.map ~f:fst vars) ~init ~f:f_fun in
-    value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
+    value_binding ~pat:(pvar sort_name) ~expr
   ;;
 end
 
@@ -1512,7 +1461,7 @@ module Info (Context : Builder_context) = struct
         ~init:(pexp_function op_defs)
         ~f:(f_fun ~used:false)
     in
-    value_binding ~pat:(ppat_var { txt = sort_name; loc }) ~expr
+    value_binding ~pat:(pvar sort_name) ~expr
   ;;
 end
 
@@ -1582,7 +1531,8 @@ module Wrapper_module (Context : Builder_context) = struct
     let info_decls = type_decls ~info:With_info in
     let plain_decls = type_decls ~info:Plain in
     let defs =
-      (* Each of these functions is potentially recursive (across multiple types), pre-declare. *)
+      (* Each of these functions is potentially recursive (across multiple
+         types), pre-declare. *)
       [%str
         module Types = struct
           [%%i pstr_type Recursive info_decls]
@@ -1742,73 +1692,97 @@ module Individual_type_module (Context : Builder_context) = struct
                  ; loc
                  }
              in
-             let nominal_fun =
-               match fun_defn with
-               | Fun_of_nominal -> [%expr Base.Result.return]
-               | Fun_to_nominal -> [%expr Base.Fn.id]
-               | _ ->
-                 pexp_ident
-                   { txt = unflatten [ "Lvca_syntax"; "Nominal"; "Term"; fun_name ]; loc }
-             in
-             let expr =
-               let labelled_args =
-                 match fun_defn with
-                 | Fun_equal -> [ labelled_arg "info_eq" ]
-                 | Fun_map_info -> [ labelled_arg "f" ]
-                 | _ -> []
-               in
-               let var_args = List.map vars ~f:(fun _ -> Nolabel, nominal_fun) in
-               let tm = pexp_ident { txt = Lident "tm"; loc } in
-               let args = labelled_args @ var_args @ [ Nolabel, tm ] in
-               pexp_apply wrapper_fun args
-             in
-             let expr = pexp_fun Nolabel None (ppat_var { txt = "tm"; loc }) expr in
-             let expr =
-               match fun_defn with
-               | Fun_equal -> labelled_fun "info_eq" expr
-               | Fun_map_info -> labelled_fun "f" expr
-               | _ -> expr
-             in
-             let pat = ppat_var { txt = fun_name; loc } in
-             pstr_value Nonrecursive [ value_binding ~pat ~expr ])
+             pstr_value
+               Nonrecursive
+               [ value_binding ~pat:(pvar fun_name) ~expr:wrapper_fun ])
     in
+    (*
+    let taken = vars |> List.map ~f:fst |> SSet.of_list in
+    let _taken, unique_var_names =
+      List.fold_map vars ~init:taken ~f:(fun taken (name, _) ->
+          let name' = generate_unique_name ~base:(name ^ "'") taken in
+          let taken = Set.add taken name' in
+          taken, name')
+    in
+    let plain_fun_def name arg_names rhs =
+      let pat = pvar name in
+      let expr =
+        List.fold_right (unique_var_names @ arg_names) ~init:rhs ~f:(fun arg rhs ->
+            pexp_fun Nolabel None (pvar arg) rhs)
+      in
+      pstr_value Nonrecursive [ value_binding ~pat ~expr ]
+    in
+    let mk_helper name =
+      pexp_apply (evar name) (List.map unique_var_names ~f:(fun var -> Nolabel, evar var))
+    in
+    let of_plain = mk_helper "of_plain" in
+    let to_plain = mk_helper "to_plain" in
+    let to_nominal = mk_helper "to_nominal" in
+    let of_nominal = mk_helper "of_nominal" in
+    *)
     let plain_mod =
-      [%stri
-        module Plain = struct
-          [%%i plain_type_decl]
-
-          let ( = ) x y =
-            let x = x |> of_plain |> to_nominal in
-            let y = y |> of_plain |> to_nominal in
-            Lvca_syntax.Nominal.Term.(equal ~info_eq:Base.Unit.( = ) (erase x) (erase y))
-          ;;
-
-          let jsonify tm =
-            tm |> of_plain |> to_nominal |> Lvca_syntax.Nominal.Term.jsonify
-          ;;
-
-          let unjsonify json =
+      (*
+      let equal =
+        plain_fun_def
+          "equal"
+          [ "x"; "y" ]
+          [%expr
+            let x = x |> [%e of_plain] |> [%e to_nominal] in
+            let y = y |> [%e of_plain] |> [%e to_nominal] in
+            Lvca_syntax.Nominal.Term.(equal ~info_eq:Base.Unit.( = ) (erase x) (erase y))]
+      in
+      let jsonify =
+        plain_fun_def
+          "jsonify"
+          [ "tm" ]
+          [%expr
+            tm |> [%e of_plain] |> [%e to_nominal] |> Lvca_syntax.Nominal.Term.jsonify]
+      in
+      let unjsonify =
+        plain_fun_def
+          "unjsonify"
+          [ "json" ]
+          [%expr
             json
             |> Lvca_syntax.Nominal.Term.unjsonify
             |> Base.Option.bind ~f:(fun tm ->
-                   match of_nominal tm with
-                   | Ok tm -> Some (to_plain tm)
-                   | Error _ -> None)
-          ;;
-
-          let pp ppf tm = tm |> of_plain |> to_nominal |> Lvca_syntax.Nominal.Term.pp ppf
-
-          let parse =
+                   match [%e of_nominal] tm with
+                   | Ok tm -> Some ([%e to_plain] tm)
+                   | Error _ -> None)]
+      in
+      let pp =
+        plain_fun_def
+          "pp"
+          [ "ppf"; "tm" ]
+          [%expr
+            tm |> [%e of_plain] |> [%e to_nominal] |> Lvca_syntax.Nominal.Term.pp ppf]
+      in
+      let parse =
+        plain_fun_def
+          "parse"
+          []
+          [%expr
             let parse_prim =
               Lvca_parsing.fail "Generated parser parse_prim always fails"
             in
             Lvca_parsing.(
               Lvca_syntax.Nominal.Term.parse ~comment:Lvca_parsing.c_comment ~parse_prim
               >>= fun tm ->
-              match of_nominal tm with
-              | Ok tm -> return (to_plain tm)
-              | Error _ -> fail "Generated parser failed nominal conversion")
-          ;;
+              match [%e of_nominal] tm with
+              | Ok tm -> return ([%e to_plain] tm)
+              | Error _ -> fail "Generated parser failed nominal conversion")]
+      in
+      *)
+      [%stri
+        module Plain = struct
+          [%%i plain_type_decl]
+          (*
+          [%%i equal]
+          [%%i jsonify]
+          [%%i unjsonify]
+          [%%i pp]
+          [%%i parse]
+          *)
         end]
     in
     let expr = pmod_structure (info_type_decl :: fun_defs @ [ plain_mod ]) in
@@ -1827,7 +1801,7 @@ module Container_module (Context : Builder_context) = struct
   let mk (Syn.{ externals; sort_defs } as lang) =
     let prims = prims_of_externals externals in
     let sort_def_map = SMap.of_alist_exn sort_defs in
-    let sort_dep_map = get_sort_ref_info sort_defs in
+    let sort_dep_map = get_sort_ref_info ~prims ~sort_defs in
     let Graph.Connected_components.{ scc_graph; sccs } =
       Graph.connected_components sort_dep_map
     in
@@ -1874,7 +1848,7 @@ module Sig (Context : Builder_context) = struct
   let mk Syn.{ externals; sort_defs } =
     let prims = prims_of_externals externals in
     let sort_def_map = SMap.of_alist_exn sort_defs in
-    let sort_dep_map = get_sort_ref_info sort_defs in
+    let sort_dep_map = get_sort_ref_info ~prims ~sort_defs in
     let Graph.Connected_components.{ scc_graph; sccs } =
       Graph.connected_components sort_dep_map
     in
@@ -1897,59 +1871,100 @@ module Sig (Context : Builder_context) = struct
               sort_name
               sort_def
           in
-          let plain_nominal_args =
-            List.map vars ~f:(fun _ -> [%type: Lvca_syntax.Nominal.Term.Plain.t])
+          let taken = vars |> List.map ~f:fst |> SSet.of_list in
+          let taken, unique_var_names =
+            List.fold_map vars ~init:taken ~f:(fun taken (name, _) ->
+                let name' = generate_unique_name ~base:(name ^ "_") taken in
+                let taken = Set.add taken name' in
+                let name'' = generate_unique_name ~base:(name ^ "__") taken in
+                let taken = Set.add taken name'' in
+                taken, (name', name''))
           in
-          let nominal_args info =
-            List.map vars ~f:(fun _ -> [%type: [%t info] Lvca_syntax.Nominal.Term.t])
-          in
-          let taken = List.map vars ~f:fst |> SSet.of_list in
+          let unique_vars = List.map unique_var_names ~f:(Tuple2.map ~f:ptyp_var) in
+          let unique_vars_1, unique_vars_2 = List.unzip unique_vars in
           let info_v = generate_unique_name ~base:"info" taken in
           let taken = Set.add taken info_v in
           let t = ptyp_constr { txt = Lident "t"; loc } in
-          let plain_t =
-            ptyp_constr { txt = unflatten [ "Plain"; "t" ]; loc } plain_nominal_args
+          let plain_t = ptyp_constr { txt = unflatten [ "Plain"; "t" ]; loc } in
+          let info_a, info_b =
+            match
+              Sequence.take (generate_unique_names ~base:"info" taken) 2
+              |> Sequence.to_list
+            with
+            | [ x; y ] -> ptyp_var x, ptyp_var y
+            | _ -> Lvca_util.invariant_violation ~here:[%here] "expected two names"
+          in
+          let fold_ty ~init ~f =
+            List.fold_right unique_vars ~init ~f:(fun v1v2 ty ->
+                [%type: [%t f v1v2] -> [%t ty]])
+          in
+          let declare txt ~init ~f =
+            psig_value
+              (value_description ~name:{ txt; loc } ~type_:(fold_ty ~init ~f) ~prim:[])
           in
           let type_ =
             pmty_signature
               [ mk_ty With_info
-              ; (let t = t plain_nominal_args in
-                 [%sigi:
-                   module Plain : [%m
-                   pmty_signature
-                     [ mk_ty Plain
-                     ; [%sigi: val pp : [%t t] Fmt.t]
-                     ; [%sigi: val ( = ) : [%t t] -> [%t t] -> bool]
-                     ; [%sigi: val parse : [%t t] Lvca_parsing.t]
-                     ; [%sigi: val jsonify : [%t t] Lvca_util.Json.serializer]
-                     ; [%sigi: val unjsonify : [%t t] Lvca_util.Json.deserializer]
-                     ]]])
               ; [%sigi:
-                  val to_plain
-                    :  [%t t (ptyp_any :: nominal_args (ptyp_var info_v))]
-                    -> [%t plain_t]]
-              ; [%sigi:
-                  val of_plain
-                    :  [%t plain_t]
-                    -> [%t t ([%type: unit] :: nominal_args [%type: unit])]]
-              ; (let var_args = List.map vars ~f:(fun (name, _kind) -> ptyp_var name) in
-                 [%sigi: val info : [%t t (ptyp_var info_v :: var_args)] -> 'info])
-              ; (let args info_v =
-                   List.map vars ~f:(fun _ ->
-                       [%type: [%t info_v] Lvca_syntax.Nominal.Term.t])
+                  module Plain : [%m
+                  (*
+                  let declare name ~f =
+                    declare name ~init:(f (t unique_vars_1)) ~f:(fun (v1, _v2) -> f v1)
+                  in
+                  *)
+                  pmty_signature
+                    [ mk_ty Plain
+                      (*
+                    ; declare "pp" ~f:(fun ty -> [%type: [%t ty] Fmt.t])
+                    ; declare "equal" ~f:(fun ty -> [%type: [%t ty] -> [%t ty] -> bool])
+                    ; declare "parse" ~f:(fun ty -> [%type: [%t ty] Lvca_parsing.t])
+                    ; declare "jsonify" ~f:(fun ty ->
+                          [%type: [%t ty] Lvca_util.Json.serializer])
+                    ; declare "unjsonify" ~f:(fun ty ->
+                          [%type: [%t ty] Lvca_util.Json.deserializer])
+                    *)
+                    ]]]
+              ; declare
+                  "to_plain"
+                  ~init:
+                    [%type:
+                      [%t t (ptyp_any :: unique_vars_1)] -> [%t plain_t unique_vars_2]]
+                  ~f:(fun (v1, v2) -> ptyp_arrow Nolabel v1 v2)
+              ; declare
+                  "of_plain"
+                  ~init:
+                    [%type:
+                      [%t plain_t unique_vars_1]
+                      -> [%t t ([%type: unit] :: unique_vars_2)]]
+                  ~f:(fun (v1, v2) -> ptyp_arrow Nolabel v1 v2)
+              ; (let template dom =
+                   [%type: [%t dom] -> [%t info_a] Lvca_syntax.Nominal.Term.t]
                  in
-                 let a_v, b_v =
-                   match
-                     Sequence.take (generate_unique_names taken) 2 |> Sequence.to_list
-                   with
-                   | [ x; y ] -> ptyp_var x, ptyp_var y
-                   | _ -> Lvca_util.invariant_violation ~here:[%here] "expected two names"
+                 declare
+                   "to_nominal"
+                   ~init:(template (t (info_a :: unique_vars_1)))
+                   ~f:(fun (v1, _) -> template v1))
+              ; (let term = [%type: [%t info_a] Lvca_syntax.Nominal.Term.t] in
+                 let template codom =
+                   [%type: [%t term] -> ([%t codom], [%t term]) Result.t]
                  in
-                 [%sigi:
-                   val map_info
-                     :  f:([%t a_v] -> [%t b_v])
-                     -> [%t t (a_v :: args a_v)]
-                     -> [%t t (b_v :: args b_v)]])
+                 declare
+                   "of_nominal"
+                   ~init:(template (t (info_a :: unique_vars_1)))
+                   ~f:(fun (v1, _) -> template v1))
+              ; declare
+                  "info"
+                  ~init:[%type: [%t t (ptyp_var info_v :: unique_vars_2)] -> 'info]
+                  ~f:(fun _ -> ptyp_any)
+              ; declare
+                  "map_info"
+                  ~init:
+                    [%type:
+                      f:([%t info_a] -> [%t info_b])
+                      -> [%t t (info_a :: unique_vars_1)]
+                      -> [%t t (info_b :: unique_vars_2)]]
+                  ~f:(fun (v1, v2) ->
+                    [%type: f:([%t info_a] -> [%t info_b]) -> [%t v1] -> [%t v2]])
               ]
           in
           psig_module
