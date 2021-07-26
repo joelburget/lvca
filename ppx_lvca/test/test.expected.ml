@@ -359,7 +359,7 @@ module List_model :
               | Cons of 'a * 'a Wrapper.Plain.list 
             let equal _a _x _y = false
             let jsonify _a _tm = Lvca_util.Json.Int 1
-            let unjsonify _a _json = None
+            let unjsonify _a _json = (None : _ t option)
             let pp _a ppf _tm = Fmt.pf ppf "TODO"
             let parse _a = Lvca_parsing.fail "TODO"
           end
@@ -1457,7 +1457,7 @@ module Lang =
               | Foo_var of string 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -1480,7 +1480,7 @@ module Lang =
               | S of Wrapper.Plain.nat 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -1501,7 +1501,7 @@ module Lang =
               | Pair of 'a * 'b 
             let equal _a _b _x _y = false
             let jsonify _a _b _tm = Lvca_util.Json.Int 1
-            let unjsonify _a _b _json = None
+            let unjsonify _a _b _json = (None : (_, _) t option)
             let pp _a _b ppf _tm = Fmt.pf ppf "TODO"
             let parse _a _b = Lvca_parsing.fail "TODO"
           end
@@ -1522,7 +1522,7 @@ module Lang =
               | PairPlus of 'a * 'b * Wrapper.Plain.foo 
             let equal _a _b _x _y = false
             let jsonify _a _b _tm = Lvca_util.Json.Int 1
-            let unjsonify _a _b _json = None
+            let unjsonify _a _b _json = (None : (_, _) t option)
             let pp _a _b ppf _tm = Fmt.pf ppf "TODO"
             let parse _a _b = Lvca_parsing.fail "TODO"
           end
@@ -1545,7 +1545,7 @@ module Lang =
               Primitive.String.Plain.t List_model.List.Plain.t 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -1567,7 +1567,7 @@ module Lang =
               | Operator of Wrapper.Plain.term List_model.List.Plain.t 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -1588,7 +1588,7 @@ module Lang =
               | Mut_a of Wrapper.Plain.mut_b 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -1609,7 +1609,7 @@ module Lang =
               | Mut_b of Wrapper.Plain.mut_a 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -1635,7 +1635,7 @@ module Lang =
               | Ifz_var of string 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -2789,7 +2789,7 @@ module List_lang =
               | Predefined 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -2812,7 +2812,7 @@ module List_lang =
               | Cons of 'a * 'a Wrapper.Plain.list 
             let equal _a _x _y = false
             let jsonify _a _tm = Lvca_util.Json.Int 1
-            let unjsonify _a _json = None
+            let unjsonify _a _json = (None : _ t option)
             let pp _a ppf _tm = Fmt.pf ppf "TODO"
             let parse _a = Lvca_parsing.fail "TODO"
           end
@@ -2835,7 +2835,7 @@ module List_lang =
               Wrapper.Plain.list 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -2858,7 +2858,7 @@ module List_lang =
               Wrapper.Plain.list 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -2880,7 +2880,7 @@ module List_lang =
               | List_list_a of 'a Wrapper.Plain.list Wrapper.Plain.list 
             let equal _a _x _y = false
             let jsonify _a _tm = Lvca_util.Json.Int 1
-            let unjsonify _a _json = None
+            let unjsonify _a _json = (None : _ t option)
             let pp _a ppf _tm = Fmt.pf ppf "TODO"
             let parse _a = Lvca_parsing.fail "TODO"
           end
@@ -2904,7 +2904,7 @@ module List_lang =
               Wrapper.Plain.list Wrapper.Plain.list 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -2927,7 +2927,7 @@ module List_lang =
               Wrapper.Plain.list_list_a 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -2951,7 +2951,7 @@ module List_lang =
               Wrapper.Plain.list Wrapper.Plain.list 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -2974,7 +2974,7 @@ module List_lang =
               Wrapper.Plain.list_list_a 
             let (=) _x _y = false
             let jsonify _tm = Lvca_util.Json.Int 1
-            let unjsonify _json = None
+            let unjsonify _json = (None : t option)
             let pp ppf _tm = Fmt.pf ppf "TODO"
             let parse = Lvca_parsing.fail "TODO"
           end
@@ -3110,3 +3110,201 @@ module type Is_rec_sig  =
       val map_info : f:('infoa -> 'infob) -> 'infoa t -> 'infob t
     end
   end
+module Option_model :
+  sig
+    val language :
+      string Lvca_provenance.Commented.t Lvca_syntax.Abstract_syntax.t
+    module Wrapper :
+    sig
+      module Types :
+      sig type ('info, 'a) option =
+            | None of 'info 
+            | Some of 'info * 'a  end
+      module Plain : sig type 'a option =
+                           | None 
+                           | Some of 'a  end
+    end
+    module Option :
+    sig
+      type ('info, 'a) t =
+        | None of 'info 
+        | Some of 'info * 'a 
+      module Plain :
+      sig
+        type 'a t =
+          | None 
+          | Some of 'a 
+        val pp : 'a_ Fmt.t -> 'a_ t Fmt.t
+        val equal : ('a_ -> 'a_ -> bool) -> 'a_ t -> 'a_ t -> bool
+        val parse : 'a_ Lvca_parsing.t -> 'a_ t Lvca_parsing.t
+        val jsonify :
+          'a_ Lvca_util.Json.serializer -> 'a_ t Lvca_util.Json.serializer
+        val unjsonify :
+          'a_ Lvca_util.Json.deserializer ->
+            'a_ t Lvca_util.Json.deserializer
+      end
+      val to_plain : ('a_ -> 'a__) -> (_, 'a_) t -> 'a__ Plain.t
+      val of_plain : ('a_ -> 'a__) -> 'a_ Plain.t -> (unit, 'a__) t
+      val to_nominal :
+        ('a_ -> 'infoa Lvca_syntax.Nominal.Term.t) ->
+          ('infoa, 'a_) t -> 'infoa Lvca_syntax.Nominal.Term.t
+      val of_nominal :
+        ('infoa Lvca_syntax.Nominal.Term.t ->
+           ('a_, 'infoa Lvca_syntax.Nominal.Term.t) Result.t)
+          ->
+          'infoa Lvca_syntax.Nominal.Term.t ->
+            (('infoa, 'a_) t, 'infoa Lvca_syntax.Nominal.Term.t) Result.t
+      val info : _ -> ('info, 'a__) t -> 'info
+      val map_info :
+        (f:('infoa -> 'infob) -> 'a_ -> 'a__) ->
+          f:('infoa -> 'infob) -> ('infoa, 'a_) t -> ('infob, 'a__) t
+    end
+  end =
+  struct
+    module Wrapper =
+      struct
+        module Types =
+          struct
+            type ('info, 'a) option =
+              | None of 'info 
+              | Some of 'info * 'a 
+          end
+        module Plain = struct type 'a option =
+                                | None 
+                                | Some of 'a  end
+        module Info =
+          struct
+            let option _a =
+              function | Types.None x0 -> x0 | Types.Some (x0, _) -> x0
+          end
+        module To_plain =
+          struct
+            let option a =
+              function
+              | Types.None _ -> Plain.None
+              | Types.Some (_, x1) -> Plain.Some (a x1)
+          end
+        module Of_plain =
+          struct
+            let option a =
+              function
+              | Plain.None -> Types.None ()
+              | Plain.Some x1 -> Types.Some ((), (a x1))
+          end
+        module Map_info =
+          struct
+            let option a ~f  =
+              function
+              | Types.None x0 -> Types.None (f x0)
+              | Types.Some (x0, x1) -> Types.Some ((f x0), (a ~f x1))
+          end
+        module To_nominal =
+          struct
+            let option a =
+              function
+              | Types.None x0 ->
+                  Lvca_syntax.Nominal.Term.Operator (x0, "None", [])
+              | Types.Some (x0, x1) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Some",
+                      [Lvca_syntax.Nominal.Scope.Scope ([], (a x1))])
+          end
+        module Of_nominal =
+          struct
+            let option a =
+              function
+              | Lvca_syntax.Nominal.Term.Operator (x0, "None", []) ->
+                  Ok (Types.None x0)
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "Some", (Lvca_syntax.Nominal.Scope.Scope
+                   ([], x1))::[])
+                  ->
+                  (match a x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 -> Ok (Types.Some (x0, x1)))
+              | tm -> Error tm
+          end
+      end
+    module Types = Wrapper.Types
+    module Plain = Wrapper.Plain
+    let language =
+      let open Lvca_syntax.Abstract_syntax in
+        {
+          externals = [];
+          sort_defs =
+            [("option",
+               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                  ([("a", None)],
+                    [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                       (((let open Lvca_provenance.Commented in
+                            {
+                              range =
+                                (Some
+                                   (let open Lvca_provenance.Range in
+                                      { start = 12; finish = 18 }));
+                              comment = None
+                            })), "None",
+                         (Lvca_syntax.Abstract_syntax.Arity.Arity
+                            (((let open Lvca_provenance.Commented in
+                                 {
+                                   range =
+                                     (Some
+                                        (let open Lvca_provenance.Range in
+                                           { start = 16; finish = 18 }));
+                                   comment = None
+                                 })), [])));
+                    Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      (((let open Lvca_provenance.Commented in
+                           {
+                             range =
+                               (Some
+                                  (let open Lvca_provenance.Range in
+                                     { start = 21; finish = 28 }));
+                             comment = None
+                           })), "Some",
+                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                           (((let open Lvca_provenance.Commented in
+                                {
+                                  range =
+                                    (Some
+                                       (let open Lvca_provenance.Range in
+                                          { start = 25; finish = 28 }));
+                                  comment = None
+                                })),
+                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                                ([],
+                                  (Lvca_syntax.Sort.Name
+                                     (((let open Lvca_provenance.Commented in
+                                          {
+                                            range =
+                                              (Some
+                                                 (let open Lvca_provenance.Range in
+                                                    { start = 26; finish = 27
+                                                    }));
+                                            comment = None
+                                          })), "a")))])))])))]
+        }
+    module Option =
+      struct
+        type ('info, 'a) t = ('info, 'a) Wrapper.Types.option =
+          | None of 'info 
+          | Some of 'info * 'a 
+        let info = Wrapper.Info.option
+        let to_plain = Wrapper.To_plain.option
+        let of_plain = Wrapper.Of_plain.option
+        let map_info = Wrapper.Map_info.option
+        let to_nominal = Wrapper.To_nominal.option
+        let of_nominal = Wrapper.Of_nominal.option
+        module Plain =
+          struct
+            type 'a t = 'a Wrapper.Plain.option =
+              | None 
+              | Some of 'a 
+            let equal _a _x _y = false
+            let jsonify _a _tm = Lvca_util.Json.Int 1
+            let unjsonify _a _json = (None : _ t option)
+            let pp _a ppf _tm = Fmt.pf ppf "TODO"
+            let parse _a = Lvca_parsing.fail "TODO"
+          end
+      end
+  end 

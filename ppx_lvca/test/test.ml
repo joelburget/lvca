@@ -64,3 +64,7 @@ ty := Sort(sort) | Arrow(ty; ty)
 mut_a := Mut_a(mut_b)
 mut_b := Mut_b(mut_a)
 |}]
+
+module Option_model : [%lvca.abstract_syntax_module_sig "option a := None() | Some(a)"] =
+[%lvca.abstract_syntax_module
+"option a := None() | Some(a)"]

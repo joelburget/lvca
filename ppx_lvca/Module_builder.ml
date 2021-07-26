@@ -1745,6 +1745,10 @@ module Individual_type_module (Context : Builder_context) = struct
           [%expr Lvca_util.Json.Int 1 (* TODO *)]
       in
       let unjsonify =
+        let ty =
+          ptyp_constr { txt = Lident "t"; loc } (vars |> List.map ~f:(fun _ -> ptyp_any))
+        in
+        let ty = [%type: [%t ty] option] in
         plain_fun_def
           "unjsonify"
           [ "_json" ]
@@ -1757,7 +1761,7 @@ module Individual_type_module (Context : Builder_context) = struct
                    | Ok tm -> Some ([%e to_plain] tm)
                    | Error _ -> None)]
                    *)
-          [%expr None (* TODO *)]
+          [%expr (None : [%t ty]) (* TODO *)]
       in
       let pp =
         plain_fun_def
