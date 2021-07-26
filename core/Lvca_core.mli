@@ -30,7 +30,7 @@ scope := Scope(list string; pattern)
 
 module Sort_model : [%lvca.abstract_syntax_module_sig
 {|
-string : *  // Module Primitive.String
+string : *  // module Primitive.String
 
 sort :=
   | Ap(string; ap_list)
@@ -64,13 +64,9 @@ case_scope := Case_scope(binding_aware_pattern; term)
 |}]
 
 module Type : sig
-  type 'info t =
-    | Arrow of 'info t list
-    | Sort of 'info Sort.t
+  (* include Lang.Ty *)
+  type 'info t
 
-  val map_info : f:('a -> 'b) -> 'a t -> 'b t
-  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
   val parse : comment:'a Lvca_parsing.t -> 'a Commented.t t Lvca_parsing.t
 end
 

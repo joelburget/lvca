@@ -42,6 +42,32 @@ ap_list :=
   | Cons(sort; ap_list)
 |}]
 
+module Sort = struct
+  include Nominal.Convertible.Extend (Sort_model.Sort)
+
+  (*
+  let rec into = function
+    | Lvca_syntax.Sort.Ap (info, name, ap_list) ->
+      Sort_model.Sort.Ap (info, (info, name), into_ap_list ap_list)
+    | Name (info, name) -> Name (info, (info, name))
+
+  and into_ap_list = function
+    | Lvca_syntax.Sort.Nil info -> Sort_model.Ap_list.Nil info
+    | Cons (info, sort, ap_list) -> Cons (info, into sort, into_ap_list ap_list)
+  ;;
+  *)
+
+  let rec out = function
+    | Sort_model.Sort.Ap (info, (_, name), ap_list) ->
+      Lvca_syntax.Sort.Ap (info, name, out_ap_list ap_list)
+    | Name (info, (_, name)) -> Name (info, name)
+
+  and out_ap_list = function
+    | Sort_model.Ap_list.Nil info -> Lvca_syntax.Sort.Nil info
+    | Cons (info, sort, ap_list) -> Cons (info, out sort, out_ap_list ap_list)
+  ;;
+end
+
 module Lang =
 [%lvca.abstract_syntax_module
 {|
@@ -74,7 +100,6 @@ end
 module Type = struct
   include Lang.Ty
   include Ty
-  module Sort = Nominal.Convertible.Extend (Sort_model.Sort)
 
   module Parse = struct
     open Lvca_parsing
@@ -607,7 +632,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
     (match ty with
     | Lang.Ty.Arrow _ -> Some Check_error.{ env; tm; ty; error = Term_isnt_arrow }
     | Sort (_, sort) ->
-      (match Nominal.Term.check syntax sort tm' with
+      (match Nominal.Term.check syntax (Sort.out sort) tm' with
       | None -> None
       | Some err -> Some Check_error.{ env; tm; ty; error = Failed_check_term err }))
   | Core_app _ -> failwith "TODO"
@@ -1239,7 +1264,7 @@ let%test_module "Evaluation / inference" =
               ; Operator_def.Operator_def (None, "false", Arity (None, []))
               ] ) )
       ; ( "list"
-        , let a = Sort.Name (None, "a") in
+        , let a = Lvca_syntax.Sort.Name (None, "a") in
           Sort_def.Sort_def
             ( [ "a", Some (Kind.Kind (None, 1)) ]
             , [ Operator_def.Operator_def (None, "nil", Arity (None, []))
@@ -1251,10 +1276,12 @@ let%test_module "Evaluation / inference" =
                       , [ Valence.Valence ([], a)
                         ; Valence.Valence
                             ( []
-                            , Sort.Ap
+                            , Lvca_syntax.Sort.Ap
                                 ( None
                                 , "list"
-                                , Sort.Ap_list.of_list ~default_info:None [ a ] ) )
+                                , Lvca_syntax.Sort.Ap_list.of_list
+                                    ~default_info:None
+                                    [ a ] ) )
                         ] ) )
               ] ) )
       ]
