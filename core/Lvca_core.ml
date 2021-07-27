@@ -104,15 +104,16 @@ module Type = struct
   module Parse = struct
     open Lvca_parsing
 
-    let rec arrow = function
+    let none = Commented.none
+    let arrow s1 s2 = Arrow (none, s1, s2)
+
+    let rec of_list = function
       | [] ->
         Lvca_util.invariant_violation
           ~here:[%here]
-          "arrow must be called with a non-empty list"
+          "of_list must be called with a non-empty list"
       | [ sort ] -> sort
-      | tys ->
-        let pre, sort = Lvca_util.List.unsnoc tys in
-        Arrow (Commented.none, arrow pre, sort)
+      | sort :: sorts -> arrow sort (of_list sorts)
     ;;
 
     let t ~comment =
@@ -121,43 +122,51 @@ module Type = struct
             Ws.parens t
             <|> (Sort.parse ~comment >>| fun sort -> Sort (Sort.info sort, sort))
           in
-          sep_by1 (Ws.string "->") atom >>| arrow)
+          sep_by1 (Ws.string "->") atom >>| of_list)
       <?> "core type"
     ;;
 
-    let%test_module "arrow" =
+    let%test_module "parsing" =
+      (module struct
+        let parse = parse_string (t ~comment:c_comment) >> Result.ok_or_failwith
+        let ( = ) = Ty.equal ~info_eq:(Commented.equal String.( = ))
+
+        let%test _ = parse "bool()" = Lang.Ty.Sort (none, Name (none, (none, "bool")))
+      end)
+    ;;
+
+    let%test_module "of_list" =
       (module struct
         let ( = ) = equal ~info_eq:(Commented.equal String.( = ))
-        let none = Commented.none
         let s = Sort_model.Sort.Name (none, (none, "s"))
         let sort s = Sort (none, s)
 
-        let%test _ = arrow [ sort s ] = sort s
+        let%test _ = of_list [ sort s ] = sort s
+        let%test _ = of_list [ sort s; sort s ] = arrow (sort s) (sort s)
 
         let%test _ =
-          arrow [ sort s; sort s ] = Arrow (none, Sort (none, s), Sort (none, s))
-        ;;
-
-        (*
-        let%test _ =
-          arrow [ Arrow [ Sort s; Sort s ]; Sort s ]
-          = Arrow [ Arrow [ Sort s; Sort s ]; Sort s ]
+          of_list [ sort s; sort s; sort s ] = arrow (sort s) (arrow (sort s) (sort s))
         ;;
 
         let%test _ =
-          arrow [ Sort s; Arrow [ Sort s; Sort s ] ] = Arrow [ Sort s; Sort s; Sort s ]
+          of_list [ sort s; sort s; sort s; sort s ]
+          = arrow (sort s) (arrow (sort s) (arrow (sort s) (sort s)))
         ;;
 
         let%test _ =
-          arrow [ Sort s; Arrow [ Sort s; Arrow [ Sort s; Sort s ] ] ]
-          = Arrow [ Sort s; Sort s; Sort s; Sort s ]
+          of_list [ of_list [ sort s; sort s ]; sort s ]
+          = arrow (arrow (sort s) (sort s)) (sort s)
         ;;
 
         let%test _ =
-          arrow [ Arrow [ Sort s; Sort s ]; Arrow [ Sort s; Sort s ] ]
-          = Arrow [ Arrow [ Sort s; Sort s ]; Sort s; Sort s ]
+          of_list [ sort s; of_list [ sort s; sort s ] ]
+          = arrow (sort s) (arrow (sort s) (sort s))
         ;;
-        *)
+
+        let%test _ =
+          of_list [ arrow (sort s) (sort s); arrow (sort s) (sort s) ]
+          = arrow (arrow (sort s) (sort s)) (arrow (sort s) (sort s))
+        ;;
       end)
     ;;
   end
@@ -385,7 +394,6 @@ module Parse = struct
               (Ws.string "->")
               term
             <?> "lambda"
-            <?> "let"
           ; lift4
               (fun (_let, let_pos) is_rec name ty _eq tm _in (body, body_pos) ->
                 let info =
@@ -405,6 +413,7 @@ module Parse = struct
             <*> term
             <*> Ws.string "in"
             <*> attach_pos term
+            <?> "let"
           ; lift4
               (fun (_match, match_pos) tm _with (lines, lines_pos) ->
                 let pos = Opt_range.union match_pos lines_pos in
