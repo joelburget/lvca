@@ -1696,63 +1696,56 @@ module Individual_type_module (Context : Builder_context) = struct
                Nonrecursive
                [ value_binding ~pat:(pvar fun_name) ~expr:wrapper_fun ])
     in
-    let taken = vars |> List.map ~f:fst |> SSet.of_list in
-    let _taken, unique_var_names =
-      List.fold_map vars ~init:taken ~f:(fun taken (name, _) ->
-          (* let name' = generate_unique_name ~base:(name ^ "'") taken in *)
-          let name' = generate_unique_name ~base:("_" ^ name) taken in
-          let taken = Set.add taken name' in
-          taken, name')
+    let var_names = List.map vars ~f:fst in
+    let helper_var_name var_name helper_name =
+      Printf.sprintf "%s_%s" var_name (Supported_function.fun_name helper_name)
     in
-    let plain_fun_def name arg_names rhs =
+    let plain_fun_def name helper_names arg_names rhs =
       let pat = pvar name in
+      let helper_var_names =
+        List.cartesian_product var_names helper_names
+        |> List.map ~f:(fun (var_name, helper_name) ->
+               helper_var_name var_name helper_name)
+      in
       let expr =
-        List.fold_right (unique_var_names @ arg_names) ~init:rhs ~f:(fun arg rhs ->
+        List.fold_right (helper_var_names @ arg_names) ~init:rhs ~f:(fun arg rhs ->
             pexp_fun Nolabel None (pvar arg) rhs)
       in
       pstr_value Nonrecursive [ value_binding ~pat ~expr ]
     in
-    (*
-    let mk_helper name =
-      pexp_apply (evar name) (List.map unique_var_names ~f:(fun var -> Nolabel, evar var))
+    let mk_helper helper =
+      pexp_apply
+        (evar (Supported_function.fun_name helper))
+        (List.map var_names ~f:(fun var -> Nolabel, evar (helper_var_name var helper)))
     in
-    let of_plain = mk_helper "of_plain" in
-    let to_plain = mk_helper "to_plain" in
-    let to_nominal = mk_helper "to_nominal" in
-    let of_nominal = mk_helper "of_nominal" in
-    *)
+    let of_plain = mk_helper Supported_function.Fun_of_plain in
+    let to_plain = mk_helper Supported_function.Fun_to_plain in
+    let to_nominal = mk_helper Supported_function.Fun_to_nominal in
+    let of_nominal = mk_helper Supported_function.Fun_of_nominal in
     let plain_mod =
       let equal =
         plain_fun_def
           (if List.is_empty vars then "=" else "equal")
-          [ "_x"; "_y" ]
-          [%expr false (* TODO *)]
-        (*
+          [ Supported_function.Fun_of_plain; Fun_to_nominal ]
+          [ "x"; "y" ]
           [%expr
             let x = x |> [%e of_plain] |> [%e to_nominal] in
             let y = y |> [%e of_plain] |> [%e to_nominal] in
             Lvca_syntax.Nominal.Term.(equal ~info_eq:Base.Unit.( = ) (erase x) (erase y))]
-            *)
       in
       let jsonify =
         plain_fun_def
           "jsonify"
-          [ "_tm" ]
-          (*
+          [ Supported_function.Fun_of_plain; Fun_to_nominal ]
+          [ "tm" ]
           [%expr
             tm |> [%e of_plain] |> [%e to_nominal] |> Lvca_syntax.Nominal.Term.jsonify]
-          *)
-          [%expr Lvca_util.Json.Int 1 (* TODO *)]
       in
       let unjsonify =
-        let ty =
-          ptyp_constr { txt = Lident "t"; loc } (vars |> List.map ~f:(fun _ -> ptyp_any))
-        in
-        let ty = [%type: [%t ty] option] in
         plain_fun_def
           "unjsonify"
-          [ "_json" ]
-          (*
+          [ Supported_function.Fun_of_nominal; Fun_to_plain ]
+          [ "json" ]
           [%expr
             json
             |> Lvca_syntax.Nominal.Term.unjsonify
@@ -1760,24 +1753,20 @@ module Individual_type_module (Context : Builder_context) = struct
                    match [%e of_nominal] tm with
                    | Ok tm -> Some ([%e to_plain] tm)
                    | Error _ -> None)]
-                   *)
-          [%expr (None : [%t ty]) (* TODO *)]
       in
       let pp =
         plain_fun_def
           "pp"
-          [ "ppf"; "_tm" ]
-          (*
+          [ Supported_function.Fun_of_plain; Fun_to_nominal ]
+          [ "ppf"; "tm" ]
           [%expr
             tm |> [%e of_plain] |> [%e to_nominal] |> Lvca_syntax.Nominal.Term.pp ppf]
-            *)
-          [%expr Fmt.pf ppf "TODO"]
       in
       let parse =
         plain_fun_def
           "parse"
+          [ Supported_function.Fun_of_nominal; Fun_to_plain ]
           []
-          (*
           [%expr
             let parse_prim =
               Lvca_parsing.fail "Generated parser parse_prim always fails"
@@ -1788,8 +1777,6 @@ module Individual_type_module (Context : Builder_context) = struct
               match [%e of_nominal] tm with
               | Ok tm -> return ([%e to_plain] tm)
               | Error _ -> fail "Generated parser failed nominal conversion")]
-              *)
-          [%expr Lvca_parsing.fail "TODO"]
       in
       [%stri
         module Plain = struct
@@ -1923,20 +1910,47 @@ module Sig (Context : Builder_context) = struct
               [ mk_ty With_info
               ; [%sigi:
                   module Plain : [%m
-                  let declare name ~f =
-                    declare name ~init:(f (t unique_vars_1)) ~f:(fun (v1, _v2) -> f v1)
+                  let ty_template_for_helper var_name =
+                    let var = tvar var_name in
+                    function
+                    | Supported_function.Fun_of_plain -> [%type:]
+                    | Fun_to_plain -> [%type:]
+                    | Fun_of_nominal -> [%type:]
+                    | Fun_to_nominal -> [%type:]
+                    | _ ->
+                      Lvca_util.invariant_violation ~here:[%here] "unsupported helper"
+                  in
+                  let declare name helpers ~f =
+                    let type_ =
+                      let init = f (t unique_vars_1) in
+                      List.fold_right unique_vars ~init ~f:(fun (v1, _v2) ty ->
+                          [%type: [%t f v1] -> [%t ty]])
+                    in
+                    psig_value
+                      (value_description ~name:{ txt = name; loc } ~type_ ~prim:[])
                   in
                   pmty_signature
                     [ mk_ty Plain
-                    ; declare "pp" ~f:(fun ty -> [%type: [%t ty] Fmt.t])
+                    ; declare
+                        "pp"
+                        [ Supported_function.Fun_of_plain; Fun_to_nominal ]
+                        ~f:(fun ty -> [%type: [%t ty] Fmt.t])
                     ; declare
                         (if List.is_empty vars then "=" else "equal")
+                        [ Supported_function.Fun_of_plain; Fun_to_nominal ]
                         ~f:(fun ty -> [%type: [%t ty] -> [%t ty] -> bool])
-                    ; declare "parse" ~f:(fun ty -> [%type: [%t ty] Lvca_parsing.t])
-                    ; declare "jsonify" ~f:(fun ty ->
-                          [%type: [%t ty] Lvca_util.Json.serializer])
-                    ; declare "unjsonify" ~f:(fun ty ->
-                          [%type: [%t ty] Lvca_util.Json.deserializer])
+                    ; declare
+                        "parse"
+                        [ Supported_function.Fun_of_nominal; Fun_to_plain ]
+                        ~f:(fun ty -> [%type: [%t ty] Lvca_parsing.t])
+                    ; declare
+                        "jsonify"
+                        [ Supported_function.Fun_of_plain; Fun_to_nominal ]
+                        ~f:(fun ty -> [%type: [%t ty] Lvca_util.Json.serializer])
+                    ; declare
+                        "unjsonify"
+                        [ Supported_function.Fun_of_nominal; Fun_to_plain ]
+                        ~f:(fun ty -> [%type: [%t ty] Lvca_util.Json.deserializer])
                     ]]]
               ; declare
                   "to_plain"
