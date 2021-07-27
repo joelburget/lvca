@@ -59,20 +59,28 @@ module Exp = struct
         { range = [%e opt_range ~loc range]; comment = [%e option str ~loc comment] }]
   ;;
 
-  let prim ~loc (pos, prim) =
-    let pos = commented ~loc pos in
-    match prim with
-    | Primitive_impl.All_plain.Integer i ->
-      [%expr [%e pos], Lvca_syntax.Primitive_impl.All_plain.Integer [%e bigint ~loc i]]
-    | Primitive_impl.All_plain.Int32 i ->
-      [%expr [%e pos], Lvca_syntax.Primitive_impl.All_plain.Int32 [%e int32 ~loc i]]
-    | String s ->
-      [%expr [%e pos], Lvca_syntax.Primitive_impl.All_plain.String [%e str ~loc s]]
-    | Float f ->
-      [%expr [%e pos], Lvca_syntax.Primitive_impl.All_plain.Float [%e float ~loc f]]
-    | Char c ->
-      [%expr [%e pos], Lvca_syntax.Primitive_impl.All_plain.Char [%e char ~loc c]]
-  ;;
+  module Primitive = struct
+    let all ~loc (pos, prim) =
+      let pos = commented ~loc pos in
+      match prim with
+      | Primitive_impl.All_plain.Integer i ->
+        [%expr [%e pos], Lvca_syntax.Primitive_impl.All_plain.Integer [%e bigint ~loc i]]
+      | Primitive_impl.All_plain.Int32 i ->
+        [%expr [%e pos], Lvca_syntax.Primitive_impl.All_plain.Int32 [%e int32 ~loc i]]
+      | String s ->
+        [%expr [%e pos], Lvca_syntax.Primitive_impl.All_plain.String [%e str ~loc s]]
+      | Float f ->
+        [%expr [%e pos], Lvca_syntax.Primitive_impl.All_plain.Float [%e float ~loc f]]
+      | Char c ->
+        [%expr [%e pos], Lvca_syntax.Primitive_impl.All_plain.Char [%e char ~loc c]]
+    ;;
+
+    let integer ~loc (pos, x) = [%expr [%e commented ~loc pos], [%e bigint ~loc x]]
+    let int32 ~loc (pos, x) = [%expr [%e commented ~loc pos], [%e int32 ~loc x]]
+    let float ~loc (pos, x) = [%expr [%e commented ~loc pos], [%e float ~loc x]]
+    let char ~loc (pos, x) = [%expr [%e commented ~loc pos], [%e char ~loc x]]
+    let string ~loc (pos, x) = [%expr [%e commented ~loc pos], [%e str ~loc x]]
+  end
 
   let rec pattern ~loc = function
     | Pattern.Operator (pos, name, pats) ->
@@ -82,7 +90,7 @@ module Exp = struct
         Lvca_syntax.Pattern.Operator ([%e commented ~loc pos], [%e name_exp], [%e pats])]
     | Var (pos, s) ->
       [%expr Lvca_syntax.Pattern.Var ([%e commented ~loc pos], [%e str ~loc s])]
-    | Primitive p -> [%expr Lvca_syntax.Pattern.Primitive [%e prim ~loc p]]
+    | Primitive p -> [%expr Lvca_syntax.Pattern.Primitive [%e Primitive.all ~loc p]]
   ;;
 
   let rec nominal ~loc = function
@@ -94,7 +102,7 @@ module Exp = struct
           ([%e commented ~loc pos], [%e name_exp], [%e scopes])]
     | Var (pos, s) ->
       [%expr Lvca_syntax.Nominal.Term.Var ([%e commented ~loc pos], [%e str ~loc s])]
-    | Primitive p -> [%expr Lvca_syntax.Nominal.Term.Primitive [%e prim ~loc p]]
+    | Primitive p -> [%expr Lvca_syntax.Nominal.Term.Primitive [%e Primitive.all ~loc p]]
 
   and scope ~loc (Nominal.Scope.Scope (pats, tm)) =
     let tm = nominal ~loc tm in
@@ -108,7 +116,7 @@ module Exp = struct
       let tms = tms |> List.map ~f:(nonbinding ~loc) |> list ~loc in
       [%expr
         Lvca_syntax.Nonbinding.Operator ([%e commented ~loc pos], [%e name_exp], [%e tms])]
-    | Primitive p -> [%expr Lvca_syntax.Nonbinding.Primitive [%e prim ~loc p]]
+    | Primitive p -> [%expr Lvca_syntax.Nonbinding.Primitive [%e Primitive.all ~loc p]]
   ;;
 
   let rec sort ~loc = function
