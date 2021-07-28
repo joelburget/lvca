@@ -30,33 +30,29 @@ list_type :=
 
 list_spacing := Loose() | Tight()
 
-inline_desc :=
-  | Concat(list inline)
-  | Text(string)
-  | Emph(inline)
-  | Strong(inline)
-  | Code(string)
-  | Hard_break()
-  | Soft_break()
-  | Link(link)
-  | Image(link)
-  | Html(string)
-
-inline := Inline(inline_desc; list attribute)
+inline :=
+  | Concat(list attribute; list inline)
+  | Text(list attribute; string)
+  | Emph(list attribute; inline)
+  | Strong(list attribute; inline)
+  | Code(list attribute; string)
+  | Hard_break(list attribute)
+  | Soft_break(list attribute)
+  | Link(list attribute; link)
+  | Image(list attribute; link)
+  | Html(list attribute; string)
 
 def_elt := DefElt(inline; list inline)
 
-block_desc :=
-  | Paragraph(inline)
-  | List(list_type; list_spacing; list block)
-  | Blockquote(list block)
-  | Thematic_break()
-  | Heading(int32; inline)
-  | Code_block(string; string)
-  | Html_block(string)
-  | Definition_list(list def_elt)
-
-block := Block(block_desc; list attribute)
+block :=
+  | Paragraph(list attribute; inline)
+  | List(list attribute; list_type; list_spacing; list block)
+  | Blockquote(list attribute; list block)
+  | Thematic_break(list attribute)
+  | Heading(list attribute; int32; inline)
+  | Code_block(list attribute; string; string)
+  | Html_block(list attribute; string)
+  | Definition_list(list attribute; list def_elt)
 
 doc := Doc(list block)
 |}]
@@ -94,45 +90,39 @@ module Of_omd = struct
     | Tight -> Tight
   ;;
 
-  let rec inline : Omd.inline -> Lang.Plain.inline =
-   fun { il_desc; il_attributes } -> Inline (inline_desc il_desc, attributes il_attributes)
+  let rec inline : Omd.attributes Omd.inline -> Lang.Plain.inline = function
+    | Concat (attrs, inlines) -> Concat (attributes attrs, list inline inlines)
+    | Text (attrs, str) -> Text (attributes attrs, str)
+    | Emph (attrs, inl) -> Emph (attributes attrs, inline inl)
+    | Strong (attrs, inl) -> Strong (attributes attrs, inline inl)
+    | Code (attrs, str) -> Code (attributes attrs, str)
+    | Hard_break attrs -> Hard_break (attributes attrs)
+    | Soft_break attrs -> Soft_break (attributes attrs)
+    | Html (attrs, str) -> Html (attributes attrs, str)
+    | Link (attrs, link_def) -> Link (attributes attrs, link link_def)
+    | Image (attrs, link_def) -> Image (attributes attrs, link link_def)
 
-  and inline_desc : Omd.inline_desc -> Lang.Plain.inline_desc = function
-    | Concat inlines -> Concat (list inline inlines)
-    | Text str -> Text str
-    | Emph inl -> Emph (inline inl)
-    | Strong inl -> Strong (inline inl)
-    | Code str -> Code str
-    | Hard_break -> Hard_break
-    | Soft_break -> Soft_break
-    | Html str -> Html str
-    | Link link_def -> Link (link link_def)
-    | Image link_def -> Image (link link_def)
-
-  and link : Omd.link -> Lang.Plain.link =
+  and link : Omd.attributes Omd.link -> Lang.Plain.link =
    fun { label; destination; title } ->
     LinkDef (inline label, destination, maybe Fn.id title)
  ;;
 
-  let def_elt : Omd.def_elt -> Lang.Plain.def_elt =
+  let def_elt : Omd.attributes Omd.def_elt -> Lang.Plain.def_elt =
    fun { term; defs } -> DefElt (inline term, list inline defs)
  ;;
 
-  let rec block_desc : Omd.block_desc -> Lang.Plain.block_desc = function
-    | Paragraph inl -> Paragraph (inline inl)
-    | Thematic_break -> Thematic_break
-    | Heading (n, inl) -> Heading (Int32.of_int_exn n, inline inl)
-    | Code_block (x, y) -> Code_block (x, y)
-    | Html_block str -> Html_block str
-    | List (t, s, blocks) ->
+ let rec block : Omd.attributes Omd.block -> Lang.Plain.block = function
+    | Paragraph (attrs, inl) -> Paragraph (attributes attrs, inline inl)
+    | List (attrs, t, s, blocks) ->
       (match blocks with
-      | [ blocks ] -> List (list_type t, list_spacing s, list block blocks)
+      | [ blocks ] -> List (attributes attrs, list_type t, list_spacing s, list block blocks)
       | _ -> failwith "TODO")
-    | Blockquote blocks -> Blockquote (list block blocks)
-    | Definition_list def_elts -> Definition_list (list def_elt def_elts)
-
-  and block : Omd.block -> Lang.Plain.block =
-   fun { bl_desc; bl_attributes } -> Block (block_desc bl_desc, attributes bl_attributes)
+    | Blockquote (attrs, blocks) -> Blockquote (attributes attrs, list block blocks)
+    | Thematic_break attrs -> Thematic_break (attributes attrs)
+    | Heading (attrs, n, inl) -> Heading (attributes attrs, Int32.of_int_exn n, inline inl)
+    | Code_block (attrs, x, y) -> Code_block (attributes attrs, x, y)
+    | Html_block (attrs, str) -> Html_block (attributes attrs, str)
+    | Definition_list (attrs, def_elts) -> Definition_list (attributes attrs, list def_elt def_elts)
  ;;
 
   let document : Omd.doc -> Lang.Plain.doc = fun blocks -> Doc (list block blocks)
@@ -140,22 +130,19 @@ end
 
 let mk_sequence tms = Nonbinding.Operator ((), "sequence", tms)
 
-let rec term_of_inline_desc : Omd.inline_desc -> unit Nonbinding.term = function
-  | Concat inlines ->
+let rec term_of_inline : Omd.attributes Omd.inline -> unit Nonbinding.term = function
+  | Concat (_, inlines) ->
     Operator ((), "concat", List.map inlines ~f:term_of_inline) (* XXX: convert to list *)
-  | Text str -> Primitive ((), String str)
+  | Text (_, str) -> Primitive ((), String str)
   | _ -> raise (TranslationError "Unsupported inline type")
-
-and term_of_inline : Omd.inline -> unit Nonbinding.term =
- fun { il_desc; il_attributes = _TODO } -> term_of_inline_desc il_desc
 ;;
 
-let term_of_inline_block_desc : Omd.block_desc -> unit Nonbinding.term = function
-  | Paragraph inline -> term_of_inline inline
-  | List (_list_type, _list_spacing, _blocks) ->
+let term_of_inline_block : Omd.attributes Omd.block -> unit Nonbinding.term = function
+  | Paragraph (_, inline) -> term_of_inline inline
+  | List (_, _list_type, _list_spacing, _blocks) ->
     raise (TranslationError "TODO: list blocks")
   | Blockquote _ -> raise (TranslationError "TODO: blockquote")
-  | Heading (level, inline) ->
+  | Heading (_, level, inline) ->
     Operator
       ( ()
       , "heading"
@@ -164,7 +151,7 @@ let term_of_inline_block_desc : Omd.block_desc -> unit Nonbinding.term = functio
           (* ; term_of_attributes attributes *)
         ] )
   (* | Code_block { kind = _; label; other = _; code; attributes } -> *)
-  | Code_block (label, code) ->
+  | Code_block (_, label, code) ->
     Operator
       ( ()
       , "code_block"
@@ -172,12 +159,8 @@ let term_of_inline_block_desc : Omd.block_desc -> unit Nonbinding.term = functio
         ; term_of_string code
           (* ; term_of_attributes attributes *)
         ] )
-  | Thematic_break -> Operator ((), "thematic_break", [])
+  | Thematic_break _ -> Operator ((), "thematic_break", [])
   | _ -> raise (TranslationError "Unsupported block type")
-;;
-
-let term_of_inline_block : Omd.block -> unit Nonbinding.term =
- fun { bl_desc; bl_attributes = _TODO } -> term_of_inline_block_desc bl_desc
 ;;
 
 (*
