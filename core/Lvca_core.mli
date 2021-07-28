@@ -64,8 +64,7 @@ case_scope := Case_scope(binding_aware_pattern; term)
 |}]
 
 module Type : sig
-  (* include Lang.Ty *)
-  type 'info t
+  type 'info t = 'info Lang.Ty.t
 
   val parse : comment:'a Lvca_parsing.t -> 'a Commented.t t Lvca_parsing.t
 end

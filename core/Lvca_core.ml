@@ -45,7 +45,6 @@ ap_list :=
 module Sort = struct
   include Nominal.Convertible.Extend (Sort_model.Sort)
 
-  (*
   let rec into = function
     | Lvca_syntax.Sort.Ap (info, name, ap_list) ->
       Sort_model.Sort.Ap (info, (info, name), into_ap_list ap_list)
@@ -55,7 +54,6 @@ module Sort = struct
     | Lvca_syntax.Sort.Nil info -> Sort_model.Ap_list.Nil info
     | Cons (info, sort, ap_list) -> Cons (info, into sort, into_ap_list ap_list)
   ;;
-  *)
 
   let rec out = function
     | Sort_model.Sort.Ap (info, (_, name), ap_list) ->
@@ -101,6 +99,23 @@ module Type = struct
   include Lang.Ty
   include Ty
 
+  let pp_generic ~open_loc ~close_loc ppf =
+    let rec go need_parens ppf = function
+      | Arrow (_, t1, t2) ->
+        Fmt.pf
+          ppf
+          (if need_parens then "(%a -> %a)" else "%a -> %a")
+          (go true)
+          t1
+          (go false)
+          t2
+      | Sort (_, s) -> Lvca_syntax.Sort.pp_generic ~open_loc ~close_loc ppf (Sort.out s)
+    in
+    go false ppf
+  ;;
+
+  let pp ty = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ty
+
   module Parse = struct
     open Lvca_parsing
 
@@ -120,7 +135,10 @@ module Type = struct
       fix (fun t ->
           let atom =
             Ws.parens t
-            <|> (Sort.parse ~comment >>| fun sort -> Sort (Sort.info sort, sort))
+            <|> (Lvca_syntax.Sort.parse ~comment
+                >>| fun sort ->
+                let sort = Sort.into sort in
+                Sort (Sort.info sort, sort))
           in
           sep_by1 (Ws.string "->") atom >>| of_list)
       <?> "core type"
@@ -128,10 +146,18 @@ module Type = struct
 
     let%test_module "parsing" =
       (module struct
-        let parse = parse_string (t ~comment:c_comment) >> Result.ok_or_failwith
-        let ( = ) = Ty.equal ~info_eq:(Commented.equal String.( = ))
+        let parse =
+          parse_string (t ~comment:c_comment)
+          >> Result.ok_or_failwith
+          >> map_info ~f:(fun _ -> ())
+        ;;
 
-        let%test _ = parse "bool()" = Lang.Ty.Sort (none, Name (none, (none, "bool")))
+        let ( = ) = Ty.equal ~info_eq:Unit.( = )
+        let bool = Sort_model.Sort.Name ((), ((), "bool"))
+        let list_bool = Sort_model.Sort.Ap ((), ((), "list"), Cons ((), bool, Nil ()))
+
+        let%test _ = parse "bool" = Sort ((), bool)
+        let%test _ = parse "list bool" = Sort ((), list_bool)
       end)
     ;;
 

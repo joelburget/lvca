@@ -14,7 +14,8 @@ module Binding_aware_pattern = struct
     | Var (pos, s) ->
       [%expr
         Lvca_syntax.Binding_aware_pattern.Var ([%e commented ~loc pos], [%e str ~loc s])]
-    | Primitive p -> [%expr Lvca_syntax.Binding_aware_pattern.Primitive [%e prim ~loc p]]
+    | Primitive p ->
+      [%expr Lvca_syntax.Binding_aware_pattern.Primitive [%e Primitive.all ~loc p]]
 
   and scope ~loc (Lvca_syntax.Binding_aware_pattern.Scope (vars, body)) =
     let body = t ~loc body in
@@ -28,12 +29,36 @@ module Binding_aware_pattern = struct
 end
 
 module Core = struct
+  module Sort_model = struct
+    let rec sort ~loc = function
+      | Lvca_core.Sort_model.Sort.Name (i, str) ->
+        [%expr
+          Lvca_core.Sort_model.Sort.Name
+            ([%e commented ~loc i], [%e Primitive.string ~loc str])]
+      | Ap (i, str, lst) ->
+        [%expr
+          Lvca_core.Sort_model.Sort.Ap
+            ([%e commented ~loc i], [%e Primitive.string ~loc str], [%e ap_list ~loc lst])]
+
+    and ap_list ~loc = function
+      | Lvca_core.Sort_model.Ap_list.Nil i ->
+        [%expr Lvca_core.Sort_model.Ap_list.Nil [%e commented ~loc i]]
+      | Cons (i, s, lst) ->
+        [%expr
+          Lvca_core.Sort_model.Ap_list.Cons
+            ([%e commented ~loc i], [%e sort ~loc s], [%e ap_list ~loc lst])]
+    ;;
+  end
+
   module Type = struct
     let rec t ~loc = function
-      | Lvca_core.Type.Sort s -> [%expr Lvca_core.Type.Sort [%e sort ~loc s]]
-      | Arrow ts ->
-        let ts' = ts |> List.map ~f:(t ~loc) |> list ~loc in
-        [%expr Lvca_core.Type.Arrow [%e ts']]
+      | Lvca_core.Lang.Ty.Sort (info, s) ->
+        [%expr
+          Lvca_core.Lang.Ty.Sort ([%e commented ~loc info], [%e Sort_model.sort ~loc s])]
+      | Arrow (info, t1, t2) ->
+        [%expr
+          Lvca_core.Lang.Ty.Arrow
+            ([%e commented ~loc info], [%e t ~loc t1], [%e t ~loc t2])]
     ;;
   end
 
