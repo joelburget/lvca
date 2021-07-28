@@ -1779,7 +1779,7 @@ module Individual_type_module (Context : Builder_context) = struct
             [%%i plain_type_decl]
           end]
     in
-    let expr = pmod_structure (info_type_decl :: fun_defs @ [ plain_mod ]) in
+    let expr = pmod_structure ((info_type_decl :: fun_defs) @ [ plain_mod ]) in
     module_binding ~name:{ txt = Some (module_name sort_name); loc } ~expr |> pstr_module
   ;;
 end
@@ -1970,8 +1970,9 @@ module Sig (Context : Builder_context) = struct
         val language : string Lvca_provenance.Commented.t Lvca_syntax.Abstract_syntax.t]
     in
     pmty_signature
-      (language
+      ((language
        :: Wrapper_module.mk_sigs ~prims ~sort_def_map ~sorted_scc_graph ~partitioned_sorts
+       )
       @ type_sigs)
   ;;
 end

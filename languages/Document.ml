@@ -111,19 +111,21 @@ module Of_omd = struct
    fun { term; defs } -> DefElt (inline term, list inline defs)
  ;;
 
- let rec block : Omd.attributes Omd.block -> Lang.Plain.block = function
+  let rec block : Omd.attributes Omd.block -> Lang.Plain.block = function
     | Paragraph (attrs, inl) -> Paragraph (attributes attrs, inline inl)
     | List (attrs, t, s, blocks) ->
       (match blocks with
-      | [ blocks ] -> List (attributes attrs, list_type t, list_spacing s, list block blocks)
+      | [ blocks ] ->
+        List (attributes attrs, list_type t, list_spacing s, list block blocks)
       | _ -> failwith "TODO")
     | Blockquote (attrs, blocks) -> Blockquote (attributes attrs, list block blocks)
     | Thematic_break attrs -> Thematic_break (attributes attrs)
     | Heading (attrs, n, inl) -> Heading (attributes attrs, Int32.of_int_exn n, inline inl)
     | Code_block (attrs, x, y) -> Code_block (attributes attrs, x, y)
     | Html_block (attrs, str) -> Html_block (attributes attrs, str)
-    | Definition_list (attrs, def_elts) -> Definition_list (attributes attrs, list def_elt def_elts)
- ;;
+    | Definition_list (attrs, def_elts) ->
+      Definition_list (attributes attrs, list def_elt def_elts)
+  ;;
 
   let document : Omd.doc -> Lang.Plain.doc = fun blocks -> Doc (list block blocks)
 end
