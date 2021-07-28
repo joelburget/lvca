@@ -167,7 +167,7 @@ let parser_gen =
 let add_test ~name ~gen ~f =
   Crowbar.add_test ~name [ gen ] (fun a ->
       match f a with
-      | Property_result.Ok -> ()
+      | Lvca_util.Property_result.Ok -> ()
       | Failed msg -> Crowbar.fail msg
       | Uninteresting -> Crowbar.bad_test ())
 ;;

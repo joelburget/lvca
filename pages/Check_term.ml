@@ -92,11 +92,11 @@ module View = struct
     div [ pats |> List.map ~f:view_pat |> div; tm |> view_term ]
   ;;
 
-  let rec view_sort = function
+  let rec sort = function
     | Sort.Name (_, name) -> txt name
-    | Sort.Ap (_, name, subsorts) ->
-      div [ txt name; div (subsorts |> List.map ~f:view_sort) ]
-  ;;
+    | Ap (_, name, subsorts) -> div [ txt name; div (ap_list subsorts) ]
+
+  and ap_list = function Sort.Nil _ -> [] | Cons (_, s, ss) -> sort s :: ap_list ss
 
   let view_check_frame
       :  ( Opt_range.t
@@ -104,14 +104,14 @@ module View = struct
          Check_failure.Frame.t
       -> El.t
     =
-   fun { term; sort } ->
+   fun { term; sort = s } ->
     tr
       [ td
           [ (match term with
             | Either.First pat -> view_pat pat
             | Second tm -> view_term tm)
           ]
-      ; td [ view_sort sort ]
+      ; td [ sort s ]
       ]
  ;;
 
@@ -148,7 +148,7 @@ module View = struct
              | Common.EvaluateInput str -> Some (Action.UpdateTerm str)
              | _ -> None)
     in
-    let todo_sort = Sort.Ap (None, "term", []) in
+    let todo_sort = Sort.Ap (None, "term", Nil None) in
     let check_result_s =
       model_s
       |> S.map (fun Model.{ language_parsed; term_parsed; _ } ->

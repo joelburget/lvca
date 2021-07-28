@@ -28,8 +28,10 @@ pattern :=
 scope := Scope(list string; pattern)
 |}]
 
-module Sort_model : [%lvca.abstract_syntax_module_sig
-{|
+module Sort_model : sig
+  include
+    [%lvca.abstract_syntax_module_sig
+  {|
 string : *  // module Primitive.String
 
 sort :=
@@ -40,6 +42,12 @@ ap_list :=
   | Nil()
   | Cons(sort; ap_list)
 |}]
+end
+
+module Sort : sig
+  val into : 'info Lvca_syntax.Sort.t -> 'info Sort_model.Sort.t
+  val out : 'info Sort_model.Sort.t -> 'info Lvca_syntax.Sort.t
+end
 
 module Lang : [%lvca.abstract_syntax_module_sig
 {|

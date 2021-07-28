@@ -1,5 +1,6 @@
 open Base
 open Lvca_syntax
+open Lvca_util
 
 module Lang =
 [%lvca.abstract_syntax_module
