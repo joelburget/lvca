@@ -1580,7 +1580,9 @@ module Individual_type_sig (Context : Builder_context) = struct
 
   let mk ~prims ~sort_def_map ~partitioned_sorts ~info sort_name sort_def =
     let (Syn.Sort_def.Sort_def (vars, _op_defs)) = sort_def in
-    let params = vars |> List.map ~f:(fst >> plain_typ_var) in
+    let var_names = List.map vars ~f:fst in
+    let var_names = match info with With_info -> "info" :: var_names | _ -> var_names in
+    let params = List.map var_names ~f:plain_typ_var in
     let op_ctors =
       Type_decls.mk_op_ctors
         ~type_decl_context:Individual_type_module
@@ -1591,8 +1593,15 @@ module Individual_type_sig (Context : Builder_context) = struct
         ~partitioned_sorts
         sort_def
     in
-    let params =
-      match info with With_info -> plain_typ_var "info" :: params | _ -> params
+    let manifest =
+      match info with
+      | With_info ->
+        let type_vars = List.map var_names ~f:ptyp_var in
+        Some
+          (ptyp_constr
+             { txt = unflatten [ "Wrapper"; "Types"; sort_name ]; loc }
+             type_vars)
+      | _ -> None
     in
     psig_type
       Recursive
@@ -1602,7 +1611,7 @@ module Individual_type_sig (Context : Builder_context) = struct
           ~cstrs:[]
           ~kind:(Ptype_variant op_ctors)
           ~private_:Public
-          ~manifest:None
+          ~manifest
       ]
   ;;
 end

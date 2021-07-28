@@ -130,7 +130,7 @@ module List_model :
     end
     module List :
     sig
-      type ('info, 'a) t =
+      type ('info, 'a) t = ('info, 'a) Wrapper.Types.list =
         | Nil of 'info 
         | Cons of 'info * 'a * ('info, 'a) Wrapper.Types.list 
       module Plain :
@@ -3330,7 +3330,7 @@ module type Is_rec_sig  =
     end
     module Is_rec :
     sig
-      type 'info t =
+      type 'info t = 'info Wrapper.Types.is_rec =
         | Rec of 'info 
         | No_rec of 'info 
       module Plain :
@@ -3355,7 +3355,7 @@ module type Is_rec_sig  =
     end
     module Ty :
     sig
-      type 'info t =
+      type 'info t = 'info Wrapper.Types.ty =
         | Sort of 'info * 'info Lvca_syntax.Nominal.Term.t 
         | Arrow of 'info * 'info Wrapper.Types.ty * 'info Wrapper.Types.ty 
       module Plain :
@@ -3380,7 +3380,7 @@ module type Is_rec_sig  =
     end
     module Mut_a :
     sig
-      type 'info t =
+      type 'info t = 'info Wrapper.Types.mut_a =
         | Mut_a of 'info * 'info Wrapper.Types.mut_b 
       module Plain :
       sig
@@ -3403,7 +3403,7 @@ module type Is_rec_sig  =
     end
     module Mut_b :
     sig
-      type 'info t =
+      type 'info t = 'info Wrapper.Types.mut_b =
         | Mut_b of 'info * 'info Wrapper.Types.mut_a 
       module Plain :
       sig
@@ -3441,7 +3441,7 @@ module Option_model :
     end
     module Option :
     sig
-      type ('info, 'a) t =
+      type ('info, 'a) t = ('info, 'a) Wrapper.Types.option =
         | None of 'info 
         | Some of 'info * 'a 
       module Plain : sig type 'a t =
