@@ -10,8 +10,21 @@ open Lvca_util
 
 (** {1 Types} *)
 
-module List_model : [%lvca.abstract_syntax_module_sig "list a := Nil() | Cons(a; list a)"]
-module Option_model : [%lvca.abstract_syntax_module_sig "option a := None() | Some(a)"]
+module List_model : sig
+  include [%lvca.abstract_syntax_module_sig "list a := Nil() | Cons(a; list a)"]
+
+  val into : empty_info:'info -> 'a list -> ('info, 'a) List.t
+  val out : (_, 'a) List.t -> 'a list
+  val map : f:('a -> 'b) -> ('info, 'a) List.t -> ('info, 'b) List.t
+end
+
+module Option_model : sig
+  include [%lvca.abstract_syntax_module_sig "option a := None() | Some(a)"]
+
+  val into : empty_info:'info -> 'a option -> ('info, 'a) Option.t
+  val out : (_, 'a) Option.t -> 'a option
+  val map : f:('a -> 'b) -> ('info, 'a) Option.t -> ('info, 'b) Option.t
+end
 
 module Binding_aware_pattern_model : [%lvca.abstract_syntax_module_sig
 {|
@@ -23,7 +36,6 @@ pattern :=
   | Operator(string; list scope)
   | Primitive(primitive)
   | Var(string)
-  | Ignored(string)
 
 scope := Scope(list string; pattern)
 |}]
@@ -45,6 +57,8 @@ ap_list :=
 end
 
 module Sort : sig
+  (* include module type of Sort_model.Sort *)
+
   val into : 'info Lvca_syntax.Sort.t -> 'info Sort_model.Sort.t
   val out : 'info Sort_model.Sort.t -> 'info Lvca_syntax.Sort.t
 end
@@ -71,88 +85,30 @@ term :=
 case_scope := Case_scope(binding_aware_pattern; term)
 |}]
 
+module Term : sig
+  include Nominal.Convertible.Extended_s with type 'info t = 'info Lang.Term.t
+  (* and module Plain = Lang.Term.Plain *)
+
+  val parse_concrete : comment:'a Lvca_parsing.t -> 'a Commented.t t Lvca_parsing.t
+  val pp_generic_concrete : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+  val pp_concrete : _ t Fmt.t
+end
+
 module Type : sig
   type 'info t = 'info Lang.Ty.t
 
   val parse : comment:'a Lvca_parsing.t -> 'a Commented.t t Lvca_parsing.t
 end
 
-module Types : sig
-  type 'info term =
-    | Term of 'info Nominal.Term.t
-    | Core_app of 'info * 'info term * 'info term list
-    | Case of 'info * 'info term * 'info case_scope list (** Cases match patterns *)
-    | Lambda of 'info * 'info Type.t * 'info scope
-        (** Lambdas bind variables. Patterns not allowed. *)
-    | Let of 'info let_ (** Lets bind variables. Patterns not allowed. *)
-    | Var of 'info * string
-
-  and 'info let_ =
-    { info : 'info
-    ; is_rec : 'info Lang.Is_rec.t
-    ; tm : 'info term
-    ; ty : 'info Type.t option
-    ; scope : 'info scope
-    }
-
-  and 'info scope = Scope of string * 'info term
-
-  and 'info case_scope = Case_scope of 'info Binding_aware_pattern.t * 'info term
-end
-
-module Term : sig
-  type 'info t = 'info Types.term =
-    | Term of 'info Nominal.Term.t
-    | Core_app of 'info * 'info t * 'info t list
-    | Case of 'info * 'info t * 'info Types.case_scope list
-    | Lambda of 'info * 'info Type.t * 'info Types.scope
-    | Let of 'info Types.let_
-    | Var of 'info * string
-
-  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-  val map_info : f:('a -> 'b) -> 'a t -> 'b t
-  val info : 'info t -> 'info
-  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
-  val pp : _ t Fmt.t
-  val parse : comment:'a Lvca_parsing.t -> 'a Commented.t t Lvca_parsing.t
-end
-
-module Let : sig
-  type 'info t = 'info Types.let_ =
-    { info : 'info
-    ; is_rec : 'info Lang.Is_rec.t
-    ; tm : 'info Types.term
-    ; ty : 'info Type.t option
-    ; scope : 'info Types.scope
-    }
-
-  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-  val map_info : f:('a -> 'b) -> 'a t -> 'b t
-  val info : 'info t -> 'info
-  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
-end
-
-module Scope : sig
-  type 'info t = 'info Types.scope = Scope of string * 'info Types.term
-
-  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-  val map_info : f:('a -> 'b) -> 'a t -> 'b t
-end
-
-module Case_scope : sig
-  type 'info t = 'info Types.case_scope =
-    | Case_scope of 'info Binding_aware_pattern.t * 'info Types.term
-
-  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-  val map_info : f:('a -> 'b) -> 'a t -> 'b t
-  val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
+module Parse : sig
+  val term : comment:'a Lvca_parsing.t -> 'a Commented.t Lang.Term.t Lvca_parsing.t
 end
 
 (** {1 Core type} *)
 module Module : sig
   type 'info t =
     { externals : (string * 'info Type.t) list
-    ; defs : (string * 'info Term.t) list
+    ; defs : (string * 'info Lang.Term.t) list
     }
 
   val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
@@ -187,7 +143,7 @@ end
 module Check_error : sig
   type 'info t =
     { env : 'info check_env
-    ; tm : 'info Term.t
+    ; tm : 'info Lang.Term.t
     ; ty : 'info Type.t
     ; error : 'info Check_error'.t
     }
@@ -196,7 +152,7 @@ end
 module Infer_error : sig
   type 'info t =
     { env : 'info check_env
-    ; tm : 'info Term.t
+    ; tm : 'info Lang.Term.t
     ; error : 'info Check_error'.t
     }
 end
@@ -204,26 +160,30 @@ end
 (** Typecheck a term in an environment. *)
 val infer
   :  'info option check_env
-  -> 'info option Term.t
+  -> 'info option Lang.Term.t
   -> ('info option Type.t, 'info option Infer_error.t) Result.t
 
 val check
   :  'info option check_env
-  -> 'info option Term.t
+  -> 'info option Lang.Term.t
   -> 'info option Type.t
   -> 'info option Check_error.t option
 
 (** {1 Evaluation} *)
 
 type 'info env = 'info Nominal.Term.t String.Map.t
-type 'info eval_error = string * 'info Term.t
+type 'info eval_error = string * 'info Lang.Term.t
 
 val eval_in_ctx
-  :  'info env
-  -> 'info Term.t
+  :  no_info:'info
+  -> 'info env
+  -> 'info Lang.Term.t
   -> ('info Nominal.Term.t, 'info eval_error) Base.Result.t
 
-val eval : 'info Term.t -> ('info Nominal.Term.t, 'info eval_error) Base.Result.t
+val eval
+  :  no_info:'info
+  -> 'info Lang.Term.t
+  -> ('info Nominal.Term.t, 'info eval_error) Base.Result.t
 
 (** {1 Patterns} *)
 val match_pattern
@@ -233,9 +193,9 @@ val match_pattern
 
 val find_match
   :  'info Nominal.Term.t
-  -> 'b Case_scope.t list
-  -> ('b Term.t * 'info env) option
+  -> 'b Lang.Case_scope.t list
+  -> ('b Lang.Term.t * 'info env) option
 
 (* val coverage_check : 'info Cases.t -> *)
-val preimage : 'info Case_scope.t list -> 'info Binding_aware_pattern.t list
-val reverse : 'info Nominal.Term.t -> 'info Case_scope.t list -> 'info env option
+val preimage : 'info Lang.Case_scope.t list -> 'info Binding_aware_pattern.t list
+val reverse : 'info Nominal.Term.t -> 'info Lang.Case_scope.t list -> 'info env option

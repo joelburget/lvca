@@ -193,4 +193,10 @@ module Exp = struct
       Lvca_syntax.Abstract_syntax.
         { externals = [%e externals]; sort_defs = [%e sort_defs] }]
   ;;
+
+  let single_var ~loc Single_var.{ name; info } =
+    [%expr
+      Lvca_syntax.Single_var.
+        { name = [%e str ~loc name]; info = [%e commented ~loc info] }]
+  ;;
 end

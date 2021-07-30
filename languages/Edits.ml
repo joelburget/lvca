@@ -72,8 +72,8 @@ let%test_module "Parsing" =
 
     let parse (str : string) : (core t, string) Result.t =
       Lvca_parsing.(
-        parse_string (whitespace *> parse (Ws.braces (Lvca_core.Term.parse ~comment))) str)
-      |> Result.map ~f:(map_t ~f:(Lvca_core.Term.map_info ~f:Commented.get_range))
+        parse_string (whitespace *> parse (Ws.braces (Lvca_core.Parse.term ~comment))) str)
+      |> Result.map ~f:(map_t ~f:(Term.map_info ~f:Commented.get_range))
     ;;
 
     let parse_and_print : string -> unit =
@@ -84,7 +84,11 @@ let%test_module "Parsing" =
    ;;
 
     let run_atom : term -> core -> (term, Opt_range.t eval_error) Result.t =
-     fun tm core -> eval (Term.Core_app (None, core, [ Term tm ]))
+     fun tm core ->
+      eval
+        ~no_info:None
+        (Lang.Term.Ap
+           (None, core, List_model.into ~empty_info:None [ Lang.Term.Term (None, tm) ]))
    ;;
 
     (* TODO: don't throw away this information, switch from strings *)

@@ -65,6 +65,11 @@ module Exp : sig
     :  loc:Ppxlib.location
     -> string Commented.t Abstract_syntax.t
     -> Ppxlib.expression
+
+  val single_var
+    :  loc:Ppxlib.location
+    -> string Commented.t Single_var.t
+    -> Ppxlib.expression
 end
 
 module Pat : sig

@@ -11,9 +11,10 @@ type 'info n_term = 'info Nominal.Term.t
 let eval_primitive _eval_ctx _eval_ctx' _ctx _tm _name _args =
   Error
     ( "no primitive evaluation"
-    , Lvca_core.Term.Term
-        (Nominal.Term.Primitive (Source_ranges.empty, String "TODO: make this unnecessary"))
-    )
+    , Lvca_core.Lang.Term.Term
+        ( Source_ranges.empty
+        , Nominal.Term.Primitive
+            (Source_ranges.empty, String "TODO: make this unnecessary") ) )
 ;;
 
 type 'info t =
@@ -132,14 +133,14 @@ let pp_generic ~open_loc ~close_loc ppf p =
       | Fail (_, tm) ->
         let f ppf =
           match tm with
-          | Term (Primitive (_, String msg)) -> pf ppf {|@[<2>fail "%s"@]|} msg
+          | Term (_, Primitive (_, String msg)) -> pf ppf {|@[<2>fail "%s"@]|} msg
           | _ -> pf ppf "@[<2>fail {%a}@]" core tm
         in
         f, Prec.app
       | Count (_, p, tm) ->
         let f ppf =
           match tm with
-          | Term (Primitive (_, Integer n)) ->
+          | Term (_, Primitive (_, Integer n)) ->
             pf ppf "@[<hv>%a%s@]" (go (Int.succ Prec.quantifier)) p (Z.to_string n)
           | _ -> pf ppf "@[<hv>%a{%a}@]" (go (Int.succ Prec.quantifier)) p core tm
         in
@@ -322,16 +323,14 @@ module Direct = struct
             let c = str.[pos] in
             let rng = Source_ranges.mk "input" pos (pos + 1) in
             let tm =
-              Lvca_core.Term.(
-                Let
-                  { info = Source_ranges.empty
-                  ; is_rec = Lvca_core.Lang.Is_rec.No_rec Source_ranges.empty
-                  ; tm = Term (Primitive (rng, Char c))
-                  ; ty = None
-                  ; scope = Scope (name, core_term)
-                  })
+              Lvca_core.Lang.Term.Let
+                ( rng
+                , Lvca_core.Lang.Is_rec.No_rec rng
+                , Term (rng, Primitive (rng, Char c))
+                , Lvca_core.Option_model.Option.None rng
+                , (Single_var.{ name; info = rng }, core_term) )
             in
-            match Lvca_core.eval_in_ctx term_ctx tm with
+            match Lvca_core.eval_in_ctx ~no_info:Source_ranges.empty term_ctx tm with
             | Ok (Operator (_, "true", [])) -> pos + 1, [], Ok (mk_char pos c)
             | Ok (Operator (_, "false", [])) | Ok _ ->
               pos, [], err_msg (* TODO: throw harder error? (type error) *)
@@ -342,7 +341,7 @@ module Direct = struct
   let fail c_tm =
     { run =
         (fun ~translate_direct:_ ~term_ctx ~parser_ctx:_ ~pos _str ->
-          match Lvca_core.eval_in_ctx term_ctx c_tm with
+          match Lvca_core.eval_in_ctx ~no_info:Source_ranges.empty term_ctx c_tm with
           | Ok (Primitive (_, String msg)) -> pos, [], mk_error msg
           | _ -> failwith "TODO: fail")
     }
@@ -415,7 +414,7 @@ module Direct = struct
     in
     { run =
         (fun ~translate_direct ~term_ctx ~parser_ctx ~pos str ->
-          match Lvca_core.eval_in_ctx term_ctx n_tm with
+          match Lvca_core.eval_in_ctx ~no_info:Source_ranges.empty term_ctx n_tm with
           | Ok (Primitive (_, Integer n)) ->
             let n = Z.to_int n (* TODO: may raise Overflow *) in
             let results = go ~translate_direct ~term_ctx ~parser_ctx ~pos n str in
@@ -575,7 +574,7 @@ module Direct = struct
                        | Some key -> Map.set ctx ~key ~data:tm)
               in
               let result =
-                Lvca_core.eval_in_ctx term_ctx tm
+                Lvca_core.eval_in_ctx ~no_info:Source_ranges.empty term_ctx tm
                 |> Result.map_error ~f:(map_snd ~f:(fun tm -> Some tm))
               in
               pos, snapshots, result))
@@ -858,7 +857,7 @@ module Parse = struct
         | Atom (IntAtom i, range) ->
           let (_ : token) = Queue.dequeue_exn tokens in
           let i = Z.of_int i in
-          return ~range (Count (range, left, Term (Primitive (range, Integer i))))
+          return ~range (Count (range, left, Term (range, Primitive (range, Integer i))))
         | _ -> return ~range left)
     in
     go ~ambient_prec left
@@ -926,7 +925,7 @@ module Parse = struct
             (Sequence
                ( range
                , Queue.to_list binders
-               , Lvca_core.Term.Term (Nominal.Term.Var (range, name)) ))
+               , Lvca_core.Lang.Term.Term (range, Nominal.Term.Var (range, name)) ))
         | Some tok ->
           fail (Printf.sprintf "TODO (sequence token %s)" (string_of_token tok))
         | None -> fail "No token following `->` (expected a return value)")
@@ -973,7 +972,9 @@ module Parse = struct
                       >>|| go (fun str p2 ->
                                let range = Opt_range.union p1 p2 in
                                FailTok
-                                 (Lvca_core.Term.Term (Primitive (p2, String str)), range))
+                                 ( Lvca_core.Lang.Term.Term
+                                     (range, Primitive (p2, String str))
+                                 , range ))
                     ])
                 ; (Ws.string "satisfy"
                   >>== fun { range = sat_pos; _ } ->
@@ -1075,8 +1076,8 @@ fix (expr -> choice (
 end
 
 let parse_core =
-  let ( >>| ) = Lvca_parsing.(( >>| )) in
-  Lvca_core.Term.parse ~comment:Lvca_parsing.c_comment
+  let open Lvca_parsing in
+  Lvca_core.Term.parse ~comment:c_comment
   >>| Lvca_core.Term.map_info ~f:Commented.get_range
 ;;
 
@@ -1265,12 +1266,10 @@ let%test_module "Parsing" =
       | Error msg -> print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
         let pre_geom =
-          match width with
-          | None -> None
-          | Some n ->
-            let geom = Format.get_geometry () in
-            Format.set_margin n;
-            Some geom
+          Option.map width ~f:(fun n ->
+              let geom = Format.get_geometry () in
+              Format.set_margin n;
+              geom)
         in
         Fmt.pr "%a\n" pp_plain parser;
         (match pre_geom with
