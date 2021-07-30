@@ -170,7 +170,7 @@ module Type = struct
       | Arrow (_, t1, t2) ->
         Fmt.pf
           ppf
-          (if need_parens then "(%a -> %a)" else "%a -> %a")
+          (if need_parens then "@[<hv>(%a -> %a)@]" else "%a -> %a")
           (go true)
           t1
           (go false)
@@ -274,7 +274,14 @@ module Pp_generic = struct
     | Lang.Term.Term_var (_, v) -> Fmt.string ppf v
     | Term (_, tm) -> braces (Nominal.Term.pp_generic ~open_loc ~close_loc) ppf tm
     | Lambda (_, ty, (Single_var.{ name; info = _ }, body)) ->
-      pf ppf "\\(%s : %a) ->@ %a" name (Type.pp_generic ~open_loc ~close_loc) ty pp body
+      pf
+        ppf
+        "@[<hv>\\@[<hv>(%s : %a)@] ->@ %a@]"
+        name
+        (Type.pp_generic ~open_loc ~close_loc)
+        ty
+        pp
+        body
     (* TODO: parens if necessary *)
     | Ap (_, f, args) ->
       pf ppf "@[<h>%a@ @[<hov>%a@]@]" pp f (list ~sep:sp pp) (List_model.out args)
@@ -332,8 +339,7 @@ let pp_term ppf tm =
 
 module Parse = struct
   open Lvca_parsing
-  module Case_scope = Lang.Case_scope
-  module Term = Lang.Term
+  open Lang
 
   let reserved = Lvca_util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
 
