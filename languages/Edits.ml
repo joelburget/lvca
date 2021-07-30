@@ -79,7 +79,7 @@ let%test_module "Parsing" =
     let parse_and_print : string -> unit =
      fun str ->
       match parse str with
-      | Ok edit -> pp (Fmt.braces Term.pp) Caml.Format.std_formatter edit
+      | Ok edit -> pp (Fmt.braces Term.pp_concrete) Caml.Format.std_formatter edit
       | Error msg -> print_string msg
    ;;
 

@@ -111,7 +111,7 @@ module Prec = struct
 end
 
 let pp_generic ~open_loc ~close_loc ppf p =
-  let core = Lvca_core.Term.pp in
+  let core = Lvca_core.Term.pp_concrete in
   let fmt, pf = Fmt.(fmt, pf) in
   let with_parens ~ambient_prec ~prec pp =
     if ambient_prec > prec then Fmt.parens pp else pp
@@ -314,7 +314,7 @@ module Direct = struct
               (Fmt.str
                  {|expected: satisfy (%s -> {%a})|}
                  name
-                 Lvca_core.Term.pp
+                 Lvca_core.Term.pp_concrete
                  core_term)
           in
           if pos >= String.length str
@@ -703,11 +703,11 @@ module Parse = struct
     let rec pp ppf = function
       | Atom (atom, _) -> Atom.pp ppf atom
       | Operator (str, _) | Keyword (str, _) | Ident (str, _) -> Fmt.string ppf str
-      | Core (tm, _) -> Fmt.pf ppf "{%a}" Lvca_core.Term.pp tm
+      | Core (tm, _) -> Fmt.pf ppf "{%a}" Lvca_core.Term.pp_concrete tm
       | Parenthesized (tm, _) -> pp_plain ppf tm
-      | FailTok (tm, _) -> Fmt.pf ppf "fail {%a}" Lvca_core.Term.pp tm
+      | FailTok (tm, _) -> Fmt.pf ppf "fail {%a}" Lvca_core.Term.pp_concrete tm
       | SatisfyTok (name, tm, _) ->
-        Fmt.pf ppf "satisfy (%s -> {%a})" name Lvca_core.Term.pp tm
+        Fmt.pf ppf "satisfy (%s -> {%a})" name Lvca_core.Term.pp_concrete tm
       | ChoiceTok (toks, _) -> Fmt.pf ppf "choice (%a)" Fmt.(list ~sep:semi pp) toks
       | FixTok (name, toks, _) ->
         Fmt.pf ppf "fix (%s -> %a)" name Fmt.(list ~sep:semi pp) toks
@@ -1076,7 +1076,7 @@ end
 
 let parse_core =
   let open Lvca_parsing in
-  Lvca_core.Term.parse ~comment:c_comment
+  Lvca_core.Parse.term ~comment:c_comment
   >>| Lvca_core.Term.map_info ~f:Commented.get_range
 ;;
 
