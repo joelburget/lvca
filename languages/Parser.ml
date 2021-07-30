@@ -658,66 +658,66 @@ module Parse = struct
   let operators : string list = [ "?"; "*"; "+"; "|"; "="; "->" ]
   let operator : string Lvca_parsing.t = operators |> List.map ~f:Ws.string |> choice
 
-  type atom =
-    | CharAtom of char
-    | IntAtom of int
-    | StrAtom of string
-    | Dot
+  module Atom = struct
+    type t =
+      | CharAtom of char
+      | IntAtom of int
+      | StrAtom of string
+      | Dot
 
-  let string_of_atom = function
-    | CharAtom c -> Printf.sprintf "%C" c
-    | IntAtom i -> Printf.sprintf "%d" i
-    | StrAtom str -> Printf.sprintf "%S" str
-    | Dot -> "."
-  ;;
+    let pp ppf = function
+      | CharAtom c -> Fmt.pf ppf "%C" c
+      | IntAtom i -> Fmt.pf ppf "%d" i
+      | StrAtom str -> Fmt.pf ppf "%S" str
+      | Dot -> Fmt.pf ppf "."
+    ;;
+  end
 
-  type token =
-    | Atom of atom * Opt_range.t
-    | Operator of string * Opt_range.t
-    | Keyword of string * Opt_range.t
-    | Ident of string * Opt_range.t
-    | Core of Opt_range.t Lvca_core.Term.t * Opt_range.t
-    | Parenthesized of term * Opt_range.t
-    | FailTok of Opt_range.t Lvca_core.Term.t * Opt_range.t
-    | SatisfyTok of string * Opt_range.t Lvca_core.Term.t * Opt_range.t
-    | ChoiceTok of token list * Opt_range.t
-    | FixTok of string * token list * Opt_range.t
+  module Token = struct
+    type t =
+      | Atom of Atom.t * Opt_range.t
+      | Operator of string * Opt_range.t
+      | Keyword of string * Opt_range.t
+      | Ident of string * Opt_range.t
+      | Core of Opt_range.t Lvca_core.Term.t * Opt_range.t
+      | Parenthesized of term * Opt_range.t
+      | FailTok of Opt_range.t Lvca_core.Term.t * Opt_range.t
+      | SatisfyTok of string * Opt_range.t Lvca_core.Term.t * Opt_range.t
+      | ChoiceTok of t list * Opt_range.t
+      | FixTok of string * t list * Opt_range.t
 
-  let token_location = function
-    | Atom (_, loc)
-    | Operator (_, loc)
-    | Keyword (_, loc)
-    | Ident (_, loc)
-    | Core (_, loc)
-    | Parenthesized (_, loc)
-    | FailTok (_, loc)
-    | SatisfyTok (_, _, loc)
-    | ChoiceTok (_, loc)
-    | FixTok (_, _, loc) ->
-      loc
-  ;;
+    let info = function
+      | Atom (_, loc)
+      | Operator (_, loc)
+      | Keyword (_, loc)
+      | Ident (_, loc)
+      | Core (_, loc)
+      | Parenthesized (_, loc)
+      | FailTok (_, loc)
+      | SatisfyTok (_, _, loc)
+      | ChoiceTok (_, loc)
+      | FixTok (_, _, loc) ->
+        loc
+    ;;
 
-  let rec string_of_token = function
-    | Atom (atom, _) -> string_of_atom atom
-    | Operator (str, _) | Keyword (str, _) | Ident (str, _) -> str
-    | Core (tm, _) -> Fmt.str "{%a}" Lvca_core.Term.pp tm
-    | Parenthesized (tm, _) -> Fmt.to_to_string pp_plain tm
-    | FailTok (tm, _) -> Fmt.str "fail {%a}" Lvca_core.Term.pp tm
-    | SatisfyTok (name, tm, _) -> Fmt.str "satisfy (%s -> {%a})" name Lvca_core.Term.pp tm
-    | ChoiceTok (toks, _) ->
-      Fmt.str
-        "choice (%s)"
-        (toks |> List.map ~f:string_of_token |> String.concat ~sep:"; ")
-    | FixTok (name, toks, _) ->
-      Fmt.str
-        "fix (%s -> %s)"
-        name
-        (toks |> List.map ~f:string_of_token |> String.concat ~sep:"; ")
-  ;;
+    let rec pp ppf = function
+      | Atom (atom, _) -> Atom.pp ppf atom
+      | Operator (str, _) | Keyword (str, _) | Ident (str, _) -> Fmt.string ppf str
+      | Core (tm, _) -> Fmt.pf ppf "{%a}" Lvca_core.Term.pp tm
+      | Parenthesized (tm, _) -> pp_plain ppf tm
+      | FailTok (tm, _) -> Fmt.pf ppf "fail {%a}" Lvca_core.Term.pp tm
+      | SatisfyTok (name, tm, _) ->
+        Fmt.pf ppf "satisfy (%s -> {%a})" name Lvca_core.Term.pp tm
+      | ChoiceTok (toks, _) -> Fmt.pf ppf "choice (%a)" Fmt.(list ~sep:semi pp) toks
+      | FixTok (name, toks, _) ->
+        Fmt.pf ppf "fix (%s -> %a)" name Fmt.(list ~sep:semi pp) toks
+    ;;
 
-  let string_of_tokens tokens =
-    tokens |> Queue.to_list |> List.map ~f:string_of_token |> String.concat ~sep:"; "
-  ;;
+    let pp_queue ppf tokens =
+      let tokens = Queue.to_list tokens in
+      Fmt.(list pp ~sep:semi) ppf tokens
+    ;;
+  end
 
   let string_of_binder (Binder (opt_name, p)) =
     match opt_name with
@@ -739,7 +739,7 @@ module Parse = struct
 
   (* Parse an expression starting with a token (nothing in front of it) *)
   let rec prefix ~tokens = function
-    | Atom (atom, range) ->
+    | Token.Atom (atom, range) ->
       (match atom with
       | CharAtom c -> return ~range (Char (range, c))
       | IntAtom i -> fail (Printf.sprintf "unexpected int atom (%d) in prefix position" i)
@@ -752,13 +752,15 @@ module Parse = struct
       (match kw_name with
       | "let" ->
         let mk_err tok_opt expected =
-          match tok_opt with
-          | Some tok ->
-            fail (Printf.sprintf {|expected %s (got %s)|} expected (string_of_token tok))
-          | None -> fail (Printf.sprintf {|expected %s (hit end of input)|} expected)
+          let msg =
+            match tok_opt with
+            | Some tok -> Fmt.str {|expected %s (got %a)|} expected Token.pp tok
+            | None -> Printf.sprintf {|expected %s (hit end of input)|} expected
+          in
+          fail msg
         in
         (match Queue.dequeue tokens with
-        | Some (Ident (name, _)) ->
+        | Some (Token.Ident (name, _)) ->
           (match Queue.dequeue tokens with
           | Some (Operator ("=", _)) ->
             (* XXX why treated differently from below? *)
@@ -785,7 +787,7 @@ module Parse = struct
       >>= fun branches ->
       (match Queue.length tokens with
       | 0 -> return ~range (Choice (range, branches))
-      | _ -> fail ("Leftover tokens in a choice body: " ^ string_of_tokens tokens))
+      | _ -> fail (Fmt.str "Leftover tokens in a choice body: %a" Token.pp_queue tokens))
     | FixTok (name, toks, range) ->
       let tokens = Queue.of_list toks in
       sequence ~tokens
@@ -805,12 +807,10 @@ module Parse = struct
     in
     match Queue.peek tokens with
     | Some (Operator ("|", _)) ->
-      let (_ : token) = Queue.dequeue_exn tokens in
+      let (_ : Token.t) = Queue.dequeue_exn tokens in
       go ()
     | Some tok ->
-      if first
-      then go ()
-      else fail (Printf.sprintf "TODO: choice branches %s" (string_of_token tok))
+      if first then go () else fail (Fmt.str "TODO: choice branches %a" Token.pp tok)
     | None -> return ~range:None []
 
   (* Parse the operator following an expression *)
@@ -818,7 +818,7 @@ module Parse = struct
     let range =
       tokens
       |> Queue.to_list
-      |> List.map ~f:token_location
+      |> List.map ~f:Token.info
       |> Opt_range.list_range
       |> Opt_range.union op_pos
     in
@@ -826,9 +826,7 @@ module Parse = struct
     | "?" -> return ~range (Option (range, left))
     | "*" -> return ~range (Many (range, left))
     | "+" -> return ~range (Many1 (range, left))
-    | _ ->
-      failwith
-        (Printf.sprintf "infix TODO: %s before [%s]" op_name (string_of_tokens tokens))
+    | _ -> failwith (Fmt.str "infix TODO: %s before [%a]" op_name Token.pp_queue tokens)
 
   and expression ~tokens ~ambient_prec =
     let token = Queue.dequeue_exn tokens in
@@ -847,15 +845,15 @@ module Parse = struct
         | Operator (op_name, op_pos) ->
           if lbp op_name > ambient_prec
           then (
-            let (_ : token) = Queue.dequeue_exn tokens in
+            let (_ : Token.t) = Queue.dequeue_exn tokens in
             infix ~tokens ~left ~op_name ~op_pos
             >>= go ~ambient_prec:(lbp op_name - 1 (* HACK *)))
           else return ~range left
         | Core (tm, range) ->
-          let (_ : token) = Queue.dequeue_exn tokens in
+          let (_ : Token.t) = Queue.dequeue_exn tokens in
           return ~range (Count (range, left, tm))
         | Atom (IntAtom i, range) ->
-          let (_ : token) = Queue.dequeue_exn tokens in
+          let (_ : Token.t) = Queue.dequeue_exn tokens in
           let i = Z.of_int i in
           return ~range (Count (range, left, Term (range, Primitive (range, Integer i))))
         | _ -> return ~range left)
@@ -864,7 +862,7 @@ module Parse = struct
 
   and sequence_elem ~tokens =
     match Queue.peek_exn tokens with
-    | Ident (name, name_pos) ->
+    | Token.Ident (name, name_pos) ->
       let next_toks =
         match Queue.to_list tokens with
         | _ :: next_toks -> next_toks
@@ -874,8 +872,8 @@ module Parse = struct
       (match next_toks with
       | Operator ("=", _) :: _ ->
         (* dequeue both the identifier and the "=" *)
-        let (_ : token) = Queue.dequeue_exn tokens in
-        let (_ : token) = Queue.dequeue_exn tokens in
+        let (_ : Token.t) = Queue.dequeue_exn tokens in
+        let (_ : Token.t) = Queue.dequeue_exn tokens in
         expression ~tokens ~ambient_prec:Prec.eq
         >>= fun expr ->
         let range = Opt_range.union name_pos (info expr) in
@@ -886,7 +884,7 @@ module Parse = struct
         >>= fun p -> return ~range:(info p) (Binder (None, p))
       | _ ->
         (* dequeue the identifier *)
-        let (_ : token) = Queue.dequeue_exn tokens in
+        let (_ : Token.t) = Queue.dequeue_exn tokens in
         return ~range:name_pos (Binder (None, ident)))
     | _ ->
       expression ~tokens ~ambient_prec:Prec.arr
@@ -915,7 +913,7 @@ module Parse = struct
         | _binders -> fail "Expected a single expression")
       (* Parse form 1 *)
       | Some (Operator ("->", _)) ->
-        let _arr : token = Queue.dequeue_exn tokens in
+        let _arr : Token.t = Queue.dequeue_exn tokens in
         (match Queue.dequeue tokens with
         | Some (Core (tm, range)) ->
           return ~range (Sequence (range, Queue.to_list binders, tm))
@@ -926,8 +924,7 @@ module Parse = struct
                ( range
                , Queue.to_list binders
                , Lvca_core.Lang.Term.Term (range, Nominal.Term.Var (range, name)) ))
-        | Some tok ->
-          fail (Printf.sprintf "TODO (sequence token %s)" (string_of_token tok))
+        | Some tok -> fail (Fmt.str "TODO (sequence token %a)" Token.pp tok)
         | None -> fail "No token following `->` (expected a return value)")
       (* Consume groups of binders until we hit "->" or the end. *)
       | Some _token ->
@@ -940,6 +937,7 @@ module Parse = struct
   ;;
 
   let tokens_to_parser tokens =
+    Fmt.pr "tokens: %a\n" Fmt.(list Token.pp) tokens;
     match tokens with
     | [] -> fail "empty input"
     | tokens -> sequence ~tokens:(Queue.of_list tokens)
@@ -951,6 +949,7 @@ module Parse = struct
    fun c_term ->
     let arrow = Ws.string "->" in
     fix (fun parser ->
+        let open Token in
         let token =
           fix (fun token ->
               choice
@@ -998,7 +997,7 @@ module Parse = struct
                     (lift3
                        (fun name _arr toks ->
                          let toks_pos =
-                           toks |> List.map ~f:token_location |> Opt_range.list_range
+                           toks |> List.map ~f:Token.info |> Opt_range.list_range
                          in
                          let range = Opt_range.union fix_pos toks_pos in
                          FixTok (name, toks, range))
@@ -1083,6 +1082,7 @@ let parse_core =
 
 let%test_module "Parsing" =
   (module struct
+    (*
     let parse_print : string -> string -> unit =
      fun parser_str str ->
       match Lvca_parsing.parse_string (Parse.t parse_core) parser_str with
@@ -1094,8 +1094,9 @@ let%test_module "Parsing" =
         | Error (msg, _) -> printf "failed to parse: %s\n" msg
         | Ok tm -> Fmt.pr "%a\n" Nominal.Term.pp_source_ranges tm)
    ;;
+       *)
 
-    open TestParsers
+    (* open TestParsers *)
 
     let () =
       Format.set_formatter_stag_functions Source_ranges.stag_functions;
@@ -1103,6 +1104,7 @@ let%test_module "Parsing" =
       Format.set_mark_tags true
     ;;
 
+    (*
     let%expect_test _ =
       parse_print "'c'2" "cc";
       [%expect
@@ -1259,6 +1261,7 @@ let%test_module "Parsing" =
       [%expect
         {| <parser:{13,23}>pair(<input:{0,1}>'a'</input:{0,1}>; <input:{1,2}>'b'</input:{1,2}>)</parser:{13,23}> |}]
     ;;
+       *)
 
     let parse_print_parser : ?width:int -> string -> unit =
      fun ?width parser_str ->
@@ -1285,6 +1288,7 @@ let%test_module "Parsing" =
       [%expect]
     *)
 
+    (*
     let%expect_test _ =
       parse_print
         {|let alpha = satisfy (c -> {is_alpha c}) in
@@ -1333,12 +1337,14 @@ expr)}} | atom=atom -> {atom}))|};
       parse_print_parser "'c'2";
       [%expect {| 'c'2 |}]
     ;;
+    *)
 
     let%expect_test _ =
       parse_print_parser "'c'{{2}}";
       [%expect {| 'c'2 |}]
     ;;
 
+    (*
     let%expect_test _ =
       parse_print_parser "F++";
       [%expect {| (F+)+ |}]
@@ -1453,6 +1459,7 @@ fix (expr -> choice (
        | literal
      ) |}]
     ;;
+       *)
   end)
 ;;
 
