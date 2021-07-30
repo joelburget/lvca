@@ -937,7 +937,6 @@ module Parse = struct
   ;;
 
   let tokens_to_parser tokens =
-    Fmt.pr "tokens: %a\n" Fmt.(list Token.pp) tokens;
     match tokens with
     | [] -> fail "empty input"
     | tokens -> sequence ~tokens:(Queue.of_list tokens)
@@ -1082,7 +1081,6 @@ let parse_core =
 
 let%test_module "Parsing" =
   (module struct
-    (*
     let parse_print : string -> string -> unit =
      fun parser_str str ->
       match Lvca_parsing.parse_string (Parse.t parse_core) parser_str with
@@ -1094,9 +1092,8 @@ let%test_module "Parsing" =
         | Error (msg, _) -> printf "failed to parse: %s\n" msg
         | Ok tm -> Fmt.pr "%a\n" Nominal.Term.pp_source_ranges tm)
    ;;
-       *)
 
-    (* open TestParsers *)
+    open TestParsers
 
     let () =
       Format.set_formatter_stag_functions Source_ranges.stag_functions;
@@ -1104,7 +1101,6 @@ let%test_module "Parsing" =
       Format.set_mark_tags true
     ;;
 
-    (*
     let%expect_test _ =
       parse_print "'c'2" "cc";
       [%expect
@@ -1261,7 +1257,6 @@ let%test_module "Parsing" =
       [%expect
         {| <parser:{13,23}>pair(<input:{0,1}>'a'</input:{0,1}>; <input:{1,2}>'b'</input:{1,2}>)</parser:{13,23}> |}]
     ;;
-       *)
 
     let parse_print_parser : ?width:int -> string -> unit =
      fun ?width parser_str ->
@@ -1288,7 +1283,6 @@ let%test_module "Parsing" =
       [%expect]
     *)
 
-    (*
     let%expect_test _ =
       parse_print
         {|let alpha = satisfy (c -> {is_alpha c}) in
@@ -1337,14 +1331,12 @@ expr)}} | atom=atom -> {atom}))|};
       parse_print_parser "'c'2";
       [%expect {| 'c'2 |}]
     ;;
-    *)
 
     let%expect_test _ =
       parse_print_parser "'c'{{2}}";
       [%expect {| 'c'2 |}]
     ;;
 
-    (*
     let%expect_test _ =
       parse_print_parser "F++";
       [%expect {| (F+)+ |}]
@@ -1459,7 +1451,6 @@ fix (expr -> choice (
        | literal
      ) |}]
     ;;
-       *)
   end)
 ;;
 

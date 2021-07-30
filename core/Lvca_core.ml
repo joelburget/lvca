@@ -627,9 +627,9 @@ let rec check ({ type_env; syntax } as env) tm ty =
     (match ty with
     | Lang.Ty.Arrow _ -> Some Check_error.{ env; tm; ty; error = Term_isnt_arrow }
     | Sort (_, sort) ->
-      (match Nominal.Term.check syntax (Sort.out sort) tm' with
-      | None -> None
-      | Some err -> Some Check_error.{ env; tm; ty; error = Failed_check_term err }))
+      Nominal.Term.check syntax (Sort.out sort) tm'
+      |> Option.map ~f:(fun err ->
+             Check_error.{ env; tm; ty; error = Failed_check_term err }))
   | Ap _ -> failwith "TODO"
   | Case (_, tm, branches) ->
     (match infer env tm with
