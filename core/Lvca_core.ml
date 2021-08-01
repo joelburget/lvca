@@ -366,6 +366,13 @@ module Parse = struct
 
   let term ~comment =
     fix (fun term ->
+        let parse_prim =
+          choice
+            [ (Primitive_impl.All.parse ~comment
+              >>| fun prim -> Nominal.Term.Primitive prim)
+            ; Ws.braces term >>| Term.to_nominal
+            ]
+        in
         let atomic_term =
           choice
             ~failure_msg:
@@ -376,7 +383,7 @@ module Parse = struct
               option' comment
               >>|| fun { value = comment; _ } ->
               { value = Term.Term_var (Commented.{ range; comment }, value); range })
-            ; Ws.braces (Nominal.Term.parse' ~comment)
+            ; Ws.braces (Nominal.Term.parse ~parse_prim ~comment)
               >>|| (fun { value = tm; range } ->
                      (* TODO: add comments *)
                      { value = Term.Term (Commented.of_opt_range range, tm); range })
@@ -954,6 +961,11 @@ let%test_module "Parsing" =
 
     let%test _ =
       let (_ : _ Term.t) = parse {|match c with { 'c' -> {true()} | _ -> {false()} }|} in
+      true
+    ;;
+
+    let%test _ =
+      let (_ : _ Term.t) = parse "{some({let x = {1} in {some({x})}})}" in
       true
     ;;
   end)
