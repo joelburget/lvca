@@ -1079,11 +1079,13 @@ let parse_core =
   >>| Lvca_core.Term.map_info ~f:Commented.get_range
 ;;
 
+let parse_parser = Lvca_parsing.parse_string (Parse.t parse_core)
+
 let%test_module "Parsing" =
   (module struct
     let parse_print : string -> string -> unit =
      fun parser_str str ->
-      match Lvca_parsing.parse_string (Parse.t parse_core) parser_str with
+      match parse_parser parser_str with
       | Error msg -> print_endline ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
         let parser = map_info ~f:(Source_ranges.of_opt_range ~buf:"parser") parser in
@@ -1154,6 +1156,11 @@ let%test_module "Parsing" =
       [%expect
         {|
           failed to parse: expected: satisfy (x -> {match x with { 'c' -> {true()} | _ -> {false()} }}) |}]
+    ;;
+
+    let%expect_test _ =
+      parse_print "satisfy (c -> {is_alpha c})" "cc";
+      [%expect {| <input:{0,1}>'c'</input:{0,1}> |}]
     ;;
 
     let%expect_test _ =

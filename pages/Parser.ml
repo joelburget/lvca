@@ -9,6 +9,7 @@ open Prelude
 module P = Lvca_languages.Parser
 open Components
 
+let ( >> ) = Lvca_util.( >> )
 let html_eq = Common.html_eq
 
 let em, table, tr, td, span, div, h3, h4, p, pre, code =
@@ -145,8 +146,8 @@ module Examples = struct
 }})|}
   ;;
 
-  let satisfy_is_alpha = "satisfy(c -> {is_alpha(c)})"
-  let satisfy_is_digit = "satisfy(c -> {is_digit(c)})"
+  let satisfy_is_alpha = "satisfy (c -> {is_alpha c})"
+  let satisfy_is_digit = "satisfy (c -> {is_digit c})"
   let sequence1 = {|. ' '* '+' ' '* . -> {{"parsed an addition"}}|}
   let sequence2 = "a=. ' '* '+' ' '* b=. -> {{add(a; b)}}"
 
@@ -160,10 +161,7 @@ fix (expr -> choice (
 end
 
 module Prelude = struct
-  let parse_parser_exn str =
-    str |> Lvca_parsing.(parse_string parser) |> Result.ok_or_failwith
-  ;;
-
+  let parse_parser_exn = P.parse_parser >> Result.ok_or_failwith
   let alpha = parse_parser_exn Examples.satisfy_is_alpha
   let digit = parse_parser_exn Examples.satisfy_is_digit
   let name = parse_parser_exn {|chars=alpha+ -> {var (string_of_chars chars)}|}
