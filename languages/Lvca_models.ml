@@ -1,16 +1,16 @@
 open Lvca_syntax
-module Maybe_model = [%lvca.abstract_syntax_module "maybe a := Nothing() | Just(a)"]
-module List_model = [%lvca.abstract_syntax_module "list a := Nil() | Cons(a; list a)"]
+module Option_model = Lvca_core.Option_model
+module List_model = Lvca_core.List_model
 module Either_model = [%lvca.abstract_syntax_module "either a b := Left(a) | Right(b)"]
 
 module Primitive_model =
 [%lvca.abstract_syntax_module
 {|
-integer : *
-int32 : *
-string : *
-float : *
-char : *
+integer : *  // module Primitive.Integer
+int32 : *  // module Primitive.Int32
+string : *  // module Primitive.String
+float : *  // module Primitive.Float
+char : *  // module Primitive.Char
 
 primitive :=
   | Integer(integer)
@@ -23,9 +23,9 @@ primitive :=
 module Nonbinding_model =
 [%lvca.abstract_syntax_module
 {|
-string : *
-primitive : *
-list : * -> *
+string : *  // module Primitive.String
+primitive : *  // module Primitive.All
+list : * -> *  // module List_model.List
 
 term :=
   | Operator(string; list term)
@@ -35,12 +35,9 @@ term :=
 module Pattern_model =
 [%lvca.abstract_syntax_module
 {|
-string : *
-primitive : *
-
-list a :=
-  | Nil()
-  | Cons(a; list a)
+string : *  // module Primitive.String
+primitive : *  // module Primitive.All
+list : * -> *  // module List_model.List
 
 pattern :=
   | Operator(string; list pattern)
@@ -52,10 +49,10 @@ pattern :=
 module Nominal_model =
 [%lvca.abstract_syntax_module
 {|
-string : *
-primitive : *
-pattern : *
-list : * -> *
+list : * -> *  // module List_model.List
+pattern : *  // module Pattern_model.Pattern
+primitive : *  // module Primitive.All
+string : *  // module Primitive.String
 
 term :=
   | Operator(string; list scope)
@@ -69,11 +66,11 @@ scope := Scope(list pattern; term)
 module DeBruijn_model =
 [%lvca.abstract_syntax_module
 {|
-int32 : *
-string : *
-primitive : *
-list : * -> *
-either : * -> * -> *
+either : * -> * -> *  // module Either_model.Either
+int32 : *  // module Primitive.Int32
+list : * -> *  // module List_model.List
+primitive : *  // module Primitive.All
+string : *  // module Primitive.String
 
 term :=
   | BoundVar(int32)
@@ -87,11 +84,11 @@ scope := Scope(string; term)
 module DeBruijn_2d_model =
 [%lvca.abstract_syntax_module
 {|
-int32 : *
-string : *
-primitive : *
-pattern : *
-list : * -> *
+int32 : *  // module Primitive.Int32
+list : * -> *  // module List_model.List
+pattern : *  // module Pattern_model.Pattern
+primitive : *  // module Primitive.All
+string : *  // module Primitive.String
 
 term :=
   | Operator(string; list scope)
@@ -100,33 +97,6 @@ term :=
   | Primitive(primitive)
 
 scope := Scope(list pattern; term)
-|}]
-
-module Core_model =
-[%lvca.abstract_syntax_module
-{|
-nominal_term : *
-string : *
-binding_aware_pattern : *
-is_rec : *
-list : * -> *
-option : * -> *
-sort : *
-
-type :=
-  | Arrow(list type)
-  | Sort(sort)
-
-term :=
-  | Term(nominal_term)
-  | Core_app(term; list term)
-  | Case(term; list case_scope)
-  | Lambda(type; scope)
-  | Let(is_rec; term; option type; scope)
-
-scope := Scope(string; term)
-
-case_scope := Case_scope(binding_aware_pattern; term)
 |}]
 
 module Properties (Lang : Nominal.Convertible.S) = struct
