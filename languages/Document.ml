@@ -1,7 +1,6 @@
 open Base
 open Lvca_syntax
 open Omd
-open Stdio
 module Option_model = Lvca_core.Option_model.Option
 module List_model = Lvca_core.List_model.List
 
@@ -119,31 +118,21 @@ module Of_omd = struct
   let document : Omd.doc -> Lang.Plain.doc = fun blocks -> Doc (list block blocks)
 end
 
-exception TranslationError of string
-
-let term_of_doc : Omd.doc -> unit Nonbinding.term =
- fun omd ->
-  let nom = omd |> Of_omd.document |> Lang.Doc.of_plain |> Lang.Doc.to_nominal in
-  match Nonbinding.of_nominal nom with
-  | Ok tm -> tm
-  | Error _tm ->
-    raise
-      (TranslationError
-         (Fmt.str "Unable to translate %a to nonbinding" Nominal.Term.pp nom))
+let to_nonbinding
+    :  'info Lang.Doc.t
+    -> ('info Nonbinding.term, 'info Nonbinding.nominal_conversion_error) Result.t
+  =
+ fun doc -> doc |> Lang.Doc.to_nominal |> Nonbinding.of_nominal
 ;;
 
-let parse : string -> (unit Nonbinding.term, string) Result.t =
- fun str ->
-  try Ok (str |> Omd.of_string |> term_of_doc) with TranslationError msg -> Error msg
-;;
+let term_of_doc : Omd.doc -> unit Lang.Doc.t = Of_omd.document >> Lang.Doc.of_plain
+let parse : string -> unit Lang.Doc.t = Omd.of_string >> term_of_doc
 
 let%test_module "markdown" =
   (module struct
-    let print_parse str =
-      match parse str with
-      | Ok tm -> Fmt.pr "%a" Nonbinding.pp tm
-      | Error msg -> print_string msg
-    ;;
+    module Doc = Nominal.Convertible.Extend (Lang.Doc)
+
+    let print_parse str = Fmt.pr "%a" Doc.pp (parse str)
 
     let%expect_test _ =
       print_parse
