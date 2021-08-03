@@ -22,6 +22,8 @@ let rec fixup_ordered xs =
     else x :: fixup_ordered (x' :: xs)
 ;;
 
+let empty = []
+
 let of_list lst =
   lst
   |> List.sort ~compare:(fun r1 r2 -> compare r1.Range.start r2.Range.start)

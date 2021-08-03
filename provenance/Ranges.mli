@@ -9,6 +9,7 @@ type Stdlib.Format.stag += Stag of t
 val invariants : t -> bool
 
 val of_opt_range : Opt_range.t -> t
+val empty : t
 
 (** Convert from a (possibly unordered and overlapping) list of ranges. *)
 val of_list : Range.t list -> t
