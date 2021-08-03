@@ -17,12 +17,11 @@ module Model = struct
     | Ast_operations_page
     | List_nat_page
     | Pcf_page
-
-  (* | TermToDocument *)
+    | Term_and_document_page
 
   type t = { page : page }
 
-  let initial_model = { page = Pcf_page }
+  let initial_model = { page = Term_and_document_page }
 
   let all_pages =
     [ Term_and_concrete_page
@@ -36,6 +35,7 @@ module Model = struct
     ; Ast_operations_page
     ; List_nat_page
     ; Pcf_page
+    ; Term_and_document_page
     ]
   ;;
 end
@@ -55,6 +55,7 @@ module View = struct
     | Ast_operations_page -> "0x: operations on ASTs"
     | List_nat_page -> "0x: List_nat"
     | Pcf_page -> "0x: PCF"
+    | Term_and_document_page -> "0x: Term and document"
   ;;
 
   let stateless_view = function
@@ -69,6 +70,7 @@ module View = struct
     | Ast_operations_page -> Ast_operations.stateless_view
     | List_nat_page -> List_nat.stateless_view
     | Pcf_page -> Pcf.stateless_view
+    | Term_and_document_page -> Term_and_document.stateless_view
   ;;
 
   let view model_s =

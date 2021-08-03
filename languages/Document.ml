@@ -41,7 +41,7 @@ inline :=
   | Image(list attribute; link)
   | Html(list attribute; string)
 
-def_elt := DefElt(inline; list inline)
+def_elt := Def_elt(inline; list inline)
 
 block :=
   | Paragraph(list attribute; inline)
@@ -99,7 +99,7 @@ module Of_omd = struct
  ;;
 
   let def_elt : Omd.attributes Omd.def_elt -> Lang.Plain.def_elt =
-   fun { term; defs } -> DefElt (inline term, list inline defs)
+   fun { term; defs } -> Def_elt (inline term, list inline defs)
  ;;
 
   let rec block : Omd.attributes Omd.block -> Lang.Plain.block = function
