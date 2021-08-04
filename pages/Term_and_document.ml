@@ -2,7 +2,8 @@ open Base
 open Brr
 open Note
 open Lvca_syntax
-open Lvca_languages.Document.Lang
+module Document = Lvca_languages.Document
+open Document.Lang
 module List_model = Lvca_core.List_model
 module Option_model = Lvca_core.Option_model
 
@@ -38,32 +39,46 @@ module Brr = struct
     Brr.El.a ~at (of_inline label)
 
   and of_inline : _ Inline.t -> Brr.El.t list =
+   fun inline ->
     Brr.El.(
-      function
+      let at = mk_attrs (Document.Attrs.inline inline) in
+      match inline with
       | Concat (_, _, inlines) ->
         inlines |> List_model.out |> List.map ~f:of_inline |> List.concat
       | Text (_, _, (_, str)) -> [ txt' str ]
-      | Emph (_, _, content) -> of_inline content
-      | Strong (_, _, content) -> of_inline content
-      | Code (_, _, (_, content)) -> [ code [ txt' content ] ]
-      | Hard_break _ -> [ br () ]
+      | Emph (_, _, content) -> [ em ~at (of_inline content) ]
+      | Strong (_, _, content) -> [ strong ~at (of_inline content) ]
+      | Code (_, _, (_, content)) -> [ code ~at [ txt' content ] ]
+      | Hard_break _ -> [ br ~at () ]
       | Soft_break _ -> []
       | Link (_, attrs, LinkDef (_, label, (_, dest), title)) ->
         [ mk_link label dest title attrs ]
       | Image (_, attrs, LinkDef (_, label, (_, dest), title)) ->
         [ mk_img label dest title attrs ]
       | Html _ -> [ txt' "raw html not supported" ])
-  ;;
+ ;;
 
   let rec of_block : _ Block.t -> Brr.El.t =
+   fun block ->
     Brr.El.(
-      function
-      | Paragraph (_, _, inline) -> p (of_inline inline)
+      let at = mk_attrs (Document.Attrs.block block) in
+      match block with
+      | Paragraph (_, _, inline) -> p ~at (of_inline inline)
       | List (_, _, list_ty, _, blocks) ->
-        let f = match list_ty with Ordered _ -> ol | Bullet _ -> ul in
+        let f, bullet_char =
+          match list_ty with
+          | Ordered (_, _, (_, c)) -> ol, c
+          | Bullet (_, (_, c)) -> ul, c
+        in
         let blocks = blocks |> List_model.out |> List.map ~f:List_model.out in
         let blocks = blocks |> List.concat_map ~f:(List.map ~f:of_block) in
-        f blocks
+        let elem = f ~at blocks in
+        set_inline_style
+          ~important:true
+          (Jstr.v "list-style-type")
+          (Jstr.v (Printf.sprintf "%C" bullet_char))
+          elem;
+        elem
       | Definition_list (_, _, def_elts) ->
         let def_elts =
           def_elts
@@ -72,23 +87,24 @@ module Brr = struct
                  let body = body |> List_model.out |> List.concat_map ~f:of_inline in
                  dt (of_inline label) :: body)
         in
-        dl def_elts
+        dl ~at def_elts
       | Blockquote (_, _, blocks) ->
-        blocks |> List_model.out |> List.map ~f:of_block |> blockquote
-      | Thematic_break (_, _) -> hr ()
+        blocks |> List_model.out |> List.map ~f:of_block |> blockquote ~at
+      | Thematic_break (_, _) -> hr ~at ()
       | Heading (_, _, (_, level), inline) ->
-        let inline = of_inline inline in
-        (match Int32.to_int_exn level with
-        | 1 -> h1 inline
-        | 2 -> h2 inline
-        | 3 -> h3 inline
-        | 4 -> h4 inline
-        | 5 -> h5 inline
-        | 6 -> h6 inline
-        | _ -> failwith "TODO (bad heading number)")
-      | Code_block (_, _, _, (_, str)) -> code [ txt' str ]
+        let f =
+          match Int32.to_int_exn level with
+          | 1 -> h1
+          | 2 -> h2
+          | 3 -> h3
+          | 4 -> h4
+          | 5 -> h5
+          | _ -> h6
+        in
+        f ~at (of_inline inline)
+      | Code_block (_, _, _, (_, str)) -> pre ~at [ code [ txt' str ] ]
       | Html_block (_, _, _) -> failwith "TODO (html block)")
-  ;;
+ ;;
 
   let of_doc : _ Doc.t -> Brr.El.t = function
     | Doc (_, blocks) -> blocks |> List_model.out |> List.map ~f:of_block |> Brr.El.div
@@ -102,8 +118,7 @@ module Model = struct
     }
 
   let input =
-    {|
-# document
+    {|# document
 
 paragraph
 

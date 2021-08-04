@@ -56,6 +56,34 @@ block :=
 doc := Doc(list block)
 |}]
 
+module Attrs = struct
+  let inline = function
+    | Lang.Inline.Concat (_, attrs, _)
+    | Text (_, attrs, _)
+    | Emph (_, attrs, _)
+    | Strong (_, attrs, _)
+    | Code (_, attrs, _)
+    | Hard_break (_, attrs)
+    | Soft_break (_, attrs)
+    | Link (_, attrs, _)
+    | Image (_, attrs, _)
+    | Html (_, attrs, _) ->
+      attrs
+  ;;
+
+  let block = function
+    | Lang.Block.Paragraph (_, attrs, _)
+    | List (_, attrs, _, _, _)
+    | Blockquote (_, attrs, _)
+    | Thematic_break (_, attrs)
+    | Heading (_, attrs, _, _)
+    | Code_block (_, attrs, _, _)
+    | Html_block (_, attrs, _)
+    | Definition_list (_, attrs, _) ->
+      attrs
+  ;;
+end
+
 module Of_omd = struct
   let attribute : string * string -> Lang.Plain.attribute = fun (x, y) -> Attribute (x, y)
 
