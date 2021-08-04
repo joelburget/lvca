@@ -74,13 +74,12 @@ module View = struct
   ;;
 
   let view model_s =
-    let div, h2 = El.(div, h2) in
+    let div, h2, txt' = El.(div, h2, txt') in
     let page_selector =
-      Ui.Value_selector.Button.v
-        ~dir:`V
-        (fun page -> S.const [ page |> page_description |> txt ])
+      Ui.Value_selector.Menu.v
+        Lvca_util.(page_description >> Jstr.v)
         (S.const Model.all_pages)
-        (S.const None)
+        (S.map (fun model -> model.Model.page) model_s)
     in
     let page_view =
       mk_reactive div (model_s |> S.map (fun { page } -> [ stateless_view page () ]))
@@ -91,11 +90,14 @@ module View = struct
           [ div ~at:[ class' "col-span-1" ] []
           ; div
               ~at:[ class' "col-span-7" ]
-              [ h2 [ txt "LVCA demos" ]; Ui.Group.el page_selector; page_view ]
+              [ h2 [ txt' "LVCA demos" ]
+              ; Ui.Value_selector.Menu.el page_selector
+              ; page_view
+              ]
           ]
       ]
     in
-    Ui.Group.action page_selector, elems
+    Ui.Value_selector.Menu.action page_selector, elems
   ;;
 end
 
