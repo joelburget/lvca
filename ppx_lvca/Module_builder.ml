@@ -1594,14 +1594,13 @@ module Individual_type_sig (Context : Builder_context) = struct
         sort_def
     in
     let manifest =
-      match info with
-      | With_info ->
-        let type_vars = List.map var_names ~f:ptyp_var in
-        Some
-          (ptyp_constr
-             { txt = unflatten [ "Wrapper"; "Types"; sort_name ]; loc }
-             type_vars)
-      | _ -> None
+      let type_vars = List.map var_names ~f:ptyp_var in
+      let module_names =
+        match info with
+        | With_info -> [ "Wrapper"; "Types"; sort_name ]
+        | Plain -> [ "Wrapper"; "Plain"; sort_name ]
+      in
+      Some (ptyp_constr { txt = unflatten module_names; loc } type_vars)
     in
     psig_type
       Recursive
