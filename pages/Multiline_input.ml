@@ -4,7 +4,8 @@ open Brr_note
 open Note
 open Prelude
 
-let mk ?(autofocus = true) ?(border = true) ?(rows = None) ?(cols = 60) input_s =
+let mk ?(autofocus = true) ?(border = true) ?(rows = None) ?(cols = 60) ?(at = []) input_s
+  =
   let input_dirty_s, update_input_dirty = S.create false in
   let needed_rows =
     match rows with
@@ -73,7 +74,7 @@ let mk ?(autofocus = true) ?(border = true) ?(rows = None) ?(cols = 60) input_s 
   let input_event = E.select [ keydown_evt; select_evt; unselect_evt ] in
   let result =
     El.div
-      ~at:[ class' "flex"; class' "flex-col" ]
+      ~at:([ class' "flex"; class' "flex-col" ] @ at)
       [ input; mk_reactive El.span ~at:[ class' "my-2" ] input_dirty_elem ]
   in
   result, input_event

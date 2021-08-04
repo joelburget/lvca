@@ -181,9 +181,13 @@ module Controller = struct
 end
 
 module View = struct
+  open Prelude
+
+  let div = El.div
+
   let view model_s =
     let input_s = S.map ~eq:String.( = ) (fun Model.{ input; _ } -> input) model_s in
-    let input_elem, input_evt = Multiline_input.mk input_s in
+    let input_elem, input_evt = Multiline_input.mk ~at:[ class' "m-4" ] input_s in
     let enter_input_e =
       input_evt
       |> E.filter_map (function
@@ -193,7 +197,11 @@ module View = struct
     let output_view =
       model_s |> S.map ~eq:phys_equal (fun model -> Brr.of_doc model.Model.result)
     in
-    let elem = El.(div [ input_elem; Prelude.mk_reactive' div output_view ]) in
+    let elem =
+      div
+        ~at:(classes "flex flex-row")
+        [ input_elem; mk_reactive' ~at:[ class' "m-4" ] div output_view ]
+    in
     enter_input_e, elem
   ;;
 end
