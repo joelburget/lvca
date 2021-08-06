@@ -3,9 +3,43 @@ open Lvca_syntax
 open Lvca_provenance
 open Stdio
 
-type term = Opt_range.t Nonbinding.term
+module Lang =
+[%lvca.abstract_syntax_module
+{|
+integer : *  // module Primitive.Integer
+float : *  // module Primitive.Float
 
-let binary_operators = [ "add"; "sub"; "mul"; "div"; "max"; "min" ]
+either a b := Left(a) | Right(b)
+
+expr :=
+  | Add(expr; expr)
+  | Sub(expr; expr)
+  | Mul(expr; expr)
+  | Div(expr; expr)
+  | Max(expr; expr)
+  | Min(expr; expr)
+
+  | Negate(expr)
+  | Sqrt(expr)
+  | Abs(expr)
+  | Exp(expr)
+  | Ln(expr)
+  | Sin(expr)
+  | Cos(expr)
+  | Tan(expr)
+  | Asin(expr)
+  | Acos(expr)
+  | Atan(expr)
+
+  | Pi()
+  | E()
+
+  | Lit(either integer float)
+|}]
+
+open Lang
+
+type term = Opt_range.t Expr.t
 
 let unary_operators =
   [ "negate"; "sqrt"; "abs"; "exp"; "ln"; "sin"; "cos"; "tan"; "asin"; "acos"; "atan" ]
@@ -16,23 +50,57 @@ let constants = [ "pi"; "e" ]
 module Parse = struct
   open Lvca_parsing
 
-  let lit : Opt_range.t Nonbinding.term Lvca_parsing.t =
+  let lit : term Lvca_parsing.t =
     (* TODO: this fails on too-large float lits *)
     Ws.integer_or_float_lit
     >>~ fun range lit ->
     let lit =
       match lit with
-      | Either.First str -> Primitive_impl.All_plain.Integer (Z.of_string str)
-      | Second f -> Float f
+      | Base.Either.First str -> Either.Left (range, (range, Z.of_string str))
+      | Second f -> Right (range, (range, f))
     in
-    Nonbinding.Operator (range, "lit", [ Primitive (range, lit) ])
+    Expr.Lit (range, lit)
+  ;;
+
+  let mk_const range name =
+    match name with
+    | "pi" -> Expr.Pi range
+    | "e" -> E range
+    | _ -> Lvca_util.invariant_violation ~here:[%here] "Unexpected constant"
+  ;;
+
+  let mk_binary range name x y =
+    match name with
+    | "add" -> Expr.Add (range, x, y)
+    | "sub" -> Sub (range, x, y)
+    | "mul" -> Mul (range, x, y)
+    | "div" -> Div (range, x, y)
+    | "max" -> Max (range, x, y)
+    | "min" -> Min (range, x, y)
+    | _ -> Lvca_util.invariant_violation ~here:[%here] "Unexpected binary operator"
+  ;;
+
+  let mk_unary range name x =
+    match name with
+    | "negate" -> Expr.Negate (range, x)
+    | "sqrt" -> Sqrt (range, x)
+    | "abs" -> Abs (range, x)
+    | "exp" -> Exp (range, x)
+    | "ln" -> Ln (range, x)
+    | "sin" -> Sin (range, x)
+    | "cos" -> Cos (range, x)
+    | "tan" -> Tan (range, x)
+    | "asin" -> Asin (range, x)
+    | "acos" -> Acos (range, x)
+    | "atan" -> Atan (range, x)
+    | _ -> Lvca_util.invariant_violation ~here:[%here] "Unexpected unary operator"
   ;;
 
   let const =
     constants
     |> List.map ~f:Ws.string
     |> choice ~failure_msg:"looking for a constant name"
-    >>~ fun range name -> Nonbinding.Operator (range, name, [])
+    >>~ mk_const
   ;;
 
   (* Precedence:
@@ -52,11 +120,11 @@ module Parse = struct
           unary_operators
           |> List.map ~f:(fun name ->
                  Ws.string name
-                 >>== fun { value = name; range = p1; _ } ->
+                 >>== fun { value = name; range = p1 } ->
                  atom
                  >>| fun body ->
-                 let pos = Opt_range.union p1 (Nonbinding.info body) in
-                 Nonbinding.Operator (pos, name, [ body ]))
+                 let pos = Opt_range.union p1 (Expr.info body) in
+                 mk_unary pos name body)
           |> choice ~failure_msg:"looking for a unary operator expression"
         in
         let application =
@@ -64,11 +132,11 @@ module Parse = struct
             choice
               [ Ws.string "min"; Ws.string "max" ]
               ~failure_msg:"looking for min or max"
-            >>== fun { value = name; range = p1; _ } ->
+            >>== fun { value = name; range = p1 } ->
             lift2
               (fun atom1 atom2 ->
-                let pos = Opt_range.union p1 (Nonbinding.info atom2) in
-                Nonbinding.Operator (pos, name, [ atom1; atom2 ]))
+                let pos = Opt_range.union p1 (Expr.info atom2) in
+                mk_binary pos name atom1 atom2)
               atom
               atom
           in
@@ -78,10 +146,10 @@ module Parse = struct
         let mul_div : term Lvca_parsing.t =
           let op = Ws.char '*' <|> Ws.char '/' in
           let f l (op, r) =
-            let rng = Opt_range.union (Nonbinding.info l) (Nonbinding.info r) in
+            let rng = Opt_range.union (Expr.info l) (Expr.info r) in
             match op with
-            | '*' -> Nonbinding.Operator (rng, "mul", [ l; r ])
-            | '/' -> Nonbinding.Operator (rng, "div", [ l; r ])
+            | '*' -> Expr.Mul (rng, l, r)
+            | '/' -> Div (rng, l, r)
             | _ -> failwith "error: impossible operator"
           in
           application >>= fun init -> many (pair op application) >>| List.fold ~init ~f
@@ -89,10 +157,10 @@ module Parse = struct
         let add_sub : term Lvca_parsing.t =
           let op = Ws.char '+' <|> Ws.char '-' in
           let f l (op, r) =
-            let rng = Opt_range.union (Nonbinding.info l) (Nonbinding.info r) in
+            let rng = Opt_range.union (Expr.info l) (Expr.info r) in
             match op with
-            | '+' -> Nonbinding.Operator (rng, "add", [ l; r ])
-            | '-' -> Nonbinding.Operator (rng, "sub", [ l; r ])
+            | '+' -> Expr.Add (rng, l, r)
+            | '-' -> Sub (rng, l, r)
             | _ -> failwith "error: impossible operator"
           in
           mul_div >>= fun init -> many (pair op mul_div) >>| List.fold ~init ~f
@@ -102,81 +170,64 @@ module Parse = struct
   ;;
 end
 
-let rec interpret : term -> (Constructive_real.t, term * string) Result.t =
+let rec interpret : term -> Constructive_real.t =
  fun tm ->
-  let open Result.Let_syntax in
   match tm with
-  | Operator (_, "lit", [ Primitive (_, Integer i) ]) ->
-    Ok (Constructive_real.of_bigint i)
-  | Operator (_, "lit", [ Primitive (_, Float f) ]) -> Ok (Constructive_real.of_float f)
-  | Operator (_, name, []) when List.mem constants name ~equal:String.equal ->
+  | Lit (_, Left (_, (_, i))) -> Constructive_real.of_bigint i
+  | Lit (_, Right (_, (_, f))) -> Constructive_real.of_float f
+  | E _ -> Constructive_real.e
+  | Pi _ -> Constructive_real.pi
+  | Add (_, l, r)
+  | Sub (_, l, r)
+  | Mul (_, l, r)
+  | Div (_, l, r)
+  | Min (_, l, r)
+  | Max (_, l, r) ->
+    let l = interpret l in
+    let r = interpret r in
     Constructive_real.(
-      (match name with
-      | "e" -> Ok e
-      | "pi" -> Ok pi
-      | _ -> Error (tm, "expected e or pi")))
-  | Operator (_, name, [ l; r ]) when List.mem binary_operators name ~equal:String.equal
-    ->
-    let%bind l' = interpret l in
-    let%bind r' = interpret r in
+      (match tm with
+      | Add _ -> l + r
+      | Sub _ -> l - r
+      | Mul _ -> l * r
+      | Div _ -> l / r
+      | Min _ -> min l r
+      | Max _ -> max l r
+      | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected term"))
+  | Negate (_, x)
+  | Sqrt (_, x)
+  | Abs (_, x)
+  | Exp (_, x)
+  | Ln (_, x)
+  | Sin (_, x)
+  | Cos (_, x)
+  | Tan (_, x)
+  | Asin (_, x)
+  | Acos (_, x)
+  | Atan (_, x) ->
+    let x = interpret x in
     Constructive_real.(
-      (match name with
-      | "add" -> Ok (l' + r')
-      | "sub" -> Ok (l' - r')
-      | "mul" -> Ok (l' * r')
-      | "div" -> Ok (l' / r')
-      | "max" -> Ok (max l' r')
-      | "min" -> Ok (min l' r')
-      | _ -> Error (tm, "expected a binary operator")))
-  | Operator (_, name, [ x ]) when List.mem unary_operators name ~equal:String.equal ->
-    let%bind x' = interpret x in
-    Constructive_real.(
-      (match name with
-      | "negate" -> Ok (negate x')
-      | "sqrt" -> Ok (sqrt x')
-      | "abs" -> Ok (abs x')
-      | "exp" -> Ok (exp x')
-      | "ln" -> Ok (ln x')
-      | "sin" -> Ok (sin x')
-      | "cos" -> Ok (cos x')
-      | "tan" -> Ok (tan x')
-      | "asin" -> Ok (asin x')
-      | "acos" -> Ok (acos x')
-      | "atan" -> Ok (atan x')
-      | _ -> Error (tm, "expected a unary operator")))
-  | _ -> Error (tm, "unexpected term")
+      (match tm with
+      | Negate _ -> negate x
+      | Sqrt _ -> sqrt x
+      | Abs _ -> abs x
+      | Exp _ -> exp x
+      | Ln _ -> ln x
+      | Sin _ -> sin x
+      | Cos _ -> cos x
+      | Tan _ -> tan x
+      | Asin _ -> asin x
+      | Acos _ -> acos x
+      | Atan _ -> atan x
+      | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected term"))
 ;;
-
-(* let%test_module "Parsing" = (module struct module ParseCore = Lvca_core.Core.Parse
-   (Lvca_parsing.CComment) module ParseParser = Parser.Parse (Lvca_parsing.CComment)
-
-   let parse_print : string -> unit = fun parser_str -> match Lvca_parsing.parse_string
-   (ParseParser.whitespace_t ParseCore.term) parser_str with | Error msg ->
-   print_endline ("failed to parse parser desc: " ^ msg) | Ok parser -> Fmt.pr "%a\n"
-   Parser.pp parser ;;
-
-   let parser_str = {| let constants = "e" | "pi" in let unary_operators = return {list(
-   "negate"; "sqrt"; "abs"; "exp"; "ln"; "sin"; "cos"; "tan"; "asin"; "acos"; "atan"; )}
-   in
-
-   let binary_operators = return {list("add"; "sub"; "mul"; "div"; "max"; "min")} in //
-   let integer_or_float_lit = fix (t -> let atom = constants | sequence (_. t. _. t) ['(',
-   t, ')'] in // let unary_op = unquote { // } in // let application = atom | unary_op |
-   min_max in // let mul_div = ... in // let add_sub = ... in // add_sub atom ) |} ;;
-
-   let%expect_test _ = parse_print parser_str; [%expect]
-
-   end) ;; *)
 
 let%test_module "Evaluation" =
   (module struct
     let go str =
       match Lvca_parsing.parse_string Parse.t str with
       | Error msg -> print_endline msg
-      | Ok tm ->
-        (match interpret tm with
-        | Error (_tm, msg) -> print_endline msg
-        | Ok real -> print_endline @@ Constructive_real.eval_to_string real)
+      | Ok tm -> tm |> interpret |> Constructive_real.eval_to_string |> print_endline
     ;;
 
     let%expect_test _ =
