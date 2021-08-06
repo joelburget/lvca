@@ -1080,6 +1080,8 @@ let parse_parser = Lvca_parsing.parse_string (Parse.t parse_core)
 
 let%test_module "Parsing" =
   (module struct
+    let () = Stdlib.Format.(pp_set_margin std_formatter 80)
+
     let parse_print : string -> string -> unit =
      fun parser_str str ->
       match parse_parser parser_str with
