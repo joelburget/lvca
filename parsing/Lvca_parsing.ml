@@ -346,7 +346,8 @@ let ( <*> ) f_p a_p =
   { value = f a; range = Opt_range.union range1 range2 }
 ;;
 
-let ( >>| ) p f = p >>| fun result -> { result with value = f result.value }
+let ( >>| ) p f = p >>| fun { range; value } -> { range; value = f value }
+let ( >>~ ) p f = p >>|| fun { range; value } -> { range; value = f range value }
 
 let ( >>= ) p f =
   p

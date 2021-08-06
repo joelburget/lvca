@@ -58,12 +58,8 @@ module Parse = struct
 
   let lit : Opt_range.t Nonbinding.term Lvca_parsing.t =
     Ws.integer_lit
-    >>|| fun { value = str; range } ->
-    let tm =
-      Nonbinding.(
-        Operator (range, "lit", [ Primitive (range, Integer (Z.of_string str)) ]))
-    in
-    { value = tm; range }
+    >>~ fun range str ->
+    Nonbinding.(Operator (range, "lit", [ Primitive (range, Integer (Z.of_string str)) ]))
   ;;
 
   let t : Opt_range.t Nonbinding.term Lvca_parsing.t =

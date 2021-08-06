@@ -3,7 +3,7 @@ open Lvca_provenance
 module Parse_result : sig
   type 'a t =
     { value : 'a
-    ; range : Lvca_provenance.Opt_range.t
+    ; range : Opt_range.t
     }
 
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
@@ -15,6 +15,7 @@ type +'a t = 'a Parse_result.t Angstrom.t
 val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
 val ( >>== ) : 'a t -> ('a Parse_result.t -> 'b t) -> 'b t
 val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
+val ( >>~ ) : 'a t -> (Opt_range.t -> 'a -> 'b) -> 'b t
 val ( >>|| ) : 'a t -> ('a Parse_result.t -> 'b Parse_result.t) -> 'b t
 val ( <$> ) : ('a -> 'b) -> 'a t -> 'b t
 val ( <*> ) : ('a -> 'b) t -> 'a t -> 'b t

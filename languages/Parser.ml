@@ -942,8 +942,6 @@ module Parse = struct
     | tokens -> sequence ~tokens:(Queue.of_list tokens)
   ;;
 
-  let go f Parse_result.{ value; range } = Parse_result.{ value = f value range; range }
-
   let t : Opt_range.t Lvca_core.Term.t Lvca_parsing.t -> term Lvca_parsing.t =
    fun c_term ->
     let arrow = Ws.string "->" in
@@ -952,27 +950,26 @@ module Parse = struct
         let token =
           fix (fun token ->
               choice
-                [ Ws.char_lit >>|| go (fun c range -> Atom (CharAtom c, range))
-                ; Ws.integer_lit
-                  >>|| go (fun i range -> Atom (IntAtom (Int.of_string i), range))
-                ; Ws.string_lit >>|| go (fun str range -> Atom (StrAtom str, range))
-                ; Ws.char '.' >>|| go (fun _ range -> Atom (Dot, range))
-                ; operator >>|| go (fun op range -> Operator (op, range))
-                ; keyword >>|| go (fun kw range -> Keyword (kw, range))
+                [ (Ws.char_lit >>~ fun range c -> Atom (CharAtom c, range))
+                ; (Ws.integer_lit
+                  >>~ fun range i -> Atom (IntAtom (Int.of_string i), range))
+                ; (Ws.string_lit >>~ fun range str -> Atom (StrAtom str, range))
+                ; (Ws.char '.' >>~ fun range _ -> Atom (Dot, range))
+                ; (operator >>~ fun range op -> Operator (op, range))
+                ; (keyword >>~ fun range kw -> Keyword (kw, range))
                 ; (Ws.string "fail"
                   >>== fun { range = p1; _ } ->
                   choice
-                    [ Ws.braces c_term
-                      >>|| go (fun tm p2 ->
-                               let range = Opt_range.union p1 p2 in
-                               FailTok (tm, range))
-                    ; Ws.string_lit
-                      >>|| go (fun str p2 ->
-                               let range = Opt_range.union p1 p2 in
-                               FailTok
-                                 ( Lvca_core.Lang.Term.Term
-                                     (range, Primitive (p2, String str))
-                                 , range ))
+                    [ (Ws.braces c_term
+                      >>~ fun p2 tm ->
+                      let range = Opt_range.union p1 p2 in
+                      FailTok (tm, range))
+                    ; (Ws.string_lit
+                      >>~ fun p2 str ->
+                      let range = Opt_range.union p1 p2 in
+                      FailTok
+                        ( Lvca_core.Lang.Term.Term (range, Primitive (p2, String str))
+                        , range ))
                     ])
                 ; (Ws.string "satisfy"
                   >>== fun { range = sat_pos; _ } ->
@@ -987,9 +984,9 @@ module Parse = struct
                 ; (Ws.string "choice"
                   >>== fun { range = choice_pos; _ } ->
                   Ws.parens (many token)
-                  >>|| go (fun toks toks_pos ->
-                           let range = Opt_range.union choice_pos toks_pos in
-                           ChoiceTok (toks, range)))
+                  >>~ fun toks_pos toks ->
+                  let range = Opt_range.union choice_pos toks_pos in
+                  ChoiceTok (toks, range))
                 ; (Ws.string "fix"
                   >>== fun { range = fix_pos; _ } ->
                   Ws.parens
@@ -1003,9 +1000,9 @@ module Parse = struct
                        Ws.identifier
                        arrow
                        (many1 token)))
-                ; Ws.identifier >>|| go (fun ident range -> Ident (ident, range))
-                ; Ws.braces c_term >>|| go (fun tm range -> Core (tm, range))
-                ; Ws.parens parser >>|| go (fun p range -> Parenthesized (p, range))
+                ; (Ws.identifier >>~ fun range ident -> Ident (ident, range))
+                ; (Ws.braces c_term >>~ fun range tm -> Core (tm, range))
+                ; (Ws.parens parser >>~ fun range p -> Parenthesized (p, range))
                 ])
           <?> "token"
         in

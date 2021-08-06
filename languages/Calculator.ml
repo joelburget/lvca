@@ -19,22 +19,20 @@ module Parse = struct
   let lit : Opt_range.t Nonbinding.term Lvca_parsing.t =
     (* TODO: this fails on too-large float lits *)
     Ws.integer_or_float_lit
-    >>|| fun { value = lit; range } ->
+    >>~ fun range lit ->
     let lit =
       match lit with
-      | Either.First str -> range, Primitive_impl.All_plain.Integer (Z.of_string str)
-      | Either.Second f -> range, Float f
+      | Either.First str -> Primitive_impl.All_plain.Integer (Z.of_string str)
+      | Second f -> Float f
     in
-    let tm = Nonbinding.Operator (range, "lit", [ Primitive lit ]) in
-    { value = tm; range }
+    Nonbinding.Operator (range, "lit", [ Primitive (range, lit) ])
   ;;
 
   let const =
     constants
     |> List.map ~f:Ws.string
     |> choice ~failure_msg:"looking for a constant name"
-    >>|| fun { value = name; range } ->
-    { value = Nonbinding.Operator (range, name, []); range }
+    >>~ fun range name -> Nonbinding.Operator (range, name, [])
   ;;
 
   (* Precedence:

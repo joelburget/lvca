@@ -38,13 +38,11 @@ module Parse = struct
   let info = Nominal.Term.info
 
   let t_var : Opt_range.t Nominal.Term.t Lvca_parsing.t =
-    Lvca_parsing.Ws.identifier
-    >>|| fun { range; value = name } -> { value = Nominal.Term.Var (range, name); range }
+    Lvca_parsing.Ws.identifier >>~ fun range name -> Nominal.Term.Var (range, name)
   ;;
 
   let p_var : Opt_range.t Pattern.t Lvca_parsing.t =
-    Lvca_parsing.Ws.identifier
-    >>|| fun { range; value = name } -> { value = Pattern.Var (range, name); range }
+    Lvca_parsing.Ws.identifier >>~ fun range name -> Pattern.Var (range, name)
   ;;
 
   (* Precedence 0: lam (right-associative) 1: app (left-associative) *)
