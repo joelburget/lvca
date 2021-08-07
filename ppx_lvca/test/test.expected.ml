@@ -134,9 +134,11 @@ module List_model :
         | Nil of 'info 
         | Cons of 'info * 'a * ('info, 'a) Wrapper.Types.list 
       module Plain :
-      sig type 'a t =
-            | Nil 
-            | Cons of 'a * 'a Wrapper.Plain.list  end
+      sig
+        type 'a t = 'a Wrapper.Plain.list =
+          | Nil 
+          | Cons of 'a * 'a Wrapper.Plain.list 
+      end
       val to_plain : ('a_ -> 'a__) -> (_, 'a_) t -> 'a__ Plain.t
       val of_plain : ('a_ -> 'a__) -> 'a_ Plain.t -> (unit, 'a__) t
       val to_nominal :
@@ -3335,7 +3337,7 @@ module type Is_rec_sig  =
         | No_rec of 'info 
       module Plain :
       sig
-        type t =
+        type t = Wrapper.Plain.is_rec =
           | Rec 
           | No_rec 
         val pp : t Fmt.t
@@ -3360,7 +3362,7 @@ module type Is_rec_sig  =
         | Arrow of 'info * 'info Wrapper.Types.ty * 'info Wrapper.Types.ty 
       module Plain :
       sig
-        type t =
+        type t = Wrapper.Plain.ty =
           | Sort of Lvca_syntax.Nominal.Term.Plain.t 
           | Arrow of Wrapper.Plain.ty * Wrapper.Plain.ty 
         val pp : t Fmt.t
@@ -3384,7 +3386,7 @@ module type Is_rec_sig  =
         | Mut_a of 'info * 'info Wrapper.Types.mut_b 
       module Plain :
       sig
-        type t =
+        type t = Wrapper.Plain.mut_a =
           | Mut_a of Wrapper.Plain.mut_b 
         val pp : t Fmt.t
         val (=) : t -> t -> bool
@@ -3407,7 +3409,7 @@ module type Is_rec_sig  =
         | Mut_b of 'info * 'info Wrapper.Types.mut_a 
       module Plain :
       sig
-        type t =
+        type t = Wrapper.Plain.mut_b =
           | Mut_b of Wrapper.Plain.mut_a 
         val pp : t Fmt.t
         val (=) : t -> t -> bool
@@ -3444,9 +3446,10 @@ module Option_model :
       type ('info, 'a) t = ('info, 'a) Wrapper.Types.option =
         | None of 'info 
         | Some of 'info * 'a 
-      module Plain : sig type 'a t =
-                           | None 
-                           | Some of 'a  end
+      module Plain :
+      sig type 'a t = 'a Wrapper.Plain.option =
+            | None 
+            | Some of 'a  end
       val to_plain : ('a_ -> 'a__) -> (_, 'a_) t -> 'a__ Plain.t
       val of_plain : ('a_ -> 'a__) -> 'a_ Plain.t -> (unit, 'a__) t
       val to_nominal :
