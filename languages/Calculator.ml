@@ -244,17 +244,18 @@ let rec interpret : term -> Constructive_real.t =
   | Div (_, l, r)
   | Min (_, l, r)
   | Max (_, l, r) ->
-    let l = interpret l in
-    let r = interpret r in
-    Constructive_real.(
-      (match tm with
-      | Add _ -> l + r
-      | Sub _ -> l - r
-      | Mul _ -> l * r
-      | Div _ -> l / r
-      | Min _ -> min l r
-      | Max _ -> max l r
-      | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected term"))
+    let f =
+      Constructive_real.(
+        match tm with
+        | Add _ -> ( + )
+        | Sub _ -> ( - )
+        | Mul _ -> ( * )
+        | Div _ -> ( / )
+        | Min _ -> min
+        | Max _ -> max
+        | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected term")
+    in
+    f (interpret l) (interpret r)
   | Negate (_, x)
   | Sqrt (_, x)
   | Abs (_, x)
@@ -266,21 +267,23 @@ let rec interpret : term -> Constructive_real.t =
   | Asin (_, x)
   | Acos (_, x)
   | Atan (_, x) ->
-    let x = interpret x in
-    Constructive_real.(
-      (match tm with
-      | Negate _ -> negate x
-      | Sqrt _ -> sqrt x
-      | Abs _ -> abs x
-      | Exp _ -> exp x
-      | Ln _ -> ln x
-      | Sin _ -> sin x
-      | Cos _ -> cos x
-      | Tan _ -> tan x
-      | Asin _ -> asin x
-      | Acos _ -> acos x
-      | Atan _ -> atan x
-      | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected term"))
+    let f =
+      Constructive_real.(
+        match tm with
+        | Negate _ -> negate
+        | Sqrt _ -> sqrt
+        | Abs _ -> abs
+        | Exp _ -> exp
+        | Ln _ -> ln
+        | Sin _ -> sin
+        | Cos _ -> cos
+        | Tan _ -> tan
+        | Asin _ -> asin
+        | Acos _ -> acos
+        | Atan _ -> atan
+        | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected term")
+    in
+    f (interpret x)
 ;;
 
 let%test_module "Evaluation" =
