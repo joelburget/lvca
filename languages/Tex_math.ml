@@ -111,8 +111,7 @@ let%test_module _ =
 
     let parse_print str =
       match Lvca_parsing.(parse_string parse) str with
-      | Ok tms ->
-        Fmt.pr "%a\n" Fmt.(list ~sep:(any "") pp) (List.map tms ~f:Lang.Tex.to_plain)
+      | Ok tms -> Fmt.pr "%a\n" Fmt.(list ~sep:nop pp) (List.map tms ~f:Lang.Tex.to_plain)
       | Error msg -> Fmt.pr "%s\n" msg
     ;;
 

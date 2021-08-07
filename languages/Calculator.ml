@@ -334,7 +334,7 @@ let%test_module "to_tex" =
         |> to_tex ~none:None
         |> List_model.to_list
         |> List.map ~f:Tex_math.Tex.to_plain
-        |> Fmt.pr "%a\n" Fmt.(list ~sep:(any "") Tex_math.pp)
+        |> Fmt.pr "%a\n" Fmt.(list ~sep:nop Tex_math.pp)
     ;;
 
     let%expect_test _ =
