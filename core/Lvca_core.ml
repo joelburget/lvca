@@ -28,12 +28,12 @@ end
 module Option_model = struct
   include [%lvca.abstract_syntax_module "option a := None() | Some(a)"]
 
-  let into ~empty_info = function
+  let of_option ~empty_info = function
     | None -> Option.None empty_info
     | Some a -> Some (empty_info, a)
   ;;
 
-  let out = function Option.None _ -> None | Some (_, a) -> Some a
+  let to_option = function Option.None _ -> None | Some (_, a) -> Some a
   let map ~f = function Option.None i -> Option.None i | Some (i, a) -> Some (i, f a)
 end
 

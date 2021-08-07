@@ -21,8 +21,8 @@ end
 module Option_model : sig
   include [%lvca.abstract_syntax_module_sig "option a := None() | Some(a)"]
 
-  val into : empty_info:'info -> 'a option -> ('info, 'a) Option.t
-  val out : (_, 'a) Option.t -> 'a option
+  val of_option : empty_info:'info -> 'a option -> ('info, 'a) Option.t
+  val to_option : (_, 'a) Option.t -> 'a option
   val map : f:('a -> 'b) -> ('info, 'a) Option.t -> ('info, 'b) Option.t
 end
 

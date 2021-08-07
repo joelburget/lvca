@@ -88,7 +88,7 @@ module Of_omd = struct
   let attribute : string * string -> Lang.Plain.attribute = fun (x, y) -> Attribute (x, y)
 
   let option : ('a -> 'b) -> 'a option -> 'b Option_model.Plain.t =
-   fun f -> Lvca_core.Option_model.(into ~empty_info:() >> Option.to_plain f)
+   fun f -> Lvca_core.Option_model.(of_option ~empty_info:() >> Option.to_plain f)
  ;;
 
   let list : ('a -> 'b) -> 'a list -> 'b List_model.Plain.t =
