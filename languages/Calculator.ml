@@ -2,6 +2,7 @@ open Base
 open Lvca_syntax
 open Lvca_provenance
 open Stdio
+module List_model = Lvca_core.List_model
 
 module Lang =
 [%lvca.abstract_syntax_module
@@ -38,6 +39,66 @@ expr :=
 |}]
 
 open Lang
+
+let rec to_tex ~none expr =
+  let open Tex_math.Tex in
+  let list = List_model.into in
+  let go x =
+    match to_tex ~none x with
+    | List_model.List.Cons (_, x, Nil _) -> x
+    | xs -> Grouped (none, xs)
+  in
+  match expr with
+  | Expr.Add (i, x, y) | Sub (i, x, y) | Mul (i, x, y) | Div (i, x, y) ->
+    let c =
+      match expr with
+      | Expr.Add _ -> '+'
+      | Sub _ -> '-'
+      | Mul _ -> '*'
+      | Div _ -> '/'
+      | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected constructor"
+    in
+    list ~empty_info:i [ go x; Token (i, (none, c)); go y ]
+  | Max (i, x, y) ->
+    list ~empty_info:i [ Control_seq (none, (none, "\\max")); go x; go y ]
+  | Min (i, x, y) ->
+    list ~empty_info:i [ Control_seq (none, (none, "\\min")); go x; go y ]
+  | Negate (i, x) -> list ~empty_info:i [ Literal (i, (none, "-")); go x ]
+  | Sqrt (i, x)
+  | Abs (i, x)
+  | Exp (i, x)
+  | Ln (i, x)
+  | Sin (i, x)
+  | Cos (i, x)
+  | Tan (i, x)
+  | Asin (i, x)
+  | Acos (i, x)
+  | Atan (i, x) ->
+    let control_seq =
+      match expr with
+      | Sqrt _ -> "\\sqrt"
+      | Abs _ -> "\\abs"
+      | Exp _ -> "\\exp"
+      | Ln _ -> "\\ln"
+      | Sin _ -> "\\sin"
+      | Cos _ -> "\\cos"
+      | Tan _ -> "\\tan"
+      | Asin _ -> "\\asin"
+      | Acos _ -> "\\acos"
+      | Atan _ -> "\\atan"
+      | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected constructor"
+    in
+    list ~empty_info:i [ Control_seq (none, (none, control_seq)); go x ]
+  | Pi i -> list ~empty_info:i [ Control_seq (i, (none, "\\pi")) ]
+  | E i -> list ~empty_info:i [ Token (i, (none, 'e')) ]
+  | Lit (i, lit) ->
+    let x =
+      match lit with
+      | Left (i, x) -> Literal (i, (i, Primitive.Integer.to_string x))
+      | Right (i, x) -> Literal (i, (i, Primitive.Float.to_string x))
+    in
+    list ~empty_info:i [ x ]
+;;
 
 type term = Opt_range.t Expr.t
 
@@ -255,6 +316,34 @@ let%test_module "Evaluation" =
       2.0000000000
       1.2000000000
       1.3555000000
+      |}]
+    ;;
+  end)
+;;
+
+let%test_module "to_tex" =
+  (module struct
+    let go str =
+      match Lvca_parsing.parse_string Parse.t str with
+      | Error msg -> print_endline msg
+      | Ok tm ->
+        tm
+        |> to_tex ~none:None
+        |> List_model.out
+        |> List.map ~f:Tex_math.Tex.to_plain
+        |> Fmt.pr "%a\n" Fmt.(list ~sep:(any "") Tex_math.pp)
+    ;;
+
+    let%expect_test _ =
+      go "1 + 1";
+      go "sqrt 1";
+      go "negate 1";
+      go "sin pi";
+      [%expect {|
+      1+1
+      \sqrt1
+      -1
+      \sin\pi
       |}]
     ;;
   end)
