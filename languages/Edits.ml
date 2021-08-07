@@ -88,7 +88,7 @@ let%test_module "Parsing" =
       eval
         ~no_info:None
         (Lang.Term.Ap
-           (None, core, List_model.into ~empty_info:None [ Lang.Term.Term (None, tm) ]))
+           (None, core, List_model.of_list ~empty_info:None [ Lang.Term.Term (None, tm) ]))
    ;;
 
     (* TODO: don't throw away this information, switch from strings *)

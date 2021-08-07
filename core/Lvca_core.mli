@@ -13,8 +13,8 @@ open Lvca_util
 module List_model : sig
   include [%lvca.abstract_syntax_module_sig "list a := Nil() | Cons(a; list a)"]
 
-  val into : empty_info:'info -> 'a list -> ('info, 'a) List.t
-  val out : (_, 'a) List.t -> 'a list
+  val of_list : empty_info:'info -> 'a list -> ('info, 'a) List.t
+  val to_list : (_, 'a) List.t -> 'a list
   val map : f:('a -> 'b) -> ('info, 'a) List.t -> ('info, 'b) List.t
 end
 

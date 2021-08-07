@@ -42,7 +42,7 @@ open Lang
 
 let rec to_tex ~none expr =
   let open Tex_math.Tex in
-  let list = List_model.into in
+  let list = List_model.of_list in
   let go x =
     match to_tex ~none x with
     | List_model.List.Cons (_, x, Nil _) -> x
@@ -332,7 +332,7 @@ let%test_module "to_tex" =
       | Ok tm ->
         tm
         |> to_tex ~none:None
-        |> List_model.out
+        |> List_model.to_list
         |> List.map ~f:Tex_math.Tex.to_plain
         |> Fmt.pr "%a\n" Fmt.(list ~sep:(any "") Tex_math.pp)
     ;;

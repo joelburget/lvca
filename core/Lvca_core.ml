@@ -12,12 +12,12 @@ let ( >> ) = Lvca_util.( >> )
 module List_model = struct
   include [%lvca.abstract_syntax_module "list a := Nil() | Cons(a; list a)"]
 
-  let rec into ~empty_info = function
+  let rec of_list ~empty_info = function
     | [] -> List.Nil empty_info
-    | x :: xs -> Cons (empty_info, x, into ~empty_info xs)
+    | x :: xs -> Cons (empty_info, x, of_list ~empty_info xs)
   ;;
 
-  let rec out = function List.Nil _ -> [] | Cons (_, x, xs) -> x :: out xs
+  let rec to_list = function List.Nil _ -> [] | Cons (_, x, xs) -> x :: to_list xs
 
   let rec map ~f = function
     | List.Nil i -> List.Nil i
@@ -56,26 +56,26 @@ scope := Scope(list string; pattern)
   let rec into ~empty_info = function
     | Binding_aware_pattern.Operator (info, str, scopes) ->
       let scopes =
-        scopes |> List.map ~f:(scope ~empty_info) |> List_model.into ~empty_info
+        scopes |> List.map ~f:(scope ~empty_info) |> List_model.of_list ~empty_info
       in
       Pattern.Operator (info, (empty_info, str), scopes)
     | Primitive (info, prim) -> Primitive (info, (empty_info, prim))
     | Var (info, str) -> Var (info, (empty_info, str))
 
   and scope ~empty_info (Binding_aware_pattern.Scope (names, pat)) =
-    let names = names |> List_model.into ~empty_info in
+    let names = names |> List_model.of_list ~empty_info in
     Scope.Scope (empty_info, names, into ~empty_info pat)
   ;;
 
   let rec out = function
     | Pattern.Operator (info, (_, str), scopes) ->
-      let scopes = scopes |> List_model.out |> List.map ~f:scope in
+      let scopes = scopes |> List_model.to_list |> List.map ~f:scope in
       Binding_aware_pattern.Operator (info, str, scopes)
     | Primitive (info, (_, prim)) -> Primitive (info, prim)
     | Var (info, (_, str)) -> Var (info, str)
 
   and scope (Scope.Scope (_, names, pat)) =
-    Binding_aware_pattern.Scope (List_model.out names, out pat)
+    Binding_aware_pattern.Scope (List_model.to_list names, out pat)
   ;;
 end
 
@@ -284,7 +284,7 @@ module Pp_generic = struct
         body
     (* TODO: parens if necessary *)
     | Ap (_, f, args) ->
-      pf ppf "@[<h>%a@ @[<hov>%a@]@]" pp f (list ~sep:sp pp) (List_model.out args)
+      pf ppf "@[<h>%a@ @[<hov>%a@]@]" pp f (list ~sep:sp pp) (List_model.to_list args)
     | Case (_, arg, cases') ->
       pf
         ppf
@@ -318,7 +318,11 @@ module Pp_generic = struct
       body
 
   and cases ~open_loc ~close_loc ppf x =
-    list ~sep:(any "@;<1 2>| ") (case_scope ~open_loc ~close_loc) ppf (List_model.out x)
+    list
+      ~sep:(any "@;<1 2>| ")
+      (case_scope ~open_loc ~close_loc)
+      ppf
+      (List_model.to_list x)
 
   and case_scope ~open_loc ~close_loc ppf (Lang.Case_scope.Case_scope (info, pat, body)) =
     open_loc ppf info;
@@ -361,7 +365,7 @@ module Parse = struct
       Ap
         ( Commented.{ range = pos; comment = None }
         , f
-        , List_model.into ~empty_info:Commented.none args )
+        , List_model.of_list ~empty_info:Commented.none args )
   ;;
 
   let term ~comment =
@@ -459,7 +463,7 @@ module Parse = struct
               (Ws.string "with")
               (attach_pos
                  (Ws.braces (option '|' (Ws.char '|') *> sep_by (Ws.char '|') case_line)
-                 >>| List_model.into ~empty_info:Commented.none))
+                 >>| List_model.of_list ~empty_info:Commented.none))
             <?> "match"
           ; many1 atomic_term >>| make_apps <?> "application"
           ])
@@ -644,7 +648,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
     | Ok _tm_ty ->
       (* TODO *)
       branches
-      |> List_model.out
+      |> List_model.to_list
       |> List.find_map ~f:(fun (Lang.Case_scope.Case_scope (_, _pat, rhs)) ->
              check env rhs ty))
   | Lambda (_, ty', (Single_var.{ name; info = _ }, body)) ->
@@ -671,7 +675,7 @@ and infer ({ type_env; syntax = _ } as env) tm =
     | Error reason -> Error { env; tm; error = Failed_term_inference reason }
     | Ok ty -> Ok ty)
   | Ap (_, f, args) ->
-    let _arg_tys = args |> List_model.out |> List.map ~f:(infer env) |> Result.all in
+    let _arg_tys = args |> List_model.to_list |> List.map ~f:(infer env) |> Result.all in
     (* XXX add arg tys to env *)
     infer env f
   | Case _ -> Error { env; tm; error = Cant_infer_case }
@@ -763,7 +767,7 @@ let rec eval_in_ctx ~no_info ctx tm =
     | None -> Error ("Unbound variable " ^ v, tm))
   | Case (_, tm, branches) ->
     let%bind tm_val = go ctx tm in
-    (match find_match tm_val (List_model.out branches) with
+    (match find_match tm_val (List_model.to_list branches) with
     | None -> Error ("no match found in case", Term (no_info, tm_val))
     | Some (branch, bindings) -> go (Lvca_util.Map.union_right_biased ctx bindings) branch)
   | Ap (_, Lambda (_, _ty, (Single_var.{ name; info = _ }, body)), Cons (_, arg, Nil _))
@@ -790,7 +794,9 @@ and eval_nominal_in_ctx ~no_info ctx tm =
 
 and eval_primitive ~no_info eval_in_ctx eval_nominal_in_ctx ctx tm name args =
   let open Nominal.Term in
-  let%bind args = args |> List_model.out |> List.map ~f:(eval_in_ctx ctx) |> Result.all in
+  let%bind args =
+    args |> List_model.to_list |> List.map ~f:(eval_in_ctx ctx) |> Result.all
+  in
   match name, args with
   | "add", [ a; b ] ->
     let%bind a_result = eval_nominal_in_ctx ~no_info ctx a in
@@ -872,7 +878,7 @@ let parse_exn =
 ;;
 
 let none = Option_model.Option.None ()
-let list xs = List_model.into ~empty_info:() xs
+let list xs = List_model.of_list ~empty_info:() xs
 let pat_var name = Binding_aware_pattern_model.Pattern.Var ((), ((), name))
 let pat_var' name = Binding_aware_pattern_model.Scope.Scope ((), list [], pat_var name)
 let ignored = pat_var "_"

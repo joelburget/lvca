@@ -41,7 +41,8 @@ let ends_with ~f str =
 ;;
 
 let is_ascii c = Char.to_int c < 128
-let rec out = function List_model.Plain.Nil -> [] | Cons (x, xs) -> x :: out xs
+let rec to_list = function List_model.Plain.Nil -> [] | Cons (x, xs) -> x :: to_list xs
+(* characters with special meaning & % $ # _ { } ~ ^ \ *)
 
 let rec pp : Lang.Tex.Plain.t Fmt.t =
  fun ppf -> function
@@ -56,7 +57,7 @@ let rec pp : Lang.Tex.Plain.t Fmt.t =
   | Grouped texs ->
     (match texs with
     | Cons (Grouped texs, Nil) -> pp ppf (Grouped texs)
-    | _ -> Fmt.pf ppf "{%a}" Fmt.(list pp) (out texs))
+    | _ -> Fmt.pf ppf "{%a}" Fmt.(list pp) (to_list texs))
   | Space -> Fmt.string ppf " "
 ;;
 
@@ -87,7 +88,7 @@ let parse : Lvca_provenance.Opt_range.t Lang.Tex.t list Lvca_parsing.t =
         let grouped =
           No_ws.braces (many1 expr)
           >>~ fun range value ->
-          Grouped (range, Lvca_core.List_model.into ~empty_info:range value)
+          Grouped (range, Lvca_core.List_model.of_list ~empty_info:range value)
         in
         choice
           ~failure_msg:

@@ -92,7 +92,7 @@ module Of_omd = struct
  ;;
 
   let list : ('a -> 'b) -> 'a list -> 'b List_model.Plain.t =
-   fun f -> Lvca_core.List_model.(into ~empty_info:() >> List.to_plain f)
+   fun f -> Lvca_core.List_model.(of_list ~empty_info:() >> List.to_plain f)
  ;;
 
   let attributes : Omd.attributes -> Lang.Plain.attribute List_model.Plain.t =
