@@ -183,8 +183,16 @@ foo
         {|
     Doc(Cons(Heading(Nil(); 1; Text(Nil(); "hello, world"));
         Cons(Paragraph(Nil(); Text(Nil(); "para"));
-        Cons(List(Nil(); Bullet('*'); Tight(); Cons(Cons(Paragraph(Nil(); Text(Nil(); "ul 1")); Nil()); Cons(Cons(Paragraph(Nil(); Text(Nil(); "ul 2")); Nil()); Nil())));
-        Cons(List(Nil(); Ordered(1; '.'); Tight(); Cons(Cons(Paragraph(Nil(); Text(Nil(); "ol 1")); Nil()); Cons(Cons(Paragraph(Nil(); Text(Nil(); "ol 2")); Nil()); Nil())));
+        Cons(List(Nil();
+             Bullet('*');
+             Tight();
+             Cons(Cons(Paragraph(Nil(); Text(Nil(); "ul 1")); Nil());
+             Cons(Cons(Paragraph(Nil(); Text(Nil(); "ul 2")); Nil()); Nil())));
+        Cons(List(Nil();
+             Ordered(1; '.');
+             Tight();
+             Cons(Cons(Paragraph(Nil(); Text(Nil(); "ol 1")); Nil());
+             Cons(Cons(Paragraph(Nil(); Text(Nil(); "ol 2")); Nil()); Nil())));
         Cons(Code_block(Nil(); "nolang"; "foo
     "); Nil())))))) |}]
     ;;

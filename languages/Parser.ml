@@ -1080,6 +1080,7 @@ let parse_parser = Lvca_parsing.parse_string (Parse.t parse_core)
 
 let%test_module "Parsing" =
   (module struct
+    let margin = Stdlib.Format.(pp_get_margin std_formatter ())
     let () = Stdlib.Format.(pp_set_margin std_formatter 80)
 
     let parse_print : string -> string -> unit =
@@ -1457,6 +1458,8 @@ fix (expr -> choice (
        | literal
      ) |}]
     ;;
+
+    let () = Stdlib.Format.(pp_set_margin std_formatter margin)
   end)
 ;;
 

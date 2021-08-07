@@ -144,6 +144,7 @@ let ident_stag_funs =
 let%test_module "Hutton's Razor" =
   (module struct
     let parse str = Lvca_parsing.(parse_string (whitespace *> Parse.t) str)
+    let margin = Stdlib.Format.(pp_get_margin std_formatter ())
 
     let () =
       let open Caml.Format in
@@ -230,5 +231,7 @@ let%test_module "Hutton's Razor" =
       print_eval "1 + (2 + 3)";
       [%expect {| 6 |}]
     ;;
+
+    let () = Stdlib.Format.(pp_set_margin std_formatter margin)
   end)
 ;;

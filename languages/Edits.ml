@@ -228,7 +228,10 @@ let%test_module "Parsing" =
     |};
       (* TODO: This should break *)
       [%expect
-        {| sequence:[replace_bar:{\(tm : lang) -> match tm with { bar() -> {baz()} | _ -> {foo()} }}, named_edit:{f}] |}]
+        {|
+          sequence:[replace_bar:{\(tm : lang) ->
+                                 match tm with { bar() -> {baz()} | _ -> {foo()} }},
+                    named_edit:{f}] |}]
     ;;
   end)
 ;;

@@ -105,6 +105,7 @@ let parse : Lvca_provenance.Opt_range.t Lang.Tex.t list Lvca_parsing.t =
 
 let%test_module _ =
   (module struct
+    let margin = Stdlib.Format.(pp_get_margin std_formatter ())
     let () = Stdlib.Format.(pp_set_margin std_formatter 200)
 
     let parse_print str =
@@ -160,5 +161,7 @@ let%test_module _ =
     \f\relax{x} = \int_{-\infty}^\infty \f\hat\xi\,e^{2 \pi i \xi x} \,d\xi
     |}]
     ;;
+
+    let () = Stdlib.Format.(pp_set_margin std_formatter margin)
   end)
 ;;
