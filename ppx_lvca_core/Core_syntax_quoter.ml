@@ -134,6 +134,12 @@ module Core = struct
       [%expr
         Lvca_core.Lang.Term.Let
           ([%e info], [%e is_rec], [%e tm], [%e ty], ([%e var], [%e body]))]
+    | Subst (i, (var, body), arg) ->
+      let info = commented ~loc i in
+      let arg = term ~loc arg in
+      let var = single_var ~loc var in
+      let body = term ~loc body in
+      [%expr Lvca_core.Lang.Term.Subst ([%e info], ([%e var], [%e body]), [%e arg])]
     | Term_var (i, name) ->
       [%expr Lvca_core.Lang.Term.Term_var ([%e commented ~loc i], [%e str ~loc name])]
 

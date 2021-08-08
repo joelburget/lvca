@@ -137,6 +137,7 @@ term :=
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
   | Let(is_rec; term; option ty; term. term)
+  | Subst(term. term; term)
 
 case_scope := Case_scope(binding_aware_pattern; term)
 |}]
@@ -296,7 +297,14 @@ module Pp_generic = struct
         (cases ~open_loc ~close_loc)
         cases'
     | Let (_, is_rec, tm, ty, (Single_var.{ name; info = _ }, body)) ->
-      let_ ~open_loc ~close_loc ppf is_rec tm ty name body);
+      let_ ~open_loc ~close_loc ppf is_rec tm ty name body
+    | Subst (_, (Single_var.{ name; info = _ }, body), arg) ->
+      let formatter =
+        match body with
+        | Term _ | Subst _ -> pf ppf "@[%a[%s := %a]@]"
+        | _ -> pf ppf "@[@[(%a)@][%s := %a]@]"
+      in
+      formatter pp body name pp arg);
     close_loc ppf (Lang.Term.info tm)
 
   and let_ ~open_loc ~close_loc ppf is_rec tm ty name body =
@@ -394,6 +402,24 @@ module Parse = struct
               <?> "quoted term"
             ]
         in
+        let atomic_term' =
+          atomic_term
+          >>== fun { range = body_range; value = body } ->
+          choice
+            [ (Ws.brackets
+                 (identifier
+                 >>= fun name -> Ws.string ":=" >>= fun _ -> term >>| fun arg -> name, arg
+                 )
+              >>== fun { range = bracket_range; value = name, arg } ->
+              option' comment
+              >>~ fun _ comment ->
+              let range = Opt_range.union bracket_range body_range in
+              let info = Commented.{ range; comment } in
+              Term.Subst (info, (Single_var.{ info = Commented.none; name }, body), arg))
+            ; return body
+            ]
+          (* TODO: add comments *)
+        in
         let pattern =
           Binding_aware_pattern.parse ~comment
           >>| Binding_aware_pattern_model.into ~empty_info:Commented.none
@@ -465,7 +491,7 @@ module Parse = struct
                  (Ws.braces (option '|' (Ws.char '|') *> sep_by (Ws.char '|') case_line)
                  >>| List_model.of_list ~empty_info:Commented.none))
             <?> "match"
-          ; many1 atomic_term >>| make_apps <?> "application"
+          ; many1 atomic_term' >>| make_apps <?> "application"
           ])
     <?> "core term"
   ;;
@@ -663,6 +689,9 @@ let rec check ({ type_env; syntax } as env) tm ty =
       let type_env = Map.set type_env ~key:name ~data:tm_ty in
       check { env with type_env } body ty
     | Error Infer_error.{ env; tm; error } -> Some Check_error.{ env; tm; ty; error })
+  | Subst (_, binding, arg) ->
+    let info = None (* TODO: synthetic info *) in
+    check env (Let (info, No_rec info, arg, None info, binding)) ty
   | Term_var _ ->
     (match infer env tm with
     | Error { env; tm; error } -> Some { env; tm; ty; error }
@@ -684,6 +713,9 @@ and infer ({ type_env; syntax = _ } as env) tm =
     let%bind tm_ty = match ty with None _ -> infer env tm | Some (_, ty) -> Ok ty in
     let type_env = Map.set type_env ~key:name ~data:tm_ty in
     infer { env with type_env } body
+  | Subst (_, binding, arg) ->
+    let info = None (* TODO: synthetic info *) in
+    infer env (Let (info, No_rec info, arg, None info, binding))
   | Term_var (_, name) ->
     (match Map.find type_env name with
     | None -> Error { env; tm; error = Var_not_found }
@@ -779,7 +811,8 @@ let rec eval_in_ctx ~no_info ctx tm =
     then failwith "TODO"
     else eval_primitive ~no_info go eval_nominal_in_ctx ctx tm name args
   | Term (_, tm) -> Ok (Nominal.Term.subst_all ctx tm)
-  | Let (_, _, tm, _, (Single_var.{ name; info = _ }, body)) ->
+  | Let (_, _, tm, _, (Single_var.{ name; info = _ }, body))
+  | Subst (_, (Single_var.{ name; _ }, body), tm) ->
     let%bind tm_val = go ctx tm in
     go (Map.set ctx ~key:name ~data:tm_val) body
   | _ -> Error ("Found a term we can't evaluate", tm)
@@ -874,7 +907,8 @@ and eval_primitive ~no_info eval_in_ctx eval_nominal_in_ctx ctx tm name args =
 let eval ~no_info core = eval_in_ctx ~no_info SMap.empty core
 
 let parse_exn =
-  Lvca_parsing.(parse_string (Parse.term ~comment:c_comment)) >> Result.ok_or_failwith
+  Lvca_parsing.(parse_string (whitespace *> Parse.term ~comment:c_comment))
+  >> Result.ok_or_failwith
 ;;
 
 let none = Option_model.Option.None ()
@@ -972,6 +1006,28 @@ let%test_module "Parsing" =
 
     let%test _ =
       let (_ : _ Term.t) = parse "{some({let x = {1} in {some({x})}})}" in
+      true
+    ;;
+
+    let%test _ =
+      let (_ : _ Term.t) = parse "body[f := reduce arg]" in
+      true
+    ;;
+
+    let%test _ =
+      let tm =
+        {|
+        \(tm: term) -> match tm with {
+          | Lam(_) -> tm
+          | App(f; arg) -> match reduce f with {
+            | Lam(x. body) -> body[f := reduce arg]
+            | f' -> {App(f'; {reduce arg})}
+          }
+          | Real_expr(expr) -> reduce_real real_expr
+        }
+        |}
+      in
+      let (_ : _ Term.t) = parse tm in
       true
     ;;
   end)
@@ -1141,6 +1197,16 @@ let%test_module "Core eval" =
       eval_str "sub {1} {2}";
       [%expect {| -1 |}]
     ;;
+
+    let%expect_test _ =
+      eval_str "x[x := {1}]";
+      [%expect {| 1 |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "(sub x {2})[x := {1}]";
+      [%expect {| -1 |}]
+    ;;
   end)
 ;;
 
@@ -1225,6 +1291,11 @@ let%test_module "Core pretty" =
       [%expect {|
         let x: bool =
         {true()} in not x |}]
+    ;;
+
+    let%expect_test _ =
+      term "(sub x {2})[x := {1}]";
+      [%expect {| (sub x {2})[x := {1}] |}]
     ;;
 
     let%expect_test _ =

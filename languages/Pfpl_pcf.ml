@@ -87,10 +87,6 @@ let rec to_pretty = function
   | Exp_var (info, name) -> text ~info name
 ;;
 
-(* TODO:
-  - syntax for substitution: [e/x]e1
-  - should we have to antiquote e1 and e2 in Ap(e1; e2)?
-  *)
 let to_core =
   [%lvca.core
     {|
@@ -101,15 +97,11 @@ let rec eval = \(tm : exp) -> match tm with {
     let e = eval e in
     match e with {
       | Zero() -> e
-      | Succ(e) -> open e x e1
+      | Succ(e) -> e[x := e1]
     }
-  | Ap(Fun(x. e1); e2) ->
-    let e2 = eval e2 in
-    open e x e2
-  | Ap(e1; e2) ->
-    let e1 = eval e1 in
-    eval {Ap(e1; e2)}
-  | Fix(_typ; x. e) -> open e x tm
+  | Ap(Fun(x. e1); e2) -> e1[x := eval e2]
+  | Ap(e1; e2) -> eval {Ap({eval e1}; {e2})}
+  | Fix(_typ; x. e) -> e[x := tm]
 }
 in eval
   |}]

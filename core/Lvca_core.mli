@@ -81,6 +81,7 @@ term :=
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
   | Let(is_rec; term; option ty; term. term)
+  | Subst(term. term; term)
 
 case_scope := Case_scope(binding_aware_pattern; term)
 |}]
