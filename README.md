@@ -14,9 +14,22 @@ We can, for example define the abstract syntax for the lambda calculus.
 term := Lam(term. term) | App(term; term)
 ```
 
-This says that a term is either a lambda abstraction or an application of two terms.
+This language definition defines a new _sort_, `term`. It says that a `term` is either a `Lam` or an `App`.
 
-That's very simple. Let's define something slightly different.
+A `Lam` (lambda abstraction) binds a variable of sort `term` within an
+expression of sort `term`. For example, the classic identity function (`\x ->
+x`) looks like `Lam(x. x)`. An `App` (function application) holds two subterms
+of sort `term`. We can apply the identity function to itself: `App(Lam(x. x);
+Lam(x. x))`.
+
+Aside: If you're familiar with a language with algebraic datatypes (like
+Haskell, OCaml, Rust, etc), then this ought to look familiar. We've just
+defined a sums-of-products-style datatype. We can work with these as you'd work
+with algebraic datatypes: by constructing them and pattern-matching against
+them. However, sort declarations generalize algebraic datatypes because they
+have a notion of binding structure.
+
+Let's try a different example.
 
 ```
 string : *
@@ -28,11 +41,24 @@ term :=
   | Primitive(primitive)
 ```
 
-In this language a term is either an operator or a primitive.
+This definition says that a `term` is either an `Operator` (which holds both a
+`string` and `list term`) or a `Primitive` (which holds a single `primitive`).
+
+We've also declared three _external sorts_: `string`, `primitive`, and `list`.
+These are sorts that are assumed to exist but will not be defined in our
+language.
+
+Note that in each case we've just defined the _abstract syntax_ of the language (not the _concrete_ syntax). We can also define the concrete syntax via a parser and pretty-printer, but for now, we'll work with just the abstract syntax.
+
+With a language definition like either of the above, LVCA can provide some nice tools:
+
+* We can [view the binding structure](https://lvca.dev/binding-viewer/) of a term.
+* We can write a query for a given pattern over a codebase. For example, we could search for all lambda abstractions with the pattern `Lam(_)`. Or we could search for all identity functions with `Lam(x. x)`. Important note: this pattern will match `Lam(y. y)` or any other variable name.
+* Similarly, we can even rewrite parts of our codebase.
 
 ### Mapping between languages
 
-Now that we've defined syntax, the real fun is mapping between languages. For
+Once we've defined syntax, the real fun is mapping between languages. For
 example, say we have a language which combines the lambda calculus with
 real-valued expressions.
 
@@ -58,9 +84,19 @@ Now we can define a mapping to reals:
 }
 ```
 
-This is a function of type `term -> real`, meaning it interprets the term
-language in terms of reals. This function defines the _semantics_ of terms, by
-translation to another language.
+This is a function of type `term -> real`, meaning it interprets terms as
+reals. This function defines the _semantics_ of terms by translation to another
+language.
+
+Now, if we can evaluate `real` expressions (and we can evaluate the translation from `term` to `real`), then we can evaluate `term`s.
+
+One final thing we might want to do is lift `real`s back to `term`:
+
+```
+\(real: real) -> Real_expr(real)
+```
+
+Now, since we have a `term -> real` and a `real -> term`, we can compose them (with the real evaluator `real -> real` in the middle) to get a term evaluator of type `term -> term`.
 
 ## About the name
 
