@@ -16,7 +16,7 @@ module Brr = struct
     Brr.At.v (Jstr.v name) (Jstr.v value)
   ;;
 
-  let mk_attrs lst = lst |> List_model.out |> List.map ~f:mk_attr
+  let mk_attrs lst = lst |> List_model.to_list |> List.map ~f:mk_attr
   let alt str = Brr.At.v (Jstr.v "alt") (Jstr.v str)
 
   let mk_img _label dest (title : _ Option_model.Option.t) attrs =
@@ -44,7 +44,7 @@ module Brr = struct
       let at = mk_attrs (Document.Attrs.inline inline) in
       match inline with
       | Concat (_, _, inlines) ->
-        inlines |> List_model.out |> List.map ~f:of_inline |> List.concat
+        inlines |> List_model.to_list |> List.map ~f:of_inline |> List.concat
       | Text (_, _, (_, str)) -> [ txt' str ]
       | Emph (_, _, content) -> [ em ~at (of_inline content) ]
       | Strong (_, _, content) -> [ strong ~at (of_inline content) ]
@@ -70,7 +70,7 @@ module Brr = struct
           | Ordered (_, _, (_, c)) -> ol, c
           | Bullet (_, (_, c)) -> ul, c
         in
-        let blocks = blocks |> List_model.out |> List.map ~f:List_model.out in
+        let blocks = blocks |> List_model.to_list |> List.map ~f:List_model.to_list in
         let blocks = blocks |> List.concat_map ~f:(List.map ~f:of_block) in
         let elem = f ~at blocks in
         set_inline_style
@@ -82,14 +82,14 @@ module Brr = struct
       | Definition_list (_, _, def_elts) ->
         let def_elts =
           def_elts
-          |> List_model.out
+          |> List_model.to_list
           |> List.concat_map ~f:(fun (Def_elt (_, label, body)) ->
-                 let body = body |> List_model.out |> List.concat_map ~f:of_inline in
+                 let body = body |> List_model.to_list |> List.concat_map ~f:of_inline in
                  dt (of_inline label) :: body)
         in
         dl ~at def_elts
       | Blockquote (_, _, blocks) ->
-        blocks |> List_model.out |> List.map ~f:of_block |> blockquote ~at
+        blocks |> List_model.to_list |> List.map ~f:of_block |> blockquote ~at
       | Thematic_break (_, _) -> hr ~at ()
       | Heading (_, _, (_, level), inline) ->
         let f =
@@ -107,7 +107,8 @@ module Brr = struct
  ;;
 
   let of_doc : _ Doc.t -> Brr.El.t = function
-    | Doc (_, blocks) -> blocks |> List_model.out |> List.map ~f:of_block |> Brr.El.div
+    | Doc (_, blocks) ->
+      blocks |> List_model.to_list |> List.map ~f:of_block |> Brr.El.div
   ;;
 end
 

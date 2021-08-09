@@ -140,13 +140,11 @@ module View = struct
       let digits_s =
         digits_s
         |> S.map ~eq:Common.html_eq (fun digits ->
-               match Calculator.interpret parsed with
-               | Error (_tm, msg) -> span ~at:[ class' "error" ] [ txt msg ]
-               | Ok real ->
-                 let str =
-                   Constructive_real.eval_to_string real ~digits:(Int32.of_int_exn digits)
-                 in
-                 span [ txt str ])
+               let real = Calculator.interpret parsed in
+               let str =
+                 Constructive_real.eval_to_string real ~digits:(Int32.of_int_exn digits)
+               in
+               span [ txt str ])
       in
       let digits' =
         mk_reactive'
