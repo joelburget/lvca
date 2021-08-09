@@ -1023,7 +1023,7 @@ let%test_module "Parsing" =
             | Lam(x. body) -> body[f := reduce arg]
             | f' -> {App(f'; {reduce arg})}
           }
-          | Real_expr(expr) -> reduce_real real_expr
+          | Real_expr(expr) -> expr
         }
         |}
       in
