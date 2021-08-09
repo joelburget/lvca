@@ -105,7 +105,9 @@ module View = struct
            match input_lang with
            | Lambda -> "input (concrete)", "output (abstract)"
            | Term -> "input (abstract)", "output (concrete)")
-    |> S.map ~eq:(Tuple2.equal htmls_eq htmls_eq) (Tuple2.map ~f:(fun str -> [ txt str ]))
+    |> S.map
+         ~eq:(Tuple2.equal htmls_eq htmls_eq)
+         (Tuple2.map ~f:(fun str -> [ El.txt' str ]))
   ;;
 
   let view model_s =

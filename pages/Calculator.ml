@@ -74,7 +74,9 @@ end
 
 let mk_example str =
   let result =
-    El.code ~at:(classes "bg-gray-50 p-1 font-mono text-sm cursor-pointer") [ txt str ]
+    El.code
+      ~at:(classes "bg-gray-50 p-1 font-mono text-sm cursor-pointer")
+      [ El.txt' str ]
   in
   let click_event = Evr.on_el Ev.click (fun _evt -> str) result in
   result, click_event
@@ -83,15 +85,16 @@ let mk_example str =
 let row cells = El.tr ~at:[ class' "border-b" ] cells
 
 let language_chart =
-  let cell str = El.td ~at:[ class' "py-2" ] [ txt str ] in
-  let mono_cell str = El.td ~at:[ class' "py-2"; class' "font-mono" ] [ txt str ] in
+  let txt' = El.txt' in
+  let cell str = El.td ~at:[ class' "py-2" ] [ txt' str ] in
+  let mono_cell str = El.td ~at:[ class' "py-2"; class' "font-mono" ] [ txt' str ] in
   El.table
     ~at:[ class' "w-full" ]
     [ El.thead
         ~at:[ class' "border-b" ]
-        [ El.th ~at:[ class' "text-left" ] [ txt "Name" ]
-        ; El.th ~at:[ class' "text-left" ] [ txt "Syntax" ]
-        ; El.th ~at:[ class' "text-left" ] [ txt "Description" ]
+        [ El.th ~at:[ class' "text-left" ] [ txt' "Name" ]
+        ; El.th ~at:[ class' "text-left" ] [ txt' "Syntax" ]
+        ; El.th ~at:[ class' "text-left" ] [ txt' "Description" ]
         ]
     ; El.tbody
         [ row [ cell "add"; mono_cell "expr + expr" ]
@@ -116,8 +119,8 @@ let language_chart =
 ;;
 
 module View = struct
-  let div, span, p, h3, button, ul, li, td, th, pre =
-    El.(div, span, p, h3, button, ul, li, td, th, pre)
+  let div, span, p, h3, button, ul, li, td, th, pre, txt' =
+    El.(div, span, p, h3, button, ul, li, td, th, pre, txt')
   ;;
 
   let view model_s =
@@ -144,7 +147,7 @@ module View = struct
                let str =
                  Constructive_real.eval_to_string real ~digits:(Int32.of_int_exn digits)
                in
-               span [ txt str ])
+               span [ txt' str ])
       in
       let digits' =
         mk_reactive'
@@ -156,7 +159,7 @@ module View = struct
       let delete_button =
         button
           ~at:(classes "inline-block p-1 border-2 border-indigo-900 rounded")
-          [ txt "remove" ]
+          [ txt' "remove" ]
       in
       let evts =
         E.select
@@ -168,7 +171,7 @@ module View = struct
         row
           [ td
               ~at:(classes "py-4 pr-1")
-              [ pre ~at:(classes "whitespace-pre-wrap break-word") [ txt input_str ] ]
+              [ pre ~at:(classes "whitespace-pre-wrap break-word") [ txt' input_str ] ]
           ; td ~at:(classes "py-4 pr-1") [ digits' ]
           ; td ~at:(classes "py-4 pr-1") [ digits_entry ]
           ; td [ delete_button ]
@@ -178,9 +181,9 @@ module View = struct
     in
     let thead =
       row
-        [ th ~at:(classes "w-1/2 text-left") [ txt "input" ]
-        ; th ~at:(classes "w-1/3 text-left") [ txt "output" ]
-        ; th ~at:(classes "w-1/12 text-left") [ txt "digits" ]
+        [ th ~at:(classes "w-1/2 text-left") [ txt' "input" ]
+        ; th ~at:(classes "w-1/3 text-left") [ txt' "output" ]
+        ; th ~at:(classes "w-1/12 text-left") [ txt' "digits" ]
         ; th ~at:(classes "w-1/12") []
         ]
     in
@@ -203,7 +206,7 @@ module View = struct
       |> S.map ~eq:Common.htmls_eq (fun model ->
              match model.Model.error_msg with
              | None -> []
-             | Some msg -> [ span [ txt msg ] ])
+             | Some msg -> [ span [ txt' msg ] ])
       |> mk_reactive div
     in
     let actions =
@@ -226,9 +229,9 @@ module View = struct
         ; Components.table ~classes:[ "w-full"; "mb-6" ] thead tbody
         ; div
             ~at:[ class' "my-2" ]
-            [ p [ txt "Try an example" ]
+            [ p [ txt' "Try an example" ]
             ; examples
-            ; h3 [ txt "language chart" ]
+            ; h3 [ txt' "language chart" ]
             ; language_chart
             ]
         ]

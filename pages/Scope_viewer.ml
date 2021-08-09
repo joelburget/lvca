@@ -29,7 +29,9 @@ end
 module Examples = struct
   let mk str =
     let result =
-      El.code ~at:(classes "bg-gray-50 p-1 font-mono text-sm cursor-pointer") [ txt str ]
+      El.code
+        ~at:(classes "bg-gray-50 p-1 font-mono text-sm cursor-pointer")
+        [ El.txt' str ]
     in
     let click_event = Evr.on_el Ev.click (fun _evt -> str) result in
     result, click_event
@@ -60,7 +62,7 @@ end
 module View = struct
   let view model_s =
     let open Examples in
-    let div, p, ul, li, code = El.(div, p, ul, li, code) in
+    let div, p, ul, li, code, txt' = El.(div, p, ul, li, code, txt') in
     let input_s = S.Pair.fst ~eq:String.( = ) model_s in
     let highlights_s = S.Pair.snd ~eq:Ranges.( = ) model_s in
     let click_example_e =
@@ -80,7 +82,7 @@ module View = struct
         input_s
         |> S.map (fun str ->
                match parse_tm str with
-               | Error msg -> E.never, [ div [ txt msg ] ]
+               | Error msg -> E.never, [ div [ txt' msg ] ]
                | Ok tm ->
                  let tm =
                    tm |> Nominal.Term.map_info ~f:(Source_ranges.of_opt_range ~buf)
@@ -100,35 +102,35 @@ module View = struct
       S.Pair.fst s, S.Pair.snd s
     in
     let color_defn cls name desc =
-      li [ code ~at:[ class' cls ] [ txt name ]; txt (" " ^ desc) ]
+      li [ code ~at:[ class' cls ] [ txt' name ]; txt' (" " ^ desc) ]
     in
     let actions = E.select [ click_example_e; enter_input_e; E.swap set_highlight_e ] in
     let elem =
       div
         [ p
-            [ txt "Try the identity function, "
+            [ txt' "Try the identity function, "
             ; identity_ex
-            ; txt " or the constant function "
+            ; txt' " or the constant function "
             ; k_ex
-            ; txt "."
+            ; txt' "."
             ]
         ; p
-            [ txt "Try more complicated combinators S "
+            [ txt' "Try more complicated combinators S "
             ; s_ex
-            ; txt "and Y "
+            ; txt' "and Y "
             ; y_ex
-            ; txt "."
+            ; txt' "."
             ]
         ; p
-            [ txt "LVCA also supports pattern matching, for example "
+            [ txt' "LVCA also supports pattern matching, for example "
             ; pattern_ex
-            ; txt "and "
+            ; txt' "and "
             ; sum_ex
-            ; txt "."
+            ; txt' "."
             ]
         ; input_elem
         ; mk_reactive div output_children
-        ; p [ txt "Hover over a variable to see more information about it." ]
+        ; p [ txt' "Hover over a variable to see more information about it." ]
         ; ul
             [ color_defn "bg-blue-200" "blue" "shows all the uses of a variable"
             ; color_defn "bg-pink-200" "pink" "shows a variable's definition site"

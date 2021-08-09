@@ -11,7 +11,6 @@ let classes str =
 ;;
 
 let inputmode str = At.v (Jstr.v "inputmode") (Jstr.v str)
-let txt str = El.txt (Jstr.v str)
 
 module Navigator = struct
   include Brr.Navigator

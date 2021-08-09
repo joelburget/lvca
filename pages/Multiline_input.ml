@@ -4,6 +4,8 @@ open Brr_note
 open Note
 open Prelude
 
+let txt' = El.txt'
+
 let mk ?(autofocus = true) ?(border = true) ?(rows = None) ?(cols = 60) ?(at = []) input_s
   =
   let input_dirty_s, update_input_dirty = S.create false in
@@ -19,9 +21,9 @@ let mk ?(autofocus = true) ?(border = true) ?(rows = None) ?(cols = 60) ?(at = [
              (match Web_util.platform_special_combo () with
              | Some info_elems ->
                List.concat
-                 [ [ txt "updated, press " ]; info_elems; [ txt " to re-evaluate)" ] ]
-             | None -> [ txt "updated (press Enter to re-evaluate)" ])
-           | false -> [ txt "" ])
+                 [ [ txt' "updated, press " ]; info_elems; [ txt' " to re-evaluate)" ] ]
+             | None -> [ txt' "updated (press Enter to re-evaluate)" ])
+           | false -> [ txt' "" ])
   in
   let classes =
     [ Some "mt-4"
@@ -41,7 +43,7 @@ let mk ?(autofocus = true) ?(border = true) ?(rows = None) ?(cols = 60) ?(at = [
         ([ At.rows needed_rows; At.cols cols ]
         @ classes
         @ if autofocus then [ At.autofocus ] else [])
-      [ input_s |> S.value |> txt ]
+      [ input_s |> S.value |> txt' ]
   in
   let () = Elr.set_prop El.Prop.value input ~on:(input_s |> S.changes |> E.map Jstr.v) in
   let _sink : Logr.t option =

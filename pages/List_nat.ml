@@ -1,6 +1,4 @@
-open Brr
 open Lvca_syntax
-open Prelude
 
 module Language = struct
   let nat = [%lvca.abstract_syntax "nat := Z() | S(nat)"]
@@ -41,7 +39,9 @@ module Model = struct
 end
 
 module View = struct
-  let view _model = El.div [ txt "TODO" ]
+  open Brr.El
+
+  let view _model = div [ txt' "TODO" ]
 end
 
 let stateless_view () = View.view Model.initial_model

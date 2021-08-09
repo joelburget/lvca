@@ -3,7 +3,6 @@ open Common
 open Lvca_provenance
 open Lvca_syntax
 open Note
-open Prelude
 module Tuple2 = Lvca_util.Tuple2
 
 let eval = Lvca_languages.Lambda_calculus.eval
@@ -125,12 +124,15 @@ module View = struct
   ;;
 
   let view model_s =
+    let txt' = Brr.El.txt' in
     let input, input_event =
       Multiline_input.mk
         (model_s |> S.map ~eq:String.( = ) (fun model -> model.Model.input))
     in
     let output_selection_e, output_elem = mk_output' model_s in
-    let elem, click_evt = demo_template (txt "input") input (txt "output") output_elem in
+    let elem, click_evt =
+      demo_template (txt' "input") input (txt' "output") output_elem
+    in
     let evts =
       E.select
         [ click_evt |> E.map (fun _click_evt -> Action.SwitchInputLang)

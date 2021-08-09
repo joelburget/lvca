@@ -38,7 +38,7 @@ let button_classes =
 ;;
 
 let button str =
-  let button = El.button ~at:(button_classes |> List.map ~f:class') [ txt str ] in
+  let button = El.button ~at:(button_classes |> List.map ~f:class') [ El.txt' str ] in
   let evt : unit event = Evr.on_el Ev.click (fun _ -> ()) button in
   evt, button
 ;;
@@ -56,7 +56,7 @@ let button_toggle ~visible_text ~hidden_text visible_s =
     visible_s |> S.map (function true -> visible_text | false -> hidden_text)
   in
   let button =
-    mk_reactive' El.button ~at:(List.map button_classes ~f:class') (text_s |> S.map txt)
+    mk_reactive' El.button ~at:(List.map button_classes ~f:class') (S.map El.txt' text_s)
   in
   let evt = Evr.on_el Ev.click Fn.id button in
   evt, button

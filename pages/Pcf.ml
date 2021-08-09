@@ -112,7 +112,7 @@ let mk_tree_view tm =
 
 module View = struct
   let view model_s =
-    let div = El.div in
+    let div, txt' = El.(div, txt') in
     let input_s = S.map ~eq:String.( = ) (fun Model.{ input; _ } -> input) model_s in
     let highlights_s =
       S.map ~eq:Ranges.( = ) (fun Model.{ ranges; _ } -> ranges) model_s
@@ -146,7 +146,7 @@ module View = struct
         |> S.map ~eq:phys_equal (fun Model.{ result; _ } -> result)
         |> S.map ~eq:(Lvca_util.Tuple2.equal phys_equal phys_equal) (fun result ->
                match result with
-               | Error (msg, _tm_opt) -> E.never, div [ txt msg ]
+               | Error (msg, _tm_opt) -> E.never, div [ txt' msg ]
                | Ok tm -> mk_tree_view tm)
       in
       S.Pair.fst ~eq:phys_equal s, S.Pair.snd ~eq:phys_equal s

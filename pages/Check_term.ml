@@ -1,5 +1,4 @@
 open Base
-open Brr
 open Note
 open Prelude
 open Lvca_provenance
@@ -74,27 +73,31 @@ module Controller = struct
 end
 
 module View = struct
-  let div, h2, h3, table, td, thead, tr = El.(div, h2, h3, table, td, thead, tr)
+  open Brr
+
+  let div, h2, h3, table, td, thead, tr, txt' =
+    El.(div, h2, h3, table, td, thead, tr, txt')
+  ;;
 
   let rec view_pat = function
-    | Pattern.Var (_, name) -> txt name
-    | Primitive prim -> txt (Fmt.to_to_string Primitive.All.pp prim)
+    | Pattern.Var (_, name) -> txt' name
+    | Primitive prim -> txt' (Fmt.to_to_string Primitive.All.pp prim)
     | Operator (_, name, pats) ->
-      div [ txt name; div (List.map pats ~f:(fun pat -> div [ view_pat pat ])) ]
+      div [ txt' name; div (List.map pats ~f:(fun pat -> div [ view_pat pat ])) ]
   ;;
 
   let rec view_term = function
-    | Nominal.Term.Var (_, name) -> txt name
-    | Primitive prim -> txt (Fmt.to_to_string Primitive.All.pp prim)
-    | Operator (_, name, scopes) -> div [ txt name; div (List.map scopes ~f:view_scope) ]
+    | Nominal.Term.Var (_, name) -> txt' name
+    | Primitive prim -> txt' (Fmt.to_to_string Primitive.All.pp prim)
+    | Operator (_, name, scopes) -> div [ txt' name; div (List.map scopes ~f:view_scope) ]
 
   and view_scope (Nominal.Scope.Scope (pats, tm)) =
     div [ pats |> List.map ~f:view_pat |> div; tm |> view_term ]
   ;;
 
   let rec sort = function
-    | Sort.Name (_, name) -> txt name
-    | Ap (_, name, subsorts) -> div [ txt name; div (ap_list subsorts) ]
+    | Sort.Name (_, name) -> txt' name
+    | Ap (_, name, subsorts) -> div [ txt' name; div (ap_list subsorts) ]
 
   and ap_list = function Sort.Nil _ -> [] | Cons (_, s, ss) -> sort s :: ap_list ss
 
@@ -122,9 +125,9 @@ module View = struct
       -> El.t
     =
    fun { message; stack } ->
-    let table_header = thead [ td [ txt "term" ]; td [ txt "sort" ] ] in
+    let table_header = thead [ td [ txt' "term" ]; td [ txt' "sort" ] ] in
     let table_rows = stack |> List.map ~f:view_check_frame in
-    div [ txt message; table (table_header :: table_rows) ]
+    div [ txt' message; table (table_header :: table_rows) ]
  ;;
 
   let view model_s =
@@ -159,14 +162,14 @@ module View = struct
     let result_elem =
       check_result_s
       |> S.map (function
-             | None -> txt "(parse error)"
-             | Some None -> txt "all good!"
+             | None -> txt' "(parse error)"
+             | Some None -> txt' "all good!"
              | Some (Some check_failure) -> view_check_failure check_failure)
       |> mk_reactive' div
     in
     let elem =
       div
-        [ h2 [ txt "Term Checking" ]
+        [ h2 [ txt' "Term Checking" ]
         ; div ~at:[ class' "container" ] [ language_input; term_input ]
         ; div ~at:[ class' "side" ] [ result_elem ]
         ]

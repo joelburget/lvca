@@ -18,7 +18,7 @@ module Controller = struct
 end
 
 module View = struct
-  let div, h2, h3 = El.(div, h2, h3)
+  let div, h2, h3, txt' = El.(div, h2, h3, txt')
 
   let view model_s =
     let input, input_event = Multiline_input.mk model_s in
@@ -32,9 +32,9 @@ module View = struct
     in
     let elem =
       div
-        [ h2 [ txt "Term to TeX" ]
+        [ h2 [ txt' "Term to TeX" ]
         ; div ~at:[ class' "container" ] [ input ]
-        ; div ~at:[ class' "side" ] [ h3 [ txt "(rendered)" ]; katex_area ]
+        ; div ~at:[ class' "side" ] [ h3 [ txt' "(rendered)" ]; katex_area ]
         ]
     in
     evt, elem

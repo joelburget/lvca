@@ -12,8 +12,8 @@ open Components
 let ( >> ) = Lvca_util.( >> )
 let html_eq = Common.html_eq
 
-let em, table, tr, td, span, div, h3, h4, p, pre, code =
-  El.(em, table, tr, td, span, div, h3, h4, p, pre, code)
+let em, table, tr, td, span, div, h3, h4, p, pre, code, txt' =
+  El.(em, table, tr, td, span, div, h3, h4, p, pre, code, txt')
 ;;
 
 module Model = struct
@@ -238,7 +238,7 @@ let view_term ~highlight_s tm =
   let view =
     div
       [ div ~at:[ class' "my-2" ] [ success_msg [ pp_view ] ]
-      ; div ~at:[ class' "my-2" ] [ span [ txt "Tree viewer:" ] ]
+      ; div ~at:[ class' "my-2" ] [ span [ txt' "Tree viewer:" ] ]
       ; div ~at:[ class' "my-2" ] [ tree_view ]
       ]
   in
@@ -264,12 +264,12 @@ let view_parser_ignore_selection ~highlight_s ~success parser =
 let string_location ~str ~loc =
   if String.(str = "")
   then
-    El.div ~at:(classes "font-mono mx-2 bg-gray-100 underline") [ txt "(empty string)" ]
+    El.div ~at:(classes "font-mono mx-2 bg-gray-100 underline") [ txt' "(empty string)" ]
   else (
     let before = String.subo str ~len:loc in
     let after = String.subo str ~pos:loc in
-    let before_elem = if String.(before = "") then El.wbr () else txt before in
-    let after_elem = if String.(after = "") then El.wbr () else txt after in
+    let before_elem = if String.(before = "") then El.wbr () else txt' before in
+    let after_elem = if String.(after = "") then El.wbr () else txt' after in
     div
       ~at:(classes "flex flex-row font-mono mx-2 bg-gray-100 underline")
       [ div
@@ -290,7 +290,7 @@ let snapshot_advanced_view str Model.TraceSnapshot.{ pre_pos; post_pos; _ } =
   let n = post_pos - pre_pos in
   let chars = match n with 1 -> "1 character" | _ -> Printf.sprintf "%d characters" n in
   div
-    [ span [ txt ("advances the input " ^ chars ^ " to") ]
+    [ span [ txt' ("advances the input " ^ chars ^ " to") ]
     ; inline_block (string_location ~str ~loc:post_pos)
     ]
 ;;
@@ -298,8 +298,8 @@ let snapshot_advanced_view str Model.TraceSnapshot.{ pre_pos; post_pos; _ } =
 let snapshot_controls str snapshots =
   let header =
     tr
-      [ td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2 w-1/2") [ txt "parser" ]
-      ; td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2") [ txt "action" ]
+      [ td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2 w-1/2") [ txt' "parser" ]
+      ; td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2") [ txt' "action" ]
       ; td ~at:(classes "p-2 border-t-2 border-b-2") []
       ]
   in
@@ -338,8 +338,9 @@ let view_controls str snapshots =
   ( path_evt
   , rows
       ~classes:[]
-      (if List.length snapshots > 0 then [ txt msg; snapshot_controls ] else [ txt msg ])
-  )
+      (if List.length snapshots > 0
+      then [ txt' msg; snapshot_controls ]
+      else [ txt' msg ]) )
 ;;
 
 type path_traversal =
@@ -414,7 +415,7 @@ let view_root_snapshot str root =
   let stack_view =
     path_s
     |> S.map ~eq:html_eq (fun path ->
-           if List.length path > 0 then stack_view else txt "(empty)")
+           if List.length path > 0 then stack_view else txt' "(empty)")
   in
   let s =
     current_snapshot_s
@@ -451,40 +452,40 @@ let view_root_snapshot str root =
     |> S.map ~eq:html_eq (fun Model.TraceSnapshot.{ success; _ } ->
            span
              ~at:[ class' (if success then "success" else "error") ]
-             [ (if success then txt "succeeds" else txt "fails") ])
+             [ (if success then txt' "succeeds" else txt' "fails") ])
     |> S.map ~eq:(List.equal html_eq) List.return
     |> mk_reactive span
   in
   let status_view =
     El.div
-      [ inline_block (span [ txt "This parser" ])
-      ; txt " "
+      [ inline_block (span [ txt' "This parser" ])
+      ; txt' " "
       ; inline_block status_view
-      ; txt " "
-      ; inline_block (txt "and")
-      ; txt " "
+      ; txt' " "
+      ; inline_block (txt' "and")
+      ; txt' " "
       ; current_snapshot_s
         |> S.map ~eq:html_eq (snapshot_advanced_view str)
         |> r_inline_block
-      ; txt "."
+      ; txt' "."
       ]
   in
   let input_view =
     cols
-      [ div [ span [ txt "The input to this parser is" ] ]
-      ; txt " "
+      [ div [ span [ txt' "The input to this parser is" ] ]
+      ; txt' " "
       ; pre_loc_view
-      ; txt "."
+      ; txt' "."
       ]
   in
   table
     ~at:[ class' "w-full" ]
     [ tr
-        [ td ~at:(classes "p-2 border-b-2 border-r-2") [ txt "stack" ]
+        [ td ~at:(classes "p-2 border-b-2 border-r-2") [ txt' "stack" ]
         ; mk_reactive' td ~at:(classes "p-2 border-b-2") stack_view
         ]
     ; tr
-        [ td ~at:(classes "p-2 border-b-2 border-r-2") [ txt "parser" ]
+        [ td ~at:(classes "p-2 border-b-2 border-r-2") [ txt' "parser" ]
         ; td
             ~at:(classes "p-2 border-b-2")
             [ parser_view |> mk_reactive' div ~at:[ class' "py-2" ]
@@ -493,7 +494,7 @@ let view_root_snapshot str root =
             ]
         ]
     ; tr
-        [ td ~at:(classes "p-2 border-r-2") [ txt "subparsers" ]
+        [ td ~at:(classes "p-2 border-r-2") [ txt' "subparsers" ]
         ; td ~at:[ class' "p-2" ] [ mk_reactive' div controls_s ]
         ]
     ]
@@ -509,11 +510,11 @@ module View = struct
       parser_or_err
       test_str
     =
-    let mk_err msg = error_msg [ El.span ~at:[ class' "p-2" ] [ txt msg ] ] in
+    let mk_err msg = error_msg [ El.span ~at:[ class' "p-2" ] [ txt' msg ] ] in
     match parser_or_err with
     | Error msg ->
       let result = mk_err msg in
-      let trace = El.div [ txt "not available: parser failed to parse" ] in
+      let trace = El.div [ txt' "not available: parser failed to parse" ] in
       result, trace, E.never
     | Ok parser ->
       let parser = P.map_info ~f:(Source_ranges.of_opt_range ~buf:"parser") parser in
@@ -527,7 +528,7 @@ module View = struct
           | Some tm ->
             let highlight_s = S.const Source_ranges.empty in
             let core, select_e = view_core ~highlight_s tm in
-            error_msg [ El.span ~at:[ class' "p-2" ] [ txt msg ]; core ], select_e)
+            error_msg [ El.span ~at:[ class' "p-2" ] [ txt' msg ]; core ], select_e)
         | Ok tm ->
           (match didnt_consume_msg with
           | Some msg -> mk_err msg, E.never
@@ -592,7 +593,7 @@ module View = struct
                  |> P.map_info ~f:(Source_ranges.of_opt_range ~buf:"parser")
                  |> view_parser ~highlight_s:parser_hl_s ~success:true
                  |> fst
-               | Error _ -> pre [ mk_reactive' code (parser_str_s |> S.map txt) ])
+               | Error _ -> pre [ mk_reactive' code (parser_str_s |> S.map txt') ])
         |> mk_reactive' div
     in
     let test_input, test_evt = Single_line_input.mk test_s ~highlights_s:input_hl_s in
@@ -605,7 +606,7 @@ module View = struct
     let trace_cell =
       S.l2
         ~eq:html_eq
-        (fun trace show_trace -> if show_trace then trace else txt "")
+        (fun trace show_trace -> if show_trace then trace else txt' "")
         trace_s
         show_trace_s
       |> mk_reactive' div
@@ -618,12 +619,12 @@ module View = struct
       [ table
           ~at:(classes "font-mono mb-6 col-span-4 table-fixed")
           [ tr
-              [ td ~at:(classes "border-2 p-2 w-1/6") [ txt "Parser" ]
+              [ td ~at:(classes "border-2 p-2 w-1/6") [ txt' "Parser" ]
               ; td ~at:(classes "border-2 p-2 w-5/6") [ parser_elem ]
               ]
-          ; mk_row [ txt "Input" ] [ test_input ]
-          ; mk_row [ txt "Result" ] [ result ]
-          ; mk_row [ txt "Debugger"; trace_button ] [ trace_cell ]
+          ; mk_row [ txt' "Input" ] [ test_input ]
+          ; mk_row [ txt' "Result" ] [ result ]
+          ; mk_row [ txt' "Debugger"; trace_button ] [ trace_cell ]
           ]
       ]
   ;;
@@ -692,234 +693,234 @@ module View = struct
           match evt with Common.EvaluateInput str -> set_pg_parser_input str | _ -> ())
     in
     let code_inline content = code ~at:[ class' "code-inline" ] content in
-    let code_inline' str = code_inline [ txt str ] in
+    let code_inline' str = code_inline [ txt' str ] in
     div
-      [ h3 [ txt "Fixed character and string parsers" ]
+      [ h3 [ txt' "Fixed character and string parsers" ]
       ; p
-          [ txt
+          [ txt'
               "Let's start with the simplest class of parsers, which accept a single \
                character or a fixed string."
           ]
       ; h4 [ code_inline' "." ]
       ; p
-          [ txt "The parser "
-          ; code ~at:[ class' "code-inline" ] [ txt "." ]
-          ; txt " accepts any single character."
+          [ txt' "The parser "
+          ; code ~at:[ class' "code-inline" ] [ txt' "." ]
+          ; txt' " accepts any single character."
           ]
       ; any_char_table
       ; h4 [ code_inline' "'c'" ]
       ; p
-          [ txt
+          [ txt'
               "A single-quoted character accepts exactly that character. Note that this \
                example, like many of the others is (intentionally) failing initially. \
                Try changing the input so it's accepted."
           ]
       ; char_table
       ; h4 [ code_inline' {|"str"|} ]
-      ; p [ txt "Similarly, a double-quoted string accepts exactly that string." ]
+      ; p [ txt' "Similarly, a double-quoted string accepts exactly that string." ]
       ; string_table
-      ; h4 [ txt "Debugging" ]
+      ; h4 [ txt' "Debugging" ]
       ; p
-          [ txt "You've probably noticed the "
-          ; em [ txt "debugger" ]
-          ; txt
+          [ txt' "You've probably noticed the "
+          ; em [ txt' "debugger" ]
+          ; txt'
               " rows below each parse result. By toggling this row you can see the steps \
                the parser took to consume an input (or not). For the parsers we've seen \
                so far, it's always exactly one step, but as soon as we get to "
-          ; em [ txt "repetition" ]
-          ; txt
+          ; em [ txt' "repetition" ]
+          ; txt'
               " below, that will change. But this tool will really become useful when we \
                get to"
           ; code_inline' "choice"
-          ; txt " and "
+          ; txt' " and "
           ; code_inline' "fix"
-          ; txt "."
+          ; txt' "."
           ]
-      ; h3 [ txt "satisfy" ]
+      ; h3 [ txt' "satisfy" ]
       ; p
-          [ txt "Fixed characters are awfully limiting. "
+          [ txt' "Fixed characters are awfully limiting. "
           ; code_inline' "satisfy"
-          ; txt
+          ; txt'
               " parses a single character that satisfies some predicate. The available \
                predicates are "
           ; code_inline' "is_digit"
-          ; txt ", "
+          ; txt' ", "
           ; code_inline' "is_lowercase"
-          ; txt ", "
+          ; txt' ", "
           ; code_inline' "is_uppercase"
-          ; txt ", "
+          ; txt' ", "
           ; code_inline' "is_alpha"
-          ; txt ", "
+          ; txt' ", "
           ; code_inline' "is_alphanum"
-          ; txt ", and "
+          ; txt' ", and "
           ; code_inline' "is_whitespace"
-          ; txt "."
+          ; txt' "."
           ]
       ; satisfy1_table
       ; satisfy_is_alpha_table
       ; satisfy_is_digit_table
       ; p
-          [ txt "For convenience, I'll leave the last two parsers in scope as "
+          [ txt' "For convenience, I'll leave the last two parsers in scope as "
           ; code_inline' "alpha"
-          ; txt " and "
+          ; txt' " and "
           ; code_inline' "digit"
-          ; txt ", so we can use them later on."
+          ; txt' ", so we can use them later on."
           ]
       ; p
-          [ txt "You might wonder, what's the syntax inside the "
+          [ txt' "You might wonder, what's the syntax inside the "
           ; code_inline' "satisfy"
-          ; txt " expression? It's a language I'm calling "
-          ; em [ txt "core" ]
-          ; txt
+          ; txt' " expression? It's a language I'm calling "
+          ; em [ txt' "core" ]
+          ; txt'
               ", which can be used for manipulating syntax trees. It's not what this \
                post is about, but I'll have more to say about it in the future."
           ]
-      ; h3 [ txt "Repetition" ]
+      ; h3 [ txt' "Repetition" ]
       ; p
-          [ txt
+          [ txt'
               "The next class of operators accepts some number of repetitions of another \
                parser."
           ]
       ; h4 [ code_inline' "*" ]
       ; p
-          [ txt
+          [ txt'
               "The star operator can be used to accept any number of repetitions of the \
                previous parser. For example "
           ; code_inline' "'c'*"
-          ; txt "accepts any number of "
+          ; txt' "accepts any number of "
           ; code_inline' "'c'"
-          ; txt "s, including 0."
+          ; txt' "s, including 0."
           ]
       ; star_table
       ; h4 [ code_inline' "+" ]
       ; p
-          [ txt
+          [ txt'
               "The plus operator can be used to accept one or more repetitions of the \
                previous parser. For example "
           ; code_inline' "'c'*"
-          ; txt " accepts one or more "
+          ; txt' " accepts one or more "
           ; code_inline' "'c'"
-          ; txt "s."
+          ; txt' "s."
           ]
       ; plus_table
-      ; h4 [ txt "count" ]
+      ; h4 [ txt' "count" ]
       ; p
-          [ txt
+          [ txt'
               "A parser followed by a number accepts a fixed number of repetitions of \
                that parser."
           ]
       ; count_table
-      ; h3 [ txt "Sequence" ]
+      ; h3 [ txt' "Sequence" ]
       ; p
-          [ txt
+          [ txt'
               "Concatenating a sequence of parsers accepts when they all parse \
                successfully in sequence. A parser must return something, which goes to \
                the right of the arrow. For example "
           ; code_inline' Examples.sequence1
-          ; txt " parses a simple addition expression where the operands, "
+          ; txt' " parses a simple addition expression where the operands, "
           ; code_inline' "a"
-          ; txt " and "
+          ; txt' " and "
           ; code_inline' "b"
-          ; txt ", are both one character (any character)."
+          ; txt' ", are both one character (any character)."
           ]
       ; sequence1_table
       ; p
-          [ txt
+          [ txt'
               "Of course, it would be more useful to return something we parsed. That's \
                why you can name the result of any parsers you'd like to use in the \
                result."
           ]
       ; sequence2_table
       ; p
-          [ txt "This is a good time to revisit the "
-          ; em [ txt "Debugger" ]
-          ; txt
+          [ txt' "This is a good time to revisit the "
+          ; em [ txt' "Debugger" ]
+          ; txt'
               " tool. If you look at the debugger for the sequence parser, you'll see \
                that it calls five subparsers. You can click the "
-          ; em [ txt "view" ]
-          ; txt " button to inspect the details of any subparser, then "
-          ; em [ txt "return here" ]
-          ; txt " to return to a caller anywhere up the stack."
+          ; em [ txt' "view" ]
+          ; txt' " button to inspect the details of any subparser, then "
+          ; em [ txt' "return here" ]
+          ; txt' " to return to a caller anywhere up the stack."
           ]
-      ; h3 [ txt "Choice" ]
+      ; h3 [ txt' "Choice" ]
       ; p
-          [ txt "The "
+          [ txt' "The "
           ; code_inline' "choice"
-          ; txt " construct can be used to accept one of several parsers. For example "
+          ; txt' " construct can be used to accept one of several parsers. For example "
           ; code_inline' {|choice ("c" | "foo")|}
-          ; txt " accepts "
+          ; txt' " accepts "
           ; code_inline' {|"c"|}
-          ; txt " or "
+          ; txt' " or "
           ; code_inline' {|"foo"|}
-          ; txt "."
+          ; txt' "."
           ]
       ; choice1_table
       ; p
           [ code_inline' "choice"
-          ; txt " can accept any number of choices, and you can start each line with "
+          ; txt' " can accept any number of choices, and you can start each line with "
           ; code_inline' "|"
-          ; txt
+          ; txt'
               ". Note that choice always chooses the first matching branch, so in this \
                example, "
           ; code_inline' {|"abcd"|}
-          ; txt " will never match ("
+          ; txt' " will never match ("
           ; code_inline' "abc"
-          ; txt " will match, leaving "
+          ; txt' " will match, leaving "
           ; code_inline' "d"
-          ; txt " unconsumed)."
+          ; txt' " unconsumed)."
           ]
       ; choice2_table
-      ; p [ txt "An empty choice always fails." ]
+      ; p [ txt' "An empty choice always fails." ]
       ; choice3_table
-      ; h3 [ txt "Language constructs" ]
+      ; h3 [ txt' "Language constructs" ]
       ; p
-          [ txt
+          [ txt'
               "So far all of our parsers have looked a lot like regular expressions. \
                Let's introduce a construct that will make this look more like a real \
                language. Let-binding allows us to name parsers and use them later, for \
                example "
           ; code_inline' Examples.let_
-          ; txt "."
+          ; txt' "."
           ]
       ; let_table
       ; p
-          [ txt "Parsers can also fail with a message, like "
+          [ txt' "Parsers can also fail with a message, like "
           ; code_inline' Examples.fail
-          ; txt
+          ; txt'
               ". This example as written is of course not very useful, but this can be \
                quite useful as part of a larger parser."
           ]
       ; fail_table
-      ; h3 [ txt "Fix" ]
+      ; h3 [ txt' "Fix" ]
       ; p
-          [ txt
+          [ txt'
               "Our parsers to this point have been limited: we can parse regular \
                languages but not context-free languages. "
           ; code_inline' "fix"
-          ; txt " extends the language in the same way as "
+          ; txt' " extends the language in the same way as "
           ; El.a
               ~at:
                 [ class' "prose-link"
                 ; At.href (Jstr.v "https://catonmat.net/recursive-regular-expressions")
                 ]
-              [ txt " recursive regular expressions" ]
-          ; txt " to give it more power."
+              [ txt' " recursive regular expressions" ]
+          ; txt' " to give it more power."
           ]
       ; p
-          [ txt
+          [ txt'
               {|Let's say you want to parse addition expressions like "1 + 2", "1 + 2 + 3", "1 + 2 + 3 + 4", etc. We need a way to recursively use the parser we're defining. It's a little mind-bending, so let's look at an example.|}
           ]
       ; p
-          [ txt "Note: For clarity I've pre-defined two parsers: "
+          [ txt' "Note: For clarity I've pre-defined two parsers: "
           ; code_inline' "name = (chars=alpha+ -> {var(string_of_chars chars)})"
-          ; txt " and "
+          ; txt' " and "
           ; code_inline' "literal = (chars=digit+ -> {literal(string_of_chars chars)})"
-          ; txt "."
+          ; txt' "."
           ]
       ; fix_table
       ; p
           [ code_inline' "fix"
-          ; txt " computes the "
+          ; txt' " computes the "
           ; El.a
               ~at:
                 [ class' "prose-link"
@@ -927,14 +928,14 @@ module View = struct
                     (Jstr.v
                        "https://mitpress.mit.edu/sites/default/files/sicp/full-text/sicp/book/node24.html#sec:proc-general-methods")
                 ]
-              [ txt "fixed-point" ]
-          ; txt
+              [ txt' "fixed-point" ]
+          ; txt'
               " of our parser. It takes a function which receives the parser being \
                defined... and uses it to define itself."
           ]
-      ; h3 [ txt "Playground" ]
+      ; h3 [ txt' "Playground" ]
       ; p
-          [ txt
+          [ txt'
               "Finally, here is a playground where you can write and test your own \
                parsers."
           ]

@@ -47,8 +47,8 @@ let mk ?(autofocus = false) ?highlights_s:(external_highlights_s = S.const []) i
                let str = String.sub input_str ~pos:start ~len:(finish - start) in
                match string_status with
                | Ranges.Covered _ ->
-                 El.span ~at:(classes "bg-pink-200 rounded") [ txt str ]
-               | Uncovered _ -> txt str))
+                 El.span ~at:(classes "bg-pink-200 rounded") [ El.txt' str ]
+               | Uncovered _ -> El.txt' str))
       input_s
       highlights_s
   in
@@ -67,7 +67,7 @@ let mk ?(autofocus = false) ?highlights_s:(external_highlights_s = S.const []) i
       updated_elem
       (dirty_input_s
       |> S.map (function true -> "updated (press Enter to re-evaluate)" | false -> "")
-      |> S.map (fun str -> [ txt str ]))
+      |> S.map (fun str -> [ El.txt' str ]))
   in
   let result =
     El.div

@@ -19,8 +19,8 @@ open Lvca_util
 open Note
 open Prelude
 
-let div, tbody, table, pre, span, td, tr, thead =
-  El.(div, tbody, table, pre, span, td, tr, thead)
+let div, tbody, table, pre, span, td, tr, thead, txt' =
+  El.(div, tbody, table, pre, span, td, tr, thead, txt')
 ;;
 
 module VarStatus = struct
@@ -136,14 +136,14 @@ let grid_tmpl ~render_params left loc : El.t * Source_ranges.t event =
     | Some Source_range.{ source; range } ->
       [ Some fst_col
       ; (if source_column
-        then Some (td ~at:[ class' "px-2"; class' "py-0" ] [ txt source ])
+        then Some (td ~at:[ class' "px-2"; class' "py-0" ] [ txt' source ])
         else None)
       ; (if range_column
         then
           Some
             (td
                ~at:[ class' "px-2"; class' "py-0" ]
-               [ txt (Fmt.to_to_string Range.pp range) ])
+               [ txt' (Fmt.to_to_string Range.pp range) ])
         else None)
       ]
       |> List.filter_map ~f:Fn.id
@@ -161,14 +161,16 @@ let grid_tmpl ~render_params left loc : El.t * Source_ranges.t event =
   tr, evt
 ;;
 
-let indent _ = span ~at:[ class' "border-l-2"; class' "border-dotted" ] [ txt "  " ]
+let indent _ = span ~at:[ class' "border-l-2"; class' "border-dotted" ] [ txt' "  " ]
 
 let pad_text depth text =
   let indents = List.init depth ~f:indent in
   indents @ [ text ]
 ;;
 
-let padded_text depth text = pre ~at:[ class' "inline-block" ] (pad_text depth (txt text))
+let padded_text depth text =
+  pre ~at:[ class' "inline-block" ] (pad_text depth (txt' text))
+;;
 
 (** Variables have a lot of states / interactions. States:
 
@@ -196,7 +198,7 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
            | Shadowing, Definition _ -> false, false, false, true (* downstream shadow *)
            | _, _ -> false, false, false, false)
   in
-  let inner_span = span ~at:[ class' "inline-block" ] [ txt name ] in
+  let inner_span = span ~at:[ class' "inline-block" ] [ txt' name ] in
   let add_active_class color getter =
     Elr.def_class (Jstr.v color) (classes_s |> S.map getter) inner_span
   in
@@ -204,7 +206,7 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
   add_active_class Colors.definition Tuple4.get2;
   add_active_class Colors.upstream_shadow Tuple4.get3;
   add_active_class Colors.downstream_shadow Tuple4.get4;
-  let name_elem = span [ inner_span; txt suffix ] in
+  let name_elem = span [ inner_span; txt' suffix ] in
   let trigger_upstream_shadow, trigger_downstream_shadow =
     match var_pos with
     | Definition { trigger_upstream_shadow; trigger_downstream_shadow } ->
@@ -371,7 +373,7 @@ let rec render_tm ~render_params ?(suffix = "") : _ Nominal.Term.t -> unit =
         queue
         (grid_tmpl
            ~render_params
-           [ padded_text depth (name ^ "("); button; txt (")" ^ suffix) ]
+           [ padded_text depth (name ^ "("); button; txt' (")" ^ suffix) ]
            loc)
     | _, true ->
       let open_elem =
@@ -459,13 +461,13 @@ let view_tm
     let _sink : Logr.t option = E.log (E.select evts) set_selection in
     let rows =
       [ Some
-          (td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2 w-1/2") [ txt "term" ])
+          (td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2 w-1/2") [ txt' "term" ])
       ; (if source_column
         then
-          Some (td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2") [ txt "source" ])
+          Some (td ~at:(classes "p-2 border-t-2 border-b-2 border-r-2") [ txt' "source" ])
         else None)
       ; (if range_column
-        then Some (td ~at:(classes "p-2 border-t-2 border-b-2") [ txt "range" ])
+        then Some (td ~at:(classes "p-2 border-t-2 border-b-2") [ txt' "range" ])
         else None)
       ]
       |> List.filter_map ~f:Fn.id
