@@ -6,24 +6,18 @@ open Stdio
 
 let ( >> ) = Lvca_util.(( >> ))
 
-let abstract_syntax =
-  [%lvca.abstract_syntax
-    {|
-maybe a :=
-  | nothing()
-  | some(a)
+module Lang =
+[%lvca.abstract_syntax_module
+{|
+core : *  // module Lvca_core.Lang.Term
+string : *  // module Primitive.String
+list : * -> *  // module Lvca_core.List_model.List
 
-edit lang :=
-  | atomic(core lang (maybe lang))
-  | labeled(edit; string)
-  | list(list edit)
+edit :=
+  | Atomic(core)
+  | Labeled(edit; string)
+  | List(list edit)
 |}]
-;;
-
-(* module ParseAbstract = AbstractSyntax.Parse(Lvca_parsing.CComment)
-
-   let abstract_syntax : AbstractSyntax.t = abstract_syntax_str |> Lvca_parsing.parse_string
-   ParseAbstract.whitespace_t |> Result.ok_or_failwith *)
 
 type core = Opt_range.t Term.t
 
@@ -85,10 +79,10 @@ let%test_module "Parsing" =
 
     let run_atom : term -> core -> (term, Opt_range.t eval_error) Result.t =
      fun tm core ->
+      let open Lvca_core.Lang.Term in
       eval
         ~no_info:None
-        (Lang.Term.Ap
-           (None, core, List_model.of_list ~empty_info:None [ Lang.Term.Term (None, tm) ]))
+        (Ap (None, core, List_model.of_list ~empty_info:None [ Term (None, tm) ]))
    ;;
 
     (* TODO: don't throw away this information, switch from strings *)
