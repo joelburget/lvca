@@ -9,9 +9,7 @@ let pages =
     ]
 ;;
 
-let main () =
-  (* let open Fut.Syntax in *)
-  (* let* _ev = Ev.next Ev.load (Window.as_target G.window) in *)
+let () =
   match Document.find_el_by_id G.document (Jstr.v "app") with
   | None -> Console.(log [ str "no app found" ])
   | Some app_elem ->
@@ -23,7 +21,3 @@ let main () =
       | None -> Console.(log [ str "page not found" ])
       | Some page -> El.set_children app_elem [ page () ]))
 ;;
-
-(* Fut.return () *)
-
-let () = main () (* ignore (main ()) *)

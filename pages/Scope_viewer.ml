@@ -7,10 +7,10 @@ open Note
 open Prelude
 
 let parse_tm =
-  Lvca_parsing.(
-    parse_string
-      Nominal.Term.(
-        whitespace *> parse' ~comment:c_comment >>| map_info ~f:Commented.get_range))
+  let open Lvca_parsing in
+  let open Nominal.Term in
+  parse_string
+    (whitespace *> parse' ~comment:c_comment >>| map_info ~f:Commented.get_range)
 ;;
 
 let buf = "input"

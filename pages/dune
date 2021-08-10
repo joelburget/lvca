@@ -3,7 +3,16 @@
  (modes js)
  (link_flags
   (:standard -no-check-prims))
- (libraries angstrom base brr brr.note digestif.ocaml lvca_languages
-   lvca_parsing lvca_provenance lvca_syntax note)
+ (libraries
+  angstrom
+  base
+  brr
+  brr.note
+  digestif.ocaml
+  lvca_languages
+  lvca_parsing
+  lvca_provenance
+  lvca_syntax
+  note)
  (preprocess
   (pps ppx_jane ppx_lvca)))
