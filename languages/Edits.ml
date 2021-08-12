@@ -4,8 +4,6 @@ open Lvca_provenance
 open Lvca_core
 open Stdio
 
-let ( >> ) = Lvca_util.(( >> ))
-
 module Lang =
 [%lvca.abstract_syntax_module
 {|
@@ -45,7 +43,8 @@ let parse lang_p =
   let open Lvca_parsing in
   fix (fun t ->
       choice
-        ~failure_msg:"looking for an expression, brackets, or an identifier"
+        ~failure_msg:
+          "looking for a core term, list (in brackets), or an identifier (label)"
         [ lang_p >>| (fun core -> Atomic core) <?> "core term"
         ; Ws.brackets (sep_by (Ws.char ',') t) >>| (fun ts -> List ts) <?> "list"
         ; lift3
@@ -77,7 +76,7 @@ let%test_module "Parsing" =
       | Error msg -> print_string msg
    ;;
 
-    let run_atom : term -> core -> (term, Opt_range.t eval_error) Result.t =
+    let eval_atom : term -> core -> (term, Opt_range.t eval_error) Result.t =
      fun tm core ->
       let open Lvca_core.Lang.Term in
       eval
@@ -86,16 +85,16 @@ let%test_module "Parsing" =
    ;;
 
     (* TODO: don't throw away this information, switch from strings *)
-    let run_atom' : term -> core -> (term, string) Result.t =
-     fun tm core -> Result.map_error (run_atom tm core) ~f:(fun (msg, _tm) -> msg)
+    let eval_atom' : term -> core -> (term, string) Result.t =
+     fun tm core -> Result.map_error (eval_atom tm core) ~f:(fun (msg, _tm) -> msg)
    ;;
 
-    let rec run : term -> core t -> (term, string) Result.t =
+    let rec eval : term -> core t -> (term, string) Result.t =
      fun tm edit ->
       match edit with
-      | Atomic core -> run_atom' tm core
-      | Labeled (edit', _) -> run tm edit'
-      | List edits -> List.fold_result edits ~init:tm ~f:run
+      | Atomic core -> eval_atom' tm core
+      | Labeled (edit', _) -> eval tm edit'
+      | List edits -> List.fold_result edits ~init:tm ~f:eval
    ;;
 
     let eval_and_print : string -> string -> unit =
@@ -105,7 +104,7 @@ let%test_module "Parsing" =
         let%bind edit = parse edit in
         let%bind tm = Lvca_parsing.parse_string (Nominal.Term.parse' ~comment) tm in
         let tm = Nominal.Term.map_info ~f:Commented.get_range tm in
-        let%map tm = run tm edit in
+        let%map tm = eval tm edit in
         Nominal.Term.pp Caml.Format.std_formatter tm
       with
       | Error msg -> print_string msg
@@ -178,35 +177,74 @@ let%test_module "Parsing" =
       [%expect {| baz() |}]
     ;;
 
-    (* rename a lambda calculus term. needs: cond, eq *)
+    (* let rename x y = Printf.sprintf {|{\(tm : lam) -> tm[%s := {Term_var(%S)}]}|} x y *)
+    (* let rename x y = Printf.sprintf {|{\(tm : lam) -> let %s = {Term_var(%S)} in tm}|} x y *)
+    let _rename x y =
+      Printf.sprintf
+        {|
+      {\(tm : lang) -> match tm with {
+        | var(old_name) -> match string.equal old_name %s with {
+          | true() -> {var(%s)}
+          | false() -> tm
+        }
+        | _ -> tm
+      }}
+      |}
+        x
+        y
+    ;;
 
-    (* let rename x y = Printf.sprintf {|{ let rec rename = \(target : string()) ->
-       \(new_name : string()) -> \(tm : lam()) -> match tm with { | var(v) -> cond(eq(v;
-       target); var(new_name); tm) | lam(var(v). body) -> cond(eq(v; target); tm;
-       lam(var(v). rename(body; target; new_name)) ) | app(tm1; tm2) -> app(rename(tm1;
-       target; new_name); rename(tm1; target; new_name)) } in rename "%s" "%s" }|} x y *)
+    let _rename x y =
+      Printf.sprintf
+        {|
+      {
+        let rec rename_tm = \(tm : nominal) -> match tm with {
+          | Operator(name; scopes) ->
+            let scopes = list.map rename_scope scopes in
+            Operator(name; scopes)
+          | Var(name) -> match string.equal name %s with {
+            | True() -> {Var(%s)}
+            | False() -> tm
+          }
+          | Primitive(_) -> tm
+        }
+        and rename_scope = \(scope : scope) -> match scope with {
+          | Scope(subtms) -> {Scope(list.map rename_tm subtms)}
+        }
+        in
+        rename_tm
+      }
+    |}
+        x
+        y
+    ;;
 
-    (* let rename x y = Printf.sprintf {|{ let rec rename target new_name tm = match tm
-       with { | var(v) -> if v == target then new_name else tm | lam(var(v). body) -> if v
-       == target then tm else lam(var(v). rename body target new_name) ) | app(tm1; tm2)
-       -> app(rename tm1 target new_name; rename tm1 target new_name) } in rename "%s"
-       "%s" }|} x y *)
+    let rename_x_y = {|{\(tm : lang) -> rename {"x"} {"y"} tm}|}
 
-    (* XXX / lol -- rename should be built in. *is* built in *)
+    let%expect_test _ =
+      eval_and_print "lam(x. x)" rename_x_y;
+      [%expect {| lam(x. x) |}]
+    ;;
 
-    (* let%expect_test _ = eval_and_print "lam(x. x)" (rename "x" "y"); [%expect{| lam(x.
-       x) |}]
+    let%expect_test _ =
+      eval_and_print "x" rename_x_y;
+      [%expect {| y |}]
+    ;;
 
-       let%expect_test _ = eval_and_print "x" (rename "x" "y"); [%expect{| y |}]
+    let%expect_test _ =
+      eval_and_print "lam(z. z)" rename_x_y;
+      [%expect {| lam(z. z) |}]
+    ;;
 
-       let%expect_test _ = eval_and_print "lam(z. z)" (rename "x" "y"); [%expect{| lam(z.
-       z) |}]
+    let%expect_test _ =
+      eval_and_print "ap(lam(z. z); x)" rename_x_y;
+      [%expect {| ap(lam(z. z); y) |}]
+    ;;
 
-       let%expect_test _ = eval_and_print "lam(z. z) x" (rename "x" "y"); [%expect{|
-       lam(z. z) x |}]
-
-       let%expect_test _ = eval_and_print "lam(z. x) y" (rename "x" "y"); [%expect{|
-       lam(z. y) y |}] *)
+    let%expect_test _ =
+      eval_and_print "ap(lam(z. x); y)" rename_x_y;
+      [%expect {| ap(lam(z. y); y) |}]
+    ;;
 
     let%expect_test _ =
       parse_and_print
