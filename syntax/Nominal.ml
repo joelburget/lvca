@@ -163,6 +163,24 @@ module SubstAll = struct
   and scope ctx (Scope (pats, tm)) = Scope (pats, term ctx tm)
 end
 
+let bound_vars binders =
+  binders |> List.map ~f:Pattern.vars_of_pattern |> String.Set.union_list
+;;
+
+module Rename = struct
+  let rec term x y tm =
+    match tm with
+    | Types.Primitive _ -> tm
+    | Var (info, name) -> if String.(name = x) then Var (info, y) else tm
+    | Operator (info, name, scopes) ->
+      Operator (info, name, List.map scopes ~f:(scope x y))
+
+  and scope x y (Scope (binders, tm) as scope) =
+    let bound_vars = bound_vars binders in
+    if Set.mem bound_vars x then scope else Scope (binders, term x y tm)
+  ;;
+end
+
 module Term = struct
   type 'info t = 'info Types.term =
     | Operator of 'info * string * 'info Types.scope list
@@ -183,6 +201,7 @@ module Term = struct
   let equal = Equal.term
   let map_info = MapInfo.term
   let subst_all = SubstAll.term
+  let rename = Rename.term
   let jsonify = Jsonify.term
   let unjsonify = Unjsonify.term
   let pp_generic = PpGeneric.term
@@ -242,19 +261,14 @@ module Term = struct
 
   let free_vars tm =
     let module S = String.Set in
-    let rec free_vars bound_vars = function
+    let rec free_vars bound_vars' = function
       | Operator (_, _, scopes) ->
-        scopes |> List.map ~f:(scope_free_vars bound_vars) |> S.union_list
-      | Var (_, name) -> if Set.mem bound_vars name then S.empty else S.singleton name
+        scopes |> List.map ~f:(scope_free_vars bound_vars') |> S.union_list
+      | Var (_, name) -> if Set.mem bound_vars' name then S.empty else S.singleton name
       | Primitive _ -> S.empty
-    and scope_free_vars bound_vars (Scope (binders, tm)) =
-      let bound_vars =
-        binders
-        |> List.map ~f:Pattern.vars_of_pattern
-        |> S.union_list
-        |> Set.union bound_vars
-      in
-      free_vars bound_vars tm
+    and scope_free_vars bound_vars' (Scope (binders, tm)) =
+      let bound_vars' = binders |> bound_vars |> Set.union bound_vars' in
+      free_vars bound_vars' tm
     in
     free_vars S.empty tm
   ;;
@@ -522,6 +536,7 @@ module Scope = struct
   let equal = Equal.scope
   let pp_generic = PpGeneric.scope
   let subst_all = SubstAll.scope
+  let rename = Rename.scope
   let map_info = MapInfo.scope
   let jsonify = Jsonify.scope
   let unjsonify = Unjsonify.scope
@@ -829,6 +844,31 @@ let%test_module "Nominal" =
 
     let%test _ = Term.of_pattern (Var (4, "_abc")) = Var (4, "_abc")
     let%test _ = Term.of_pattern (Var (5, "_")) = Var (5, "_")
+
+    let parse_exn str =
+      let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse_no_comment)) in
+      match parse str with Error msg -> failwith msg | Ok tm -> tm
+    ;;
+
+    let pp = Fmt.pr "%a\n" Term.pp
+
+    let%expect_test _ =
+      "a" |> parse_exn |> Term.rename "a" "b" |> pp;
+      [%expect {| b |}]
+    ;;
+
+    let%expect_test _ =
+      "foo(a; b; c; 1; 'c')" |> parse_exn |> Term.rename "a" "b" |> pp;
+      [%expect {| foo(b; b; c; 1; 'c') |}]
+    ;;
+
+    let%expect_test _ =
+      "foo(lam(a. a); lam(b. b); lam(a. b); lam(b. a))"
+      |> parse_exn
+      |> Term.rename "a" "b"
+      |> pp;
+      [%expect {| foo(lam(a. a); lam(b. b); lam(a. b); lam(b. b)) |}]
+    ;;
   end)
 ;;
 

@@ -79,6 +79,7 @@ module Term : sig
       Leaves variables not found in the context free. *)
   val subst_all : 'info t String.Map.t -> 'info t -> 'info t
 
+  val rename : string -> string -> 'info t -> 'info t
   val select_path : path:int list -> 'info t -> ('info t, string) Result.t
 
   val match_pattern
@@ -157,6 +158,8 @@ val of_pattern : ('info, 'prim) Pattern.t -> ('info, 'prim) t
 
       Leaves variables not found in the context free. *)
   val subst_all : 'info Types.term String.Map.t -> 'info t -> 'info t
+
+  val rename : string -> string -> 'info t -> 'info t
 
   (* TODO:
   val free_vars : (_, _) t -> String.Set.t
