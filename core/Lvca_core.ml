@@ -831,20 +831,29 @@ and eval_primitive ~no_info eval_in_ctx eval_nominal_in_ctx ctx tm name args =
     args |> List_model.to_list |> List.map ~f:(eval_in_ctx ctx) |> Result.all
   in
   match name, args with
+  | "rename", [ v1; v2; tm' ] ->
+    let%bind v1 = eval_nominal_in_ctx ~no_info ctx v1 in
+    let%bind v2 = eval_nominal_in_ctx ~no_info ctx v2 in
+    let%map v1, v2 =
+      match v1, v2 with
+      | Primitive (_info1, String v1), Primitive (_info2, String v2) -> Ok (v1, v2)
+      | _ -> Error ("Invalid arguments to rename", tm)
+    in
+    Nominal.Term.rename v1 v2 tm'
   | "add", [ a; b ] ->
-    let%bind a_result = eval_nominal_in_ctx ~no_info ctx a in
-    let%bind b_result = eval_nominal_in_ctx ~no_info ctx b in
-    (match a_result, b_result with
-    | Primitive (info, Integer a'), Primitive (_binfo, Integer b') ->
+    let%bind a = eval_nominal_in_ctx ~no_info ctx a in
+    let%bind b = eval_nominal_in_ctx ~no_info ctx b in
+    (match a, b with
+    | Primitive (info, Integer a), Primitive (_binfo, Integer b) ->
       (* XXX can't reuse info *)
-      Ok (Nominal.Term.Primitive (info, Integer Z.(a' + b')))
+      Ok (Nominal.Term.Primitive (info, Integer Z.(a + b)))
     | _ -> Error ("Invalid arguments to add", tm))
   | "sub", [ a; b ] ->
-    let%bind a_result = eval_nominal_in_ctx ~no_info ctx a in
-    let%bind b_result = eval_nominal_in_ctx ~no_info ctx b in
-    (match a_result, b_result with
-    | Primitive (info, Integer a'), Primitive (_binfo, Integer b') ->
-      Ok (Nominal.Term.Primitive (info, Integer Z.(a' - b')))
+    let%bind a = eval_nominal_in_ctx ~no_info ctx a in
+    let%bind b = eval_nominal_in_ctx ~no_info ctx b in
+    (match a, b with
+    | Primitive (info, Integer a), Primitive (_binfo, Integer b) ->
+      Ok (Nominal.Term.Primitive (info, Integer Z.(a - b)))
     | _ -> Error ("Invalid arguments to sub", tm))
   | "string_of_chars", [ char_list ] ->
     (match char_list with
