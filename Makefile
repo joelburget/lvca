@@ -13,4 +13,7 @@ lint:
 	@dune build @fmt
 	@dune build @check @runtest
 
-.PHONY: format doc install-deps lint
+server:
+	@python3 server.py
+
+.PHONY: format doc install-deps lint server
