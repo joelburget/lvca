@@ -18,10 +18,12 @@ module Model = struct
     | List_nat_page
     | Pcf_page
     | Term_and_document_page
+    | Repl_page
+    | Ide_page
 
   type t = { page : page }
 
-  let initial_model = { page = Term_and_document_page }
+  let initial_model = { page = Repl_page }
 
   let all_pages =
     [ Term_and_concrete_page
@@ -36,6 +38,8 @@ module Model = struct
     ; List_nat_page
     ; Pcf_page
     ; Term_and_document_page
+    ; Repl_page
+    ; Ide_page
     ]
   ;;
 end
@@ -56,6 +60,8 @@ module View = struct
     | List_nat_page -> "0x: List_nat"
     | Pcf_page -> "0x: PCF"
     | Term_and_document_page -> "0x: Term and document"
+    | Repl_page -> "0x: Repl"
+    | Ide_page -> "0x: IDE"
   ;;
 
   let stateless_view = function
@@ -71,6 +77,8 @@ module View = struct
     | List_nat_page -> List_nat.stateless_view
     | Pcf_page -> Pcf.stateless_view
     | Term_and_document_page -> Term_and_document.stateless_view
+    | Repl_page -> Repl.stateless_view
+    | Ide_page -> Ide.stateless_view
   ;;
 
   let view model_s =
