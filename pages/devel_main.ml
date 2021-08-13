@@ -5,41 +5,27 @@ open Note
 open Prelude
 
 module Model = struct
-  type page =
-    | Term_and_concrete_page
-    | Calculator_page
-    | Eval_with_provenance_page
-    | Term_to_tex_page
-    | Parser_page
-    | Scope_viewer_page
-    | Edits_page
-    | Check_term_page
-    | Ast_operations_page
-    | List_nat_page
-    | Pcf_page
-    | Term_and_document_page
-    | Repl_page
-    | Ide_page
+  module Internal =
+  [%lvca.abstract_syntax_module
+  {|
+  page :=
+    | Term_and_concrete_page()
+    | Calculator_page()
+    | Eval_with_provenance_page()
+    | Term_to_tex_page()
+    | Parser_page()
+    | Scope_viewer_page()
+    | Edits_page()
+    | Check_term_page()
+    | Ast_operations_page()
+    | List_nat_page()
+    | Pcf_page()
+    | Term_and_document_page()
+    | Repl_page()
+    | Ide_page()
+    |}]
 
-  let ( = ) p1 p2 =
-    match p1, p2 with
-    | Term_and_concrete_page, Term_and_concrete_page
-    | Calculator_page, Calculator_page
-    | Eval_with_provenance_page, Eval_with_provenance_page
-    | Term_to_tex_page, Term_to_tex_page
-    | Parser_page, Parser_page
-    | Scope_viewer_page, Scope_viewer_page
-    | Edits_page, Edits_page
-    | Check_term_page, Check_term_page
-    | Ast_operations_page, Ast_operations_page
-    | List_nat_page, List_nat_page
-    | Pcf_page, Pcf_page
-    | Term_and_document_page, Term_and_document_page
-    | Repl_page, Repl_page
-    | Ide_page, Ide_page ->
-      true
-    | _, _ -> false
-  ;;
+  include Internal.Page.Plain
 
   let default_page = Repl_page
 
