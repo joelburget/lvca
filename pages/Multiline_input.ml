@@ -57,7 +57,7 @@ let mk ?(autofocus = true) ?(border = true) ?(rows = None) ?(cols = 60) ?(at = [
       then (
         Ev.prevent_default evt;
         update_input_dirty false;
-        Some (Common.EvaluateInput (El.prop El.Prop.value input |> Jstr.to_string)))
+        Some (Common.Evaluate_input (El.prop El.Prop.value input |> Jstr.to_string)))
       else None
     in
     Evr.on_el Ev.keydown handler input |> E.filter_map Fn.id
@@ -66,12 +66,12 @@ let mk ?(autofocus = true) ?(border = true) ?(rows = None) ?(cols = 60) ?(at = [
     let handler _evt =
       let start = El.prop selection_start input in
       let finish = El.prop selection_end input in
-      Common.InputSelect Lvca_provenance.Range.{ start; finish }
+      Common.Input_select Lvca_provenance.Range.{ start; finish }
     in
     Evr.on_el Ev.select handler input
   in
   let unselect_evt : Common.input_event event =
-    Evr.on_el Ev.click (fun _evt -> Common.InputUnselect) input
+    Evr.on_el Ev.click (fun _evt -> Common.Input_unselect) input
   in
   let input_event = E.select [ keydown_evt; select_evt; unselect_evt ] in
   let result =

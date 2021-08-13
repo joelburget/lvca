@@ -92,8 +92,8 @@ let mk ?(autofocus = false) ?highlights_s:(external_highlights_s = S.const []) i
       then (
         Ev.prevent_default evt;
         update_dirty false;
-        Common.EvaluateInput str)
-      else InputUpdate str
+        Common.Evaluate_input str)
+      else Input_update str
     in
     Evr.on_el Ev.keydown handler input
   in
@@ -101,12 +101,12 @@ let mk ?(autofocus = false) ?highlights_s:(external_highlights_s = S.const []) i
     let handler _evt =
       let start = El.prop selection_start input in
       let finish = El.prop selection_end input in
-      Common.InputSelect Range.{ start; finish }
+      Common.Input_select Range.{ start; finish }
     in
     Evr.on_el Ev.select handler input
   in
   let unselect_evt : Common.input_event event =
-    Evr.on_el Ev.click (fun _evt -> Common.InputUnselect) input
+    Evr.on_el Ev.click (fun _evt -> Common.Input_unselect) input
   in
   let input_event = E.select [ keydown_evt; select_evt; unselect_evt ] in
   result, input_event

@@ -59,16 +59,16 @@ end
 
 module Action = struct
   type t =
-    | UpdateLanguage of string
-    | UpdateTerm of string
+    | Update_language of string
+    | Update_term of string
 end
 
 module Controller = struct
   let update (action : Action.t) model =
     match action with
-    | UpdateLanguage language_str ->
+    | Update_language language_str ->
       { model with Model.language_str; language_parsed = parse_lang language_str }
-    | UpdateTerm term_str -> { model with term_str; term_parsed = parse_term term_str }
+    | Update_term term_str -> { model with term_str; term_parsed = parse_term term_str }
   ;;
 end
 
@@ -139,7 +139,7 @@ module View = struct
     let language_evt : Action.t event =
       input_event
       |> E.filter_map (function
-             | Common.EvaluateInput str -> Some (Action.UpdateLanguage str)
+             | Common.Evaluate_input str -> Some (Action.Update_language str)
              | _ -> None)
     in
     let term_input, input_event =
@@ -148,7 +148,7 @@ module View = struct
     let term_evt : Action.t event =
       input_event
       |> E.filter_map (function
-             | Common.EvaluateInput str -> Some (Action.UpdateTerm str)
+             | Common.Evaluate_input str -> Some (Action.Update_term str)
              | _ -> None)
     in
     let todo_sort = Sort.Ap (None, "term", Nil None) in

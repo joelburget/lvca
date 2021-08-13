@@ -97,9 +97,9 @@ type var_pos =
 type expanded = bool
 
 type term_index =
-  | OperatorIx of Source_range.t option * expanded signal'
-  | VarDefIx of Source_range.t option * VarStatus.t event'
-  | LocIx of Source_range.t option
+  | Operator_ix of Source_range.t option * expanded signal'
+  | Var_def_ix of Source_range.t option * VarStatus.t event'
+  | Loc_ix of Source_range.t option
 
 let select_source_range : Source_ranges.t -> Source_range.t option =
  fun source_ranges ->
@@ -235,20 +235,20 @@ let get_suffix ~last_slot = match last_slot with true -> "" | false -> ";"
 
 let rec index_pat = function
   | Pattern.Primitive p ->
-    let p = Primitive.All.map_info ~f:(fun loc -> LocIx loc) p in
+    let p = Primitive.All.map_info ~f:(fun loc -> Loc_ix loc) p in
     Pattern.Primitive p
-  | Var (loc, name) -> Var (VarDefIx (loc, create_e ()), name)
+  | Var (loc, name) -> Var (Var_def_ix (loc, create_e ()), name)
   | Operator (loc, name, slots) ->
     let slots = List.map slots ~f:index_pat in
-    Operator (LocIx loc, name, slots)
+    Operator (Loc_ix loc, name, slots)
 ;;
 
 (** Index a term so that its info type changes from [Opt_range.t] to [term_index]. *)
 let rec index_tm ~expanded_depth = function
   | Nominal.Term.Primitive p ->
-    let p = Primitive.All.map_info ~f:(fun loc -> LocIx loc) p in
+    let p = Primitive.All.map_info ~f:(fun loc -> Loc_ix loc) p in
     Nominal.Term.Primitive p, E.never
-  | Var (loc, name) -> Var (LocIx loc, name), E.never
+  | Var (loc, name) -> Var (Loc_ix loc, name), E.never
   | Operator (loc, name, scopes) ->
     let scopes, expanded_s, expanded_toggle_e =
       if List.is_empty scopes
@@ -270,7 +270,7 @@ let rec index_tm ~expanded_depth = function
         in
         scopes, expanded_s, expanded_toggle_e)
     in
-    Operator (OperatorIx (loc, expanded_s), name, scopes), expanded_toggle_e
+    Operator (Operator_ix (loc, expanded_s), name, scopes), expanded_toggle_e
 
 and index_scope ~expanded_depth (Nominal.Scope.Scope (pats, tm)) =
   let expanded_depth = decrease_depth expanded_depth in
@@ -292,7 +292,7 @@ and find_outermost_binding_scope ~var_name (Scope (pats, body)) =
            |> Pattern.list_vars_of_pattern
            |> List.find_map ~f:(fun (info, name) ->
                   match String.(name = var_name), info with
-                  | true, VarDefIx (_, evt) -> Some evt
+                  | true, Var_def_ix (_, evt) -> Some evt
                   | _, _ -> None))
   in
   match found_var with Some v -> Some v | None -> find_outermost_binding ~var_name body
@@ -306,12 +306,12 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
   | Pattern.Primitive p ->
     let loc =
       match Primitive.All.info p with
-      | LocIx loc -> loc
-      | _ -> invariant_violation ~here:[%here] "Expected LocIx"
+      | Loc_ix loc -> loc
+      | _ -> invariant_violation ~here:[%here] "Expected Loc_ix"
     in
     let str = Fmt.str "%a%s" Primitive.All.pp p suffix in
     Queue.enqueue queue (grid_tmpl ~render_params [ padded_text depth str ] loc)
-  | Var (VarDefIx (loc, selected_event), name) ->
+  | Var (Var_def_ix (loc, selected_event), name) ->
     let trigger_upstream_shadow =
       match Map.find shadowed_var_streams name with
       | None -> Fn.const ()
@@ -324,7 +324,7 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
     in
     let var_pos = Definition { trigger_upstream_shadow; trigger_downstream_shadow } in
     render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name
-  | Operator (LocIx loc, name, slots) ->
+  | Operator (Loc_ix loc, name, slots) ->
     (match slots with
     | [] ->
       Queue.enqueue
@@ -352,14 +352,14 @@ let rec render_tm ~render_params ?(suffix = "") : _ Nominal.Term.t -> unit =
     let str = Fmt.str "%a%s" Primitive.All.pp p suffix in
     let loc =
       match Primitive.All.info p with
-      | LocIx loc -> loc
-      | _ -> invariant_violation ~here:[%here] "Expected LocIx"
+      | Loc_ix loc -> loc
+      | _ -> invariant_violation ~here:[%here] "Expected Loc_ix"
     in
     Queue.enqueue queue (grid_tmpl ~render_params [ padded_text depth str ] loc)
-  | Var (LocIx loc, name) ->
+  | Var (Loc_ix loc, name) ->
     let selected_event = Map.find_exn var_selected_events name in
     render_var ~render_params ~var_pos:Reference ~suffix ~selected_event ~loc ~name
-  | Operator (OperatorIx (loc, expanded_signal), name, scopes) ->
+  | Operator (Operator_ix (loc, expanded_signal), name, scopes) ->
     let { signal = expanded_s; set_s = set_expanded } = expanded_signal in
     let button_event, button = Components.chevron_toggle expanded_s in
     let _sink : Logr.t option = E.log button_event set_expanded in
@@ -397,7 +397,7 @@ and render_scope ~render_params ~last:last_slot (Nominal.Scope.Scope (pats, tm))
           newly_defined_vars
           |> List.map ~f:(fun (info, name) ->
                  match info with
-                 | VarDefIx (_loc, event) -> name, event
+                 | Var_def_ix (_loc, event) -> name, event
                  | _ -> failwith "invariant violation: wrong index")
           |> String.Map.of_alist_exn
         in

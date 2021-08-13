@@ -6,13 +6,6 @@ open Lvca_syntax
 open Note
 open Prelude
 
-let parse_tm =
-  let open Lvca_parsing in
-  let open Nominal.Term in
-  parse_string
-    (whitespace *> parse' ~comment:c_comment >>| map_info ~f:Commented.get_range)
-;;
-
 let buf = "input"
 let initial_input = "fun(x. app(fun(x. app(f; x)); x))"
 
@@ -47,15 +40,15 @@ end
 
 module Action = struct
   type t =
-    | SetInput of string
-    | SetInputHighlights of Ranges.t
+    | Set_input of string
+    | Set_input_highlights of Ranges.t
 end
 
 module Controller = struct
   let update action (input, _ranges) =
     match action with
-    | Action.SetInput input -> input, []
-    | SetInputHighlights ranges -> input, ranges
+    | Action.Set_input input -> input, []
+    | Set_input_highlights ranges -> input, ranges
   ;;
 end
 
@@ -68,20 +61,20 @@ module View = struct
     let click_example_e =
       Examples.[ identity_e; k_e; s_e; y_e; pattern_e; sum_e ]
       |> E.select
-      |> E.map (fun str -> Action.SetInput str)
+      |> E.map (fun str -> Action.Set_input str)
     in
     let input_elem, input_evt = Single_line_input.mk input_s ~highlights_s in
     let enter_input_e =
       input_evt
       |> E.filter_map (function
-             | Common.EvaluateInput str -> Some (Action.SetInput str)
+             | Common.Evaluate_input str -> Some (Action.Set_input str)
              | _ -> None)
     in
     let set_highlight_e, output_children =
       let s =
         input_s
         |> S.map (fun str ->
-               match parse_tm str with
+               match Common.parse_term str with
                | Error msg -> E.never, [ div [ txt' msg ] ]
                | Ok tm ->
                  let tm =
@@ -95,7 +88,7 @@ module View = struct
                    |> E.filter_map (fun source_ranges ->
                           Map.find source_ranges buf
                           |> Option.map ~f:(fun ranges ->
-                                 Action.SetInputHighlights ranges))
+                                 Action.Set_input_highlights ranges))
                  in
                  set_highlight_e, [ tree_view ])
       in

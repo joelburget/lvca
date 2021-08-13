@@ -5,6 +5,8 @@ open Lvca_syntax
 
 type term = Opt_range.t Nominal.Term.t
 
+val parse_term : string -> (term, string) Result.t
+
 type lang =
   | Lambda
   | Term
@@ -19,9 +21,9 @@ val htmls_eq : Brr.El.t list -> Brr.El.t list -> bool
 module Action : sig
   type t =
     | Evaluate of string
-    | InputSelect of Opt_range.t
-    | OutputSelect of Opt_range.t
-    | SwitchInputLang
+    | Input_select of Opt_range.t
+    | Output_select of Opt_range.t
+    | Switch_input_lang
 end
 
 val demo_template
@@ -32,9 +34,9 @@ val demo_template
   -> Brr.El.t * Brr.Ev.Mouse.t Brr.Ev.t Note.event
 
 type input_event =
-  | EvaluateInput of string
-  | InputUpdate of string
-  | InputSelect of Range.t
-  | InputUnselect
+  | Evaluate_input of string
+  | Input_update of string
+  | Input_select of Range.t
+  | Input_unselect
 
 val mk_output : Brr.El.t Note.signal -> Brr.El.t

@@ -121,8 +121,8 @@ module View = struct
     let enter_input_e =
       input_evt
       |> E.filter_map (function
-             | Common.EvaluateInput str -> Some (Action.Evaluate str)
-             | InputUpdate _ -> Some (SetInputHighlights [])
+             | Common.Evaluate_input str -> Some (Action.Evaluate str)
+             | Input_update _ -> Some (SetInputHighlights [])
              | _ -> None)
     in
     let set_highlight_e1, intermediate_tree_views =

@@ -62,19 +62,19 @@ module Controller = struct
       in
       let result = Result.bind parsed_input ~f:eval in
       { model with parsed_input; result; input_selected = None; output_selected = None }
-    | InputSelect output_selected ->
+    | Input_select output_selected ->
       Brr.Console.log
         [ Jstr.v "output_selected"
         ; output_selected |> Fmt.to_to_string Opt_range.pp |> Jstr.v
         ];
       { model with output_selected; input_selected = None }
-    | OutputSelect input_selected ->
+    | Output_select input_selected ->
       Brr.Console.log
         [ Jstr.v "input_selected"
         ; input_selected |> Fmt.to_to_string Opt_range.pp |> Jstr.v
         ];
       { model with input_selected; output_selected = None }
-    | SwitchInputLang ->
+    | Switch_input_lang ->
       let input_lang, formatter =
         match input_lang with
         | Lambda -> Term, term_pretty
@@ -135,17 +135,17 @@ module View = struct
     in
     let evts =
       E.select
-        [ click_evt |> E.map (fun _click_evt -> Action.SwitchInputLang)
+        [ click_evt |> E.map (fun _click_evt -> Action.Switch_input_lang)
         ; input_event
           |> E.map (function
-                 | EvaluateInput str -> Action.Evaluate str
-                 | InputSelect rng -> InputSelect (Some rng)
-                 | InputUnselect | InputUpdate _ -> InputSelect None)
+                 | Evaluate_input str -> Action.Evaluate str
+                 | Input_select rng -> Input_select (Some rng)
+                 | Input_unselect | Input_update _ -> Input_select None)
         ; output_selection_e
           |> E.map (fun rng ->
                  match Map.find rng "input" with
-                 | Some [ rng ] -> Action.OutputSelect (Some rng)
-                 | _ -> Action.OutputSelect None)
+                 | Some [ rng ] -> Action.Output_select (Some rng)
+                 | _ -> Action.Output_select None)
         ]
     in
     evts, elem

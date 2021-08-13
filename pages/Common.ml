@@ -7,6 +7,13 @@ open Prelude
 
 type term = Opt_range.t Nominal.Term.t
 
+let parse_term =
+  let open Lvca_parsing in
+  let open Nominal.Term in
+  parse_string
+    (whitespace *> parse' ~comment:c_comment >>| map_info ~f:Commented.get_range)
+;;
+
 type lang =
   | Lambda
   | Term
@@ -28,9 +35,9 @@ let htmls_eq = List.equal Caml.( = )
 module Action = struct
   type t =
     | Evaluate of string
-    | InputSelect of Opt_range.t
-    | OutputSelect of Opt_range.t
-    | SwitchInputLang
+    | Input_select of Opt_range.t
+    | Output_select of Opt_range.t
+    | Switch_input_lang
 end
 
 let demo_template input_desc input_elem output_desc output_elem =
@@ -57,9 +64,9 @@ let demo_template input_desc input_elem output_desc output_elem =
 ;;
 
 type input_event =
-  | EvaluateInput of string
-  | InputUpdate of string
-  | InputSelect of Range.t
-  | InputUnselect
+  | Evaluate_input of string
+  | Input_update of string
+  | Input_select of Range.t
+  | Input_unselect
 
 let mk_output elt_s = mk_reactive' El.div ~at:[ class' "bg-gray-100" ] elt_s

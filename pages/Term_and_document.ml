@@ -192,7 +192,7 @@ module View = struct
     let enter_input_e =
       input_evt
       |> E.filter_map (function
-             | Common.EvaluateInput str -> Some (Action.Evaluate str)
+             | Common.Evaluate_input str -> Some (Action.Evaluate str)
              | _ -> None)
     in
     let output_view =
