@@ -9,42 +9,45 @@ module Model = struct
   [%lvca.abstract_syntax_module
   {|
   page :=
-    | Term_and_concrete_page()
-    | Calculator_page()
-    | Eval_with_provenance_page()
-    | Term_to_tex_page()
-    | Parser_page()
-    | Scope_viewer_page()
-    | Edits_page()
-    | Check_term_page()
-    | Ast_operations_page()
-    | List_nat_page()
-    | Pcf_page()
-    | Term_and_document_page()
-    | Repl_page()
-    | Ide_page()
+    | Term_and_concrete()
+    | Calculator()
+    | Eval_with_provenance()
+    | Term_to_tex()
+    | Parser()
+    | Scope_viewer()
+    | Edits()
+    | Check_term()
+    | Ast_operations()
+    | List_nat()
+    | Pcf()
+    | Term_and_document()
+    | Repl()
+    | Ide()
+    | Code_review()
     |}]
 
-  include Internal.Page.Plain
+  module Page = Internal.Page.Plain
 
-  let default_page = Repl_page
+  let default_page = Page.Repl
 
   let all_pages =
-    [ Term_and_concrete_page, "term-and-concrete"
-    ; Calculator_page, "calculator"
-    ; Parser_page, "parser"
-    ; Scope_viewer_page, "scope-viewer"
-    ; Eval_with_provenance_page, "eval-with-provenance"
-    ; Term_to_tex_page, "term-to-tex"
-    ; Edits_page, "edits"
-    ; Check_term_page, "check-term"
-    ; Ast_operations_page, "ast-operations"
-    ; List_nat_page, "list-nat"
-    ; Pcf_page, "pcf"
-    ; Term_and_document_page, "term-and-document"
-    ; Repl_page, "repl"
-    ; Ide_page, "ide"
-    ]
+    Page.
+      [ Term_and_concrete, "term-and-concrete"
+      ; Calculator, "calculator"
+      ; Parser, "parser"
+      ; Scope_viewer, "scope-viewer"
+      ; Eval_with_provenance, "eval-with-provenance"
+      ; Term_to_tex, "term-to-tex"
+      ; Edits, "edits"
+      ; Check_term, "check-term"
+      ; Ast_operations, "ast-operations"
+      ; List_nat, "list-nat"
+      ; Pcf, "pcf"
+      ; Term_and_document, "term-and-document"
+      ; Repl, "repl"
+      ; Ide, "ide"
+      ; Code_review, "code-review"
+      ]
   ;;
 end
 
@@ -52,37 +55,39 @@ module View = struct
   open Model
 
   let page_description = function
-    | Term_and_concrete_page -> "01: term and concrete"
-    | Calculator_page -> "02: calculator"
-    | Parser_page -> "03: parser"
-    | Scope_viewer_page -> "04: scope viewer"
-    | Edits_page -> "0x: edits"
-    | Eval_with_provenance_page -> "0x: evaluation with provenance"
-    | Term_to_tex_page -> "0x: term to tex"
-    | Check_term_page -> "0x: check term"
-    | Ast_operations_page -> "0x: operations on ASTs"
-    | List_nat_page -> "0x: List_nat"
-    | Pcf_page -> "0x: PCF"
-    | Term_and_document_page -> "0x: Term and document"
-    | Repl_page -> "0x: Repl"
-    | Ide_page -> "0x: IDE"
+    | Page.Term_and_concrete -> "01: term and concrete"
+    | Calculator -> "02: calculator"
+    | Parser -> "03: parser"
+    | Scope_viewer -> "04: scope viewer"
+    | Edits -> "0x: edits"
+    | Eval_with_provenance -> "0x: evaluation with provenance"
+    | Term_to_tex -> "0x: term to tex"
+    | Check_term -> "0x: check term"
+    | Ast_operations -> "0x: operations on ASTs"
+    | List_nat -> "0x: List_nat"
+    | Pcf -> "0x: PCF"
+    | Term_and_document -> "0x: Term and document"
+    | Repl -> "0x: Repl"
+    | Ide -> "0x: IDE"
+    | Code_review -> "0x: Code review"
   ;;
 
   let stateless_view = function
-    | Term_and_concrete_page -> Term_and_concrete.stateless_view
-    | Calculator_page -> Calculator.stateless_view
-    | Eval_with_provenance_page -> Eval_with_provenance.stateless_view
-    | Term_to_tex_page -> Term_to_tex.stateless_view
-    | Parser_page -> Parser.stateless_view
-    | Scope_viewer_page -> Scope_viewer.stateless_view
-    | Edits_page -> Edits.stateless_view
-    | Check_term_page -> Check_term.stateless_view
-    | Ast_operations_page -> Ast_operations.stateless_view
-    | List_nat_page -> List_nat.stateless_view
-    | Pcf_page -> Pcf.stateless_view
-    | Term_and_document_page -> Term_and_document.stateless_view
-    | Repl_page -> Repl.stateless_view
-    | Ide_page -> Ide.stateless_view
+    | Page.Term_and_concrete -> Term_and_concrete.stateless_view
+    | Calculator -> Calculator.stateless_view
+    | Eval_with_provenance -> Eval_with_provenance.stateless_view
+    | Term_to_tex -> Term_to_tex.stateless_view
+    | Parser -> Parser.stateless_view
+    | Scope_viewer -> Scope_viewer.stateless_view
+    | Edits -> Edits.stateless_view
+    | Check_term -> Check_term.stateless_view
+    | Ast_operations -> Ast_operations.stateless_view
+    | List_nat -> List_nat.stateless_view
+    | Pcf -> Pcf.stateless_view
+    | Term_and_document -> Term_and_document.stateless_view
+    | Repl -> Repl.stateless_view
+    | Ide -> Ide.stateless_view
+    | Code_review -> Code_review.stateless_view
   ;;
 
   let view model_s =
@@ -124,7 +129,7 @@ let main () =
         (fun page _model ->
           let page_name =
             match
-              List.find Model.all_pages ~f:(fun (page', _) -> Model.(page' = page))
+              List.find Model.all_pages ~f:(fun (page', _) -> Model.Page.(page' = page))
             with
             | None -> assert false
             | Some (_, name) -> name
