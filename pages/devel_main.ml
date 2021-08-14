@@ -87,7 +87,11 @@ module View = struct
     | Term_and_document -> Term_and_document.stateless_view
     | Repl -> Repl.stateless_view
     | Ide -> Ide.stateless_view
-    | Code_review -> Code_review.stateless_view
+    | Code_review ->
+      fun () ->
+        [%blob "make-code-review-easier.md"]
+        |> Lvca_languages.Document.parse
+        |> Md_viewer.view
   ;;
 
   let view model_s =
