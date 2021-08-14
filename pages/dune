@@ -15,4 +15,4 @@
   lvca_syntax
   note)
  (preprocess
-  (pps ppx_jane ppx_lvca)))
+  (pps ppx_blob ppx_jane ppx_lvca)))

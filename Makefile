@@ -6,7 +6,7 @@ doc:
 
 # Note: zarith requires gmp, digestif requires pkg-config
 install-deps:
-	@opam install angstrom base brr cbor crowbar digestif fmt note omd ppx_jane ppxlib zarith zarith_stubs_js
+	@opam install angstrom base brr cbor crowbar digestif fmt note omd ppx_jane ppxlib zarith zarith_stubs_js ppx_blob
 
 lint:
 	@opam-dune-lint
