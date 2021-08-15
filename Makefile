@@ -14,6 +14,7 @@ lint:
 	@dune build @check @runtest
 
 server:
+	@echo "http://localhost:8000"
 	@python3 server.py
 
 .PHONY: format doc install-deps lint server
