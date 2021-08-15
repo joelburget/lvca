@@ -17,7 +17,7 @@ list : * -> *  // module List_model
 
 attribute := Attribute(string; string)
 
-link := LinkDef(
+link := Link_def(
   inline;
   string;
   option string
@@ -123,7 +123,7 @@ module Of_omd = struct
 
   and link : Omd.attributes Omd.link -> Lang.Plain.link =
    fun { label; destination; title } ->
-    LinkDef (inline label, destination, option Fn.id title)
+    Link_def (inline label, destination, option Fn.id title)
  ;;
 
   let def_elt : Omd.attributes Omd.def_elt -> Lang.Plain.def_elt =
@@ -156,7 +156,7 @@ let to_nonbinding
 let term_of_doc : Omd.doc -> unit Lang.Doc.t = Of_omd.document >> Lang.Doc.of_plain
 let parse : string -> unit Lang.Doc.t = Omd.of_string >> term_of_doc
 
-let%test_module "markdown" =
+let%test_module _ =
   (module struct
     module Doc = Nominal.Convertible.Extend (Lang.Doc)
 
