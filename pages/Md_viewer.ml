@@ -5,7 +5,9 @@ open Document.Lang
 module List_model = Lvca_core.List_model
 module Option_model = Lvca_core.Option_model
 
-let known_languages = Lvca_util.String.Set.of_list [ "edit"; "diff"; "ocaml" ]
+let known_languages =
+  Lvca_util.String.Set.of_list [ "edit"; "diff"; "ocaml"; "javascript" ]
+;;
 
 let mk_attr (Attribute.Attribute (_, (_, name), (_, value))) =
   Brr.At.v (Jstr.v name) (Jstr.v value)
@@ -103,7 +105,7 @@ let rec of_block : _ Block.t -> Brr.El.t =
       in
       let at = Prelude.class' code_cls :: at in
       pre ~at [ txt' (cmd_str ^ "\n"); code [ txt' code_str ] ]
-    | Html_block (_, _, _) -> failwith "TODO (html block)")
+    | Html_block (_, _, _) -> txt' "TODO (html block)")
 ;;
 
 let of_doc : _ Doc.t -> Brr.El.t = function

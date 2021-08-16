@@ -1,0 +1,1 @@
+You've decided to refactor your codebase. To remove some pattern that keeps popping up, but has proven error-prone. You write a query to find all the instances (and hopefully, to rewrite them). Now that query should enter the set of "patterns never to be repeated".
