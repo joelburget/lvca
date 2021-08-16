@@ -1,5 +1,3 @@
-import Demo from 'components/Demo'
-
 Back in my [September 23 update](/progress-september-23-2020/), I mentioned that I was working on a new language for parsing. Today I'm excited to show an initial (rough) version.
 
 For now my goal is just to build a parsing library that _I_ want to use to build languages for this site. There are three ways in which I think I can improve on the alternatives.
@@ -60,7 +58,9 @@ Before we start, a quick disclaimer. I _just_ wrote this, it's had no code revie
 
 Each of the tables you see below is an interactive demo, where you can test some input against a parser (try it!).
 
-<Demo demo_name="parser" />
+```demo
+parser
+```
 
 ## Conclusion
 

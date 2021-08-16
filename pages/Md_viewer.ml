@@ -97,6 +97,13 @@ let rec of_block : _ Block.t -> Brr.El.t =
         | _ -> h6
       in
       f ~at (of_inline inline)
+    | Code_block (_, _, (_, "demo"), (_, code_str)) ->
+      (match String.strip code_str with
+      | "parser" -> Parser.stateless_view ()
+      | "binding-viewer" -> Scope_viewer.stateless_view ()
+      | "calculator" -> Calculator.stateless_view ()
+      | "term-and-concrete" -> Term_and_concrete.stateless_view ()
+      | _ -> txt' (Printf.sprintf "unknown demo: %s" code_str))
     | Code_block (_, _, (_, cmd_str), (_, code_str)) ->
       let code_cls =
         if Set.mem known_languages cmd_str || String.(cmd_str = "")

@@ -1,5 +1,5 @@
 (executables
- (names devel_main site_main)
+ (names devel_main)
  (modes js)
  (link_flags
   (:standard -no-check-prims))

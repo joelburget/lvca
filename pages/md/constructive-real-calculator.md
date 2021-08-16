@@ -1,5 +1,3 @@
-import Demo from 'components/Demo'
-
 [Last time](/progress-october-8-2020) I mentioned building a calculator for constructive reals. Today I have a demo of the initial version.
 
 ## What is this?
@@ -16,7 +14,9 @@ The other fun thing about this demo is all the network requests it's _not_ makin
 
 Be careful of asking for too many digits (more than 5000 digits of `pi` for example). It could cause your browser to hang since I didn't implement any safeguards. Also, see the language chart below for a comprehensive list of expressions the calculator understands. Note that the syntax for function application doesn't require parens, so `sin 1` is valid, though `sin(1)` also works if you prefer, and parens are required in `sin (1 + 1)`.
 
-<Demo demo_name="calculator" />
+```demo
+calculator
+```
 
 ## Future work
 

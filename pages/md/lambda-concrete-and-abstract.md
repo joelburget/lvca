@@ -1,5 +1,3 @@
-import Demo from 'components/Demo'
-
 With LVCA I've been working on building a set of reusable language tools. This is the very first (modest) demo of what these tools can do.
 
 What is it? There are two panes: on the top is the input and on the bottom is the output. There are also two languages: the lambda calculus (concrete syntax) and LVCA's internal representation of its abstract syntax. Initially the lambda calculus is used as the input language and LVCA's term representation is the output. Using the "switch input languages" button you can make the term representation input and lambda calculus output. If lambda calculus is on the top, the function from input to output is parsing. If LVCA terms are on the top, the function is pretty-printing.
@@ -12,4 +10,6 @@ Besides highlight tracking, the other novelty is the fact that this demo runs in
 
 In future demos I'd like to show the stretch goals I mentioned last time (and didn't hit today): visualization of variable scope and a tool for renaming variables. I'd also like to show what it takes to build a language like the lambda calculus. But first (next time), I plan to write about the making of this demo. I think some of the code is very interesting and I'm using a rather unique technology stack that I've found very productive and would like to share.
 
-<Demo demo_name="term-and-concrete" />
+```demo
+term-and-concrete
+```
