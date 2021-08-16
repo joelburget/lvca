@@ -95,7 +95,7 @@ module View = struct
              | _ -> None)
     in
     let output_view =
-      model_s |> S.map ~eq:phys_equal (fun model -> Md_viewer.view model.Model.result)
+      model_s |> S.map ~eq:phys_equal (fun model -> Md_viewer.of_doc model.Model.result)
     in
     let elem =
       div

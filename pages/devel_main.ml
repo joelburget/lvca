@@ -91,7 +91,7 @@ module View = struct
       fun () ->
         [%blob "make-code-review-easier.md"]
         |> Lvca_languages.Document.parse
-        |> Md_viewer.view
+        |> Md_viewer.of_doc
   ;;
 
   let view model_s =
