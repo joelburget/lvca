@@ -5,6 +5,18 @@ open Document.Lang
 module List_model = Lvca_core.List_model
 module Option_model = Lvca_core.Option_model
 
+type demo_env = El.t Lvca_util.String.Map.t
+
+let error_red = "bg-red-200"
+
+let chop ~prefix ~suffix str =
+  let open Option.Let_syntax in
+  let str = String.strip str in
+  let%bind str = String.chop_prefix ~prefix str in
+  let%map str = String.chop_suffix ~suffix str in
+  String.strip str
+;;
+
 let known_languages =
   Lvca_util.String.Set.of_list [ "edit"; "diff"; "ocaml"; "javascript" ]
 ;;
@@ -28,45 +40,52 @@ let mk_img _label dest (title : _ Option_model.Option.t) attrs =
   Brr.El.img ~at ()
 ;;
 
-let rec mk_link label dest (title : _ Option_model.Option.t) attrs =
+let rec mk_link demo_env label dest (title : _ Option_model.Option.t) attrs =
   let title_attr =
     match title with None _ -> [] | Some (_, (_, t)) -> At.[ title (Jstr.v t) ]
   in
   let at = (At.href (Jstr.v dest) :: title_attr) @ mk_attrs attrs in
-  Brr.El.a ~at (of_inline label)
+  Brr.El.a ~at (of_inline demo_env label)
 
-and of_inline : _ Inline.t -> Brr.El.t list =
- fun inline ->
+and of_inline : demo_env -> _ Inline.t -> Brr.El.t list =
+ fun demo_env inline ->
   Brr.El.(
     let at = mk_attrs (Document.Attrs.inline inline) in
     match inline with
     | Concat (_, _, inlines) ->
-      inlines |> List_model.to_list |> List.map ~f:of_inline |> List.concat
+      inlines |> List_model.to_list |> List.map ~f:(of_inline demo_env) |> List.concat
     | Text (_, _, (_, str)) -> [ txt' str ]
-    | Emph (_, _, content) -> [ em ~at (of_inline content) ]
-    | Strong (_, _, content) -> [ strong ~at (of_inline content) ]
+    | Emph (_, _, content) -> [ em ~at (of_inline demo_env content) ]
+    | Strong (_, _, content) -> [ strong ~at (of_inline demo_env content) ]
     | Code (_, _, (_, content)) -> [ code ~at [ txt' content ] ]
     | Hard_break _ -> [ br ~at () ]
     | Soft_break _ -> []
     | Link (_, attrs, Link_def (_, label, (_, dest), title)) ->
-      [ mk_link label dest title attrs ]
+      [ mk_link demo_env label dest title attrs ]
     | Image (_, attrs, Link_def (_, label, (_, dest), title)) ->
       [ mk_img label dest title attrs ]
-    | Html _ -> [ txt' "raw html not supported" ])
+    | Html (_, _, (_, str)) ->
+      let err_at = Prelude.class' error_red :: at in
+      (match chop ~prefix:"<Demo" ~suffix:"/>" str with
+      | Some demo_name ->
+        (match Map.find demo_env demo_name with
+        | None -> [ span ~at:err_at [ txt' ("Unknown (inline) demo: " ^ demo_name) ] ]
+        | Some demo -> [ demo ])
+      | None -> [ span ~at:err_at [ txt' ("Can't parse inline html: " ^ str) ] ]))
 ;;
 
-let rec of_block : _ Block.t -> Brr.El.t =
- fun block ->
+let rec of_block : demo_env -> _ Block.t -> Brr.El.t =
+ fun demo_env block ->
   Brr.El.(
     let at = mk_attrs (Document.Attrs.block block) in
     match block with
-    | Paragraph (_, _, inline) -> p ~at (of_inline inline)
+    | Paragraph (_, _, inline) -> p ~at (of_inline demo_env inline)
     | List (_, _, list_ty, _, blocks) ->
       let f, bullet_char =
         match list_ty with Ordered (_, _, (_, c)) -> ol, c | Bullet (_, (_, c)) -> ul, c
       in
       let blocks = blocks |> List_model.to_list |> List.map ~f:List_model.to_list in
-      let blocks = blocks |> List.concat_map ~f:(List.map ~f:of_block) in
+      let blocks = blocks |> List.concat_map ~f:(List.map ~f:(of_block demo_env)) in
       let elem = f ~at blocks in
       set_inline_style
         ~important:true
@@ -79,12 +98,14 @@ let rec of_block : _ Block.t -> Brr.El.t =
         def_elts
         |> List_model.to_list
         |> List.concat_map ~f:(fun (Def_elt (_, label, body)) ->
-               let body = body |> List_model.to_list |> List.concat_map ~f:of_inline in
-               dt (of_inline label) :: body)
+               let body =
+                 body |> List_model.to_list |> List.concat_map ~f:(of_inline demo_env)
+               in
+               dt (of_inline demo_env label) :: body)
       in
       dl ~at def_elts
     | Blockquote (_, _, blocks) ->
-      blocks |> List_model.to_list |> List.map ~f:of_block |> blockquote ~at
+      blocks |> List_model.to_list |> List.map ~f:(of_block demo_env) |> blockquote ~at
     | Thematic_break (_, _) -> hr ~at ()
     | Heading (_, _, (_, level), inline) ->
       let f =
@@ -96,25 +117,31 @@ let rec of_block : _ Block.t -> Brr.El.t =
         | 5 -> h5
         | _ -> h6
       in
-      f ~at (of_inline inline)
-    | Code_block (_, _, (_, "demo"), (_, code_str)) ->
-      (match String.strip code_str with
-      | "parser" -> Parser.stateless_view ()
-      | "binding-viewer" -> Scope_viewer.stateless_view ()
-      | "calculator" -> Calculator.stateless_view ()
-      | "term-and-concrete" -> Term_and_concrete.stateless_view ()
-      | _ -> txt' (Printf.sprintf "unknown demo: %s" code_str))
+      f ~at (of_inline demo_env inline)
     | Code_block (_, _, (_, cmd_str), (_, code_str)) ->
       let code_cls =
         if Set.mem known_languages cmd_str || String.(cmd_str = "")
         then "code-block"
-        else "bg-red-200"
+        else error_red
       in
       let at = Prelude.class' code_cls :: at in
       pre ~at [ txt' (cmd_str ^ "\n"); code [ txt' code_str ] ]
-    | Html_block (_, _, _) -> txt' "TODO (html block)")
+    | Html_block (_, _, (_, str)) ->
+      let err_at = Prelude.class' error_red :: at in
+      (match chop ~prefix:"<Demo" ~suffix:"/>" str with
+      | Some demo_name ->
+        (match Map.find demo_env demo_name with
+        | None -> span ~at:err_at [ txt' ("Unknown (block) demo: " ^ demo_name) ]
+        | Some demo -> demo)
+      | None -> span ~at:err_at [ txt' ("Can't parse html block: " ^ str) ]))
 ;;
 
-let of_doc : _ Doc.t -> Brr.El.t = function
-  | Doc (_, blocks) -> blocks |> List_model.to_list |> List.map ~f:of_block |> Brr.El.div
+let of_doc : ?demo_env:demo_env -> _ Doc.t -> Brr.El.t =
+ fun ?(demo_env = Lvca_util.String.Map.empty) -> function
+  | Doc (_, blocks) ->
+    blocks |> List_model.to_list |> List.map ~f:(of_block demo_env) |> Brr.El.div
+;;
+
+let of_string ?(demo_env = Lvca_util.String.Map.empty) str =
+  str |> Document.parse |> of_doc ~demo_env
 ;;

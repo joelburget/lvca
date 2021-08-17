@@ -647,8 +647,8 @@ module View = struct
           ; fail_input
           ; sequence1_input
           ; sequence2_input
-          ; fix_input
-          ; playground_input
+          ; fix_input = _
+          ; playground_input = _
           }
       =
       model
@@ -676,11 +676,12 @@ module View = struct
     let fail_table = mk_input_result' Examples.fail fail_input in
     let sequence1_table = mk_input_result' Examples.sequence1 sequence1_input in
     let sequence2_table = mk_input_result' Examples.sequence2 sequence2_input in
-    let fix_table = mk_input_result' ~parser_ctx:Prelude.ctx Examples.fix fix_input in
+    (* let fix_table = mk_input_result' ~parser_ctx:Prelude.ctx Examples.fix fix_input in *)
     let pg_parser_input, set_pg_parser_input = S.create ~eq:String.( = ) Examples.fix in
-    let pg_input_elem, pg_input_evt =
+    let _pg_input_elem, pg_input_evt =
       Multiline_input.mk ~autofocus:false ~border:false pg_parser_input
     in
+    (*
     let playground_table =
       mk_input_result
         ~parser_ctx:Prelude.ctx
@@ -688,259 +689,33 @@ module View = struct
         ~parser_str_s:pg_parser_input
         playground_input
     in
+       *)
     let _sink : Logr.t option =
       E.log pg_input_evt (fun evt ->
           match evt with Common.Evaluate_input str -> set_pg_parser_input str | _ -> ())
     in
-    let code_inline content = code ~at:[ class' "code-inline" ] content in
-    let code_inline' str = code_inline [ txt' str ] in
-    div
-      [ h3 [ txt' "Fixed character and string parsers" ]
-      ; p
-          [ txt'
-              "Let's start with the simplest class of parsers, which accept a single \
-               character or a fixed string."
-          ]
-      ; h4 [ code_inline' "." ]
-      ; p
-          [ txt' "The parser "
-          ; code ~at:[ class' "code-inline" ] [ txt' "." ]
-          ; txt' " accepts any single character."
-          ]
-      ; any_char_table
-      ; h4 [ code_inline' "'c'" ]
-      ; p
-          [ txt'
-              "A single-quoted character accepts exactly that character. Note that this \
-               example, like many of the others is (intentionally) failing initially. \
-               Try changing the input so it's accepted."
-          ]
-      ; char_table
-      ; h4 [ code_inline' {|"str"|} ]
-      ; p [ txt' "Similarly, a double-quoted string accepts exactly that string." ]
-      ; string_table
-      ; h4 [ txt' "Debugging" ]
-      ; p
-          [ txt' "You've probably noticed the "
-          ; em [ txt' "debugger" ]
-          ; txt'
-              " rows below each parse result. By toggling this row you can see the steps \
-               the parser took to consume an input (or not). For the parsers we've seen \
-               so far, it's always exactly one step, but as soon as we get to "
-          ; em [ txt' "repetition" ]
-          ; txt'
-              " below, that will change. But this tool will really become useful when we \
-               get to"
-          ; code_inline' "choice"
-          ; txt' " and "
-          ; code_inline' "fix"
-          ; txt' "."
-          ]
-      ; h3 [ txt' "satisfy" ]
-      ; p
-          [ txt' "Fixed characters are awfully limiting. "
-          ; code_inline' "satisfy"
-          ; txt'
-              " parses a single character that satisfies some predicate. The available \
-               predicates are "
-          ; code_inline' "is_digit"
-          ; txt' ", "
-          ; code_inline' "is_lowercase"
-          ; txt' ", "
-          ; code_inline' "is_uppercase"
-          ; txt' ", "
-          ; code_inline' "is_alpha"
-          ; txt' ", "
-          ; code_inline' "is_alphanum"
-          ; txt' ", and "
-          ; code_inline' "is_whitespace"
-          ; txt' "."
-          ]
-      ; satisfy1_table
-      ; satisfy_is_alpha_table
-      ; satisfy_is_digit_table
-      ; p
-          [ txt' "For convenience, I'll leave the last two parsers in scope as "
-          ; code_inline' "alpha"
-          ; txt' " and "
-          ; code_inline' "digit"
-          ; txt' ", so we can use them later on."
-          ]
-      ; p
-          [ txt' "You might wonder, what's the syntax inside the "
-          ; code_inline' "satisfy"
-          ; txt' " expression? It's a language I'm calling "
-          ; em [ txt' "core" ]
-          ; txt'
-              ", which can be used for manipulating syntax trees. It's not what this \
-               post is about, but I'll have more to say about it in the future."
-          ]
-      ; h3 [ txt' "Repetition" ]
-      ; p
-          [ txt'
-              "The next class of operators accepts some number of repetitions of another \
-               parser."
-          ]
-      ; h4 [ code_inline' "*" ]
-      ; p
-          [ txt'
-              "The star operator can be used to accept any number of repetitions of the \
-               previous parser. For example "
-          ; code_inline' "'c'*"
-          ; txt' "accepts any number of "
-          ; code_inline' "'c'"
-          ; txt' "s, including 0."
-          ]
-      ; star_table
-      ; h4 [ code_inline' "+" ]
-      ; p
-          [ txt'
-              "The plus operator can be used to accept one or more repetitions of the \
-               previous parser. For example "
-          ; code_inline' "'c'*"
-          ; txt' " accepts one or more "
-          ; code_inline' "'c'"
-          ; txt' "s."
-          ]
-      ; plus_table
-      ; h4 [ txt' "count" ]
-      ; p
-          [ txt'
-              "A parser followed by a number accepts a fixed number of repetitions of \
-               that parser."
-          ]
-      ; count_table
-      ; h3 [ txt' "Sequence" ]
-      ; p
-          [ txt'
-              "Concatenating a sequence of parsers accepts when they all parse \
-               successfully in sequence. A parser must return something, which goes to \
-               the right of the arrow. For example "
-          ; code_inline' Examples.sequence1
-          ; txt' " parses a simple addition expression where the operands, "
-          ; code_inline' "a"
-          ; txt' " and "
-          ; code_inline' "b"
-          ; txt' ", are both one character (any character)."
-          ]
-      ; sequence1_table
-      ; p
-          [ txt'
-              "Of course, it would be more useful to return something we parsed. That's \
-               why you can name the result of any parsers you'd like to use in the \
-               result."
-          ]
-      ; sequence2_table
-      ; p
-          [ txt' "This is a good time to revisit the "
-          ; em [ txt' "Debugger" ]
-          ; txt'
-              " tool. If you look at the debugger for the sequence parser, you'll see \
-               that it calls five subparsers. You can click the "
-          ; em [ txt' "view" ]
-          ; txt' " button to inspect the details of any subparser, then "
-          ; em [ txt' "return here" ]
-          ; txt' " to return to a caller anywhere up the stack."
-          ]
-      ; h3 [ txt' "Choice" ]
-      ; p
-          [ txt' "The "
-          ; code_inline' "choice"
-          ; txt' " construct can be used to accept one of several parsers. For example "
-          ; code_inline' {|choice ("c" | "foo")|}
-          ; txt' " accepts "
-          ; code_inline' {|"c"|}
-          ; txt' " or "
-          ; code_inline' {|"foo"|}
-          ; txt' "."
-          ]
-      ; choice1_table
-      ; p
-          [ code_inline' "choice"
-          ; txt' " can accept any number of choices, and you can start each line with "
-          ; code_inline' "|"
-          ; txt'
-              ". Note that choice always chooses the first matching branch, so in this \
-               example, "
-          ; code_inline' {|"abcd"|}
-          ; txt' " will never match ("
-          ; code_inline' "abc"
-          ; txt' " will match, leaving "
-          ; code_inline' "d"
-          ; txt' " unconsumed)."
-          ]
-      ; choice2_table
-      ; p [ txt' "An empty choice always fails." ]
-      ; choice3_table
-      ; h3 [ txt' "Language constructs" ]
-      ; p
-          [ txt'
-              "So far all of our parsers have looked a lot like regular expressions. \
-               Let's introduce a construct that will make this look more like a real \
-               language. Let-binding allows us to name parsers and use them later, for \
-               example "
-          ; code_inline' Examples.let_
-          ; txt' "."
-          ]
-      ; let_table
-      ; p
-          [ txt' "Parsers can also fail with a message, like "
-          ; code_inline' Examples.fail
-          ; txt'
-              ". This example as written is of course not very useful, but this can be \
-               quite useful as part of a larger parser."
-          ]
-      ; fail_table
-      ; h3 [ txt' "Fix" ]
-      ; p
-          [ txt'
-              "Our parsers to this point have been limited: we can parse regular \
-               languages but not context-free languages. "
-          ; code_inline' "fix"
-          ; txt' " extends the language in the same way as "
-          ; El.a
-              ~at:
-                [ class' "prose-link"
-                ; At.href (Jstr.v "https://catonmat.net/recursive-regular-expressions")
-                ]
-              [ txt' " recursive regular expressions" ]
-          ; txt' " to give it more power."
-          ]
-      ; p
-          [ txt'
-              {|Let's say you want to parse addition expressions like "1 + 2", "1 + 2 + 3", "1 + 2 + 3 + 4", etc. We need a way to recursively use the parser we're defining. It's a little mind-bending, so let's look at an example.|}
-          ]
-      ; p
-          [ txt' "Note: For clarity I've pre-defined two parsers: "
-          ; code_inline' "name = (chars=alpha+ -> {var(string_of_chars chars)})"
-          ; txt' " and "
-          ; code_inline' "literal = (chars=digit+ -> {literal(string_of_chars chars)})"
-          ; txt' "."
-          ]
-      ; fix_table
-      ; p
-          [ code_inline' "fix"
-          ; txt' " computes the "
-          ; El.a
-              ~at:
-                [ class' "prose-link"
-                ; At.href
-                    (Jstr.v
-                       "https://mitpress.mit.edu/sites/default/files/sicp/full-text/sicp/book/node24.html#sec:proc-general-methods")
-                ]
-              [ txt' "fixed-point" ]
-          ; txt'
-              " of our parser. It takes a function which receives the parser being \
-               defined... and uses it to define itself."
-          ]
-      ; h3 [ txt' "Playground" ]
-      ; p
-          [ txt'
-              "Finally, here is a playground where you can write and test your own \
-               parsers."
-          ]
-      ; playground_table
-      ]
+    let demo_env =
+      String.Map.of_alist_exn
+        [ "any-char", any_char_table
+        ; "char", char_table
+        ; "string", string_table
+        ; "satisfy1", satisfy1_table
+        ; "satisfy-is-alpha", satisfy_is_alpha_table
+        ; "satisfy-is-digit", satisfy_is_digit_table
+        ; "star", star_table
+        ; "plus", plus_table
+        ; "count", count_table
+        ; "choice1", choice1_table
+        ; "choice2", choice2_table
+        ; "choice3", choice3_table
+        ; "let", let_table
+        ; "fail", fail_table
+        ; "sequence1", sequence1_table
+        ; "sequence2", sequence2_table (* ; "fix", fix_table *)
+          (* ; "playground", playground_table *)
+        ]
+    in
+    Md_viewer.of_string ~demo_env [%blob "md/parsing-language.md"]
   ;;
 end
 

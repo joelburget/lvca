@@ -250,14 +250,13 @@ module View = struct
   ;;
 
   let page_edited = function Page.Abstract_syntax -> Some "January 1, 2021" | _ -> None
-  let mk_doc blob () = blob |> Lvca_languages.Document.parse |> Md_viewer.of_doc
+  let mk_doc blob () = Md_viewer.of_string blob
 
   let stateless_view = function
     | Page.Term_and_concrete -> Term_and_concrete.stateless_view
     | Calculator -> Calculator.stateless_view
     | Eval_with_provenance -> Eval_with_provenance.stateless_view
     | Term_to_tex -> Term_to_tex.stateless_view
-    | Parser -> Parser.stateless_view
     | Scope_viewer -> Scope_viewer.stateless_view
     | Edits -> Edits.stateless_view
     | Check_term -> Check_term.stateless_view
@@ -267,6 +266,8 @@ module View = struct
     | Term_and_document -> Term_and_document.stateless_view
     | Repl -> Repl.stateless_view
     | Ide -> Ide.stateless_view
+    | Parser -> Parser.stateless_view (* TODO: remove *)
+    | Parsing_language -> Parser.stateless_view
     | Code_review -> mk_doc [%blob "md/make-code-review-easier.md"]
     | Concrete_syntax -> mk_doc [%blob "md/concrete-syntax.md"]
     | Diagram_language -> mk_doc [%blob "md/diagram-language.md"]
@@ -290,7 +291,6 @@ module View = struct
     | Binding_viewer -> mk_doc [%blob "md/binding-viewer.md"]
     | Are_constructors_functions -> mk_doc [%blob "md/are-constructors-functions.md"]
     | Bidirectional_typechecking -> mk_doc [%blob "md/bidirectional-typechecking.md"]
-    | Parsing_language -> mk_doc [%blob "md/parsing-language.md"]
     | Garage_door -> mk_doc [%blob "md/garage-door.md"]
     | Introduction -> mk_doc [%blob "md/introduction.md"]
     | Abstract_syntax -> mk_doc [%blob "md/abstract-syntax.md"]

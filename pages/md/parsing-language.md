@@ -58,9 +58,122 @@ Before we start, a quick disclaimer. I _just_ wrote this, it's had no code revie
 
 Each of the tables you see below is an interactive demo, where you can test some input against a parser (try it!).
 
-```demo
-parser
-```
+### Fixed character and string parsers
+
+Let's start with the simplest class of parsers, which accept a single character or a fixed string.
+
+#### `.`
+
+The parser `.` accepts any single character.
+
+<Demo any-char />
+
+#### `'c'`
+
+A single-quoted character accepts exactly that character. Note that this example, like many of the others is (intentionally) failing initially. Try changing the input so it's accepted.
+
+<Demo char />
+
+#### `"str"`
+
+Similarly, a double-quoted string accepts exactly that string.
+
+<Demo string />
+
+#### Debugging
+
+You've probably noticed the *debugger* rows below each parse result. By toggling this row you can see the steps the parser took to consume an input (or not). For the parsers we've seen so far, it's always exactly one step, but as soon as we get to *repetition* below, that will change. But this tool will really become useful when we get to `choice` and `fix`.
+
+### satisfy
+
+Fixed characters are awfully limiting. `satisfy` parses a single character that satisfies some predicate. The available predicates are `is_digit`, `is_lowercase`, `is_uppercase`, `is_alpha`, `is_alphanum`, and `is_whitespace`.
+
+<Demo satisfy1 />
+
+<Demo satisfy-is-alpha />
+
+<Demo satisfy-is-digit />
+
+For convenience, I'll leave the last two parsers in scope as `alpha` and `digit`, so we can use them later on.`
+
+You might wonder, what's the syntax inside the `satisfy` expression? It's a language I'm calling *core*, which can be used for manipulating syntax trees. It's not what this post is about, but I'll have more to say about it in the future.
+
+### Repetition
+
+The next class of operators accepts some number of repetitions of another parser.
+
+#### `*`
+
+The star operator can be used to accept any number of repetitions of the previous parser. For example `'c'*` accepts any number of `'c'`s, including 0.
+
+<Demo star />
+
+#### `+`
+
+The plus operator can be used to accept one or more repetitions of the previous parser. For example `'c'` accepts one or more `'c'`s
+
+<Demo plus />
+
+#### count
+
+A parser followed by a number accepts a fixed number of repetitions of that parser.
+
+<Demo count />
+
+### Sequence
+
+Concatenating a sequence of parsers accepts when they all parse successfully in sequence. A parser must return something, which goes to the right of the arrow. For example <Demo sequence1 /> parses a simple addition expression where the operands, `a` and `b`, are both one character (any character).
+
+<Demo sequence1 />
+
+Of course, it would be more useful to return something we parsed. That's why you can name the result of any parsers you'd like to use in the result."
+
+<Demo sequence2 />
+
+This is a good time to revisit the *Debugger* tool. If you look at the debugger for the sequence parser, you'll see that it calls five subparsers. You can click the *view* button to inspect the details of any subparser, then *return here* to return to a caller anywhere up the stack.
+
+### Choice
+
+The `choice` construct can be used to accept one of several parsers. For example `choice ("c" | "foo")` accepts `"c"` or `"foo"`.
+
+<Demo choice1 />
+
+`choice` can accept any number of choices, and you can start each line with `|`. Note that choice always chooses the first matching branch, so in this example, `"abcd"` will never match (`abc` will match, leaving `d` unconsumed).
+
+<Demo choice2 />
+
+An empty choice always fails.
+
+<Demo choice3 />
+
+### Language constructs
+
+So far all of our parsers have looked a lot like regular expressions. Let's introduce a construct that will make this look more like a real language. Let-binding allows us to name parsers and use them later, for example <Demo let />.
+
+<Demo let />
+
+Parsers can also fail with a message, like <Demo fail /> <Demo fail />. This example as written is of course not very useful, but this can be quite useful as part of a larger parser.
+    ]
+
+<Demo fail />
+
+### Fix
+
+Our parsers to this point have been limited: we can parse regular languages but not context-free languages. `fix` extends the language in the same way as [recursive regular expressions](https://catonmat.net/recursive-regular-expressions) to give it more power.
+
+Let's say you want to parse addition expressions like "1 + 2", "1 + 2 + 3", "1 + 2 + 3 + 4", etc. We need a way to recursively use the parser we're defining. It's a little mind-bending, so let's look at an example.
+
+Note: For clarity I've pre-defined two parsers: `name = (chars=alpha+ -> {var(string_of_chars chars)})`  and `literal = (chars=digit+ -> {literal(string_of_chars chars)})`.
+
+<Demo fix />
+
+`fix` computes the [fixed-point](https://mitpress.mit.edu/sites/default/files/sicp/full-text/sicp/book/node24.html#sec:proc-general-methods) of our parser. It takes a function which receives the parser being defined... and uses it to define itself.
+
+### Playground
+
+Finally, here is a playground where you can write and test your own parsers.
+
+<Demo playground />
 
 ## Conclusion
 
