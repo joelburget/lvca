@@ -13,7 +13,6 @@ module Model = struct
     | Calculator()
     | Eval_with_provenance()
     | Term_to_tex()
-    | Parser()
     | Scope_viewer()
     | Edits()
     | Check_term()
@@ -74,7 +73,6 @@ module Model = struct
     Page.
       [ Term_and_concrete, "term-and-concrete"
       ; Calculator, "calculator"
-      ; Parser, "parser"
       ; Scope_viewer, "scope-viewer"
       ; Eval_with_provenance, "eval-with-provenance"
       ; Term_to_tex, "term-to-tex"
@@ -135,7 +133,6 @@ module View = struct
   let page_title = function
     | Page.Term_and_concrete -> "01: term and concrete"
     | Calculator -> "02: calculator"
-    | Parser -> "03: parser"
     | Scope_viewer -> "04: scope viewer"
     | Edits -> "0x: edits"
     | Eval_with_provenance -> "0x: evaluation with provenance"
@@ -266,7 +263,6 @@ module View = struct
     | Term_and_document -> Term_and_document.stateless_view
     | Repl -> Repl.stateless_view
     | Ide -> Ide.stateless_view
-    | Parser -> Parser.stateless_view (* TODO: remove *)
     | Parsing_language -> Parser.stateless_view
     | Code_review -> mk_doc [%blob "md/make-code-review-easier.md"]
     | Concrete_syntax -> mk_doc [%blob "md/concrete-syntax.md"]
