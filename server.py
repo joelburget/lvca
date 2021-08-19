@@ -23,8 +23,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.copyfile(f, self.wfile)
         else:
+            # /parsing-language/devel_main.bc.js -> ["", "parsing-language", "devel_main.bc.js"]
+            # /devel_main.bc.js -> ["", "devel_main.bc.js"]
             words = self.path.split("/")
-            self.path = "/" + "/".join(words[2:])
+            self.path = "/" + words[-1]
             super().do_GET()
 
 
