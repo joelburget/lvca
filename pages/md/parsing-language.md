@@ -14,7 +14,7 @@ Let me just quote my example from September.
 
 What I had (don't worry about understanding this -- the details don't matter):
 
-```
+```ocaml
 (* Parse a lambda, eg "\x -> x" *)
 let lam : (OptRange.t, Primitive.t) Nominal.term Parsers.t =
   pos
@@ -148,7 +148,7 @@ An empty choice always fails.
 
 ### Language constructs
 
-So far all of our parsers have looked a lot like regular expressions. Let's introduce a construct that will make this look more like a real language. Let-binding allows us to name parsers and use them later, for example <Demo let />.
+So far all of our parsers have looked a lot like regular expressions. Let's introduce a construct that will make this look more like a real language. Let-binding allows us to name parsers and use them later, for example:
 
 <Demo let />
 

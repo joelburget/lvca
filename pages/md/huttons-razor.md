@@ -9,11 +9,11 @@ Hutton's Razor has two types of expressions: integer literals and addition
 (which holds two sub-expressions).
 
 ```
-import {integer} from "lvca/builtin/integer"
+integer : *
 
 expr :=
-  | lit(integer())      // an expression can be a literal integer
-  | add(expr(); expr()) // or the addition of two expressions
+  | lit(integer)      // an expression can be a literal integer
+  | add(expr; expr) // or the addition of two expressions
 
 type := int() // there's only one type in the language
 ```
@@ -31,15 +31,14 @@ Just by defining the abstract syntax, you can write `add(add(lit(1); lit(2)); li
 But it's much more natural for humans to write `1 + 2 + 3`. This means that we have to define a *parser*.
 
 ```
-import integer from "lvca/builtin/integer/parser"
-import foldl from "lvca/prelude/foldl"
+foldl : list a -> b -> (b -> a -> b) -> b
 
 // an expression can be parsed as one of:
 expr : expr parser
   // an integer literal
   = integer-literal
   // or a sequence of "+"-separated expressions
-  | (e=expr es=("+" e2=expr -> e2)* -> {foldl e es (\l r -> add(l; r))})
+  | (e=expr es=("+" e2=expr -> e2)* -> {foldl es e (\l r -> add(l; r))})
   // or a parenthesized expression
   | ("(" e=expr ")" -> e)
 
@@ -67,10 +66,11 @@ We're using an algorithm called bidirectional typechecking (which I'm not going 
 ### Dynamics
 
 ```
-dynamics = \(expr : expr()) -> match expr with {
-  | add(a; b) -> #add(dynamics a; dynamics b)
-  | lit(i) -> i
+let rec dynamics = \(expr : expr) -> match expr with {
+  | add(a; b) -> #add({dynamics a}; {dynamics b})
+  | lit(i) -> {i}
 }
+in dynamics
 ```
 
 TODO: this is outdated:

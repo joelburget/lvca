@@ -10,6 +10,4 @@ Besides highlight tracking, the other novelty is the fact that this demo runs in
 
 In future demos I'd like to show the stretch goals I mentioned last time (and didn't hit today): visualization of variable scope and a tool for renaming variables. I'd also like to show what it takes to build a language like the lambda calculus. But first (next time), I plan to write about the making of this demo. I think some of the code is very interesting and I'm using a rather unique technology stack that I've found very productive and would like to share.
 
-```demo
-term-and-concrete
-```
+<Demo term-and-concrete />
