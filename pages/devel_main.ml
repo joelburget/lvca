@@ -250,19 +250,19 @@ module View = struct
   let mk_doc blob () = Md_viewer.of_string blob
 
   let stateless_view = function
-    | Page.Term_and_concrete -> Term_and_concrete.stateless_view
-    | Calculator -> Calculator.stateless_view
-    | Eval_with_provenance -> Eval_with_provenance.stateless_view
-    | Term_to_tex -> Term_to_tex.stateless_view
-    | Scope_viewer -> Scope_viewer.stateless_view
+    | Page.Term_and_concrete -> Term_and_concrete.Stateless_view.view
+    | Calculator -> Calculator.Stateless_view.view
+    | Eval_with_provenance -> Eval_with_provenance.Stateless_view.view
+    | Term_to_tex -> Term_to_tex.Stateless_view.view
+    | Scope_viewer -> Scope_viewer.Stateless_view.view
     | Edits -> Edits.stateless_view
-    | Check_term -> Check_term.stateless_view
+    | Check_term -> Check_term.Stateless_view.view
     | Ast_operations -> Ast_operations.stateless_view
     | List_nat -> List_nat.stateless_view
-    | Pcf -> Pcf.stateless_view
-    | Term_and_document -> Term_and_document.stateless_view
-    | Repl -> Repl.stateless_view
-    | Ide -> Ide.stateless_view
+    | Pcf -> Pcf.Stateless_view.view
+    | Term_and_document -> Term_and_document.Stateless_view.view
+    | Repl -> Repl.Stateless_view.view
+    | Ide -> Ide.Stateless_view.view
     | Parsing_language -> Parser.stateless_view
     | Code_review -> mk_doc [%blob "md/make-code-review-easier.md"]
     | Concrete_syntax -> mk_doc [%blob "md/concrete-syntax.md"]

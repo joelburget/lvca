@@ -43,6 +43,12 @@ module Model = struct
     && Opt_range.(m1.input_selected = m2.input_selected)
     && Opt_range.(m1.output_selected = m2.output_selected)
   ;;
+
+  let initial_model =
+    let input = {|\f -> \g -> \x -> f (g x)|} in
+    let result = Lvca_parsing.parse_string Lvca_languages.Lambda_calculus.Parse.t input in
+    { input; result; input_lang = Lambda; input_selected = None; output_selected = None }
+  ;;
 end
 
 module Controller = struct
@@ -144,19 +150,4 @@ module View = struct
   ;;
 end
 
-let stateless_view () =
-  let initial_model : Model.t =
-    let input = {|\f -> \g -> \x -> f (g x)|} in
-    let result = Lvca_parsing.parse_string Lvca_languages.Lambda_calculus.Parse.t input in
-    { input; result; input_lang = Lambda; input_selected = None; output_selected = None }
-  in
-  let wrapper model_s =
-    let evts, elem = View.view model_s in
-    let do_action = E.map Controller.update evts in
-    let model_s' = S.accum ~eq:Model.( = ) (S.value model_s) do_action in
-    model_s', (model_s', elem)
-  in
-  let model_s, elem = S.fix ~eq:Model.( = ) initial_model wrapper in
-  Logr.hold (S.log model_s (fun _ -> ()));
-  elem
-;;
+module Stateless_view = Stateless_view.Mk (Action) (Model) (View) (Controller)

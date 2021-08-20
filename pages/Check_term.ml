@@ -28,6 +28,21 @@ module Model = struct
     ; term_parsed : (Opt_range.t Nominal.Term.t, string) Result.t
     }
 
+  let ( = ) t1 t2 =
+    String.(t1.language_str = t2.language_str)
+    && Result.equal
+         (Abstract_syntax.equal Opt_range.( = ))
+         String.( = )
+         t1.language_parsed
+         t2.language_parsed
+    && String.(t1.term_str = t2.term_str)
+    && Result.equal
+         (Nominal.Term.equal ~info_eq:Opt_range.( = ))
+         String.( = )
+         t1.term_parsed
+         t2.term_parsed
+  ;;
+
   let language_str =
     {|
 value :=
@@ -178,14 +193,4 @@ module View = struct
   ;;
 end
 
-let stateless_view () =
-  let wrapper model_s =
-    let evts, elem = View.view model_s in
-    let do_action = E.map Controller.update evts in
-    let model_s' = S.accum (S.value model_s) do_action in
-    model_s', (model_s', elem)
-  in
-  let model_s, elem = S.fix Model.initial_model wrapper in
-  Logr.hold (S.log model_s (fun _ -> ()));
-  elem
-;;
+module Stateless_view = Stateless_view.Mk (Action) (Model) (View) (Controller)
