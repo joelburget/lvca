@@ -125,7 +125,12 @@ let rec of_block : demo_env -> _ Block.t -> Brr.El.t =
         else error_red
       in
       let at = Prelude.class' code_cls :: at in
-      pre ~at [ txt' (cmd_str ^ "\n"); code [ txt' code_str ] ]
+      let contents =
+        if String.(cmd_str <> "")
+        then [ txt' (cmd_str ^ "\n"); code [ txt' code_str ] ]
+        else [ code [ txt' code_str ] ]
+      in
+      pre ~at contents
     | Html_block (_, _, (_, str)) ->
       let err_at = Prelude.class' error_red :: at in
       (match chop ~prefix:"<Demo" ~suffix:"/>" str with
