@@ -1,6 +1,7 @@
 open Base
 open Brr
 open Brr_note_kit
+open CalendarLib
 open Note
 open Prelude
 open Lvca_util
@@ -70,8 +71,8 @@ module Model = struct
     type t =
       { slug : string
       ; title : string
-      ; published : string option
-      ; edited : string option
+      ; published : Date.t option
+      ; edited : Date.t option
       ; tags : string list
       ; view : unit -> El.t
       }
@@ -125,25 +126,25 @@ module Model = struct
       mk "finding-terms" "Finding Terms" (mk_doc [%blob "md/finding-terms.md"])
     | Huttons_razor ->
       mk
-        ~published:"April 7, 2020"
+        ~published:(Date.make 2020 4 7)
         "huttons-razor"
         "Hutton's Razor (draft)"
         (mk_doc [%blob "md/huttons-razor.md"])
     | Lambda_concrete_and_abstract ->
       mk
-        ~published:"08/23/2019"
+        ~published:(Date.make 2019 8 23)
         "lambda-concrete-and-abstract"
         "Lambda Calculus: Concrete and Abstract"
         (mk_doc [%blob "md/lambda-concrete-and-abstract.md"])
     | Making_concrete_and_abstract ->
       mk
-        ~published:"September 8, 2020"
+        ~published:(Date.make 2020 9 8)
         "making-concrete-and-abstract"
         "Making Lambda Calculus: Concrete and Abstract"
         (mk_doc [%blob "md/making-concrete-and-abstract.md"])
     | Never_waste_a_refactor ->
       mk
-        ~published:"June 5, 2021"
+        ~published:(Date.make 2021 6 5)
         "never-waste-a-refactor"
         "Never Waste a Refactor"
         (mk_doc [%blob "md/never-waste-a-refactor.md"])
@@ -154,7 +155,7 @@ module Model = struct
         (mk_doc [%blob "md/software-evolution.md"])
     | Sorts_and_kind_checking ->
       mk
-        ~published:"January 21, 2020"
+        ~published:(Date.make 2020 1 21)
         ~tags:[ "update"; "garage-door" ]
         "sorts-and-kind-checking"
         "Sorts and Kind Checking"
@@ -166,7 +167,7 @@ module Model = struct
         (mk_doc [%blob "md/the-interop-story.md"])
     | Universes ->
       mk
-        ~published:"April 12, 2020"
+        ~published:(Date.make 2020 4 12)
         "universes"
         "Universes (draft)"
         (mk_doc [%blob "md/universes.md"])
@@ -182,163 +183,161 @@ module Model = struct
         (mk_doc [%blob "md/what-lvca-doesnt-do.md"])
     | Why_is_lvca_interesting ->
       mk
-        ~published:"April 8, 2020"
+        ~published:(Date.make 2020 4 8)
         "why-is-lvca-interesting"
         "Why is LVCA Interesting?"
         (mk_doc [%blob "md/why-is-lvca-interesting.md"])
     | Checking_terms_and_patterns ->
       mk
-        ~published:"January xx, 2020"
         "checking-terms-and-patterns"
         "Checking Terms and Patterns"
         (mk_doc [%blob "md/checking-terms-and-patterns.md"])
     | Church_and_curry ->
       mk
-        ~published:"July 1, 2020"
+        ~published:(Date.make 2020 7 1)
         "church-and-curry"
         "Church and Curry"
         (mk_doc [%blob "md/church-and-curry.md"])
     | Comments_are_metadata ->
       mk
-        ~published:"June 4, 2021"
+        ~published:(Date.make 2021 6 4)
         "comments-are-metadata"
         "Comments are Metadata"
         (mk_doc [%blob "md/comments-are-metadata.md"])
     | Constructive_real_calculator ->
       mk
-        ~published:"October 23, 2020"
+        ~published:(Date.make 2020 10 23)
         "constructive-real-calculator"
         "Constructive Real Calculator"
         (mk_doc [%blob "md/constructive-real-calculator.md"])
     | Binding_aware_patterns ->
       mk
-        ~published:"January xx, 2020"
         ~tags:[ "binding" ]
         "binding-aware-patterns"
         "Binding-aware Patterns"
         (mk_doc [%blob "md/binding-aware-patterns.md"])
     | Binding_viewer ->
       mk
-        ~published:"January 1, 2021"
+        ~published:(Date.make 2021 1 1)
         ~tags:[ "binding" ]
         "binding-viewer"
         "Binding Viewer"
         (mk_doc [%blob "md/binding-viewer.md"])
     | Are_constructors_functions ->
       mk
-        ~published:"Feb 15, 2021"
+        ~published:(Date.make 2021 2 15)
         "are-constructors-functions"
         "Are Constructors Functions?"
         (mk_doc [%blob "md/are-constructors-functions.md"])
     | Bidirectional_typechecking ->
       mk
-        ~published:"April 16, 2020"
+        ~published:(Date.make 2021 4 16)
         "bidirectional-typechecking"
         "Bidirectional Typechecking"
         (mk_doc [%blob "md/bidirectional-typechecking.md"])
     | Parsing_language ->
       mk
-        ~published:"Dec 3, 2020"
+        ~published:(Date.make 2020 12 3)
         ~tags:[ "parsing" ]
         "parsing-language"
         "Rethinking Parsing with a Dedicated Language"
         Parser.stateless_view
     | Garage_door ->
       mk
-        ~published:"June 23, 2020"
+        ~published:(Date.make 2020 6 23)
         "garage-door"
         "Working with the Garage Door Up"
         (mk_doc [%blob "md/garage-door.md"])
     | Introduction ->
       mk
-        ~published:"July 5, 2019"
+        ~published:(Date.make 2019 7 5)
         "introduction"
         "Introduction"
         (mk_doc [%blob "md/introduction.md"])
     | Abstract_syntax ->
       mk
-        ~published:"October 8, 2019"
+        ~published:(Date.make 2019 10 8)
         "abstract-syntax"
         "Abstract syntax"
         (mk_doc [%blob "md/abstract-syntax.md"])
     | Semantic_diffs ->
       mk
-        ~published:"April 9, 2020"
+        ~published:(Date.make 2020 4 9)
         "semantic-diffs"
         "Semantic Diffs"
         (mk_doc [%blob "md/semantic-diffs.md"])
     | Semantic_diffs_and_broken_tests ->
       mk
-        ~published:"Feb 14, 2021"
+        ~published:(Date.make 2021 2 14)
         "semantic-diffs-and-broken-tests"
         "Semantic Diffs and Broken Tests"
         (mk_doc [%blob "md/semantic-diffs-and-broken-tests.md"])
     | Progress_august_8_2020 ->
       mk
-        ~published:"August 8, 2020"
+        ~published:(Date.make 2020 8 8)
         ~tags:[ "update"; "garage-door" ]
         "progress-august-8-2020"
         "Progress Update (August 8, 2020)"
         (mk_doc [%blob "md/progress-august-8-2020.md"])
     | Progress_december_23_2020 ->
       mk
-        ~published:"December 23, 2020"
+        ~published:(Date.make 2020 12 23)
         ~tags:[ "update"; "garage-door" ]
         "progress-december-23-2020"
         "Progress Update (December 23, 2020)"
         (mk_doc [%blob "md/progress-december-23-2020.md"])
     | Progress_december_28_2020 ->
       mk
-        ~published:"December 28, 2020"
+        ~published:(Date.make 2020 12 28)
         ~tags:[ "update"; "garage-door" ]
         "progress-december-28-2020"
         "Progress Update (December 28, 2020)"
         (mk_doc [%blob "md/progress-december-28-2020.md"])
     | Progress_july_24_2020 ->
       mk
-        ~published:"July 24, 2020"
+        ~published:(Date.make 2020 7 24)
         ~tags:[ "update"; "garage-door" ]
         "progress-july-24-2020"
         "Progress Update (July 24, 2020)"
         (mk_doc [%blob "md/progress-july-24-2020.md"])
     | Progress_july_25_2021 ->
       mk
-        ~published:"July 25, 2021"
+        ~published:(Date.make 2021 7 25)
         ~tags:[ "update"; "garage-door" ]
         "progress-july-25-2021"
         "Progress Update (July 25, 2021)"
         (mk_doc [%blob "md/progress-july-25-2021.md"])
     | Progress_june_9_2021 ->
       mk
-        ~published:"June 9, 2021"
+        ~published:(Date.make 2020 6 9)
         ~tags:[ "update"; "garage-door" ]
         "progress-june-9-2021"
         "Progress Update (June 9, 2020)"
         (mk_doc [%blob "md/progress-june-9-2021.md"])
     | Progress_may_24_2021 ->
       mk
-        ~published:"May 24, 2021"
+        ~published:(Date.make 2021 4 24)
         ~tags:[ "update"; "garage-door" ]
         "progress-may-24-2021"
         "Progress Update (May 24, 2021)"
         (mk_doc [%blob "md/progress-may-24-2021.md"])
     | Progress_november_7_2020 ->
       mk
-        ~published:"Nobember 7, 2020"
+        ~published:(Date.make 2020 11 7)
         ~tags:[ "update"; "garage-door"; "parsing" ]
         "progress-november-7-2020"
         "Progress Update (November 7, 2020)"
         (mk_doc [%blob "md/progress-november-7-2020.md"])
     | Progress_october_8_2020 ->
       mk
-        ~published:"October 8, 2020"
+        ~published:(Date.make 2020 10 8)
         ~tags:[ "update"; "garage-door"; "parsing"; "constructive-real" ]
         "progress-october-8-2020"
         "Progress Update (October 8, 2020)"
         (mk_doc [%blob "md/progress-october-8-2020.md"])
     | Progress_september_23_2020 ->
       mk
-        ~published:"September 23, 2020"
+        ~published:(Date.make 2020 9 23)
         ~tags:[ "update"; "garage-door" ]
         "progress-september-23-2020"
         "Progress Update (September 8, 2020)"
