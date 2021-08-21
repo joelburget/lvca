@@ -173,9 +173,6 @@ let mk : ?clear:unit event -> selection_s:Source_ranges.t signal -> unit -> resu
     { mark_open_stag =
         (function
         | Source_ranges.Stag rng ->
-          Stdio.printf
-            "RangeFormatter opening stag %s\n"
-            (Fmt.to_to_string Source_ranges.pp rng);
           Stack.push stack (rng, Queue.create ());
           ""
         | _ ->
