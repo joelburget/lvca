@@ -106,7 +106,25 @@ Now, since we have a `term -> real` and a `real -> term`, we can compose them (w
 
 3. I pronounce it "Luca".
 
-# Build
+## Subpackages
+
+LVCA is composed of several subpackages. Topologically sorted by dependencies:
+
+* `util`: A few utilities used in the rest of the packages. Mostly extensions to Jane Street's [base](https://ocaml.janestreet.com/ocaml-core/latest/doc/base/index.html).
+* `provenance`: Types to represent _provenance_, ie where did a term come from.
+* `parsing`: Extensions to [Angstrom](https://github.com/inhabitedtype/angstrom), used in the rest of the packages for parsing.
+* `syntax`: The most important package -- contains representations for the core LVCA data types.
+* `core`: Definition of a "core" language.
+* `bidirectional`: Experimental library for defining bidirectional typechecking schemes.
+* `constructive-real`: Constructive / computable real numbers.
+* `crowbar`: Defines a binary for property checking.
+* `syntax_quoter`: Utilities used by both `ppx_lvca` and `ppx_lvca_core`.
+* `ppx_lvca`: An OCaml ppx for easily defining languages and terms.
+* `ppx_lvca_core`: An OCaml ppx for easily defining _core_ language terms.
+* `languages`: Example languages built with LVCA.
+* `pages`: Web pages (many available at lvca.dev).
+
+## Build
 
 LVCA is written in OCaml and built with [dune](https://dune.build/). So first
 you need `opam` and `dune` installed, then:
@@ -116,6 +134,10 @@ make install-deps
 dune build
 ```
 
+The `make` commands are available only from the project root.`dune build` can be run from the project root or any of the subpackages.
+
+### `pages`-specific:
+
 To produce JS files small enough to put online, run in release mode. Optionally, also compress with [terser](https://terser.org/):
 
 ```
@@ -123,7 +145,7 @@ dune build --profile=release
 terser -c toplevel,sequences=false,drop_console=true --mangle -- _build/default/pages/0x-huttons-razor/main.bc.js > out.js
 ```
 
-# Test
+## Test
 
 From the top level or any subpackage (`syntax`, `core`, etc):
 
