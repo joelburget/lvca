@@ -8,6 +8,18 @@ module Tuple2 = Lvca_util.Tuple2
 let eval = Lvca_languages.Lambda_calculus.eval
 
 module Model = struct
+  module Internal =
+  [%lvca.abstract_syntax_module
+  {|
+term : *
+string : *
+opt_range : *
+result : * -> * -> *
+lang : *
+
+model := Model(string; result term string; lang; result term string; opt_range; opt_range)
+    |}]
+
   type t =
     { input : string
     ; parsed_input : (term, string) Result.t
