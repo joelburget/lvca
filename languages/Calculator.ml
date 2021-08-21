@@ -63,7 +63,7 @@ let rec to_tex ~none expr =
     list ~empty_info:i [ Control_seq (none, (none, "\\max")); go x; go y ]
   | Min (i, x, y) ->
     list ~empty_info:i [ Control_seq (none, (none, "\\min")); go x; go y ]
-  | Negate (i, x) -> list ~empty_info:i [ Literal (i, (none, "-")); go x ]
+  | Negate (i, x) -> list ~empty_info:i (Tex_math.literal i "-" @ [ go x ])
   | Sqrt (i, x)
   | Abs (i, x)
   | Exp (i, x)
@@ -94,10 +94,10 @@ let rec to_tex ~none expr =
   | Lit (i, lit) ->
     let x =
       match lit with
-      | Left (i, x) -> Literal (i, (i, Primitive.Integer.to_string x))
-      | Right (i, x) -> Literal (i, (i, Primitive.Float.to_string x))
+      | Left (i, x) -> Tex_math.literal i (Primitive.Integer.to_string x)
+      | Right (i, x) -> Tex_math.literal i (Primitive.Float.to_string x)
     in
-    list ~empty_info:i [ x ]
+    list ~empty_info:i x
 ;;
 
 type term = Opt_range.t Expr.t
