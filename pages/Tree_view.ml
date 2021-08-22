@@ -435,7 +435,7 @@ and render_scope ~render_params ~last:last_slot (Nominal.Scope.Scope (pats, tm))
 let view_tm
     ?(source_column = true)
     ?(range_column = true)
-    ?default_expanded_depth:(expanded_depth = FullyExpanded)
+    ?default_expanded_depth:(expanded_depth = ExpandedTo 3)
     tm
   =
   let tm = Nominal.Term.map_info ~f:select_source_range tm in
