@@ -3,6 +3,7 @@ open Brr
 open Brr_note_kit
 open Note
 open Prelude
+open Lvca_syntax
 open Lvca_util
 
 module Model = struct
@@ -28,6 +29,7 @@ module Model = struct
     | Repl()
     | Ide()
     | Code_review()
+    | Store_view()
 
     // moved from blog
     | Finding_terms()
@@ -91,18 +93,18 @@ module Model = struct
   ;;
 
   let lang = Internal.language
-
-  let comments =
-    match lang.sort_defs with
-    | [ (_, Sort_def (_, operator_defs)) ] ->
-      List.map operator_defs ~f:(fun (Operator_def (info, name, _arity)) ->
-          name, Lvca_provenance.Commented.get_comment info)
-      |> String.Map.of_alist_exn
-    | _ -> failwith "Unexpected number of sort defs"
-  ;;
-
   let default_page = Page.Repl
   let mk_doc blob () = Md_viewer.of_string blob
+
+  let mk_doc' tag () =
+    match Store.find tag with
+    | Some tm ->
+      (match Md_viewer.of_nominal tm with
+      | Ok doc -> doc
+      | Error msg ->
+        failwith (Fmt.str "failed of_nominal conversion: %a" Nominal.Term.pp msg))
+    | None -> failwith (Fmt.str "tag %s not found" tag)
+  ;;
 
   let page_info =
     let mk = Page_info.mk in
@@ -129,9 +131,9 @@ module Model = struct
     | Repl -> mk "repl" "0x: Repl" Repl.Stateless_view.view
     | Ide -> mk "ide" "0x: IDE" Ide.Stateless_view.view
     | Code_review ->
-      mk "code-review" "0x: Code review" (mk_doc [%blob "md/make-code-review-easier.md"])
-    | Finding_terms ->
-      mk "finding-terms" "Finding Terms" (mk_doc [%blob "md/finding-terms.md"])
+      mk "code-review" "0x: Code review" (mk_doc' "make-code-review-easier")
+    | Store_view -> mk "store-viewer" "0x: Store viewer" Store_view.Stateless_view.view
+    | Finding_terms -> mk "finding-terms" "Finding Terms" (mk_doc' "finding-terms")
     | Huttons_razor ->
       mk
         ~published:(mk_date 2020 4 7)
@@ -368,6 +370,7 @@ module Model = struct
       ; Repl
       ; Ide
       ; Code_review
+      ; Store_view
       ; Finding_terms
       ; Huttons_razor
       ; Lambda_concrete_and_abstract

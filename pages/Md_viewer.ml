@@ -150,3 +150,7 @@ let of_doc : ?demo_env:demo_env -> _ Doc.t -> Brr.El.t =
 let of_string ?(demo_env = Lvca_util.String.Map.empty) str =
   str |> Document.parse |> of_doc ~demo_env
 ;;
+
+let of_nominal ?(demo_env = Lvca_util.String.Map.empty) nominal =
+  nominal |> Doc.of_nominal |> Result.map ~f:(of_doc ~demo_env)
+;;
