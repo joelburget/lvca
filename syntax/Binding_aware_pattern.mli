@@ -55,6 +55,8 @@ val match_scope
   -> 'info Nominal.Scope.t
   -> 'info Capture.t String.Map.t option
 
+val match_all : 'a t -> 'a Nominal.Term.t -> 'a list
+
 (** {1 Pretty-printing} *)
 
 val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t

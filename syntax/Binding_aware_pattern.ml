@@ -192,6 +192,22 @@ and match_scope ~info_eq (Scope (binder_pats, body_pat)) (Scope.Scope (binders, 
     | `Ok result -> Some result)
 ;;
 
+let rec match_all pat tm =
+  let tm_info = Nominal.Term.info tm in
+  let info_eq _ _ = true in
+  match pat, tm with
+  | Var (_, _), _ -> [ tm_info ]
+  | Primitive p1, Term.Primitive p2 ->
+    if Primitive.All.equal ~info_eq p1 p2 then [ tm_info ] else []
+  | Operator _, Operator (_, _, scopes) ->
+    let f (Scope.Scope (_binders, body)) = match_all pat body in
+    let sub_matches = List.concat_map scopes ~f in
+    (match match_term ~info_eq pat tm with
+    | None -> sub_matches
+    | Some _ -> tm_info :: sub_matches)
+  | _, _ -> []
+;;
+
 let handle_dup_error = function
   | `Ok result -> Ok result
   | `Duplicate_key k ->

@@ -81,6 +81,7 @@ type definition_streams =
 type render_params =
   { source_column : bool (** Show the "source" column or not *)
   ; range_column : bool (** Show the "range" column or not *)
+  ; highlighted_ranges : Source_ranges.t
   ; depth : int
         (** How many times we've recursed to a child. Used both when deciding if we should
             render at this depth and for indentation. *)
@@ -108,12 +109,13 @@ let select_source_range : Source_ranges.t -> Source_range.t option =
   | _ -> None
 ;;
 
-module Colors = struct
+module Decoration = struct
   let in_scope = "bg-green-50"
   let reference = "bg-blue-200"
   let definition = "bg-pink-200"
   let upstream_shadow = "bg-yellow-200"
   let downstream_shadow = "bg-yellow-500"
+  let highlighted = "underline"
 end
 
 (** Render a row in the grid. *)
@@ -129,7 +131,29 @@ let grid_tmpl ~render_params left loc : El.t * Source_ranges.t event =
     |> S.hold ~eq:Bool.( = ) false
   in
   let fst_col = td ~at:(classes "col-span-2 px-2 py-0") left in
-  Elr.def_class (Jstr.v Colors.in_scope) in_scope_cls_s fst_col;
+  Elr.def_class (Jstr.v Decoration.in_scope) in_scope_cls_s fst_col;
+  (match loc with
+  | Some loc ->
+    Source_ranges.(
+      Fmt.pr
+        "Tree_view: comparing locations %a / %a\n"
+        pp
+        (of_source_range loc)
+        pp
+        render_params.highlighted_ranges);
+    (match
+       Map.is_empty
+         Source_ranges.(intersect (of_source_range loc) render_params.highlighted_ranges)
+     with
+    | true -> ()
+    | false -> Elr.def_class (Jstr.v Decoration.highlighted) in_scope_cls_s fst_col)
+  | _ ->
+    Source_ranges.(
+      Fmt.pr
+        "Tree_view: comparing locations None / %a\n"
+        pp
+        render_params.highlighted_ranges);
+    ());
   let cols =
     match loc with
     | None -> [ fst_col ]
@@ -202,10 +226,10 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
   let add_active_class color getter =
     Elr.def_class (Jstr.v color) (classes_s |> S.map getter) inner_span
   in
-  add_active_class Colors.reference Tuple4.get1;
-  add_active_class Colors.definition Tuple4.get2;
-  add_active_class Colors.upstream_shadow Tuple4.get3;
-  add_active_class Colors.downstream_shadow Tuple4.get4;
+  add_active_class Decoration.reference Tuple4.get1;
+  add_active_class Decoration.definition Tuple4.get2;
+  add_active_class Decoration.upstream_shadow Tuple4.get3;
+  add_active_class Decoration.downstream_shadow Tuple4.get4;
   let name_elem = span [ inner_span; txt' suffix ] in
   let trigger_upstream_shadow, trigger_downstream_shadow =
     match var_pos with
@@ -436,6 +460,7 @@ let view_tm
     ?(source_column = true)
     ?(range_column = true)
     ?default_expanded_depth:(expanded_depth = ExpandedTo 3)
+    ?(highlighted_ranges = Source_ranges.empty)
     tm
   =
   let tm = Nominal.Term.map_info ~f:select_source_range tm in
@@ -453,7 +478,13 @@ let view_tm
   let render () =
     let queue = Queue.create () in
     let render_params =
-      { var_selected_events; queue; depth = 0; source_column; range_column }
+      { var_selected_events
+      ; queue
+      ; depth = 0
+      ; source_column
+      ; range_column
+      ; highlighted_ranges
+      }
     in
     render_tm ~render_params tm;
     let rows, evts = queue |> Queue.to_list |> List.unzip in
