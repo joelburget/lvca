@@ -132,7 +132,7 @@ is_rec := Rec() | No_rec()
 ty := Sort(sort) | Arrow(ty; ty)
 
 term :=
-  | Term(nominal)
+  | Nominal(nominal)
   | Ap(term; list term)
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
@@ -273,7 +273,7 @@ module Pp_generic = struct
     open_loc ppf (Lang.Term.info tm);
     (match tm with
     | Lang.Term.Term_var (_, v) -> Fmt.string ppf v
-    | Term (_, tm) -> braces (Nominal.Term.pp_generic ~open_loc ~close_loc) ppf tm
+    | Nominal (_, tm) -> braces (Nominal.Term.pp_generic ~open_loc ~close_loc) ppf tm
     | Lambda (_, ty, (Single_var.{ name; info = _ }, body)) ->
       pf
         ppf
@@ -301,7 +301,7 @@ module Pp_generic = struct
     | Subst (_, (Single_var.{ name; info = _ }, body), arg) ->
       let formatter =
         match body with
-        | Term _ | Subst _ -> pf ppf "@[%a[%s := %a]@]"
+        | Nominal _ | Subst _ -> pf ppf "@[%a[%s := %a]@]"
         | _ -> pf ppf "@[@[(%a)@][%s := %a]@]"
       in
       formatter pp body name pp arg);
@@ -398,7 +398,7 @@ module Parse = struct
             ; Ws.braces (Nominal.Term.parse ~parse_prim ~comment)
               >>|| (fun { value = tm; range } ->
                      (* TODO: add comments *)
-                     { value = Term.Term (Commented.of_opt_range range, tm); range })
+                     { value = Term.Nominal (Commented.of_opt_range range, tm); range })
               <?> "quoted term"
             ]
         in
@@ -587,7 +587,7 @@ module Check_error' = struct
     | Cant_infer_lambda -> Fmt.pf ppf "can't infer lambdas"
     | Var_not_found ->
       (match tm with
-      | Lang.Term.Term (_, Nominal.Term.Var (_, name)) ->
+      | Lang.Term.Nominal (_, Nominal.Term.Var (_, name)) ->
         Fmt.pf ppf "variable %s not found" name
       | _ -> Lvca_util.invariant_violation ~here:[%here] "expected Var")
     | Operator_not_found -> Fmt.pf ppf "operator not found"
@@ -634,7 +634,7 @@ module Infer_error = struct
   let pp ppf { env = _; tm; error } = Check_error'.pp ppf tm None error
 end
 
-let infer_term type_env tm =
+let infer_nominal type_env tm =
   match tm with
   | Nominal.Term.Primitive (_, prim) ->
     let name =
@@ -660,7 +660,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
     else Some Check_error.{ env; tm; ty; error = Mismatch ty' }
   in
   match tm with
-  | Lang.Term.Term (_, tm') ->
+  | Lang.Term.Nominal (_, tm') ->
     (match ty with
     | Lang.Ty.Arrow _ -> Some Check_error.{ env; tm; ty; error = Term_isnt_arrow }
     | Sort (_, sort) ->
@@ -699,8 +699,8 @@ let rec check ({ type_env; syntax } as env) tm ty =
 
 and infer ({ type_env; syntax = _ } as env) tm =
   match tm with
-  | Lang.Term.Term (_, tm') ->
-    (match infer_term type_env tm' with
+  | Lang.Term.Nominal (_, tm') ->
+    (match infer_nominal type_env tm' with
     | Error reason -> Error { env; tm; error = Failed_term_inference reason }
     | Ok ty -> Ok ty)
   | Ap (_, f, args) ->
@@ -800,7 +800,7 @@ let rec eval_in_ctx ~no_info ctx tm =
   | Case (_, tm, branches) ->
     let%bind tm_val = go ctx tm in
     (match find_match tm_val (List_model.to_list branches) with
-    | None -> Error ("no match found in case", Term (no_info, tm_val))
+    | None -> Error ("no match found in case", Nominal (no_info, tm_val))
     | Some (branch, bindings) -> go (Lvca_util.Map.union_right_biased ctx bindings) branch)
   | Ap (_, Lambda (_, _ty, (Single_var.{ name; info = _ }, body)), Cons (_, arg, Nil _))
     ->
@@ -810,7 +810,7 @@ let rec eval_in_ctx ~no_info ctx tm =
     if Map.mem ctx name
     then failwith "TODO"
     else eval_primitive ~no_info go eval_nominal_in_ctx ctx tm name args
-  | Term (_, tm) -> Ok (Nominal.Term.subst_all ctx tm)
+  | Nominal (_, tm) -> Ok (Nominal.Term.subst_all ctx tm)
   | Let (_, _, tm, _, (Single_var.{ name; info = _ }, body))
   | Subst (_, (Single_var.{ name; _ }, body), tm) ->
     let%bind tm_val = go ctx tm in
@@ -822,7 +822,7 @@ and eval_nominal_in_ctx ~no_info ctx tm =
   | Nominal.Term.Var (_, v) ->
     (match Map.find ctx v with
     | Some result -> Ok result
-    | None -> Error ("Unbound variable " ^ v, Lang.Term.Term (no_info, tm)))
+    | None -> Error ("Unbound variable " ^ v, Lang.Term.Nominal (no_info, tm)))
   | _ -> Ok tm
 
 and eval_primitive ~no_info eval_in_ctx eval_nominal_in_ctx ctx tm name args =
@@ -936,7 +936,7 @@ let var name = Lang.Term.Term_var ((), name)
 let single_var name = Single_var.{ name; info = () }
 let case tm case_scopes = Lang.Term.Case ((), tm, list case_scopes)
 let case_scope bpat tm = Lang.Case_scope.Case_scope ((), bpat, tm)
-let term tm = Lang.Term.Term ((), tm)
+let term tm = Lang.Term.Nominal ((), tm)
 
 let%test_module "Parsing" =
   (module struct
@@ -951,8 +951,8 @@ let%test_module "Parsing" =
 
     let one = Nominal.Term.Primitive ((), Integer (Z.of_int 1))
 
-    let%test _ = parse "{1}" = Term.Term ((), one)
-    let%test _ = parse "{true()}" = Term ((), operator "true" [])
+    let%test _ = parse "{1}" = Term.Nominal ((), one)
+    let%test _ = parse "{true()}" = Nominal ((), operator "true" [])
     let%test _ = parse "not x" = ap (var "not") [ var "x" ]
 
     let%test _ =
@@ -963,8 +963,9 @@ let%test_module "Parsing" =
           , ap (var "string_of_chars") [ var "chars" ]
           , none
           , ( single_var "str"
-            , Term ((), operator "var" Nominal.[ Scope.Scope ([], Term.Var ((), "str")) ])
-            ) )
+            , Nominal
+                ((), operator "var" Nominal.[ Scope.Scope ([], Term.Var ((), "str")) ]) )
+          )
     ;;
 
     let%test _ =
@@ -974,22 +975,22 @@ let%test_module "Parsing" =
 
     let%test _ =
       parse {|match x with { _ -> {1} }|}
-      = case (var "x") [ case_scope ignored (Term ((), one)) ]
+      = case (var "x") [ case_scope ignored (Nominal ((), one)) ]
     ;;
 
     let%test _ = parse {|match empty with { }|} = Case ((), var "empty", Nil ())
 
     let%test _ =
       parse {|match x with { | _ -> {1} }|}
-      = case (var "x") [ case_scope ignored (Term ((), one)) ]
+      = case (var "x") [ case_scope ignored (Nominal ((), one)) ]
     ;;
 
     let%test _ =
       parse {|match x with { true() -> {false()} | false() -> {true()} }|}
       = case
           (var "x")
-          [ case_scope (bpat_operator "true" []) (Term ((), operator "false" []))
-          ; case_scope (bpat_operator "false" []) (Term ((), operator "true" []))
+          [ case_scope (bpat_operator "true" []) (Nominal ((), operator "false" []))
+          ; case_scope (bpat_operator "false" []) (Nominal ((), operator "true" []))
           ]
     ;;
 
@@ -998,7 +999,7 @@ let%test_module "Parsing" =
       = Let
           ( ()
           , No_rec ()
-          , Term ((), operator "true" [])
+          , Nominal ((), operator "true" [])
           , none
           , (single_var "x", ap (var "not") [ var "x" ]) )
     ;;

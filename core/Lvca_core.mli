@@ -76,7 +76,7 @@ is_rec := Rec() | No_rec()
 ty := Sort(sort) | Arrow(ty; ty)
 
 term :=
-  | Term(nominal)
+  | Nominal(nominal)
   | Ap(term; list term)
   | Case(term; list case_scope)
   | Lambda(ty; term. term)

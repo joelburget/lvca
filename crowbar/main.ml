@@ -128,7 +128,9 @@ let term_str_conf tm_str =
 *)
 
 (* Limited core generator: only generates nominal terms. *)
-let core_gen = Crowbar.map [ nominal_gen ] (fun tm -> Lvca_core.Lang.Term.Term ((), tm))
+let core_gen =
+  Crowbar.map [ nominal_gen ] (fun tm -> Lvca_core.Lang.Term.Nominal ((), tm))
+;;
 
 (* Limitations of parser generator:
    - Uses core_gen, so inherits its limitations
