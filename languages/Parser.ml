@@ -11,7 +11,7 @@ type 'info n_term = 'info Nominal.Term.t
 let eval_primitive _eval_ctx _eval_ctx' _ctx _tm _name _args =
   Error
     ( "no primitive evaluation"
-    , Lvca_core.Lang.Term.Nominal
+    , Lvca_core.Lang.Term.Embedded
         ( Source_ranges.empty
         , Nominal.Term.Primitive
             (Source_ranges.empty, String "TODO: make this unnecessary") ) )
@@ -133,14 +133,14 @@ let pp_generic ~open_loc ~close_loc ppf p =
       | Fail (_, tm) ->
         let f ppf =
           match tm with
-          | Nominal (_, Primitive (_, String msg)) -> pf ppf {|@[<2>fail "%s"@]|} msg
+          | Embedded (_, Primitive (_, String msg)) -> pf ppf {|@[<2>fail "%s"@]|} msg
           | _ -> pf ppf "@[<2>fail {%a}@]" core tm
         in
         f, Prec.app
       | Count (_, p, tm) ->
         let f ppf =
           match tm with
-          | Nominal (_, Primitive (_, Integer n)) ->
+          | Embedded (_, Primitive (_, Integer n)) ->
             pf ppf "@[<hv>%a%s@]" (go (Int.succ Prec.quantifier)) p (Z.to_string n)
           | _ -> pf ppf "@[<hv>%a{%a}@]" (go (Int.succ Prec.quantifier)) p core tm
         in
@@ -326,7 +326,7 @@ module Direct = struct
               Lvca_core.Lang.Term.Let
                 ( rng
                 , Lvca_core.Lang.Is_rec.No_rec rng
-                , Nominal (rng, Primitive (rng, Char c))
+                , Embedded (rng, Primitive (rng, Char c))
                 , Lvca_core.Option_model.Option.None rng
                 , (Single_var.{ name; info = rng }, core_term) )
             in
@@ -857,7 +857,7 @@ module Parse = struct
           let i = Z.of_int i in
           return
             ~range
-            (Count (range, left, Nominal (range, Primitive (range, Integer i))))
+            (Count (range, left, Embedded (range, Primitive (range, Integer i))))
         | _ -> return ~range left)
     in
     go ~ambient_prec left
@@ -925,7 +925,7 @@ module Parse = struct
             (Sequence
                ( range
                , Queue.to_list binders
-               , Lvca_core.Lang.Term.Nominal (range, Nominal.Term.Var (range, name)) ))
+               , Lvca_core.Lang.Term.Embedded (range, Nominal.Term.Var (range, name)) ))
         | Some tok -> fail (Fmt.str "TODO (sequence token %a)" Token.pp tok)
         | None -> fail "No token following `->` (expected a return value)")
       (* Consume groups of binders until we hit "->" or the end. *)
@@ -970,7 +970,7 @@ module Parse = struct
                       >>~ fun p2 str ->
                       let range = Opt_range.union p1 p2 in
                       FailTok
-                        ( Lvca_core.Lang.Term.Nominal (range, Primitive (p2, String str))
+                        ( Lvca_core.Lang.Term.Embedded (range, Primitive (p2, String str))
                         , range ))
                     ])
                 ; (Ws.string "satisfy"

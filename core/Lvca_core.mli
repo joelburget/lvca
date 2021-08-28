@@ -76,7 +76,7 @@ is_rec := Rec() | No_rec()
 ty := Sort(sort) | Arrow(ty; ty)
 
 term :=
-  | Nominal(nominal)
+  | Embedded(nominal)
   | Ap(term; list term)
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
@@ -125,20 +125,12 @@ type 'info check_env =
   }
 
 module Check_error' : sig
-  type term_failure_inference_reason =
-    | Term_var_not_found of string
-    | Operator_not_supported
-
   type 'info t =
     | Cant_infer_case
     | Cant_infer_lambda
     | Var_not_found
     | Operator_not_found
     | Mismatch of 'info Type.t
-    | Term_isnt_arrow
-    | Failed_term_inference of term_failure_inference_reason
-    | Failed_check_term of
-        ('info, ('info Pattern.t, 'info Nominal.Term.t) Base.Either.t) Check_failure.t
 end
 
 module Check_error : sig

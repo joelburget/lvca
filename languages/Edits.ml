@@ -81,7 +81,7 @@ let%test_module "Parsing" =
       let open Lvca_core.Lang.Term in
       eval
         ~no_info:None
-        (Ap (None, core, List_model.of_list ~empty_info:None [ Nominal (None, tm) ]))
+        (Ap (None, core, List_model.of_list ~empty_info:None [ Embedded (None, tm) ]))
    ;;
 
     (* TODO: don't throw away this information, switch from strings *)

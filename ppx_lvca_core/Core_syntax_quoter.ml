@@ -109,8 +109,8 @@ module Core = struct
   ;;
 
   let rec term ~loc = function
-    | Lang.Term.Nominal (i, tm) ->
-      [%expr Lvca_core.Lang.Term.Nominal ([%e commented ~loc i], [%e nominal ~loc tm])]
+    | Lang.Term.Embedded (i, tm) ->
+      [%expr Lvca_core.Lang.Term.Embedded ([%e commented ~loc i], [%e nominal ~loc tm])]
     | Ap (i, tm, tms) ->
       let tms = tms |> List_model.map ~f:(term ~loc) |> list ~loc in
       [%expr Lvca_core.Lang.Term.Ap ([%e commented ~loc i], [%e term ~loc tm], [%e tms])]
