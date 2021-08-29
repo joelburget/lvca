@@ -195,7 +195,6 @@ let pp_view ~highlight_s tm fmt =
   let font_adjust = font_size *. 0.6 (* 0.6 is an estimate of font width to height *) in
   let initial_width = 40. *. font_adjust in
   let px_size_s, _set_px_size = S.create ~eq:Float.( = ) initial_width in
-  (* let open Js_of_ocaml in *)
   (* TODO
   if (ResizeObserver.is_supported ()) then (
     let open Tyxml_js in

@@ -1,14 +1,9 @@
 open Bonsai_web
 open Core_kernel
-
-(* open Js_of_ocaml *)
-
 open Lvca
 open Lvca_web
 open Bidirectional
 open Statics
-
-(* open Lvca_web *)
 
 module AbstractEditor = ContainedEditor.ContainedEditorComponent (struct
   type t = AbstractSyntax.t

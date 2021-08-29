@@ -14,7 +14,6 @@ depends: [
   "cbor"
   "digestif"
   "fmt"
-  "js_of_ocaml"
   "ppx_jane"
   "ppx_inline_test"
   "dune" {>= "2.0.0"}
