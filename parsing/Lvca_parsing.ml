@@ -302,14 +302,18 @@ module Basic = struct
   let char c = go (char c)
   let satisfy f = go (satisfy f)
   let string str = go (string str)
+  let initial_char_p = Char.(fun c -> is_alpha c || c = '_')
+  let char_p = Char.(fun c -> is_alpha c || is_digit c || c = '_' || c = '\'')
 
-  let identifier =
+  let identifier' ?(initial_char_p = initial_char_p) ?(char_p = char_p) () =
     go
       (lift2
          (fun c cs -> String.(of_char c ^ cs))
-         (Angstrom.satisfy Char.(fun c -> is_alpha c || c = '_'))
-         (take_while Char.(fun c -> is_alpha c || is_digit c || c = '_' || c = '\'')))
+         (Angstrom.satisfy initial_char_p)
+         (take_while char_p))
   ;;
+
+  let identifier = identifier' ()
 end
 
 let ( ( >>|| )
@@ -444,6 +448,11 @@ let sep_end_by s p =
 
 module No_ws = struct
   let char_lit = adapt Basic.char_lit
+
+  let identifier' ?initial_char_p ?char_p () =
+    adapt (Basic.identifier' ?initial_char_p ?char_p ())
+  ;;
+
   let identifier = adapt Basic.identifier
   let integer_lit = adapt Basic.integer_lit
   let integer_or_float_lit = adapt Basic.integer_or_float_lit
@@ -463,6 +472,11 @@ end
 
 module Ws = struct
   let char_lit = No_ws.char_lit <* whitespace
+
+  let identifier' ?initial_char_p ?char_p () =
+    No_ws.identifier' ?initial_char_p ?char_p () <* whitespace
+  ;;
+
   let identifier = No_ws.identifier <* whitespace
   let integer_lit = No_ws.integer_lit <* whitespace
   let integer_or_float_lit = No_ws.integer_or_float_lit <* whitespace

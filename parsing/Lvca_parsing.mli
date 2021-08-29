@@ -52,6 +52,13 @@ val c_comment : string t
 
 module Ws : sig
   val char_lit : char t
+
+  val identifier'
+    :  ?initial_char_p:(char -> bool)
+    -> ?char_p:(char -> bool)
+    -> unit
+    -> string t
+
   val identifier : string t
   val integer_lit : string t
   val integer_or_float_lit : (string, float) Base.Either.t t
@@ -66,6 +73,13 @@ end
 
 module No_ws : sig
   val char_lit : char t
+
+  val identifier'
+    :  ?initial_char_p:(char -> bool)
+    -> ?char_p:(char -> bool)
+    -> unit
+    -> string t
+
   val identifier : string t
   val integer_lit : string t
   val integer_or_float_lit : (string, float) Base.Either.t t
