@@ -112,9 +112,8 @@ module DebuggerAction = struct
 end
 
 let parser =
-  Lvca_parsing.(
-    P.Parse.t
-      Lvca_core.Term.(parse ~comment:c_comment >>| map_info ~f:Commented.get_range))
+  let c_comment, ( >>| ) = Lvca_parsing.(c_comment, ( >>| )) in
+  P.Parse.t Lvca_core.Term.(parse ~comment:c_comment >>| map_info ~f:Commented.get_range)
 ;;
 
 let parse_parser = Lvca_parsing.parse_string parser
@@ -153,11 +152,19 @@ module Examples = struct
 
   let fix =
     {|let atom = choice (name | literal) in
+choice (
+  | a=atom ' '* '+' ' '* e=expr -> {{add(a; e)}}
+  | a=atom -> {a}
+)
+      |}
+  ;;
+  (*
+    {|let atom = choice (name | literal) in
 fix (expr -> choice (
   | a=atom ' '* '+' ' '* e=expr -> {{add(a; e)}}
-  | a=atom -> a
+  | a=atom -> {a}
 ))|}
-  ;;
+       *)
 end
 
 module Prelude = struct
@@ -647,8 +654,8 @@ module View = struct
           ; fail_input
           ; sequence1_input
           ; sequence2_input
-          ; fix_input = _
-          ; playground_input = _
+          ; fix_input
+          ; playground_input
           }
       =
       model
@@ -676,12 +683,11 @@ module View = struct
     let fail_table = mk_input_result' Examples.fail fail_input in
     let sequence1_table = mk_input_result' Examples.sequence1 sequence1_input in
     let sequence2_table = mk_input_result' Examples.sequence2 sequence2_input in
-    (* let fix_table = mk_input_result' ~parser_ctx:Prelude.ctx Examples.fix fix_input in *)
+    let fix_table = mk_input_result' ~parser_ctx:Prelude.ctx Examples.fix fix_input in
     let pg_parser_input, set_pg_parser_input = S.create ~eq:String.( = ) Examples.fix in
-    let _pg_input_elem, pg_input_evt =
+    let pg_input_elem, pg_input_evt =
       Multiline_input.mk ~autofocus:false ~border:false pg_parser_input
     in
-    (*
     let playground_table =
       mk_input_result
         ~parser_ctx:Prelude.ctx
@@ -689,7 +695,6 @@ module View = struct
         ~parser_str_s:pg_parser_input
         playground_input
     in
-       *)
     let _sink : Logr.t option =
       E.log pg_input_evt (fun evt ->
           match evt with Common.Evaluate_input str -> set_pg_parser_input str | _ -> ())
@@ -711,8 +716,9 @@ module View = struct
         ; "let", let_table
         ; "fail", fail_table
         ; "sequence1", sequence1_table
-        ; "sequence2", sequence2_table (* ; "fix", fix_table *)
-          (* ; "playground", playground_table *)
+        ; "sequence2", sequence2_table
+        ; "fix", fix_table
+        ; "playground", playground_table
         ]
     in
     Md_viewer.of_string ~demo_env [%blob "md/parsing-language.md"]
