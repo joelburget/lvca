@@ -45,19 +45,21 @@ module Model = struct
 
   let language_str =
     {|
+list : * -> *
+
 value :=
   | unit()
-  | lit_int(integer())
-  | lit_str(string())
+  | lit_int(integer)
+  | lit_str(string)
 
 match_line :=
-  | match_line(value()*. term())
+  | match_line(value[value]. term)
 
 term :=
-  | lambda(value(). term())
-  | alt_lambda(term(). term())
-  | match(match_line()*)
-  | value(value())
+  | lambda(value. term)
+  | alt_lambda(term. term)
+  | match(list match_line)
+  | value(value)
    |}
   ;;
 
