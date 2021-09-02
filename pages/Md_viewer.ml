@@ -44,7 +44,10 @@ let rec mk_link demo_env label dest (title : _ Option_model.Option.t) attrs =
   let title_attr =
     match title with None _ -> [] | Some (_, (_, t)) -> At.[ title (Jstr.v t) ]
   in
-  let at = (At.href (Jstr.v dest) :: title_attr) @ mk_attrs attrs in
+  let at =
+    (At.href (Jstr.v dest) :: At.class' (Jstr.v "prose-link") :: title_attr)
+    @ mk_attrs attrs
+  in
   Brr.El.a ~at (of_inline demo_env label)
 
 and of_inline : demo_env -> _ Inline.t -> Brr.El.t list =
