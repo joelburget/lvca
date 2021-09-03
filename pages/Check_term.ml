@@ -44,6 +44,8 @@ module Model = struct
   let language_str =
     {|
 list : * -> *
+integer : *
+string : *
 
 value :=
   | unit()
@@ -54,7 +56,8 @@ match_line :=
   | match_line(value[value]. term)
 
 term :=
-  | lambda(value. term)
+// TODO(#21): uncomment
+//  | lambda(value. term)
   | alt_lambda(term. term)
   | match(list match_line)
   | value(value)
