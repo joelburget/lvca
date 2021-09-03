@@ -34,8 +34,6 @@ module Typing_clause : sig
   val parse : Opt_range.t t Lvca_parsing.t
 end
 
-exception StaticsParseError of string
-
 (** A hypothesis contains a set of variables (and their types) that must appear in the
     context, as well as an inference or checking clause. *)
 module Hypothesis : sig
@@ -47,11 +45,7 @@ module Hypothesis : sig
   module Parse : sig
     val pattern : Opt_range.t Binding_aware_pattern.t Lvca_parsing.t
     val typed_term : (string * Opt_range.t Binding_aware_pattern.t) Lvca_parsing.t
-
-    (** @raise StaticsParseError *)
     val context : Opt_range.t Binding_aware_pattern.t String.Map.t Lvca_parsing.t
-
-    (** @raise StaticsParseError *)
     val t : Opt_range.t t Lvca_parsing.t
   end
 end
@@ -68,8 +62,6 @@ module Rule : sig
 
   module Parse : sig
     val line : string option Lvca_parsing.t
-
-    (** @raise StaticsParseError *)
     val t : Opt_range.t t Lvca_parsing.t
   end
 end
@@ -83,6 +75,4 @@ end
 type 'info t = 'info Rule.t list
 
 val erase : _ t -> unit t
-
-(** @raise StaticsParseError *)
 val parse : Opt_range.t t Lvca_parsing.t
