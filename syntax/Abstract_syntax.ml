@@ -634,13 +634,20 @@ let lookup_operator { externals = _; sort_defs } sort_name op_name =
 ;;
 
 let pp_generic ~open_loc ~close_loc ppf { externals; sort_defs } =
+  let sep ppf () = Stdlib.Format.pp_force_newline ppf () in
   let pp_externals =
-    Fmt.(list (pair ~sep:(any " : ") string (Kind.pp_generic ~open_loc ~close_loc)))
+    let pp_kind = Kind.pp_generic ~open_loc ~close_loc in
+    let pp_external = Fmt.(pair ~sep:(any " : ") string pp_kind) in
+    Fmt.(list pp_external ~sep)
   in
   let pp_sort_def ppf (name, sort_def) =
     Sort_def.pp_generic ~open_loc ~close_loc ~name ppf sort_def
   in
-  Fmt.pf ppf "%a@,%a" pp_externals externals Fmt.(list pp_sort_def) sort_defs
+  let sep ppf () =
+    sep ppf ();
+    sep ppf ()
+  in
+  Fmt.pf ppf "%a\n\n%a" pp_externals externals Fmt.(list pp_sort_def ~sep) sort_defs
 ;;
 
 let pp ppf t = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf t
@@ -871,6 +878,50 @@ let%test_module "Parser" =
       = [ "integer", Kind.Kind (Opt_range.mk 17 18, 1)
         ; "list", Kind (Opt_range.mk 32 38, 2)
         ]
+    ;;
+
+    let parse_print str = str |> parse |> Fmt.pr "%a\n" pp
+
+    let%expect_test _ =
+      parse_print
+        {|
+list : * -> *
+integer : *
+string : *
+
+value :=
+  | unit()
+  | lit_int(integer)
+  | lit_str(string)
+
+match_line :=
+  | match_line(value[value]. term)
+
+term :=
+  | lambda(value. term)
+  | alt_lambda(term. term)
+  | match(list match_line)
+  | value(value)
+   |};
+      [%expect
+        {|
+list : * -> *
+integer : *
+string : *
+
+value :=
+  | unit()
+  | lit_int(integer)
+  | lit_str(string)
+
+match_line := match_line(value[value]. term)
+
+term :=
+  | lambda(value. term)
+  | alt_lambda(term. term)
+  | match(list match_line)
+  | value(value)
+   |}]
     ;;
   end)
 ;;
