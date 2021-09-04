@@ -59,6 +59,7 @@ module Rule : sig
     }
 
   val erase : _ t -> unit t
+  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
 
   module Parse : sig
     val line : string option Lvca_parsing.t
@@ -70,6 +71,7 @@ module Typing : sig
   type 'info t = Typing of 'info Nominal.Term.t * 'info Nominal.Term.t
 
   val erase : _ t -> unit t
+  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
 end
 
 type 'info t = 'info Rule.t list

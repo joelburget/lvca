@@ -171,6 +171,12 @@ module Rule = struct
     }
   ;;
 
+  let equal ~info_eq a b =
+    List.equal (Hypothesis.equal ~info_eq) a.hypotheses b.hypotheses
+    && Option.equal String.( = ) a.name b.name
+    && Hypothesis.equal ~info_eq a.conclusion b.conclusion
+  ;;
+
   module Parse = struct
     open Lvca_parsing
 
@@ -198,6 +204,10 @@ module Typing = struct
   type 'a t = Typing of 'a Nominal.Term.t * 'a Nominal.Term.t
 
   let erase (Typing (t1, t2)) = Typing (Nominal.Term.erase t1, Nominal.Term.erase t2)
+
+  let equal ~info_eq (Typing (t11, t12)) (Typing (t21, t22)) =
+    Nominal.Term.equal ~info_eq t11 t21 && Nominal.Term.equal ~info_eq t12 t22
+  ;;
 end
 
 type 'a t = 'a Rule.t list

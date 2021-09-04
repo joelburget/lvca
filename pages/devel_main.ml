@@ -30,6 +30,7 @@ module Model = struct
     | Ide()
     | Code_review()
     | Store_view()
+    | Bidirectional_debugger()
 
     // moved from blog
     | Finding_terms()
@@ -133,6 +134,11 @@ module Model = struct
     | Code_review ->
       mk "code-review" "0x: Code review" (mk_doc' "make-code-review-easier")
     | Store_view -> mk "store-viewer" "0x: Store viewer" Store_view.Stateless_view.view
+    | Bidirectional_debugger ->
+      mk
+        "bidirectional-debugger"
+        "0x: Bidirectional Debugger"
+        Bidirectional_debugger.Term_render_component.Stateless_view.view
     | Finding_terms -> mk "finding-terms" "Finding Terms" (mk_doc' "finding-terms")
     | Huttons_razor ->
       mk
@@ -371,6 +377,7 @@ module Model = struct
       ; Ide
       ; Code_review
       ; Store_view
+      ; Bidirectional_debugger
       ; Finding_terms
       ; Huttons_razor
       ; Lambda_concrete_and_abstract

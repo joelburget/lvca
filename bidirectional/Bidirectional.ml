@@ -5,47 +5,82 @@ module SMap = Lvca_util.String.Map
 
 let ( >> ) = Lvca_util.(( >> ))
 
-type 'info capture = 'info Binding_aware_pattern.Capture.t
+module Env = struct
+  type 'a t =
+    { rules : 'a Rule.t list (** The (checking / inference) rules we can apply *)
+    ; var_types : 'a Nominal.Term.t SMap.t (** The types of all known free variables *)
+    }
 
-type 'a env =
-  { rules : 'a Rule.t list (** The (checking / inference) rules we can apply *)
-  ; var_types : 'a Nominal.Term.t SMap.t (** The types of all known free variables *)
-  }
+  let equal ~info_eq a b =
+    List.equal (Rule.equal ~info_eq) a.rules b.rules
+    && Map.equal (Nominal.Term.equal ~info_eq) a.var_types b.var_types
+  ;;
+end
 
-type 'info check_error =
-  | Check_error of string
-  | Bad_merge of 'info capture * 'info capture
+module Capture = Binding_aware_pattern.Capture
 
-type 'a trace_entry =
-  | Check_trace of 'a env * 'a Typing.t
-  | Check_success
-  | Check_failure of 'a check_error
-  | Infer_trace of 'a env * 'a Nominal.Term.t
-  | Inferred of 'a Nominal.Term.t
+module Check_error = struct
+  type 'info t =
+    | Check_error of string
+    | Bad_merge of 'info Capture.t * 'info Capture.t
 
-type 'a trace_step = 'a trace_entry list
+  let equal ~info_eq t1 t2 =
+    match t1, t2 with
+    | Check_error msg1, Check_error msg2 -> String.(msg1 = msg2)
+    | Bad_merge (cap11, cap12), Bad_merge (cap21, cap22) ->
+      Capture.equal ~info_eq cap11 cap21 && Capture.equal ~info_eq cap12 cap22
+    | _, _ -> false
+  ;;
+
+  let pp ppf = function
+    | Check_error msg -> Fmt.string ppf msg
+    | Bad_merge (cap1, cap2) ->
+      Fmt.pf
+        ppf
+        "%a / %a"
+        Binding_aware_pattern.Capture.pp
+        cap1
+        Binding_aware_pattern.Capture.pp
+        cap2
+  ;;
+end
+
+module Trace_entry = struct
+  type 'a t =
+    | Check_trace of 'a Env.t * 'a Typing.t
+    | Check_success
+    | Check_failure of 'a Check_error.t
+    | Infer_trace of 'a Env.t * 'a Nominal.Term.t
+    | Inferred of 'a Nominal.Term.t
+
+  let equal ~info_eq t1 t2 =
+    match t1, t2 with
+    | Check_trace (a_env, a_typing), Check_trace (b_env, b_typing) ->
+      Env.equal ~info_eq a_env b_env && Typing.equal ~info_eq a_typing b_typing
+    | Check_success, Check_success -> true
+    | Check_failure a, Check_failure b -> Check_error.equal ~info_eq a b
+    | Infer_trace (a_env, a_tm), Infer_trace (b_env, b_tm) ->
+      Env.equal ~info_eq a_env b_env && Nominal.Term.equal ~info_eq a_tm b_tm
+    | Inferred a, Inferred b -> Nominal.Term.equal ~info_eq a b
+    | _, _ -> false
+  ;;
+end
+
+module Trace_step = struct
+  type 'a t = 'a Trace_entry.t list
+
+  let equal ~info_eq xs ys = List.equal (Trace_entry.equal ~info_eq) xs ys
+end
 
 let pp_bpat : _ Binding_aware_pattern.t Fmt.t =
   Binding_aware_pattern.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ())
 ;;
 
-let pp_err ppf = function
-  | Check_error msg -> Fmt.string ppf msg
-  | Bad_merge (cap1, cap2) ->
-    Fmt.pf
-      ppf
-      "%a / %a"
-      Binding_aware_pattern.Capture.pp
-      cap1
-      Binding_aware_pattern.Capture.pp
-      cap2
-;;
-
 (* [pat] is a (binding-aware) pattern taken from the typing rule. Use the
    values in the context to fill it in. *)
 let instantiate
-    :  string option -> 'info capture SMap.t -> 'info Binding_aware_pattern.t
-    -> ('info Nominal.Term.t, 'info check_error) Result.t
+    :  string option -> 'info Capture.t SMap.t -> 'info Binding_aware_pattern.t
+    -> ('info Nominal.Term.t, 'info Check_error.t) Result.t
   =
  fun name env pat ->
   let open Result.Let_syntax in
@@ -55,7 +90,7 @@ let instantiate
       | Some name -> Printf.sprintf "instantiate %s: %s" name msg
       | None -> Printf.sprintf "instantiate: %s" msg
     in
-    Error (Check_error msg)
+    Error (Check_error.Check_error msg)
   in
   let rec go_term pat =
     match pat with
@@ -96,7 +131,7 @@ let instantiate
 let info_eq _ _ = true
 
 let update_ctx
-    : 'info capture SMap.t ref -> 'info capture SMap.t -> 'info check_error option
+    : 'info Capture.t SMap.t ref -> 'info Capture.t SMap.t -> 'info Check_error.t option
   =
  fun ctx_state learned_tys ->
   let do_assignment (k, v) =
@@ -107,7 +142,7 @@ let update_ctx
       None
     | Some v' ->
       if not (Binding_aware_pattern.Capture.equal ~info_eq v v')
-      then Some (Bad_merge (v, v'))
+      then Some (Check_error.Bad_merge (v, v'))
       else None
   in
   learned_tys |> Map.to_alist |> List.find_map ~f:do_assignment
@@ -115,7 +150,7 @@ let update_ctx
 
 let ctx_infer
     :  'info Nominal.Term.t SMap.t -> 'info Nominal.Term.t
-    -> ('info Nominal.Term.t, 'info check_error) Result.t
+    -> ('info Nominal.Term.t, 'info Check_error.t) Result.t
   =
  fun var_types -> function
   | Nominal.Term.Var (_, name) ->
@@ -136,11 +171,11 @@ let ctx_infer
 ;;
 
 let rec check'
-    :  'info trace_step -> ('info trace_step -> unit) -> 'info env -> 'info Typing.t
-    -> 'info check_error option
+    :  'info Trace_step.t -> ('info Trace_step.t -> unit) -> 'info Env.t -> 'info Typing.t
+    -> 'info Check_error.t option
   =
  fun trace_stack emit_trace ({ rules; _ } as env) (Typing (tm, ty) as typing) ->
-  let trace_entry = Check_trace (env, typing) in
+  let trace_entry = Trace_entry.Check_trace (env, typing) in
   let trace_stack = trace_entry :: trace_stack in
   emit_trace trace_stack;
   let match_rule = function
@@ -179,25 +214,27 @@ let rec check'
      Here we initially learn tm1, tm2, and ty2, but only learn ty1 via
      checking of hypotheses.
        *)
-      let ctx_state : 'a capture SMap.t ref = ref schema_assignments in
+      let ctx_state : 'a Capture.t SMap.t ref = ref schema_assignments in
       let result =
         hypotheses
         |> List.find_map ~f:(check_hyp trace_stack emit_trace name ctx_state env)
       in
       let trace_entry =
-        match result with None -> Check_success | Some err -> Check_failure err
+        match result with
+        | None -> Trace_entry.Check_success
+        | Some err -> Check_failure err
       in
       emit_trace (trace_entry :: trace_stack);
       result)
 
 and infer'
-    :  'info trace_step -> ('info trace_step -> unit) -> 'info env -> 'info Nominal.Term.t
-    -> ('info Nominal.Term.t, 'info check_error) Result.t
+    :  'info Trace_step.t -> ('info Trace_step.t -> unit) -> 'info Env.t
+    -> 'info Nominal.Term.t -> ('info Nominal.Term.t, 'info Check_error.t) Result.t
   =
  fun trace_stack emit_trace ({ rules; var_types } as env) tm ->
   let open Result.Let_syntax in
   let var_types : 'a Nominal.Term.t SMap.t ref = ref var_types in
-  let trace_stack = Infer_trace (env, tm) :: trace_stack in
+  let trace_stack = Trace_entry.Infer_trace (env, tm) :: trace_stack in
   emit_trace trace_stack;
   let match_rule Rule.{ name; hypotheses; conclusion } =
     match conclusion with
@@ -214,7 +251,7 @@ and infer'
   let%map ty =
     match List.find_map rules ~f:match_rule with
     | Some (name, hypotheses, schema_assignments, rule_ty) ->
-      let ctx_state : 'a capture SMap.t ref = ref schema_assignments in
+      let ctx_state : 'a Capture.t SMap.t ref = ref schema_assignments in
       (match
          hypotheses
          |> List.find_map ~f:(check_hyp trace_stack emit_trace name ctx_state env)
@@ -228,8 +265,8 @@ and infer'
 
 (* Check (or infer, depending on the rule) a hypothesis *)
 and check_hyp
-    :  'info trace_step -> ('info trace_step -> unit) -> string option
-    -> 'a capture SMap.t ref -> 'a env -> 'a Hypothesis.t -> 'a check_error option
+    :  'info Trace_step.t -> ('info Trace_step.t -> unit) -> string option
+    -> 'a Capture.t SMap.t ref -> 'a Env.t -> 'a Hypothesis.t -> 'a Check_error.t option
   =
  fun trace_stack emit_trace name ctx_state env (pattern_ctx, rule) ->
   let open Result.Let_syntax in
@@ -370,22 +407,22 @@ let%test_module "check / infer" =
     ;;
 
     let print_check ~tm ~ty =
-      let env = { rules; var_types = SMap.empty } in
+      let env = Env.{ rules; var_types = SMap.empty } in
       match parse_tm tm, parse_tm ty with
       | Ok tm, Ok ty ->
         (match check env (Typing (tm, ty)) with
         | None -> ()
-        | Some err -> Fmt.pr "%a\n" pp_err err)
+        | Some err -> Fmt.pr "%a\n" Check_error.pp err)
       | _, _ -> failwith "failed to parse term or type"
     ;;
 
     let print_infer tm =
-      let env = { rules; var_types = SMap.empty } in
+      let env = Env.{ rules; var_types = SMap.empty } in
       match parse_tm tm with
       | Ok tm ->
         (match infer env tm with
         | Ok ty -> Fmt.pr "%a\n" Nominal.Term.pp ty
-        | Error err -> Fmt.pr "%a\n" pp_err err)
+        | Error err -> Fmt.pr "%a\n" Check_error.pp err)
       | _ -> failwith "failed to parse term"
     ;;
 
