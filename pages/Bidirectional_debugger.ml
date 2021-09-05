@@ -13,7 +13,7 @@ let a, button, div, h3, h4, input, li, tbody, table, textarea, th, thead, td, tx
     a, button, div, h3, h4, input, li, tbody, table, textarea, th, thead, td, txt', tr, ul)
 ;;
 
-let class', mk_reactive', type' = Prelude.(class', mk_reactive', type')
+let class', classes, mk_reactive', type' = Prelude.(class', classes, mk_reactive', type')
 
 (* TODO: this is hacky -- don't use it *)
 let parse_tm : string -> Opt_range.t Nominal.Term.t =
@@ -57,7 +57,7 @@ let elem_of_current_stack current_stack =
       let row =
         tr
           [ td [ elem_of_trace_entry entry ]
-          ; td ~at:[ class' "result-good" ] [ txt' ("inferred " ^ string_of_term ty) ]
+          ; td ~at:[ class' "text-green" ] [ txt' ("inferred " ^ string_of_term ty) ]
           ]
       in
       [ row ], current_stack'
@@ -65,7 +65,7 @@ let elem_of_current_stack current_stack =
       let row =
         tr
           [ td [ elem_of_trace_entry entry ]
-          ; td ~at:[ class' "result-good" ] [ txt' "success" ]
+          ; td ~at:[ class' "text-green" ] [ txt' "success" ]
           ]
       in
       [ row ], current_stack'
@@ -73,7 +73,7 @@ let elem_of_current_stack current_stack =
       let row =
         tr
           [ td [ elem_of_trace_entry entry ]
-          ; td ~at:[ class' "result-bad" ] [ txt' "failure: TODO: message" ]
+          ; td ~at:[ class' "text-red" ] [ txt' "failure: TODO: message" ]
           ]
       in
       [ row ], current_stack'
@@ -123,6 +123,14 @@ module Term_render_component = struct
       ; debugger_expanded : bool
       ; debugger : Debugger_state.t option
       }
+
+    let abstract_valid state =
+      match state.abstract_parsed with Some (Ok _) -> true | _ -> false
+    ;;
+
+    let statics_valid state =
+      match state.statics_parsed with Some (Ok _) -> true | _ -> false
+    ;;
 
     let ( = ) t1 t2 =
       Bool.(t1.abstract_expanded = t2.abstract_expanded)
@@ -198,8 +206,17 @@ module Term_render_component = struct
         in
         { model with debugger }
       | Toggle_abstract -> { model with abstract_expanded = not model.abstract_expanded }
-      | Toggle_statics -> { model with statics_expanded = not model.statics_expanded }
-      | Toggle_debugger -> { model with debugger_expanded = not model.debugger_expanded }
+      | Toggle_statics ->
+        { model with
+          statics_expanded = Model.abstract_valid model && not model.statics_expanded
+        }
+      | Toggle_debugger ->
+        { model with
+          debugger_expanded =
+            Model.abstract_valid model
+            && Model.statics_valid model
+            && not model.debugger_expanded
+        }
       | Evaluate input ->
         (match model.statics_parsed with
         | Some (Ok rules) ->
@@ -225,27 +242,18 @@ module Term_render_component = struct
   module View = struct
     open Action
 
-    let abstract_valid state =
-      match state.Model.abstract_parsed with Some (Ok _) -> true | _ -> false
-    ;;
-
-    let statics_valid state =
-      match state.Model.statics_parsed with Some (Ok _) -> true | _ -> false
-    ;;
-
     let mk_section name enabled expanded toggle_evt contents =
-      let link =
-        a
-          ~at:[ At.href (Jstr.v "#") ]
-          [ txt' (if expanded then "- " ^ name else "+ " ^ name) ]
+      let at =
+        List.map
+          ~f:class'
+          ("section-box"
+          :: (if enabled then [] else [ "text-gray-500"; "cursor-not-allowed" ]))
       in
+      let link = button ~at [ txt' (if expanded then "- " ^ name else "+ " ^ name) ] in
       let evt = Evr.on_el Ev.click (fun _ -> toggle_evt) link in
       let header = h3 [ link ] in
       let children = if expanded then [ header; contents ] else [ header ] in
-      let at =
-        List.map ~f:class' ("section-box" :: (if enabled then [] else [ "disabled" ]))
-      in
-      evt, div ~at children
+      evt, div children
     ;;
 
     let view model_s =
@@ -285,7 +293,7 @@ module Term_render_component = struct
         |> S.map ~eq (fun state ->
                mk_section
                  "Statics"
-                 (abstract_valid state)
+                 (Model.abstract_valid state)
                  state.Model.statics_expanded
                  Toggle_statics
                  statics_editor)
@@ -315,7 +323,10 @@ module Term_render_component = struct
                    let back_evt, back_button =
                      if Int.(current_step = 0)
                      then
-                       E.never, button ~at:[ class' "disabled" ] [ txt' "previous step" ]
+                       ( E.never
+                       , button
+                           ~at:(classes "text-gray cursor-not-allowed")
+                           [ txt' "previous step" ] )
                      else (
                        let elem = button [ txt' "previous step" ] in
                        let evt = Evr.on_el Ev.click (fun _evt -> Step_backward) elem in
@@ -323,7 +334,11 @@ module Term_render_component = struct
                    in
                    let forward_evt, forward_button =
                      if Int.(current_step = step_count - 1)
-                     then E.never, button ~at:[ class' "disabled" ] [ txt' "next step" ]
+                     then
+                       ( E.never
+                       , button
+                           ~at:(classes "text-gray cursor-not-allowed")
+                           [ txt' "next step" ] )
                      else (
                        let elem = button [ txt' "next step" ] in
                        let evt = Evr.on_el Ev.click (fun _evt -> Step_forward) elem in
@@ -347,7 +362,7 @@ module Term_render_component = struct
                let evt, section =
                  mk_section
                    "Debugger"
-                   (abstract_valid state && statics_valid state)
+                   (Model.abstract_valid state && Model.statics_valid state)
                    state.Model.debugger_expanded
                    Toggle_debugger
                    contents
