@@ -7,22 +7,46 @@ open Lvca_syntax
 open Lvca_bidirectional
 open Lvca_util
 
-let a, button, div, h3, h4, input, li, tbody, table, textarea, th, thead, td, txt', tr, ul
+let ( a
+    , button
+    , div
+    , span
+    , h3
+    , h4
+    , input
+    , li
+    , tbody
+    , table
+    , textarea
+    , th
+    , thead
+    , td
+    , txt'
+    , tr
+    , ul )
   =
   El.(
-    a, button, div, h3, h4, input, li, tbody, table, textarea, th, thead, td, txt', tr, ul)
+    ( a
+    , button
+    , div
+    , span
+    , h3
+    , h4
+    , input
+    , li
+    , tbody
+    , table
+    , textarea
+    , th
+    , thead
+    , td
+    , txt'
+    , tr
+    , ul ))
 ;;
 
+let html_eq = Common.html_eq
 let class', classes, mk_reactive', type' = Prelude.(class', classes, mk_reactive', type')
-
-(* TODO: this is hacky -- don't use it *)
-let parse_tm : string -> Opt_range.t Nominal.Term.t =
- fun str ->
-  match Lvca_parsing.(parse_string (Nominal.Term.parse' ~comment:no_comment) str) with
-  | Ok tm -> Nominal.Term.map_info ~f:Commented.get_range tm
-  | Error err -> failwith err
-;;
-
 let string_of_term tm = Fmt.to_to_string Nominal.Term.pp tm
 
 let elem_of_env Bidirectional.Env.{ var_types; _ } =
@@ -98,13 +122,13 @@ module Term_render_component = struct
   module Model = struct
     module Debugger_state = struct
       type t =
-        { input : string
+        { parsed : Opt_range.t Nominal.Term.t
         ; steps : Opt_range.t Bidirectional.Trace_step.t list
         ; current_step : int
         }
 
       let ( = ) t1 t2 =
-        String.(t1.input = t2.input)
+        Nominal.Term.(equal ~info_eq:Opt_range.( = ) t1.parsed t2.parsed)
         && List.equal
              (Bidirectional.Trace_step.equal ~info_eq:Opt_range.( = ))
              t1.steps
@@ -121,7 +145,8 @@ module Term_render_component = struct
       ; statics_input : string
       ; statics_parsed : (Opt_range.t Statics.Rule.t list, string) Result.t option
       ; debugger_expanded : bool
-      ; debugger : Debugger_state.t option
+      ; debugger_input : string
+      ; debugger_state : (Debugger_state.t, string) Result.t option
       }
 
     let abstract_valid state =
@@ -148,7 +173,10 @@ module Term_render_component = struct
            t1.statics_parsed
            t2.statics_parsed
       && Bool.(t1.debugger_expanded = t2.debugger_expanded)
-      && Option.equal Debugger_state.( = ) t1.debugger t2.debugger
+      && Option.equal
+           (Result.equal Debugger_state.( = ) String.( = ))
+           t1.debugger_state
+           t2.debugger_state
     ;;
 
     let initial_model =
@@ -156,10 +184,18 @@ module Term_render_component = struct
       ; abstract_input = "bool := True() | False()"
       ; abstract_parsed = None
       ; statics_expanded = false
-      ; statics_input = "TODO: statics"
+      ; statics_input =
+          {|
+---
+  ctx >> True() => bool()
+
+---
+  ctx >> False() => bool()
+          |}
       ; statics_parsed = None
       ; debugger_expanded = false
-      ; debugger = None
+      ; debugger_input = "True()"
+      ; debugger_state = None
       }
     ;;
   end
@@ -189,22 +225,32 @@ module Term_render_component = struct
         let abstract_result =
           Result.map ~f:(Abstract_syntax.map_info ~f:Commented.get_range) abstract_result
         in
-        Model.{ model with abstract_parsed = Some abstract_result }
+        Model.
+          { model with
+            abstract_parsed = Some abstract_result
+          ; statics_expanded = Result.is_ok abstract_result
+          }
       | Statics_update statics_input ->
         let statics_result =
           Lvca_parsing.(parse_string (whitespace *> Statics.parse) statics_input)
         in
-        { model with statics_parsed = Some statics_result }
+        { model with
+          statics_parsed = Some statics_result
+        ; debugger_expanded = Result.is_ok statics_result
+        }
       | (Step_forward | Step_backward) as step ->
-        let debugger =
-          match model.debugger with
+        let debugger_state =
+          match model.debugger_state with
           | None -> None
-          | Some state ->
-            (match step with
-            | Step_forward -> Some { state with current_step = state.current_step + 1 }
-            | _ -> Some { state with current_step = state.current_step - 1 })
+          | Some (Ok state) ->
+            Some
+              (Ok
+                 (match step with
+                 | Step_forward -> { state with current_step = state.current_step + 1 }
+                 | _ -> { state with current_step = state.current_step - 1 }))
+          | Some (Error _) -> model.debugger_state
         in
-        { model with debugger }
+        { model with debugger_state }
       | Toggle_abstract -> { model with abstract_expanded = not model.abstract_expanded }
       | Toggle_statics ->
         { model with
@@ -218,23 +264,36 @@ module Term_render_component = struct
             && not model.debugger_expanded
         }
       | Evaluate input ->
+        Fmt.pr "evaluating `%s`\n" input;
         (match model.statics_parsed with
         | Some (Ok rules) ->
           let steps = Queue.create () in
           let handle_trace = Queue.enqueue steps in
           let env = Bidirectional.Env.{ rules; var_types = String.Map.empty } in
-          let debugger =
-            match parse_tm input with
-            | exception _ -> None
-            | tm ->
-              (match Bidirectional.infer_trace handle_trace env tm with
-              | exception _ -> None
-              | _ty ->
-                Some
-                  Model.Debugger_state.
-                    { input; steps = Queue.to_list steps; current_step = 0 })
+          let debugger_state =
+            let parsed =
+              Lvca_parsing.(parse_string (Nominal.Term.parse' ~comment:no_comment) input)
+            in
+            match parsed with
+            | Error msg ->
+              Fmt.pr "failed to parse: %s\n" msg;
+              Some (Error msg)
+            | Ok tm ->
+              Fmt.pr "parsed: %a\n" Nominal.Term.pp tm;
+              let tm = Nominal.Term.map_info ~f:Commented.get_range tm in
+              let (_
+                    : ( Opt_range.t Nominal.Term.t
+                      , Opt_range.t Bidirectional.Check_error.t )
+                      Result.t)
+                =
+                Bidirectional.infer_trace handle_trace env tm
+              in
+              Some
+                (Ok
+                   Model.Debugger_state.
+                     { parsed = tm; steps = Queue.to_list steps; current_step = 0 })
           in
-          { model with debugger }
+          { model with debugger_input = input; debugger_state }
         | _ -> model)
     ;;
   end
@@ -257,66 +316,90 @@ module Term_render_component = struct
     ;;
 
     let view model_s =
-      let abstract_editor, abstract_input_event =
-        Multiline_input.mk
-          (model_s |> S.map ~eq:String.( = ) (fun model -> model.Model.abstract_input))
-      in
-      let abstract_input_event =
-        abstract_input_event
-        |> E.filter_map (function
-               | Common.Evaluate_input str -> Some (Abstract_update str)
-               | _ -> None)
-      in
-      let eq (evt1, el1) (evt2, el2) = phys_equal evt1 evt2 && Common.html_eq el1 el2 in
-      let abstract =
-        model_s
-        |> S.map ~eq (fun state ->
-               mk_section
-                 "Abstract"
-                 true
-                 state.Model.abstract_expanded
-                 Toggle_abstract
-                 abstract_editor)
-      in
-      let statics_editor, statics_input_event =
-        Multiline_input.mk
-          (model_s |> S.map ~eq:String.( = ) (fun model -> model.Model.statics_input))
-      in
-      let statics_input_event =
-        statics_input_event
-        |> E.filter_map (function
-               | Common.Evaluate_input str -> Some (Statics_update str)
-               | _ -> None)
-      in
-      let statics =
-        model_s
-        |> S.map ~eq (fun state ->
-               mk_section
-                 "Statics"
-                 (Model.abstract_valid state)
-                 state.Model.statics_expanded
-                 Toggle_statics
-                 statics_editor)
-      in
-      let debugger_input = input ~at:[ type' "text" ] () in
-      let debugger_input_evt =
-        let f evt =
-          let keyboard_evt = Ev.as_type evt in
-          if Web_util.is_enter keyboard_evt
-          then
-            El.at At.Name.value debugger_input
-            |> Option.map ~f:(fun jstr -> Evaluate (Jstr.to_string jstr))
-          else None
+      let eq (evt1, el1) (evt2, el2) = phys_equal evt1 evt2 && html_eq el1 el2 in
+      let abstract, abstract_input_event =
+        let editor, input_evt =
+          Multiline_input.mk
+            ~autofocus:true
+            (model_s |> S.map ~eq:String.( = ) (fun model -> model.Model.abstract_input))
         in
-        Evr.on_el Ev.keyup f debugger_input |> E.filter_map Fn.id
+        let feedback =
+          model_s
+          |> S.map ~eq:html_eq (fun model ->
+                 match model.Model.abstract_parsed with
+                 | None -> span []
+                 | Some (Ok _) -> span [ txt' "okay" ]
+                 | Some (Error msg) -> span [ txt' msg ])
+          |> mk_reactive' div
+        in
+        let input_evt =
+          input_evt
+          |> E.filter_map (function
+                 | Common.Evaluate_input str -> Some (Abstract_update str)
+                 | _ -> None)
+        in
+        let elem =
+          model_s
+          |> S.map ~eq (fun state ->
+                 mk_section
+                   "Abstract"
+                   true
+                   state.Model.abstract_expanded
+                   Toggle_abstract
+                   (div [ editor; feedback ]))
+        in
+        elem, input_evt
+      in
+      let statics, statics_input_event =
+        let editor, input_evt =
+          Multiline_input.mk
+            (model_s |> S.map ~eq:String.( = ) (fun model -> model.Model.statics_input))
+        in
+        let feedback =
+          model_s
+          |> S.map ~eq:html_eq (fun model ->
+                 match model.Model.statics_parsed with
+                 | None -> span []
+                 | Some (Ok _) -> span [ txt' "okay" ]
+                 | Some (Error msg) -> span [ txt' msg ])
+          |> mk_reactive' div
+        in
+        let input_evt =
+          input_evt
+          |> E.filter_map (function
+                 | Common.Evaluate_input str -> Some (Statics_update str)
+                 | _ -> None)
+        in
+        let elem =
+          model_s
+          |> S.map ~eq (fun state ->
+                 mk_section
+                   "Statics"
+                   (Model.abstract_valid state)
+                   state.Model.statics_expanded
+                   Toggle_statics
+                   (div [ editor; feedback ]))
+        in
+        elem, input_evt
       in
       let debugger =
+        let editor, input_evt =
+          Multiline_input.mk
+            (model_s |> S.map ~eq:String.( = ) (fun model -> model.Model.debugger_input))
+        in
+        let input_evt =
+          input_evt
+          |> E.filter_map (function
+                 | Common.Evaluate_input str -> Some (Evaluate str)
+                 | _ -> None)
+        in
         model_s
         |> S.map ~eq (fun state ->
                let debugger_evts, debugger_results =
-                 match state.Model.debugger with
-                 | None -> E.never, El.span []
-                 | Some { input; steps; current_step } ->
+                 match state.Model.debugger_state with
+                 | None -> E.never, span []
+                 | Some (Error msg) -> E.never, span [ txt' msg ]
+                 | Some (Ok Model.Debugger_state.{ steps; current_step; parsed = _ }) ->
                    let step_count = List.length steps in
                    let trace_step = List.nth_exn steps current_step in
                    let elem = elem_of_current_stack trace_step in
@@ -325,7 +408,7 @@ module Term_render_component = struct
                      then
                        ( E.never
                        , button
-                           ~at:(classes "text-gray cursor-not-allowed")
+                           ~at:(classes "text-gray-500 cursor-not-allowed")
                            [ txt' "previous step" ] )
                      else (
                        let elem = button [ txt' "previous step" ] in
@@ -337,7 +420,7 @@ module Term_render_component = struct
                      then
                        ( E.never
                        , button
-                           ~at:(classes "text-gray cursor-not-allowed")
+                           ~at:(classes "text-gray-500 cursor-not-allowed")
                            [ txt' "next step" ] )
                      else (
                        let elem = button [ txt' "next step" ] in
@@ -346,7 +429,7 @@ module Term_render_component = struct
                    in
                    let elem =
                      div
-                       [ div [ txt' ("Inferring type of " ^ input) ]
+                       [ div [ txt' ("Inferring type of " ^ state.Model.debugger_input) ]
                        ; div [ txt' (Fmt.str "%n / %n" (current_step + 1) step_count) ]
                        ; back_button
                        ; forward_button
@@ -358,7 +441,7 @@ module Term_render_component = struct
                    in
                    E.select [ back_evt; forward_evt ], elem
                in
-               let contents = div [ debugger_input; debugger_results ] in
+               let contents = div [ span [ txt' "input:" ]; editor; debugger_results ] in
                let evt, section =
                  mk_section
                    "Debugger"
@@ -367,22 +450,17 @@ module Term_render_component = struct
                    Toggle_debugger
                    contents
                in
-               E.select [ evt; debugger_input_evt; debugger_evts ], section)
+               E.select [ evt; input_evt; debugger_evts ], section)
       in
-      let eq = phys_equal in
-      let abstract_evt = abstract |> Note.S.Pair.fst ~eq |> Note.E.swap in
-      let statics_evt = statics |> Note.S.Pair.fst ~eq |> Note.E.swap in
-      let debugger_evt = debugger |> Note.S.Pair.fst ~eq |> Note.E.swap in
-      let eq = Common.html_eq in
-      let abstract_elem = Note.S.Pair.snd ~eq abstract in
-      let statics_elem = Note.S.Pair.snd ~eq statics in
-      let debugger_elem = Note.S.Pair.snd ~eq debugger in
+      let abstract_elem = Note.S.Pair.snd ~eq:html_eq abstract in
+      let statics_elem = Note.S.Pair.snd ~eq:html_eq statics in
+      let debugger_elem = Note.S.Pair.snd ~eq:html_eq debugger in
       ( E.select
           [ abstract_input_event
           ; statics_input_event
-          ; abstract_evt
-          ; statics_evt
-          ; debugger_evt
+          ; abstract |> Note.S.Pair.fst ~eq:phys_equal |> Note.E.swap
+          ; statics |> Note.S.Pair.fst ~eq:phys_equal |> Note.E.swap
+          ; debugger |> Note.S.Pair.fst ~eq:phys_equal |> Note.E.swap
           ]
       , div
           ~at:[ class' "lvca-viewer" ]

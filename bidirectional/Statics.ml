@@ -273,5 +273,18 @@ let%test_module "Parsing" =
   |};
       [%expect {| parsed |}]
     ;;
+
+    let%expect_test _ =
+      print_parse {|
+
+---
+  ctx >> True() => bool()
+
+---
+  ctx >> False() => bool()
+
+  |};
+      [%expect {| parsed |}]
+    ;;
   end)
 ;;
