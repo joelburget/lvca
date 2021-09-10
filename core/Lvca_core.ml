@@ -3,11 +3,9 @@
 open Base
 open Lvca_provenance
 open Lvca_syntax
+open Lvca_util
 open Result.Let_syntax
 module Format = Stdlib.Format
-module SMap = Lvca_util.String.Map
-
-let ( >> ) = Lvca_util.( >> )
 
 module List_model = struct
   include [%lvca.abstract_syntax_module "list a := Nil() | Cons(a; list a)"]
@@ -557,13 +555,13 @@ module Module = struct
   ;;
 end
 
-type 'info env = 'info Nominal.Term.t SMap.t
+type 'info env = 'info Nominal.Term.t String.Map.t
 
 let preimage _ = failwith "TODO"
 let reverse _tm _cases = failwith "TODO"
 
 type 'info check_env =
-  { type_env : 'info Type.t SMap.t
+  { type_env : 'info Type.t String.Map.t
   ; syntax : 'info Abstract_syntax.t
   }
 
@@ -675,7 +673,7 @@ and infer ({ type_env; syntax = _ } as env) tm =
 ;;
 
 let merge_pattern_context
-    : 'a Nominal.Term.t SMap.t option list -> 'a Nominal.Term.t SMap.t option
+    : 'a Nominal.Term.t String.Map.t option list -> 'a Nominal.Term.t String.Map.t option
   =
  fun ctxs ->
   if List.for_all ctxs ~f:Option.is_some
@@ -686,7 +684,7 @@ let merge_pattern_context
            ~f:
              (Lvca_util.Option.get_invariant ~here:[%here] (fun () ->
                   "we just checked all is_some"))
-      |> SMap.strict_unions
+      |> String.Map.strict_unions
       |> function
       | `Duplicate_key k ->
         Lvca_util.invariant_violation
@@ -709,8 +707,10 @@ let rec match_pattern v pat =
   | Primitive l1, Primitive l2 ->
     let l1 = Primitive.All.erase l1 in
     let l2 = Primitive.All.erase l2 in
-    if Primitive.All.(equal ~info_eq:Unit.( = ) l1 l2) then Some SMap.empty else None
-  | tm, Var (_, v) -> Some (SMap.of_alist_exn [ v, tm ])
+    if Primitive.All.(equal ~info_eq:Unit.( = ) l1 l2)
+    then Some String.Map.empty
+    else None
+  | tm, Var (_, v) -> Some (String.Map.of_alist_exn [ v, tm ])
   | _ -> None
 
 and match_pattern_scope
@@ -865,7 +865,7 @@ and eval_primitive ~no_info eval_in_ctx eval_nominal_in_ctx ctx tm name args =
          args)
 ;;
 
-let eval ~no_info core = eval_in_ctx ~no_info SMap.empty core
+let eval ~no_info core = eval_in_ctx ~no_info String.Map.empty core
 
 let parse_exn =
   Lvca_parsing.(parse_string (whitespace *> Parse.term ~comment:c_comment))
@@ -1390,7 +1390,7 @@ let%test_module "Evaluation / inference" =
 
     let syntax = Abstract_syntax.{ externals; sort_defs }
 
-    let check ?(type_env = SMap.empty) ty_str tm_str =
+    let check ?(type_env = String.Map.empty) ty_str tm_str =
       let tm = tm_str |> parse_exn |> Term.map_info ~f:(Fn.const None) in
       let ty = ty_str |> parse_type |> Type.map_info ~f:(Fn.const None) in
       let ctx = { type_env; syntax } in
@@ -1399,7 +1399,7 @@ let%test_module "Evaluation / inference" =
       | None -> Fmt.pr "checked"
     ;;
 
-    let infer ?(type_env = SMap.empty) tm_str =
+    let infer ?(type_env = String.Map.empty) tm_str =
       let tm = tm_str |> parse_exn |> Term.map_info ~f:(Fn.const None) in
       let ctx = { type_env; syntax } in
       match infer ctx tm with
@@ -1443,7 +1443,7 @@ let%test_module "Evaluation / inference" =
     ;;
 
     let type_env =
-      SMap.of_alist_exn
+      String.Map.of_alist_exn
         [ "x", Lang.Ty.Sort (None, Sort_model.Sort.Name (None, (None, "a"))) ]
     ;;
 
