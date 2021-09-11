@@ -481,10 +481,9 @@ module Helpers (Context : Builder_context) = struct
     | Variable
     | Mutual_sort
     | External_sort of string list option
-    | Predefined_sort of has_info
 
   let classify_sort context sort =
-    let { info; var_names; mutual_sorts; prims } = context in
+    let { info = _; var_names; mutual_sorts; prims } = context in
     let sort_name, sort_args = Sort.split sort in
     if Set.mem var_names sort_name
     then Variable
@@ -510,7 +509,7 @@ module Helpers (Context : Builder_context) = struct
       | None ->
         (match Map.find prims sort_name with
         | Some mods_opt -> External_sort mods_opt
-        | None -> Predefined_sort info))
+        | None -> Location.raise_errorf ~loc "Unknown sort: %s" sort_name))
   ;;
 
   let nominal_term = [ "Lvca_syntax"; "Nominal"; "Term" ]
@@ -554,9 +553,6 @@ module Helpers (Context : Builder_context) = struct
           | Individual_type_module, Plain -> [ "Wrapper"; "Plain"; name ]
         in
         ptyp_constr { txt = unflatten names; loc } (info_args @ sort_args)
-      | Predefined_sort info ->
-        let mod_name = match info with With_info -> "Types" | _ -> "Plain" in
-        ptyp_constr { txt = unflatten [ "Wrapper"; mod_name; name ]; loc } info_args
       | External_sort mods_opt ->
         let module_path, args =
           match mods_opt with
@@ -610,7 +606,7 @@ module Helpers (Context : Builder_context) = struct
         apply
           (pexp_ident
              { txt = unflatten (mods @ [ Supported_function.fun_name fun_defn ]); loc })
-      | Variable | Mutual_sort | Predefined_sort _ -> apply (pexp_ident { txt; loc })
+      | Variable | Mutual_sort -> apply (pexp_ident { txt; loc })
     in
     pexp_apply (go sort) args
   ;;
