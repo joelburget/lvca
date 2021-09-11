@@ -473,7 +473,6 @@ module Sort_def = struct
 
   let parse ~comment =
     let open Lvca_parsing in
-    let assign = Ws.string ":=" in
     let bar = Ws.char '|' in
     let sort_var_decl =
       choice
@@ -485,9 +484,9 @@ module Sort_def = struct
     in
     lift4
       (fun name vars _assign op_defs -> name, Sort_def (vars, op_defs))
-      Ws.identifier
+      (Ws.identifier <* option' comment)
       (many sort_var_decl)
-      assign
+      (Ws.string ":=" <* option' comment)
       (option '|' bar *> sep_by bar (Operator_def.parse ~comment))
     <?> "sort definition"
   ;;
@@ -923,6 +922,14 @@ term :=
   | match(list match_line)
   | value(value)
    |}]
+    ;;
+
+    let%expect_test _ =
+      parse_print {|
+empty :=
+  // comment
+|};
+      [%expect "empty :="]
     ;;
   end)
 ;;
