@@ -70,6 +70,9 @@ nominal : *  // module Nominal.Term
 list : * -> *  // module List_model.List
 option : * -> *  // module Option_model.Option
 binding_aware_pattern : * -> *  // module Binding_aware_pattern_model.Pattern
+string : *  // module Primitive.String
+
+// operation := Operation(string)
 
 is_rec := Rec() | No_rec()
 

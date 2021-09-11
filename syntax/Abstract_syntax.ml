@@ -682,9 +682,10 @@ let kind_check { externals; sort_defs } =
 
 let parse ~comment =
   let open Lvca_parsing in
-  lift2
-    (fun externals sort_defs -> { externals; sort_defs })
+  lift3
+    (fun externals _ sort_defs -> { externals; sort_defs })
     (many (Kind.Parse.decl ~comment))
+    (many comment) (* TODO(#22): handle multiple trailing comments properly *)
     (many1 (Sort_def.parse ~comment))
   <?> "abstract syntax"
 ;;
