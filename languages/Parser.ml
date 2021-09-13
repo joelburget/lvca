@@ -176,7 +176,7 @@ let pp_generic ~open_loc ~close_loc ppf p =
             core
             p
         in
-        formatter, Prec.app
+        formatter, Prec.arr
       | Identifier (_, name) -> (fun ppf -> Fmt.string ppf name), Prec.atom
     in
     with_parens ~ambient_prec ~prec (fun ppf () -> formatter ppf) ppf ();
@@ -210,13 +210,6 @@ let mk_some : 'info n_term -> 'info n_term =
 
 let mk_none range = Nominal.Term.Operator (range, "none", [])
 let map_snd ~f (a, b) = a, f b
-
-type 'info parse_error =
-  { parser : 'info t
-  ; sub_errors : 'info parse_error list
-  }
-
-type parser_stack = Source_ranges.t t Stack.t
 
 module Direct = struct
   type 'info parser = 'info t
@@ -1015,7 +1008,7 @@ end
 
 let parse = Parse.t
 
-module TestParsers = struct
+module Test_parsers = struct
   let dot = {|.|}
   let str = {|"str"|}
   let str_star = {|"str"*|}
@@ -1097,7 +1090,7 @@ let%test_module "Parsing" =
         | Ok tm -> Fmt.pr "%a\n" Nominal.Term.pp_source_ranges tm)
    ;;
 
-    open TestParsers
+    open Test_parsers
 
     let () =
       Format.set_formatter_stag_functions Source_ranges.stag_functions;
