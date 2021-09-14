@@ -1,6 +1,7 @@
 open Base
 open Lvca_provenance
 open Lvca_syntax
+open Lvca_util
 module List_model = Lvca_core.List_model
 module Option_model = Lvca_core.Option_model
 module Format = Stdlib.Format
@@ -41,10 +42,10 @@ module Term = struct
   module Prec = struct
     let atom = 6
     let quantifier = 5
-    let eq = 4
-    let app = 3
-    let alt = 2
-    let arr = 1
+    let app = 4
+    let eq = 3
+    let arr = 2
+    let alt = 1
   end
 
   let rec sequence_to_list = function
@@ -89,16 +90,15 @@ module Term = struct
           let f ppf =
             match tm with
             | Embedded (_, Primitive (_, Integer n)) ->
-              pf ppf "@[<hv>%a%s@]" (go (Int.succ Prec.quantifier)) p (Z.to_string n)
-            | _ -> pf ppf "@[<hv>%a{%a}@]" (go (Int.succ Prec.quantifier)) p core tm
+              pf ppf "@[<hv>%a%s@]" (go Prec.quantifier) p (Z.to_string n)
+            | _ -> pf ppf "@[<hv>%a{%a}@]" (go Prec.quantifier) p core tm
           in
           f, Prec.quantifier
         | Option (_, p) ->
-          (fun ppf -> pf ppf "%a?" (go (Int.succ Prec.quantifier)) p), Prec.quantifier
-        | Many (_, p) ->
-          (fun ppf -> pf ppf "%a*" (go (Int.succ Prec.quantifier)) p), Prec.quantifier
+          (fun ppf -> pf ppf "%a?" (go Prec.quantifier) p), Prec.quantifier
+        | Many (_, p) -> (fun ppf -> pf ppf "%a*" (go Prec.quantifier) p), Prec.quantifier
         | Many1 (_, p) ->
-          (fun ppf -> pf ppf "%a+" (go (Int.succ Prec.quantifier)) p), Prec.quantifier
+          (fun ppf -> pf ppf "%a+" (go Prec.quantifier) p), Prec.quantifier
         | Choice (_, branches) ->
           let initial_bar =
             Format.pp_print_custom_break ~fits:("", 0, "") ~breaks:("", 2, "| ")
@@ -107,7 +107,7 @@ module Term = struct
           let formatter ppf =
             pf
               ppf
-              "@[<hv 0>(%t%a@,)@]"
+              "@[<hv 0>%t%a@,@]"
               initial_bar
               Fmt.(list ~sep:(any "@;<1 2>| ") (go Prec.alt))
               branches
@@ -140,98 +140,177 @@ module Term = struct
   ;;
 end
 
+let pp_plain ppf p =
+  Term.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p
+;;
+
 module Parse = struct
   open Lvca_parsing
   open Lang.Term
+
+  type quantifier =
+    | Q_count of Opt_range.t Lvca_core.Term.t
+    | Q_option
+    | Q_many
+    | Q_many1
+
+  let rec apply_quantifiers tm = function
+    | [] -> tm
+    | (q, q_range) :: qs ->
+      let range = Opt_range.union (Lang.Term.info tm) q_range in
+      let tm =
+        match q with
+        | Q_count c_tm -> Count (range, tm, c_tm)
+        | Q_option -> Option (range, tm)
+        | Q_many -> Many (range, tm)
+        | Q_many1 -> Many1 (range, tm)
+      in
+      apply_quantifiers tm qs
+  ;;
+
+  let rec mk_sequence binders rhs =
+    match binders with
+    | [] ->
+      let range = Lvca_core.Term.info rhs in
+      Lang.Sequence.Empty_sequence (range, rhs)
+    | (Some (name, info), tm) :: binders ->
+      let rhs = mk_sequence binders rhs in
+      let range = Opt_range.union info (Lang.Term.info tm) in
+      Lang.Sequence.Binding (range, tm, (Single_var.{ name; info }, rhs))
+    | (None, tm) :: binders ->
+      let rhs = mk_sequence binders rhs in
+      let range = Lang.Term.info tm in
+      Lang.Sequence.Non_binding (range, tm, rhs)
+  ;;
 
   let arrow = Ws.string "->"
 
   let t c_term =
     fix (fun parser ->
-        let rec parse_prec = function
-          | 6 (* atom *) ->
+        (* prec 6 *)
+        let parse_atom =
+          choice
+            [ (Ws.char_lit >>~ fun range c -> Char (range, (range, c)))
+            ; (Ws.string_lit >>~ fun range str -> String (range, (range, str)))
+            ; (Ws.char '.' >>~ fun range _ -> AnyChar range)
+            ; (Ws.identifier >>~ fun range ident -> Term_var (range, ident))
+            ; Ws.parens parser
+            ]
+        in
+        (* prec 5 *)
+        let parse_quantified =
+          parse_atom
+          >>= fun tm ->
+          let quantifier =
             choice
-              [ (Ws.char_lit >>~ fun range c -> Char (range, (range, c)))
-              ; (Ws.string_lit >>~ fun range str -> String (range, (range, str)))
-              ; (Ws.char '.' >>~ fun range _ -> AnyChar range)
-              ; (Ws.identifier >>~ fun range ident -> Term_var (range, ident))
-              ; Ws.parens parser
-              ]
-          | 5 (* quantifier *) ->
-            parse_prec 6
-            >>== fun { range = range1; value = tm } ->
-            choice
-              [ (Ws.braces c_term
-                >>~ fun range2 c_term -> Count (Opt_range.union range1 range2, tm, c_term)
-                )
+              [ (Ws.braces c_term >>| fun tm -> Q_count tm)
               ; (Ws.integer_lit
-                >>~ fun range2 i ->
+                >>~ fun range i ->
                 let i = Z.of_string i in
                 let c_term =
-                  Lvca_core.Lang.Term.Embedded (range2, Primitive (range2, Integer i))
+                  Lvca_core.Lang.Term.Embedded (range, Primitive (range, Integer i))
                 in
-                Count (Opt_range.union range1 range2, tm, c_term))
-              ; (Ws.char '?'
-                >>~ fun range2 _ -> Option (Opt_range.union range1 range2, tm))
-              ; (Ws.char '*' >>~ fun range2 _ -> Many (Opt_range.union range1 range2, tm))
-              ; (Ws.char '+' >>~ fun range2 _ -> Many1 (Opt_range.union range1 range2, tm))
-              ; return tm
+                Q_count c_term)
+              ; (Ws.char '?' >>| fun _ -> Q_option)
+              ; (Ws.char '*' >>| fun _ -> Q_many)
+              ; (Ws.char '+' >>| fun _ -> Q_many1)
               ]
-          | 4 (* eq *) -> (* TODO *) parse_prec 5
-          | 3 (* app *) ->
-            let parser =
-              choice
-                [ (Ws.string "fix"
-                  >>== fun { range = range1; _ } ->
-                  Ws.parens
-                    (lift3
-                       (fun (name, info) _arr (body, range2) ->
-                         let range = Opt_range.union range1 range2 in
-                         Fix (range, (Single_var.{ name; info }, body)))
-                       (attach_pos Ws.identifier)
-                       arrow
-                       (attach_pos parser)))
-                ; (Ws.string "satisfy"
-                  >>== fun { range = range1; _ } ->
-                  Ws.parens
-                    (lift3
-                       (fun (name, info) _arr (tm, range2) ->
-                         let range = Opt_range.union range1 range2 in
-                         Satisfy (range, (info, name), tm))
-                       (attach_pos Ws.identifier)
-                       arrow
-                       (attach_pos (Ws.braces c_term))))
-                ; (Ws.string "fail"
-                  >>== fun { range = range1; _ } ->
-                  choice
-                    [ (Ws.braces c_term
-                      >>~ fun range2 tm ->
-                      let range = Opt_range.union range1 range2 in
-                      Fail (range, tm))
-                    ; (Ws.string_lit
-                      >>~ fun range2 str ->
-                      let range = Opt_range.union range1 range2 in
-                      Fail
-                        ( range
-                        , Lvca_core.Lang.Term.Embedded
-                            (range, Primitive (range2, String str)) ))
-                    ])
-                ]
-            in
-            parser <|> parse_prec 4
-          | 2 (* alt *) ->
-            parse_prec 3
-            >>== fun { range = range1; value = tm } ->
-            many (Ws.char '|' *> parse_prec 3)
-            >>~ fun range2 tms ->
-            let range = Opt_range.union range1 range2 in
-            (match tms with
-            | [] -> tm
-            | _ -> Choice (range, List_model.of_list ~empty_info:None (tm :: tms)))
-          | 1 (* arr *) -> (* TODO *) parse_prec 2
-          | _ -> failwith "Unknown precedence level"
+          in
+          many (attach_pos quantifier) >>| apply_quantifiers tm
         in
-        parse_prec 1)
+        (* prec 4 *)
+        let parse_app =
+          choice
+            [ (Ws.string "fix"
+              >>== fun { range = range1; _ } ->
+              Ws.parens
+                (lift3
+                   (fun (name, info) _arr (body, range2) ->
+                     let range = Opt_range.union range1 range2 in
+                     Fix (range, (Single_var.{ name; info }, body)))
+                   (attach_pos Ws.identifier)
+                   arrow
+                   (attach_pos parser)))
+            ; (Ws.string "satisfy"
+              >>== fun { range = range1; _ } ->
+              Ws.parens
+                (lift3
+                   (fun (name, info) _arr (tm, range2) ->
+                     let range = Opt_range.union range1 range2 in
+                     Satisfy (range, (info, name), tm))
+                   (attach_pos Ws.identifier)
+                   arrow
+                   (attach_pos (Ws.braces c_term))))
+            ; (Ws.string "fail"
+              >>== fun { range = range1; _ } ->
+              choice
+                [ (Ws.braces c_term
+                  >>~ fun range2 tm ->
+                  let range = Opt_range.union range1 range2 in
+                  Fail (range, tm))
+                ; (Ws.string_lit
+                  >>~ fun range2 str ->
+                  let range = Opt_range.union range1 range2 in
+                  Fail
+                    ( range
+                    , Lvca_core.Lang.Term.Embedded (range, Primitive (range2, String str))
+                    ))
+                ])
+            ]
+          <|> parse_quantified
+        in
+        (* prec 3 *)
+        let parse_eq =
+          choice
+            [ lift3
+                (fun ident _eq tm -> Some ident, tm)
+                (attach_pos Ws.identifier)
+                (Ws.char '=')
+                parse_app
+            ; (parse_app >>| fun tm -> None, tm)
+            ]
+        in
+        (* prec 2 *)
+        let parse_arr =
+          choice
+            [ lift3
+                (fun (bindings, range1) _arr (rhs, range2) ->
+                  let range = Opt_range.union range1 range2 in
+                  Sequence (range, mk_sequence bindings rhs))
+                (attach_pos (many parse_eq))
+                arrow
+                (attach_pos (Ws.braces c_term))
+            ; parse_app
+            ]
+        in
+        (* prec 1 *)
+        let parse_alt =
+          parse_arr
+          >>== fun { range = range1; value = tm } ->
+          many (Ws.char '|' *> parse_arr)
+          >>~ fun range2 tms ->
+          let range = Opt_range.union range1 range2 in
+          match tms with
+          | [] -> tm
+          | _ -> Choice (range, List_model.of_list ~empty_info:None (tm :: tms))
+        in
+        (* prec 0 *)
+        let parse_let =
+          choice
+            [ lift4
+                (fun (_let, range1) (name, info) _eq tm _in rhs ->
+                  let range = Opt_range.union range1 (Lang.Term.info rhs) in
+                  Let (range, tm, (Single_var.{ name; info }, rhs)))
+                (attach_pos (Ws.string "let"))
+                (attach_pos Ws.identifier)
+                (Ws.char '=')
+                parser
+              <*> Ws.string "in"
+              <*> parser
+            ; parse_alt
+            ]
+        in
+        parse_let)
     <?> "parser"
   ;;
 end
@@ -250,9 +329,8 @@ let%test_module "Parsing" =
   (module struct
     open Test_parsers
 
-    let pp_plain ppf p =
-      Term.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p
-    ;;
+    let margin = Stdlib.Format.(pp_get_margin std_formatter ())
+    let () = Stdlib.Format.(pp_set_margin std_formatter 80)
 
     let parse_print_parser : ?width:int -> string -> unit =
      fun ?width parser_str ->
@@ -281,7 +359,7 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       parse_print_parser
-        {|let atom = (name | literal) in
+        {|let atom = name | literal in
 fix
 (expr ->
 (atom=atom ' '* '+'
@@ -290,28 +368,38 @@ expr=expr -> {{add(atom;
 expr)}} | atom=atom -> {atom}))|};
       [%expect
         {|
-       let atom = (name | literal) in
+       let atom = name | literal in
        fix
-         (expr -> (
+         (expr ->
                     | atom=atom ' '* '+' ' '* expr=expr -> {{add(atom; expr)}}
                     | atom=atom -> {atom}
-                  )) |}]
+                  ) |}]
     ;;
 
     let%expect_test _ =
-      parse_print_parser fix3;
+      (* TODO: decide about leading bars *)
+      parse_print_parser
+        {|let char = satisfy (c -> {is_alpha c}) in
+let digit = satisfy (c -> {is_digit c}) in
+let name = (chars=char+ -> {let str = string_of_chars chars in {var(str)} }) in
+let literal = (chars=digit+ -> {{literal(chars)}}) in
+let atom = (name | literal) in
+fix (expr ->
+  ( atom=atom ' '* '+' ' '* expr=expr -> {{add(atom; expr)}}
+  | atom=atom -> {{atom}}
+))|};
       [%expect
         {|
        let char = satisfy (c -> {is_alpha c}) in
        let digit = satisfy (c -> {is_digit c}) in
        let name = chars=char+ -> {let str = string_of_chars chars in {var(str)}} in
        let literal = chars=digit+ -> {{literal(chars)}} in
-       let atom = (name | literal) in
+       let atom = name | literal in
        fix
-         (expr -> (
+         (expr ->
                     | atom=atom ' '* '+' ' '* expr=expr -> {{add(atom; expr)}}
                     | atom=atom -> {{atom}}
-                  )) |}]
+                  ) |}]
     ;;
 
     let%expect_test _ =
@@ -326,12 +414,17 @@ expr)}} | atom=atom -> {atom}))|};
 
     let%expect_test _ =
       parse_print_parser "F++";
-      [%expect {| (F+)+ |}]
+      [%expect {| F++ |}]
+    ;;
+
+    let%expect_test _ =
+      parse_print_parser "F+?";
+      [%expect {| F+? |}]
     ;;
 
     let%expect_test _ =
       parse_print_parser "(F+)+";
-      [%expect {| (F+)+ |}]
+      [%expect {| F++ |}]
     ;;
 
     let%expect_test _ =
@@ -346,20 +439,19 @@ expr)}} | atom=atom -> {atom}))|};
 
     let%expect_test _ =
       parse_print_parser "('a' | 'b' | 'c')";
-      [%expect {| ('a' | 'b' | 'c') |}]
+      [%expect {| 'a' | 'b' | 'c' |}]
     ;;
 
     let%expect_test _ =
       parse_print_parser "(. -> {Q} | .)";
-      [%expect {| (. -> {Q} | .) |}]
+      [%expect {| . -> {Q} | . |}]
     ;;
+
+    let list_parser = {|fix (lst -> c='c' cs=lst -> {{cons(c; cs)}} | -> {{nil()}})|}
 
     let%expect_test _ =
       parse_print_parser list_parser;
-      [%expect
-        {|
-
-       fix (lst -> (c='c' cs=lst -> {{cons(c; cs)}} |  -> {{nil()}})) |}]
+      [%expect {| fix (lst -> c='c' cs=lst -> {{cons(c; cs)}} |  -> {{nil()}}) |}]
     ;;
 
     let%expect_test _ =
@@ -397,17 +489,13 @@ expr)}} | atom=atom -> {atom}))|};
         {|
 let atom = name | literal in
 fix (expr -> (
-        | a=atom ' '* '+' ' '* e=expr -> {{plus(a; e)}}
+        a=atom ' '* '+' ' '* e=expr -> {{plus(a; e)}}
   | a=atom -> {a}
 ))|};
       [%expect
         {|
-       let atom = (name | literal) in
-       fix
-         (expr -> (
-                    | a=atom ' '* '+' ' '* e=expr -> {{plus(a; e)}}
-                    | a=atom -> {a}
-                  )) |}]
+       let atom = name | literal in
+       fix (expr -> a=atom ' '* '+' ' '* e=expr -> {{plus(a; e)}} | a=atom -> {a}) |}]
     ;;
 
     (* TODO
@@ -431,8 +519,55 @@ fix (expr -> (
     *)
 
     let%expect_test _ =
-      parse_print_parser ~width:12 "name | literal";
+      parse_print_parser "name | literal";
       [%expect {| name | literal |}]
     ;;
+
+    let%expect_test _ =
+      parse_print_parser ~width:12 "name | literal";
+      [%expect {|
+        | name
+        | literal |}]
+    ;;
+
+    let%expect_test _ =
+      parse_print_parser "fix (x -> (e=expr -> {e} | a=atom -> {a}))";
+      [%expect {| fix (x -> e=expr -> {e} | a=atom -> {a}) |}]
+    ;;
+
+    let () = Stdlib.Format.(pp_set_margin std_formatter margin)
   end)
 ;;
+
+module Properties = struct
+  open Property_result
+
+  let parse parser_str = Lvca_parsing.parse_string (Parse.t parse_core) parser_str
+  let pp_str p = Fmt.to_to_string pp_plain p
+
+  let string_round_trip1 t =
+    match t |> pp_str |> parse with
+    | Ok t' ->
+      Property_result.check
+        Lang.Term.Plain.(Lang.Term.to_plain t' = Lang.Term.to_plain t)
+        (Fmt.str "%a <> %a" pp_plain t' pp_plain t)
+    | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (pp_str t) msg)
+  ;;
+
+  let string_round_trip2 str =
+    match parse str with
+    | Error _ -> Uninteresting
+    | Ok t ->
+      let str' = pp_str t in
+      if String.(str' = str)
+      then Ok
+      else (
+        match parse str with
+        | Error msg -> Failed msg
+        | Ok t' ->
+          let str'' = pp_str t' in
+          Property_result.check
+            String.(str'' = str')
+            (Fmt.str {|"%s" <> "%s"|} str'' str'))
+  ;;
+end
