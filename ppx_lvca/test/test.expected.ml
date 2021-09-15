@@ -363,14 +363,13 @@ module Lang =
       struct
         module Types =
           struct
-            type 'info mut_a =
+            type 'info nat =
+              | Z of 'info 
+              | S of 'info * 'info nat 
+            and 'info mut_a =
               | Mut_a of 'info * 'info mut_b 
             and 'info mut_b =
               | Mut_b of 'info * 'info mut_a 
-            and 'info ifz =
-              | Ifz of 'info * 'info ifz * ('info Lvca_syntax.Single_var.t *
-              'info ifz) * 'info ifz 
-              | Ifz_var of 'info * string 
             and 'info term =
               | Operator of 'info * ('info, 'info term) List_model.List.t 
             and ('info, 'a, 'b) pair_plus =
@@ -385,19 +384,16 @@ module Lang =
             and 'info nonempty =
               | Nonempty of 'info * 'info Primitive.String.t * ('info,
               'info Primitive.String.t) List_model.List.t 
-            and 'info nat =
-              | Z of 'info 
-              | S of 'info * 'info nat 
           end
         module Plain =
           struct
-            type mut_a =
+            type nat =
+              | Z 
+              | S of nat 
+            and mut_a =
               | Mut_a of mut_b 
             and mut_b =
               | Mut_b of mut_a 
-            and ifz =
-              | Ifz of ifz * (Lvca_syntax.Single_var.Plain.t * ifz) * ifz 
-              | Ifz_var of string 
             and term =
               | Operator of term List_model.List.Plain.t 
             and ('a, 'b) pair_plus =
@@ -412,13 +408,9 @@ module Lang =
             and nonempty =
               | Nonempty of Primitive.String.Plain.t *
               Primitive.String.Plain.t List_model.List.Plain.t 
-            and nat =
-              | Z 
-              | S of nat 
           end
         module Info =
           struct
-            let nat = function | Types.Z x0 -> x0 | Types.S (x0, _) -> x0
             let nonempty = function | Types.Nonempty (x0, _, _) -> x0
             let pair _a _b = function | Types.Pair (x0, _, _) -> x0
             let foo =
@@ -429,19 +421,12 @@ module Lang =
             let pair_plus _a _b =
               function | Types.PairPlus (x0, _, _, _) -> x0
             let term = function | Types.Operator (x0, _) -> x0
-            let ifz =
-              function
-              | Types.Ifz (x0, _, (_, _), _) -> x0
-              | Types.Ifz_var (info, _) -> info
             let mut_a = function | Types.Mut_a (x0, _) -> x0
             and mut_b = function | Types.Mut_b (x0, _) -> x0
+            let nat = function | Types.Z x0 -> x0 | Types.S (x0, _) -> x0
           end
         module To_plain =
           struct
-            let rec nat =
-              function
-              | Types.Z _ -> Plain.Z
-              | Types.S (_, x1) -> Plain.S (nat x1)
             let nonempty =
               function
               | Types.Nonempty (_, x1, x2) ->
@@ -469,25 +454,17 @@ module Lang =
               function
               | Types.Operator (_, x1) ->
                   Plain.Operator (List_model.List.to_plain term x1)
-            let rec ifz =
-              function
-              | Types.Ifz (_, x1, (x2, x3), x4) ->
-                  Plain.Ifz
-                    ((ifz x1),
-                      ((let open Lvca_syntax.Single_var.Plain in
-                          { name = (x2.name) }), (ifz x3)), (ifz x4))
-              | Types.Ifz_var (_, name) -> Plain.Ifz_var name
             let rec mut_a =
               function | Types.Mut_a (_, x1) -> Plain.Mut_a (mut_b x1)
             and mut_b =
               function | Types.Mut_b (_, x1) -> Plain.Mut_b (mut_a x1)
+            let rec nat =
+              function
+              | Types.Z _ -> Plain.Z
+              | Types.S (_, x1) -> Plain.S (nat x1)
           end
         module Of_plain =
           struct
-            let rec nat =
-              function
-              | Plain.Z -> Types.Z ()
-              | Plain.S x1 -> Types.S ((), (nat x1))
             let nonempty =
               function
               | Plain.Nonempty (x1, x2) ->
@@ -516,26 +493,17 @@ module Lang =
               function
               | Plain.Operator x1 ->
                   Types.Operator ((), (List_model.List.of_plain term x1))
-            let rec ifz =
-              function
-              | Plain.Ifz (x1, (x2, x3), x4) ->
-                  Types.Ifz
-                    ((), (ifz x1),
-                      ((let open Lvca_syntax.Single_var in
-                          { info = (); name = (x2.name) }), (ifz x3)),
-                      (ifz x4))
-              | Plain.Ifz_var name -> Types.Ifz_var ((), name)
             let rec mut_a =
               function | Plain.Mut_a x1 -> Types.Mut_a ((), (mut_b x1))
             and mut_b =
               function | Plain.Mut_b x1 -> Types.Mut_b ((), (mut_a x1))
+            let rec nat =
+              function
+              | Plain.Z -> Types.Z ()
+              | Plain.S x1 -> Types.S ((), (nat x1))
           end
         module Map_info =
           struct
-            let rec nat ~f  =
-              function
-              | Types.Z x0 -> Types.Z (f x0)
-              | Types.S (x0, x1) -> Types.S ((f x0), (nat ~f x1))
             let nonempty ~f  =
               function
               | Types.Nonempty (x0, x1, x2) ->
@@ -569,31 +537,19 @@ module Lang =
               | Types.Operator (x0, x1) ->
                   Types.Operator
                     ((f x0), (List_model.List.map_info term ~f x1))
-            let rec ifz ~f  =
-              function
-              | Types.Ifz (x0, x1, (x2, x3), x4) ->
-                  Types.Ifz
-                    ((f x0), (ifz ~f x1),
-                      ((let open Lvca_syntax.Single_var in
-                          { info = (f x2.info); name = (x2.name) }),
-                        (ifz ~f x3)), (ifz ~f x4))
-              | Types.Ifz_var (info, name) -> Types.Ifz_var ((f info), name)
             let rec mut_a ~f  =
               function
               | Types.Mut_a (x0, x1) -> Types.Mut_a ((f x0), (mut_b ~f x1))
             and mut_b ~f  =
               function
               | Types.Mut_b (x0, x1) -> Types.Mut_b ((f x0), (mut_a ~f x1))
+            let rec nat ~f  =
+              function
+              | Types.Z x0 -> Types.Z (f x0)
+              | Types.S (x0, x1) -> Types.S ((f x0), (nat ~f x1))
           end
         module To_nominal =
           struct
-            let rec nat =
-              function
-              | Types.Z x0 -> Lvca_syntax.Nominal.Term.Operator (x0, "Z", [])
-              | Types.S (x0, x1) ->
-                  Lvca_syntax.Nominal.Term.Operator
-                    (x0, "S",
-                      [Lvca_syntax.Nominal.Scope.Scope ([], (nat x1))])
             let nonempty =
               function
               | Types.Nonempty (x0, x1, x2) ->
@@ -643,18 +599,6 @@ module Lang =
                     (x0, "Operator",
                       [Lvca_syntax.Nominal.Scope.Scope
                          ([], (List_model.List.to_nominal term x1))])
-            let rec ifz =
-              function
-              | Types.Ifz (x0, x1, (x2, x3), x4) ->
-                  Lvca_syntax.Nominal.Term.Operator
-                    (x0, "Ifz",
-                      [Lvca_syntax.Nominal.Scope.Scope ([], (ifz x1));
-                      Lvca_syntax.Nominal.Scope.Scope
-                        ([Lvca_syntax.Pattern.Var ((x2.info), (x2.name))],
-                          (ifz x3));
-                      Lvca_syntax.Nominal.Scope.Scope ([], (ifz x4))])
-              | Ifz_var (info, name) ->
-                  Lvca_syntax.Nominal.Term.Var (info, name)
             let rec mut_a =
               function
               | Types.Mut_a (x0, x1) ->
@@ -667,20 +611,16 @@ module Lang =
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "Mut_b",
                       [Lvca_syntax.Nominal.Scope.Scope ([], (mut_a x1))])
+            let rec nat =
+              function
+              | Types.Z x0 -> Lvca_syntax.Nominal.Term.Operator (x0, "Z", [])
+              | Types.S (x0, x1) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "S",
+                      [Lvca_syntax.Nominal.Scope.Scope ([], (nat x1))])
           end
         module Of_nominal =
           struct
-            let rec nat =
-              function
-              | Lvca_syntax.Nominal.Term.Operator (x0, "Z", []) ->
-                  Ok (Types.Z x0)
-              | Lvca_syntax.Nominal.Term.Operator
-                  (x0, "S", (Lvca_syntax.Nominal.Scope.Scope ([], x1))::[])
-                  ->
-                  (match nat x1 with
-                   | Error msg -> Error msg
-                   | Ok x1 -> Ok (Types.S (x0, x1)))
-              | tm -> Error tm
             let nonempty =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -757,32 +697,6 @@ module Lang =
                    | Error msg -> Error msg
                    | Ok x1 -> Ok (Types.Operator (x0, x1)))
               | tm -> Error tm
-            let rec ifz =
-              function
-              | Lvca_syntax.Nominal.Term.Operator
-                  (x0, "Ifz", (Lvca_syntax.Nominal.Scope.Scope
-                   ([], x1))::(Lvca_syntax.Nominal.Scope.Scope
-                   ((Lvca_syntax.Pattern.Var (x2, x3))::[], x4))::(Lvca_syntax.Nominal.Scope.Scope
-                   ([], x5))::[])
-                  ->
-                  (match ifz x1 with
-                   | Error msg -> Error msg
-                   | Ok x1 ->
-                       (match ifz x4 with
-                        | Error msg -> Error msg
-                        | Ok x4 ->
-                            (match ifz x5 with
-                             | Error msg -> Error msg
-                             | Ok x5 ->
-                                 Ok
-                                   (Types.Ifz
-                                      (x0, x1,
-                                        ((let open Lvca_syntax.Single_var in
-                                            { info = x2; name = x3 }), x4),
-                                        x5)))))
-              | Lvca_syntax.Nominal.Term.Var (info, name) ->
-                  Ok (Ifz_var (info, name))
-              | tm -> Error tm
             let rec mut_a =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -802,6 +716,17 @@ module Lang =
                   (match mut_a x1 with
                    | Error msg -> Error msg
                    | Ok x1 -> Ok (Types.Mut_b (x0, x1)))
+              | tm -> Error tm
+            let rec nat =
+              function
+              | Lvca_syntax.Nominal.Term.Operator (x0, "Z", []) ->
+                  Ok (Types.Z x0)
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "S", (Lvca_syntax.Nominal.Scope.Scope ([], x1))::[])
+                  ->
+                  (match nat x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 -> Ok (Types.S (x0, x1)))
               | tm -> Error tm
           end
       end
@@ -1350,82 +1275,7 @@ module Lang =
                                                       finish = 358
                                                     }));
                                             comment = None
-                                          })), "mut_a")))])))])));
-            ("ifz",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
-                 ([],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
-                      (((let open Lvca_provenance.Commented in
-                           {
-                             range =
-                               (Some
-                                  (let open Lvca_provenance.Range in
-                                     { start = 367; finish = 390 }));
-                             comment = None
-                           })), "Ifz",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
-                           (((let open Lvca_provenance.Commented in
-                                {
-                                  range =
-                                    (Some
-                                       (let open Lvca_provenance.Range in
-                                          { start = 370; finish = 390 }));
-                                  comment = None
-                                })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
-                                ([],
-                                  (Lvca_syntax.Sort.Name
-                                     (((let open Lvca_provenance.Commented in
-                                          {
-                                            range =
-                                              (Some
-                                                 (let open Lvca_provenance.Range in
-                                                    {
-                                                      start = 371;
-                                                      finish = 374
-                                                    }));
-                                            comment = None
-                                          })), "ifz")));
-                             Lvca_syntax.Abstract_syntax.Valence.Valence
-                               ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_binding
-                                   (Lvca_syntax.Sort.Name
-                                      (((let open Lvca_provenance.Commented in
-                                           {
-                                             range =
-                                               (Some
-                                                  (let open Lvca_provenance.Range in
-                                                     {
-                                                       start = 376;
-                                                       finish = 379
-                                                     }));
-                                             comment = None
-                                           })), "ifz"))],
-                                 (Lvca_syntax.Sort.Name
-                                    (((let open Lvca_provenance.Commented in
-                                         {
-                                           range =
-                                             (Some
-                                                (let open Lvca_provenance.Range in
-                                                   {
-                                                     start = 381;
-                                                     finish = 384
-                                                   }));
-                                           comment = None
-                                         })), "ifz")));
-                             Lvca_syntax.Abstract_syntax.Valence.Valence
-                               ([],
-                                 (Lvca_syntax.Sort.Name
-                                    (((let open Lvca_provenance.Commented in
-                                         {
-                                           range =
-                                             (Some
-                                                (let open Lvca_provenance.Range in
-                                                   {
-                                                     start = 386;
-                                                     finish = 389
-                                                   }));
-                                           comment = None
-                                         })), "ifz")))])))])))]
+                                          })), "mut_a")))])))])))]
         }
     module Foo =
       struct
@@ -1442,6 +1292,7 @@ module Lang =
         let of_nominal = Wrapper.Of_nominal.foo
         let mk_Foo ~info  x_0 = Foo (info, x_0)
         let mk_Bar ~info  x_0 = Bar (info, x_0)
+        let mk_Foo_var ~info  name = Foo_var (info, name)
         module Plain =
           struct
             type t = Wrapper.Plain.foo =
@@ -1756,6 +1607,244 @@ module Lang =
                          fail "Generated parser failed nominal conversion")
           end
       end
+  end
+module Ifz_lang :
+  sig
+    val language :
+      string Lvca_provenance.Commented.t Lvca_syntax.Abstract_syntax.t
+    module Wrapper :
+    sig
+      module Types :
+      sig
+        type 'info ifz =
+          | Ifz of 'info * 'info ifz * ('info Lvca_syntax.Single_var.t *
+          'info ifz) * 'info ifz 
+          | Ifz_var of 'info * string 
+      end
+      module Plain :
+      sig
+        type ifz =
+          | Ifz of ifz * (Lvca_syntax.Single_var.Plain.t * ifz) * ifz 
+          | Ifz_var of string 
+      end
+    end
+    module Ifz :
+    sig
+      type 'info t = 'info Wrapper.Types.ifz =
+        | Ifz of 'info * 'info Wrapper.Types.ifz * ('info
+        Lvca_syntax.Single_var.t * 'info Wrapper.Types.ifz) * 'info
+        Wrapper.Types.ifz 
+        | Ifz_var of 'info * string 
+      module Plain :
+      sig
+        type t = Wrapper.Plain.ifz =
+          | Ifz of Wrapper.Plain.ifz * (Lvca_syntax.Single_var.Plain.t *
+          Wrapper.Plain.ifz) * Wrapper.Plain.ifz 
+          | Ifz_var of string 
+        val pp : t Fmt.t
+        val (=) : t -> t -> bool
+        val parse : t Lvca_parsing.t
+        val jsonify : t Lvca_util.Json.serializer
+        val unjsonify : t Lvca_util.Json.deserializer
+      end
+      val to_plain : _ t -> Plain.t
+      val of_plain : Plain.t -> unit t
+      val to_nominal : 'infoa t -> 'infoa Lvca_syntax.Nominal.Term.t
+      val of_nominal :
+        'infoa Lvca_syntax.Nominal.Term.t ->
+          ('infoa t, 'infoa Lvca_syntax.Nominal.Term.t) Result.t
+      val info : 'info t -> 'info
+      val map_info : f:('infoa -> 'infob) -> 'infoa t -> 'infob t
+      val mk_Ifz :
+        info:'info ->
+          'info Wrapper.Types.ifz ->
+            ('info Lvca_syntax.Single_var.t * 'info Wrapper.Types.ifz) ->
+              'info Wrapper.Types.ifz -> 'info t
+      val mk_Ifz_var : info:'info -> string -> 'info t
+    end
+  end =
+  struct
+    module Wrapper =
+      struct
+        module Types =
+          struct
+            type 'info ifz =
+              | Ifz of 'info * 'info ifz * ('info Lvca_syntax.Single_var.t *
+              'info ifz) * 'info ifz 
+              | Ifz_var of 'info * string 
+          end
+        module Plain =
+          struct
+            type ifz =
+              | Ifz of ifz * (Lvca_syntax.Single_var.Plain.t * ifz) * ifz 
+              | Ifz_var of string 
+          end
+        module Info =
+          struct
+            let ifz =
+              function
+              | Types.Ifz (x0, _, (_, _), _) -> x0
+              | Types.Ifz_var (info, _) -> info
+          end
+        module To_plain =
+          struct
+            let rec ifz =
+              function
+              | Types.Ifz (_, x1, (x2, x3), x4) ->
+                  Plain.Ifz
+                    ((ifz x1),
+                      ((let open Lvca_syntax.Single_var.Plain in
+                          { name = (x2.name) }), (ifz x3)), (ifz x4))
+              | Types.Ifz_var (_, name) -> Plain.Ifz_var name
+          end
+        module Of_plain =
+          struct
+            let rec ifz =
+              function
+              | Plain.Ifz (x1, (x2, x3), x4) ->
+                  Types.Ifz
+                    ((), (ifz x1),
+                      ((let open Lvca_syntax.Single_var in
+                          { info = (); name = (x2.name) }), (ifz x3)),
+                      (ifz x4))
+              | Plain.Ifz_var name -> Types.Ifz_var ((), name)
+          end
+        module Map_info =
+          struct
+            let rec ifz ~f  =
+              function
+              | Types.Ifz (x0, x1, (x2, x3), x4) ->
+                  Types.Ifz
+                    ((f x0), (ifz ~f x1),
+                      ((let open Lvca_syntax.Single_var in
+                          { info = (f x2.info); name = (x2.name) }),
+                        (ifz ~f x3)), (ifz ~f x4))
+              | Types.Ifz_var (info, name) -> Types.Ifz_var ((f info), name)
+          end
+        module To_nominal =
+          struct
+            let rec ifz =
+              function
+              | Types.Ifz (x0, x1, (x2, x3), x4) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Ifz",
+                      [Lvca_syntax.Nominal.Scope.Scope ([], (ifz x1));
+                      Lvca_syntax.Nominal.Scope.Scope
+                        ([Lvca_syntax.Pattern.Var ((x2.info), (x2.name))],
+                          (ifz x3));
+                      Lvca_syntax.Nominal.Scope.Scope ([], (ifz x4))])
+              | Ifz_var (info, name) ->
+                  Lvca_syntax.Nominal.Term.Var (info, name)
+          end
+        module Of_nominal =
+          struct
+            let rec ifz =
+              function
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "Ifz", (Lvca_syntax.Nominal.Scope.Scope
+                   ([], x1))::(Lvca_syntax.Nominal.Scope.Scope
+                   ((Lvca_syntax.Pattern.Var (x2, x3))::[], x4))::(Lvca_syntax.Nominal.Scope.Scope
+                   ([], x5))::[])
+                  ->
+                  (match ifz x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 ->
+                       (match ifz x4 with
+                        | Error msg -> Error msg
+                        | Ok x4 ->
+                            (match ifz x5 with
+                             | Error msg -> Error msg
+                             | Ok x5 ->
+                                 Ok
+                                   (Types.Ifz
+                                      (x0, x1,
+                                        ((let open Lvca_syntax.Single_var in
+                                            { info = x2; name = x3 }), x4),
+                                        x5)))))
+              | Lvca_syntax.Nominal.Term.Var (info, name) ->
+                  Ok (Ifz_var (info, name))
+              | tm -> Error tm
+          end
+      end
+    module Types = Wrapper.Types
+    module Plain = Wrapper.Plain
+    let language =
+      let open Lvca_syntax.Abstract_syntax in
+        {
+          externals = [];
+          sort_defs =
+            [("ifz",
+               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                  ([],
+                    [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                       (((let open Lvca_provenance.Commented in
+                            {
+                              range =
+                                (Some
+                                   (let open Lvca_provenance.Range in
+                                      { start = 7; finish = 30 }));
+                              comment = None
+                            })), "Ifz",
+                         (Lvca_syntax.Abstract_syntax.Arity.Arity
+                            (((let open Lvca_provenance.Commented in
+                                 {
+                                   range =
+                                     (Some
+                                        (let open Lvca_provenance.Range in
+                                           { start = 10; finish = 30 }));
+                                   comment = None
+                                 })),
+                              [Lvca_syntax.Abstract_syntax.Valence.Valence
+                                 ([],
+                                   (Lvca_syntax.Sort.Name
+                                      (((let open Lvca_provenance.Commented in
+                                           {
+                                             range =
+                                               (Some
+                                                  (let open Lvca_provenance.Range in
+                                                     {
+                                                       start = 11;
+                                                       finish = 14
+                                                     }));
+                                             comment = None
+                                           })), "ifz")));
+                              Lvca_syntax.Abstract_syntax.Valence.Valence
+                                ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_binding
+                                    (Lvca_syntax.Sort.Name
+                                       (((let open Lvca_provenance.Commented in
+                                            {
+                                              range =
+                                                (Some
+                                                   (let open Lvca_provenance.Range in
+                                                      {
+                                                        start = 16;
+                                                        finish = 19
+                                                      }));
+                                              comment = None
+                                            })), "ifz"))],
+                                  (Lvca_syntax.Sort.Name
+                                     (((let open Lvca_provenance.Commented in
+                                          {
+                                            range =
+                                              (Some
+                                                 (let open Lvca_provenance.Range in
+                                                    { start = 21; finish = 24
+                                                    }));
+                                            comment = None
+                                          })), "ifz")));
+                              Lvca_syntax.Abstract_syntax.Valence.Valence
+                                ([],
+                                  (Lvca_syntax.Sort.Name
+                                     (((let open Lvca_provenance.Commented in
+                                          {
+                                            range =
+                                              (Some
+                                                 (let open Lvca_provenance.Range in
+                                                    { start = 26; finish = 29
+                                                    }));
+                                            comment = None
+                                          })), "ifz")))])))])))]
+        }
     module Ifz =
       struct
         type 'info t = 'info Wrapper.Types.ifz =
@@ -1770,6 +1859,7 @@ module Lang =
         let to_nominal = Wrapper.To_nominal.ifz
         let of_nominal = Wrapper.Of_nominal.ifz
         let mk_Ifz ~info  x_0 x_1 x_2 = Ifz (info, x_0, x_1, x_2)
+        let mk_Ifz_var ~info  name = Ifz_var (info, name)
         module Plain =
           struct
             type t = Wrapper.Plain.ifz =
@@ -1808,7 +1898,7 @@ module Lang =
                          fail "Generated parser failed nominal conversion")
           end
       end
-  end
+  end 
 module List_lang =
   struct
     module Wrapper =

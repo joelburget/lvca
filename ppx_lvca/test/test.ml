@@ -36,8 +36,11 @@ term := Operator(list term)
 
 mut_a := Mut_a(mut_b)
 mut_b := Mut_b(mut_a)
-ifz := Ifz(ifz; ifz. ifz; ifz)
 |}]
+
+module Ifz_lang : [%lvca.abstract_syntax_module_sig "ifz := Ifz(ifz; ifz. ifz; ifz)"] =
+[%lvca.abstract_syntax_module
+"ifz := Ifz(ifz; ifz. ifz; ifz)"]
 
 module List_lang =
 [%lvca.abstract_syntax_module
