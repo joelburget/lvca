@@ -154,6 +154,9 @@ module List_model :
       val map_info :
         (f:('infoa -> 'infob) -> 'a_ -> 'a__) ->
           f:('infoa -> 'infob) -> ('infoa, 'a_) t -> ('infob, 'a__) t
+      val mk_Nil : info:'info -> ('info, 'a) t
+      val mk_Cons :
+        info:'info -> 'a -> ('info, 'a) Wrapper.Types.list -> ('info, 'a) t
     end
   end =
   struct
@@ -344,6 +347,8 @@ module List_model :
         let map_info = Wrapper.Map_info.list
         let to_nominal = Wrapper.To_nominal.list
         let of_nominal = Wrapper.Of_nominal.list
+        let mk_Nil ~info  = Nil info
+        let mk_Cons ~info  x_0 x_1 = Cons (info, x_0, x_1)
         module Plain =
           struct
             type 'a t = 'a Wrapper.Plain.list =
@@ -1435,6 +1440,8 @@ module Lang =
         let map_info = Wrapper.Map_info.foo
         let to_nominal = Wrapper.To_nominal.foo
         let of_nominal = Wrapper.Of_nominal.foo
+        let mk_Foo ~info  x_0 = Foo (info, x_0)
+        let mk_Bar ~info  x_0 = Bar (info, x_0)
         module Plain =
           struct
             type t = Wrapper.Plain.foo =
@@ -1485,6 +1492,8 @@ module Lang =
         let map_info = Wrapper.Map_info.nat
         let to_nominal = Wrapper.To_nominal.nat
         let of_nominal = Wrapper.Of_nominal.nat
+        let mk_Z ~info  = Z info
+        let mk_S ~info  x_0 = S (info, x_0)
         module Plain =
           struct
             type t = Wrapper.Plain.nat =
@@ -1532,6 +1541,7 @@ module Lang =
         let map_info = Wrapper.Map_info.pair
         let to_nominal = Wrapper.To_nominal.pair
         let of_nominal = Wrapper.Of_nominal.pair
+        let mk_Pair ~info  x_0 x_1 = Pair (info, x_0, x_1)
         module Plain =
           struct
             type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair =
@@ -1548,6 +1558,7 @@ module Lang =
         let map_info = Wrapper.Map_info.pair_plus
         let to_nominal = Wrapper.To_nominal.pair_plus
         let of_nominal = Wrapper.Of_nominal.pair_plus
+        let mk_PairPlus ~info  x_0 x_1 x_2 = PairPlus (info, x_0, x_1, x_2)
         module Plain =
           struct
             type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair_plus =
@@ -1565,6 +1576,7 @@ module Lang =
         let map_info = Wrapper.Map_info.nonempty
         let to_nominal = Wrapper.To_nominal.nonempty
         let of_nominal = Wrapper.Of_nominal.nonempty
+        let mk_Nonempty ~info  x_0 x_1 = Nonempty (info, x_0, x_1)
         module Plain =
           struct
             type t = Wrapper.Plain.nonempty =
@@ -1613,6 +1625,7 @@ module Lang =
         let map_info = Wrapper.Map_info.term
         let to_nominal = Wrapper.To_nominal.term
         let of_nominal = Wrapper.Of_nominal.term
+        let mk_Operator ~info  x_0 = Operator (info, x_0)
         module Plain =
           struct
             type t = Wrapper.Plain.term =
@@ -1659,6 +1672,7 @@ module Lang =
         let map_info = Wrapper.Map_info.mut_a
         let to_nominal = Wrapper.To_nominal.mut_a
         let of_nominal = Wrapper.Of_nominal.mut_a
+        let mk_Mut_a ~info  x_0 = Mut_a (info, x_0)
         module Plain =
           struct
             type t = Wrapper.Plain.mut_a =
@@ -1705,6 +1719,7 @@ module Lang =
         let map_info = Wrapper.Map_info.mut_b
         let to_nominal = Wrapper.To_nominal.mut_b
         let of_nominal = Wrapper.Of_nominal.mut_b
+        let mk_Mut_b ~info  x_0 = Mut_b (info, x_0)
         module Plain =
           struct
             type t = Wrapper.Plain.mut_b =
@@ -1754,6 +1769,7 @@ module Lang =
         let map_info = Wrapper.Map_info.ifz
         let to_nominal = Wrapper.To_nominal.ifz
         let of_nominal = Wrapper.Of_nominal.ifz
+        let mk_Ifz ~info  x_0 x_1 x_2 = Ifz (info, x_0, x_1, x_2)
         module Plain =
           struct
             type t = Wrapper.Plain.ifz =
@@ -2935,6 +2951,7 @@ module List_lang =
         let map_info = Wrapper.Map_info.predefined
         let to_nominal = Wrapper.To_nominal.predefined
         let of_nominal = Wrapper.Of_nominal.predefined
+        let mk_Predefined ~info  = Predefined info
         module Plain =
           struct
             type t = Wrapper.Plain.predefined =
@@ -2982,6 +2999,8 @@ module List_lang =
         let map_info = Wrapper.Map_info.list
         let to_nominal = Wrapper.To_nominal.list
         let of_nominal = Wrapper.Of_nominal.list
+        let mk_Nil ~info  = Nil info
+        let mk_Cons ~info  x_0 x_1 = Cons (info, x_0, x_1)
         module Plain =
           struct
             type 'a t = 'a Wrapper.Plain.list =
@@ -3000,6 +3019,7 @@ module List_lang =
         let map_info = Wrapper.Map_info.list_external
         let to_nominal = Wrapper.To_nominal.list_external
         let of_nominal = Wrapper.Of_nominal.list_external
+        let mk_List_external ~info  x_0 = List_external (info, x_0)
         module Plain =
           struct
             type t = Wrapper.Plain.list_external =
@@ -3048,6 +3068,7 @@ module List_lang =
         let map_info = Wrapper.Map_info.list_predefined
         let to_nominal = Wrapper.To_nominal.list_predefined
         let of_nominal = Wrapper.Of_nominal.list_predefined
+        let mk_List_predefined ~info  x_0 = List_predefined (info, x_0)
         module Plain =
           struct
             type t = Wrapper.Plain.list_predefined =
@@ -3096,6 +3117,7 @@ module List_lang =
         let map_info = Wrapper.Map_info.list_list_a
         let to_nominal = Wrapper.To_nominal.list_list_a
         let of_nominal = Wrapper.Of_nominal.list_list_a
+        let mk_List_list_a ~info  x_0 = List_list_a (info, x_0)
         module Plain =
           struct
             type 'a t = 'a Wrapper.Plain.list_list_a =
@@ -3114,6 +3136,7 @@ module List_lang =
         let map_info = Wrapper.Map_info.list_list_string_1
         let to_nominal = Wrapper.To_nominal.list_list_string_1
         let of_nominal = Wrapper.Of_nominal.list_list_string_1
+        let mk_List_list_string_1 ~info  x_0 = List_list_string_1 (info, x_0)
         module Plain =
           struct
             type t = Wrapper.Plain.list_list_string_1 =
@@ -3162,6 +3185,7 @@ module List_lang =
         let map_info = Wrapper.Map_info.list_list_string_2
         let to_nominal = Wrapper.To_nominal.list_list_string_2
         let of_nominal = Wrapper.Of_nominal.list_list_string_2
+        let mk_List_list_string_2 ~info  x_0 = List_list_string_2 (info, x_0)
         module Plain =
           struct
             type t = Wrapper.Plain.list_list_string_2 =
@@ -3211,6 +3235,8 @@ module List_lang =
         let map_info = Wrapper.Map_info.list_list_predefined_1
         let to_nominal = Wrapper.To_nominal.list_list_predefined_1
         let of_nominal = Wrapper.Of_nominal.list_list_predefined_1
+        let mk_List_list_predefined_1 ~info  x_0 =
+          List_list_predefined_1 (info, x_0)
         module Plain =
           struct
             type t = Wrapper.Plain.list_list_predefined_1 =
@@ -3259,6 +3285,8 @@ module List_lang =
         let map_info = Wrapper.Map_info.list_list_predefined_2
         let to_nominal = Wrapper.To_nominal.list_list_predefined_2
         let of_nominal = Wrapper.Of_nominal.list_list_predefined_2
+        let mk_List_list_predefined_2 ~info  x_0 =
+          List_list_predefined_2 (info, x_0)
         module Plain =
           struct
             type t = Wrapper.Plain.list_list_predefined_2 =
@@ -3354,6 +3382,8 @@ module type Is_rec_sig  =
           ('infoa t, 'infoa Lvca_syntax.Nominal.Term.t) Result.t
       val info : 'info t -> 'info
       val map_info : f:('infoa -> 'infob) -> 'infoa t -> 'infob t
+      val mk_Rec : info:'info -> 'info t
+      val mk_No_rec : info:'info -> 'info t
     end
     module Ty :
     sig
@@ -3379,6 +3409,10 @@ module type Is_rec_sig  =
           ('infoa t, 'infoa Lvca_syntax.Nominal.Term.t) Result.t
       val info : 'info t -> 'info
       val map_info : f:('infoa -> 'infob) -> 'infoa t -> 'infob t
+      val mk_Sort : info:'info -> 'info Lvca_syntax.Nominal.Term.t -> 'info t
+      val mk_Arrow :
+        info:'info ->
+          'info Wrapper.Types.ty -> 'info Wrapper.Types.ty -> 'info t
     end
     module Mut_a :
     sig
@@ -3402,6 +3436,7 @@ module type Is_rec_sig  =
           ('infoa t, 'infoa Lvca_syntax.Nominal.Term.t) Result.t
       val info : 'info t -> 'info
       val map_info : f:('infoa -> 'infob) -> 'infoa t -> 'infob t
+      val mk_Mut_a : info:'info -> 'info Wrapper.Types.mut_b -> 'info t
     end
     module Mut_b :
     sig
@@ -3425,6 +3460,7 @@ module type Is_rec_sig  =
           ('infoa t, 'infoa Lvca_syntax.Nominal.Term.t) Result.t
       val info : 'info t -> 'info
       val map_info : f:('infoa -> 'infob) -> 'infoa t -> 'infob t
+      val mk_Mut_b : info:'info -> 'info Wrapper.Types.mut_a -> 'info t
     end
   end
 module Option_model :
@@ -3465,6 +3501,8 @@ module Option_model :
       val map_info :
         (f:('infoa -> 'infob) -> 'a_ -> 'a__) ->
           f:('infoa -> 'infob) -> ('infoa, 'a_) t -> ('infob, 'a__) t
+      val mk_None : info:'info -> ('info, 'a) t
+      val mk_Some : info:'info -> 'a -> ('info, 'a) t
     end
   end =
   struct
@@ -3602,6 +3640,8 @@ module Option_model :
         let map_info = Wrapper.Map_info.option
         let to_nominal = Wrapper.To_nominal.option
         let of_nominal = Wrapper.Of_nominal.option
+        let mk_None ~info  = None info
+        let mk_Some ~info  x_0 = Some (info, x_0)
         module Plain =
           struct
             type 'a t = 'a Wrapper.Plain.option =
