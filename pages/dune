@@ -7,3 +7,5 @@
    lvca_languages lvca_parsing lvca_provenance lvca_syntax note)
  (preprocess
   (pps ppx_blob ppx_jane ppx_lvca)))
+
+(data_only_dirs md)
