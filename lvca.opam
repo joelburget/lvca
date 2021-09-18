@@ -7,24 +7,25 @@ license: "MIT"
 homepage: "https://github.com/joelburget/lvca"
 bug-reports: "https://github.com/joelburget/lvca/issues"
 depends: [
-  "ocaml" {>= "4.08.0"}
   "angstrom"
   "base"
-  "zarith"
-  "cbor"
-  "digestif"
-  "fmt"
-  "ppx_jane"
-  "ppx_inline_test"
-  "dune" {>= "2.0.0"}
-  "zarith_stubs_js"
-  "uchar" {>= "0.0.2"}
-  "ppxlib" {>= "0.22.0"}
-  "ppx_optcomp" {>= "v0.14.1"}
-  "omd"
-  "crowbar"
   "brr"
+  "cbor"
+  "crowbar"
+  "digestif"
+  "dune" {>= "2.0.0"}
+  "fmt"
   "note"
+  "ocaml" {>= "4.08.0"}
+  "omd"
+  "ppx_blob"
+  "ppx_inline_test"
+  "ppx_jane"
+  "ppx_optcomp" {>= "v0.14.1"}
+  "ppxlib" {>= "0.22.0"}
+  "uchar" {>= "0.0.2"}
+  "zarith"
+  "zarith_stubs_js"
 ]
 build: ["dune" "build" "-p" name "-j" jobs]
 dev-repo: "git+https://github.com/joelburget/lvca.git"
