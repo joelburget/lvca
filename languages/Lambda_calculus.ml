@@ -51,12 +51,9 @@ module Parse = struct
     fix (fun t ->
         let atom = t_var <|> Ws.parens t in
         let lam : Opt_range.t Nominal.Term.t Lvca_parsing.t =
-          lift4
-            (fun _lam var _arr body ->
-              (* TODO: incorrect range: let range = Opt_range.extend_to (info body) start in *)
-              let range = info body in
-              let tm = Nominal.Term.Operator (range, "lam", [ Scope ([ var ], body) ]) in
-              tm)
+          make4
+            (fun ~info _lam var _arr body ->
+              Nominal.Term.Operator (info, "lam", [ Scope ([ var ], body) ]))
             (Ws.char '\\')
             p_var
             (Ws.string "->")
