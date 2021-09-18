@@ -137,33 +137,44 @@ let core_gen =
    - Doesn't generate well-typed or well-bound parsers
  *)
 let parser_gen =
+  let mk_var name = Single_var.{ name; info = () } in
   Crowbar.(
-    Lvca_languages.Parser.(
-      fix (fun parser_gen ->
-          let binder_gen =
+    Lvca_languages.Parser.Term.(
+      Lvca_languages.Parser.Sequence.(
+        fix (fun parser_gen ->
+            let binder_gen =
+              choose
+                [ map [ str_gen; parser_gen ] (fun name p -> Some name, p)
+                ; map [ parser_gen ] (fun p -> None, p)
+                ]
+            in
+            let rec mk_sequence binders core =
+              match binders with
+              | [] -> Empty_sequence ((), core)
+              | (Some name, p) :: binders ->
+                Binding ((), p, (mk_var name, mk_sequence binders core))
+              | (None, p) :: binders -> Non_binding ((), p, mk_sequence binders core)
+            in
+            let sequence_gen = map [ list binder_gen; core_gen ] mk_sequence in
             choose
-              [ map [ str_gen; parser_gen ] (fun name p -> Binder (Some name, p))
-              ; map [ parser_gen ] (fun p -> Binder (None, p))
-              ]
-          in
-          choose
-            [ const (AnyChar ())
-            ; map [ char ] (fun c -> Char ((), c))
-            ; map [ str_gen ] (fun s -> String ((), s))
-            ; map [ ident_gen; core_gen ] (fun ident tm -> Satisfy ((), ident, tm))
-              (* ; map [ core_gen ] (fun tm -> Fail ((), tm)) *)
-            ; map [ ident_gen; parser_gen; parser_gen ] (fun ident p1 p2 ->
-                  Let ((), ident, p1, p2))
-            ; map [ parser_gen ] (fun p -> Option ((), p))
-            ; map [ parser_gen; core_gen ] (fun p tm -> Count ((), p, tm))
-            ; map [ parser_gen ] (fun p -> Many ((), p))
-            ; map [ parser_gen ] (fun p -> Many1 ((), p))
-            ; map [ ident_gen; parser_gen ] (fun ident p -> Fix ((), ident, p))
-            ; map [ parser_gen; parser_gen ] (fun p1 p2 -> Choice ((), [ p1; p2 ]))
-            ; map [ list binder_gen; core_gen ] (fun binders body ->
-                  Sequence ((), binders, body))
-            ; map [ ident_gen ] (fun ident -> Identifier ((), ident))
-            ])))
+              [ const (AnyChar ())
+              ; map [ char ] (fun c -> Char ((), ((), c)))
+              ; map [ str_gen ] (fun s -> String ((), ((), s)))
+              ; map [ ident_gen; core_gen ] (fun ident tm ->
+                    Satisfy ((), ((), ident), tm))
+              ; map [ core_gen ] (mk_Fail ~info:())
+              ; map [ ident_gen; parser_gen; parser_gen ] (fun ident p1 p2 ->
+                    mk_Let ~info:() p1 (mk_var ident, p2))
+              ; map [ parser_gen ] (mk_Option ~info:())
+              ; map [ parser_gen; core_gen ] (mk_Count ~info:())
+              ; map [ parser_gen ] (mk_Many ~info:())
+              ; map [ parser_gen ] (mk_Many1 ~info:())
+              ; map [ ident_gen; parser_gen ] (fun ident p -> Fix ((), (mk_var ident, p)))
+              ; map [ parser_gen; parser_gen ] (fun p1 p2 ->
+                    Choice ((), Lvca_core.List_model.of_list ~empty_info:() [ p1; p2 ]))
+              ; map [ sequence_gen ] (mk_Sequence ~info:())
+              ; map [ ident_gen ] (mk_Term_var ~info:())
+              ]))))
 ;;
 
 let add_test ~name ~gen ~f =

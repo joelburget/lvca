@@ -24,7 +24,7 @@ module Model = struct
       { success : bool
       ; pre_pos : int
       ; post_pos : int
-      ; parser : Source_ranges.t P.t
+      ; parser : Source_ranges.t P.Term.t
       ; snapshots : t list
       }
 
@@ -33,10 +33,10 @@ module Model = struct
       && Int.(t1.pre_pos = t2.pre_pos)
       && Int.(t1.post_pos = t2.post_pos)
       && List.equal ( = ) t1.snapshots t2.snapshots
-      && P.equal Source_ranges.( = ) t1.parser t2.parser
+      && P.Term.equal ~info_eq:Source_ranges.( = ) t1.parser t2.parser
     ;;
 
-    let rec restrict_snapshot : P.Direct.trace_snapshot -> t =
+    let rec restrict_snapshot : P.Evaluate.trace_snapshot -> t =
      fun { success; pre_pos; post_pos; parser; snapshots; _ } ->
       { success
       ; pre_pos
@@ -178,10 +178,10 @@ module Prelude = struct
       {|chars=digit+ -> {let str = string_of_chars chars in {literal(str)}}|}
   ;;
 
-  let ctx : P.Direct.parser_ctx =
+  let ctx : P.Evaluate.parser_ctx =
     String.Map.of_alist_exn
       [ "alpha", alpha; "digit", digit; "name", name; "literal", literal ]
-    |> Map.map ~f:(P.map_info ~f:(Source_ranges.of_opt_range ~buf:"prelude"))
+    |> Map.map ~f:(P.Term.map_info ~f:(Source_ranges.of_opt_range ~buf:"prelude"))
   ;;
 end
 
@@ -258,7 +258,10 @@ let view_core ~highlight_s core =
 ;;
 
 let view_parser ~highlight_s ~success parser =
-  let elt, tm_selection_e = pp_view ~highlight_s parser P.pp_ranges in
+  let elt, tm_selection_e =
+    pp_view ~highlight_s parser (fun ppf tm ->
+        tm |> P.Term.to_nominal |> Nominal.Term.pp_source_ranges ppf)
+  in
   El.div ~at:[ class' (if success then "success" else "error") ] [ elt ], tm_selection_e
 ;;
 
@@ -507,7 +510,7 @@ let view_root_snapshot str root =
 ;;
 
 module View = struct
-  module Direct = P.Direct
+  module Evaluate = P.Evaluate
 
   let view_parser_test
       ?(term_ctx = String.Map.empty)
@@ -523,9 +526,9 @@ module View = struct
       let trace = El.div [ txt' "not available: parser failed to parse" ] in
       result, trace, E.never
     | Ok parser ->
-      let parser = P.map_info ~f:(Source_ranges.of_opt_range ~buf:"parser") parser in
-      let toplevel_result = Direct.parse_direct ~term_ctx ~parser_ctx parser test_str in
-      let P.Direct.{ didnt_consume_msg; result; snapshot } = toplevel_result in
+      let parser = P.Term.map_info ~f:(Source_ranges.of_opt_range ~buf:"parser") parser in
+      let toplevel_result = Evaluate.parse_direct ~term_ctx ~parser_ctx parser test_str in
+      let P.Evaluate.{ didnt_consume_msg; result; snapshot } = toplevel_result in
       let result, select_e =
         match result with
         | Error (msg, tm_opt) ->
@@ -560,7 +563,7 @@ module View = struct
       E.log trace_e (fun _ -> show_trace_s |> S.value |> not |> set_show_trace)
     in
     let parser_s =
-      let eq = Result.equal (P.equal Opt_range.( = )) String.( = ) in
+      let eq = Result.equal (P.Term.equal ~info_eq:Opt_range.( = )) String.( = ) in
       parser_str_s |> S.map ~eq parse_parser
     in
     let input_hl_s, set_input_hl = S.create ~eq:Source_ranges.( = ) Source_ranges.empty in
@@ -596,7 +599,7 @@ module View = struct
         |> S.map ~eq:html_eq (function
                | Ok parser ->
                  parser
-                 |> P.map_info ~f:(Source_ranges.of_opt_range ~buf:"parser")
+                 |> P.Term.map_info ~f:(Source_ranges.of_opt_range ~buf:"parser")
                  |> view_parser ~highlight_s:parser_hl_s ~success:true
                  |> fst
                | Error _ -> pre [ mk_reactive' code (parser_str_s |> S.map txt') ])

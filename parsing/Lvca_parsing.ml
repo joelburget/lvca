@@ -376,28 +376,35 @@ let adapt p =
 
 let ( <$> ) f p = p >>| f
 let fail msg = fail msg
-let lift f a = f <$> a
+let make1 mk a = a >>~ fun info a -> mk ~info a
+let make0 mk a = make1 (fun ~info _ -> mk ~info) a
+let lift mk a = make1 (fun ~info:_ -> mk) a
 
-let lift2 f a b =
+let make2 mk a b =
   a
   >>== fun { value = a_val; range = a_range } ->
   b
   >>|| fun { value = b_val; range = b_range } ->
-  { value = f a_val b_val; range = Opt_range.union a_range b_range }
+  let info = Opt_range.union a_range b_range in
+  { value = mk ~info a_val b_val; range = info }
 ;;
 
-let lift3 f a b c =
+let lift2 mk a b = make2 (fun ~info:_ -> mk) a b
+
+let make3 mk a b c =
   a
   >>== fun { value = a_val; range = a_range } ->
   b
   >>== fun { value = b_val; range = b_range } ->
   c
   >>|| fun { value = c_val; range = c_range } ->
-  let range = Opt_range.list_range [ a_range; b_range; c_range ] in
-  { value = f a_val b_val c_val; range }
+  let info = Opt_range.list_range [ a_range; b_range; c_range ] in
+  { value = mk ~info a_val b_val c_val; range = info }
 ;;
 
-let lift4 f a b c d =
+let lift3 mk a b c = make3 (fun ~info:_ -> mk) a b c
+
+let make4 mk a b c d =
   a
   >>== fun { value = a_val; range = a_range } ->
   b
@@ -406,9 +413,44 @@ let lift4 f a b c d =
   >>== fun { value = c_val; range = c_range } ->
   d
   >>|| fun { value = d_val; range = d_range } ->
-  { value = f a_val b_val c_val d_val
-  ; range = Opt_range.list_range [ a_range; b_range; c_range; d_range ]
-  }
+  let info = Opt_range.list_range [ a_range; b_range; c_range; d_range ] in
+  { value = mk ~info a_val b_val c_val d_val; range = info }
+;;
+
+let lift4 mk a b c d = make4 (fun ~info:_ -> mk) a b c d
+
+let make5 mk a b c d e =
+  a
+  >>== fun { value = a_val; range = a_range } ->
+  b
+  >>== fun { value = b_val; range = b_range } ->
+  c
+  >>== fun { value = c_val; range = c_range } ->
+  d
+  >>== fun { value = d_val; range = d_range } ->
+  e
+  >>|| fun { value = e_val; range = e_range } ->
+  let info = Opt_range.list_range [ a_range; b_range; c_range; d_range; e_range ] in
+  { value = mk ~info a_val b_val c_val d_val e_val; range = info }
+;;
+
+let make6 mk a b c d e f =
+  a
+  >>== fun { value = a_val; range = a_range } ->
+  b
+  >>== fun { value = b_val; range = b_range } ->
+  c
+  >>== fun { value = c_val; range = c_range } ->
+  d
+  >>== fun { value = d_val; range = d_range } ->
+  e
+  >>== fun { value = e_val; range = e_range } ->
+  f
+  >>|| fun { value = f_val; range = f_range } ->
+  let info =
+    Opt_range.list_range [ a_range; b_range; c_range; d_range; e_range; f_range ]
+  in
+  { value = mk ~info a_val b_val c_val d_val e_val f_val; range = info }
 ;;
 
 let attach_pos p =
@@ -416,6 +458,13 @@ let attach_pos p =
     p
     >>| fun ({ value; range } as parse_result) ->
     { parse_result with value = value, range })
+;;
+
+let attach_pos' p =
+  Angstrom.(
+    p
+    >>| fun ({ value; range } as parse_result) ->
+    { parse_result with value = range, value })
 ;;
 
 let return ?(range = None) value = return { value; range }

@@ -30,11 +30,45 @@ val option' : 'a t -> 'a option t
 val return : ?range:Opt_range.t -> 'a -> 'a t
 val attach_pos : 'a t -> ('a * Opt_range.t) t (* TODO: remove? *)
 
+val attach_pos' : 'a t -> (Opt_range.t * 'a) t (* TODO: remove? *)
+
 val count : int -> 'a t -> 'a list t
 val lift : ('a -> 'b) -> 'a t -> 'b t
 val lift2 : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
 val lift3 : ('a -> 'b -> 'c -> 'd) -> 'a t -> 'b t -> 'c t -> 'd t
 val lift4 : ('a -> 'b -> 'c -> 'd -> 'e) -> 'a t -> 'b t -> 'c t -> 'd t -> 'e t
+val make0 : (info:Opt_range.t -> 'b) -> _ t -> 'b t
+val make1 : (info:Opt_range.t -> 'a -> 'b) -> 'a t -> 'b t
+val make2 : (info:Opt_range.t -> 'a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
+val make3 : (info:Opt_range.t -> 'a -> 'b -> 'c -> 'd) -> 'a t -> 'b t -> 'c t -> 'd t
+
+val make4
+  :  (info:Opt_range.t -> 'a -> 'b -> 'c -> 'd -> 'e)
+  -> 'a t
+  -> 'b t
+  -> 'c t
+  -> 'd t
+  -> 'e t
+
+val make5
+  :  (info:Opt_range.t -> 'a -> 'b -> 'c -> 'd -> 'e -> 'f)
+  -> 'a t
+  -> 'b t
+  -> 'c t
+  -> 'd t
+  -> 'e t
+  -> 'f t
+
+val make6
+  :  (info:Opt_range.t -> 'a -> 'b -> 'c -> 'd -> 'e -> 'f -> 'g)
+  -> 'a t
+  -> 'b t
+  -> 'c t
+  -> 'd t
+  -> 'e t
+  -> 'f t
+  -> 'g t
+
 val many : 'a t -> 'a list t
 val many1 : 'a t -> 'a list t
 val sep_by : _ t -> 'a t -> 'a list t
