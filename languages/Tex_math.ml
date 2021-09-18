@@ -1245,7 +1245,8 @@ let%test_module "control sequences" =
     let%expect_test _ =
       go {|\misspelled|};
       go {|\*|};
-      [%expect {|
+      [%expect
+        {|
         "\\misspelled" -> \misspelled is not a known control sequence
         \* -> Tex math expression > atom: looking for a control sequence, `_`, `^`, `'`, group, space, or token |}]
     ;;
