@@ -236,8 +236,8 @@ module Parse = struct
                 (Ws.string "fix")
                 (Ws.parens
                    (lift3
-                      (fun (name, info) _arr body -> Single_var.{ name; info }, body)
-                      (attach_pos Ws.identifier)
+                      (fun v _arr body -> v, body)
+                      (make1 Single_var.mk Ws.identifier)
                       arrow
                       parser))
             ; make2
@@ -266,7 +266,7 @@ module Parse = struct
           choice
             [ make3
                 (fun ~info ident _eq tm -> mk_Bound ~info ident tm)
-                (Ws.identifier >>~ fun info name -> Single_var.{ name; info })
+                (make1 Single_var.mk Ws.identifier)
                 (Ws.char '=')
                 parse_app
             ; make1 mk_Unbound parse_app
@@ -299,7 +299,7 @@ module Parse = struct
             [ make6
                 (fun ~info _let name _eq tm _in rhs -> mk_Let ~info tm (name, rhs))
                 (Ws.string "let")
-                (Ws.identifier >>~ fun info name -> Single_var.{ name; info })
+                (make1 Single_var.mk Ws.identifier)
                 (Ws.char '=')
                 parser
                 (Ws.string "in")

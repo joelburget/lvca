@@ -21,3 +21,5 @@ let of_nominal = function
     Ok { info; name }
   | tm -> Error tm
 ;;
+
+let mk ~info name = { info; name }
