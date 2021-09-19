@@ -236,7 +236,7 @@ let check check_prim lang sort =
           Error
             (Check_failure.err
                (Printf.sprintf
-                  "BindingAwarePattern.check: failed to find operator %s in sort %s"
+                  "Binding_aware_pattern.check: failed to find operator %s in sort %s"
                   op_name
                   sort_name))
         | Some (sort_vars, Operator_def (_, _, arity)) ->
@@ -580,7 +580,7 @@ test := foo(term[term]. term)
       print_check_pattern "value" "foo()";
       [%expect
         {|
-      BindingAwarePattern.check: failed to find operator foo in sort value
+      Binding_aware_pattern.check: failed to find operator foo in sort value
       stack:
       - pattern: foo(), sort: value |}]
     ;;
