@@ -156,7 +156,6 @@ module Parse = struct
           (Ws.string "else")
           computation
         <?> "If"
-      ; make2 mk_App value value <?> "App"
       ; make4
           (fun ~info _ v _ c -> mk_With_handle ~info v c)
           (Ws.string "with")
@@ -164,6 +163,7 @@ module Parse = struct
           (Ws.string "handle")
           computation
         <?> "With_handle"
+      ; make2 mk_App value value <?> "App"
       ]
     <?> "computation"
   ;;
@@ -250,7 +250,7 @@ let%test_module "Parsing / Printing" =
 
     let%expect_test _ =
       parse_print_computation "with true handle return x";
-      [%expect {| with true handle return true |}]
+      [%expect {| with true handle return x |}]
     ;;
 
     let%expect_test _ =
