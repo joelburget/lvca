@@ -106,8 +106,7 @@ module Parse = struct
     <?> "Handler_clause"
   ;;
 
-  let mk_handler computation =
-    let handler_clause = mk_handler_clause computation in
+  let mk_handler handler_clause =
     make2
       (fun ~info _ clauses ->
         let clauses = Lvca_core.List_model.of_list ~empty_info:None clauses in
@@ -116,8 +115,7 @@ module Parse = struct
       (Ws.braces (sep_by (Ws.char ',') handler_clause))
   ;;
 
-  let mk_value computation =
-    let handler = mk_handler computation in
+  let mk_value handler computation =
     choice
       [ make0 mk_True (Ws.string "true") <?> "True"
       ; make0 mk_False (Ws.string "false") <?> "False"
@@ -170,13 +168,15 @@ module Parse = struct
 
   let computation =
     fix (fun computation ->
-        (* let handler = (Ws.string "handler" *)
-        mk_computation (mk_value computation) computation)
+        let handler_clause = mk_handler_clause computation in
+        let handler = mk_handler handler_clause in
+        let value = mk_value handler computation in
+        mk_computation value computation)
   ;;
 
-  let value = mk_value computation
-  let handler = mk_handler computation
   let handler_clause = mk_handler_clause computation
+  let handler = mk_handler handler_clause
+  let value = mk_value handler computation
 end
 
 let%test_module "Parsing / Printing" =
