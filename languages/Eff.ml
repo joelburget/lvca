@@ -50,7 +50,7 @@ module Pp = struct
       Fmt.pf ppf "return %s -> %a" name computation c
     | Op_clause
         (_, (_, op_name), (Single_var.{ name = x; _ }, Single_var.{ name = k; _ }, c)) ->
-      Fmt.pf ppf "%s(%s; %s) -> %a" op_name x k computation c
+      Fmt.pf ppf "#%s(%s; %s) -> %a" op_name x k computation c
 
   and handler ppf (Handler.Handler (_, clauses)) =
     let clauses = Lvca_core.List_model.to_list clauses in
@@ -59,7 +59,7 @@ module Pp = struct
   and computation ppf = function
     | Computation.Return (_, v) -> Fmt.pf ppf "return %a" value v
     | Op (_, (_, op_name), v, (Single_var.{ name = x; _ }, c)) ->
-      Fmt.pf ppf "%s(%a; %s. %a)" op_name value v x computation c
+      Fmt.pf ppf "#%s(%a; %s. %a)" op_name value v x computation c
     | Do (_, c1, (Single_var.{ name; _ }, c2)) ->
       Fmt.pf ppf "do %s <- %a in %a" name computation c1 computation c2
     | If (_, v, c1, c2) ->
@@ -98,7 +98,7 @@ module Parse = struct
           computation
       ; make4
           (fun ~info op_name (x, k) _ c -> mk_Op_clause ~info op_name (x, k, c))
-          (attach_pos' Ws.identifier)
+          (No_ws.char '#' *> attach_pos' Ws.identifier)
           (Ws.parens (lift3 (fun x _semi k -> x, k) ident (Ws.char ';') ident))
           (Ws.string "->")
           computation
@@ -135,7 +135,15 @@ module Parse = struct
   let mk_computation value computation =
     choice
       [ make2 (fun ~info _ v -> mk_Return ~info v) (Ws.string "return") value <?> "Return"
-        (* TODO: op *)
+      ; make2
+          (fun ~info op_name (v, body) -> mk_Op ~info op_name v body)
+          (No_ws.char '#' *> attach_pos' Ws.identifier)
+          (Ws.parens
+             (lift3
+                (fun v y body -> v, (y, body))
+                (value <* Ws.char ';')
+                (ident <* Ws.char '.')
+                computation))
       ; make6
           (fun ~info _ ident _ c1 _ c2 -> mk_Do ~info c1 (ident, c2))
           (Ws.string "do")
@@ -239,6 +247,11 @@ let%test_module "Parsing / Printing" =
     ;;
 
     let%expect_test _ =
+      parse_print_computation "#foo(x; y. return y)";
+      [%expect {| #foo(x; y. return y) |}]
+    ;;
+
+    let%expect_test _ =
       parse_print_computation "do x <- return true in return x";
       [%expect {| do x <- return true in return x |}]
     ;;
@@ -264,20 +277,20 @@ let%test_module "Parsing / Printing" =
     ;;
 
     let%expect_test _ =
-      parse_print_handler_clause "foo(x; k) -> return x";
-      [%expect {| foo(x; k) -> return x |}]
+      parse_print_handler_clause "#foo(x; k) -> return x";
+      [%expect {| #foo(x; k) -> return x |}]
     ;;
 
     let%expect_test _ =
-      parse_print_handler "handler { foo(x; k) -> return x }";
-      [%expect {| handler { foo(x; k) -> return x } |}]
+      parse_print_handler "handler { #foo(x; k) -> return x }";
+      [%expect {| handler { #foo(x; k) -> return x } |}]
     ;;
 
     let%expect_test _ =
-      parse_print_handler "handler { foo(x; k) -> return x, return x -> return x }";
+      parse_print_handler "handler { #foo(x; k) -> return x, return x -> return x }";
       [%expect
         {|
-        handler { foo(x; k) -> return x,
+        handler { #foo(x; k) -> return x,
         return x -> return x } |}]
     ;;
 
