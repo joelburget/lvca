@@ -24,30 +24,8 @@ doc :=
 
 module Doc = Nominal.Convertible.Extend (Lang.Doc)
 
-(* type doc = Doc.Plain.t *)
-
-let rec of_nonbinding tm =
-  let open Result.Let_syntax in
-  match tm with
-  | Nonbinding.Operator (_, "line", []) -> Ok Lang.Plain.Line
-  | Operator (_, "nil", []) -> Ok Nil
-  | Operator (_, "cat", [ d1; d2 ]) ->
-    let%bind d1 = of_nonbinding d1 in
-    let%map d2 = of_nonbinding d2 in
-    Lang.Plain.Cat (d1, d2)
-  | Operator (_, "text", [ Primitive (_, String s) ]) -> Ok (Text s)
-  | Operator (_, "spacing", [ Primitive (_, String s) ]) -> Ok (Spacing s)
-  | Operator (_, "nest", [ Primitive (_, Integer j); d ]) ->
-    let%map d = of_nonbinding d in
-    Lang.Plain.Nest (Z.to_int32 j, d)
-  | Operator (_, "align", [ d ]) ->
-    let%map d = of_nonbinding d in
-    Lang.Plain.Align d
-  | Operator (_, "alt", [ d1; d2 ]) ->
-    let%bind d1 = of_nonbinding d1 in
-    let%map d2 = of_nonbinding d2 in
-    Lang.Plain.Alt (d1, d2)
-  | Primitive _ | Operator _ -> Error ("Couldn't convert term", tm)
+let of_nonbinding tm =
+  tm |> Nonbinding.to_nominal |> Doc.of_nominal |> Result.map ~f:Doc.to_plain
 ;;
 
 type semantics = int -> int -> (string * int) list
@@ -149,11 +127,11 @@ let%test_module _ =
           match render_fast width tm with None -> "no valid render" | Some str -> str
         in
         Stdio.print_string str
-      | Error (msg, _) -> failwith msg
+      | Error _tm -> failwith "failed to convert term from nonbinding"
     ;;
 
     let%expect_test _ =
-      let tm = [%lvca.nonbinding {|cat(text("("); text(")"))|}] in
+      let tm = [%lvca.nonbinding {|Cat(Text("("); Text(")"))|}] in
       test_render 80 tm;
       [%expect {| () |}]
     ;;
@@ -161,9 +139,9 @@ let%test_module _ =
     let%expect_test _ =
       let tm =
         [%lvca.nonbinding
-          {|alt(
-    cat(text("abc"); cat(spacing(" "); text("def")));
-    cat(text("abc"); cat(line(); text("def")))
+          {|Alt(
+    Cat(Text("abc"); Cat(Spacing(" "); Text("def")));
+    Cat(Text("abc"); Cat(Line(); Text("def")))
     )|}]
       in
       test_render 7 tm;
@@ -176,7 +154,7 @@ let%test_module _ =
     ;;
 
     let%expect_test _ =
-      let tm = [%lvca.nonbinding {|cat(text("abc"); cat(text("def"); text("ghi")))|}] in
+      let tm = [%lvca.nonbinding {|Cat(Text("abc"); Cat(Text("def"); Text("ghi")))|}] in
       test_render 1 tm;
       Stdio.print_string "\n";
       test_render 9 tm;
@@ -186,11 +164,11 @@ let%test_module _ =
     ;;
 
     let none = Lvca_provenance.Commented.none
-    let space = [%lvca.nonbinding {|spacing(" ")|}]
-    let line = [%lvca.nonbinding {|line()|}]
-    let text str = Nonbinding.Operator (none, "text", [ Primitive (none, String str) ])
-    let cat l r = Nonbinding.Operator (none, "cat", [ l; r ])
-    let alt l r = Nonbinding.Operator (none, "alt", [ l; r ])
+    let space = [%lvca.nonbinding {|Spacing(" ")|}]
+    let line = [%lvca.nonbinding {|Line()|}]
+    let text str = Nonbinding.Operator (none, "Text", [ Primitive (none, String str) ])
+    let cat l r = Nonbinding.Operator (none, "Cat", [ l; r ])
+    let alt l r = Nonbinding.Operator (none, "Alt", [ l; r ])
 
     let cats lst =
       let init = List.last_exn lst in
@@ -203,7 +181,7 @@ let%test_module _ =
     let vsep = sep_list ~sep:line
     let hsep = sep_list ~sep:space
     let counting_list n = List.init n ~f:(fun i -> i |> Int.to_string |> text)
-    let align docs = Nonbinding.Operator (none, "align", [ docs ])
+    let align docs = Nonbinding.Operator (none, "Align", [ docs ])
 
     let%expect_test _ =
       let tm =
@@ -224,7 +202,7 @@ let%test_module _ =
 
     let%expect_test _ =
       let tm =
-        cat [%lvca.nonbinding {|text("abc")|}] (3 |> counting_list |> vsep |> align)
+        cat [%lvca.nonbinding {|Text("abc")|}] (3 |> counting_list |> vsep |> align)
       in
       test_render 5 tm;
       [%expect {|
@@ -238,7 +216,7 @@ let%test_module _ =
       | Atom of string
 
     let sep = function
-      | [] -> [%lvca.nonbinding "nil()"]
+      | [] -> [%lvca.nonbinding "Nil()"]
       | xs -> alt (hsep xs) (align (vsep xs))
     ;;
 
