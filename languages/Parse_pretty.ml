@@ -1,78 +1,74 @@
 open Base
 open Lvca_syntax
 
-let language =
-  [%lvca.abstract_syntax
-    {|
-lang := rows(list row)
+module Lang =
+[%lvca.abstract_syntax_module
+{|
+list : * -> *  // module Lvca_core.List_model.List
+string : *  // module Primitive.String
+term : *  // module Nominal.Term
 
-row := row(term[term]. directive)
+lang := Rows(list row)
+
+row := Row(term[term]. directive)
 
 directive :=
-  | literal(string)
-  | many(list directive)
-  | many1(list directive)
-  | sepby(directive; list directive)
-  | sepby1(directive; list directive)
-  | term(term)
+  | Literal(string)
+  | Many(list directive)
+  | Many1(list directive)
+  | Sep_by(directive; list directive)
+  | Sep_by1(directive; list directive)
+  | Term(term)
   |}]
+
+let hutton_example =
+  {|
+expr:
+  | lit(i)    <-> i
+  | add(a; b) <-> a "+" b XXX precedence needed
+
+type:
+  | int() <-> "int"
+  |}
 ;;
 
-module Directive = struct
-  type t =
-    | Literal of string
-    | Many of t list
-    | Many1 of t list
-    | SepBy of t * t list
-    | SepBy1 of t * t list
-
-  (* | Term *)
-
-  let rec of_nonbinding tm =
-    let open Result.Let_syntax in
-    match tm with
-    | Nonbinding.Operator (_, "literal", [ Primitive (_, String str) ]) ->
-      Ok (Literal str)
-    | Operator (_, "many", [ directives ]) ->
-      let%map directives = list_of_nonbinding directives in
-      Many directives
-    | Operator (_, "many1", [ directives ]) ->
-      let%map directives = list_of_nonbinding directives in
-      Many1 directives
-    | Operator (_, "sepby", [ directive; directives ]) ->
-      let%bind directive = of_nonbinding directive in
-      let%map directives = list_of_nonbinding directives in
-      SepBy (directive, directives)
-    | Operator (_, "sepby1", [ directive; directives ]) ->
-      let%bind directive = of_nonbinding directive in
-      let%map directives = list_of_nonbinding directives in
-      SepBy1 (directive, directives)
-    | _ -> Error ("Couldn't convert term", tm)
-
-  and list_of_nonbinding tm =
-    let open Result.Let_syntax in
-    match tm with
-    | Nonbinding.Operator (_, "nil", []) -> Ok []
-    | Operator (_, "cons", [ x; xs ]) ->
-      let%bind x = of_nonbinding x in
-      let%map xs = list_of_nonbinding xs in
-      x :: xs
-    | _ -> Error ("Couldn't convert term", tm)
-  ;;
-end
-
-module Row = struct
-  type 'info t =
-    { pattern : 'info Pattern.t
-    ; directive : Directive.t
-    }
-end
-
-type 'info t = 'info Row.t list
-
-(* Translate from this language to the parser langugage *)
-let parser_mapping =
+let eff_example =
   {|
+value:
+  | True()         <-> "true"
+  | False()        <-> "false"
+  | Fun(x. c)      <-> "fun" x "->" c
+  | Handler_val(h) <-> h
+
+handler_clause:
+  | Return_clause(x. c)      <-> "return" x "->" c
+  | Op_clause(name; x. k. c) <-> name "(" x "." k ")" "->" c
+
+handler:
+  | Handler(clauses) <-> "handler" "{" clauses "}"
+
+computation:
+  | Return(v)         <-> "return" v
+  | Op(name; v; y. c) <-> name "(" v ";" y "." c ")"
+  | Do(c1; x. c2)     <-> "do" x "<-" c1 "in" c2
+  | If(v; c1; c2)     <-> "if" v "then" c1 "else" c2
+  | App(v1; v2)       <-> v1 v2
+  | With_handle(v; c) <-> "with" v "handle" c
+
+v_type:
+  | Bool() <-> "bool"
+  | Fun_ty(v; c) <-> v "->" c
+  | Handler_ty(c1; c2) <-> c1 "=>" c2
+
+c_type:
+  | Computation(v; ops) <-> v "!" "{" ops "}"
+|}
+;;
+
+module Todo = struct
+  (* Translate from this language to the parser langugage *)
+  let parser_mapping =
+    {|
 
 TODO
 
@@ -82,11 +78,11 @@ let translate_row = \(row : row) -> match row with {
 
 \(lang : lang) -> match lang with { rows(rows) -> list.map translate_row rows }
 |}
-;;
+  ;;
 
-(* Translate from this language to the JYP printer langugage *)
-let printer_mapping =
-  {|
+  (* Translate from this language to the JYP printer langugage *)
+  let printer_mapping =
+    {|
 let translate_directive = \(directive : directive) -> match directive with {
   | literal(str) -> text(str)
   | many(directives) ->
@@ -94,7 +90,7 @@ let translate_directive = \(directive : directive) -> match directive with {
     let directives = list.map translate_directive directives in
     let broken_directives = list.intersperse directives line() in
     alt(directives; broken_directives)
-  | sepby(sep; directives) ->
+  | Sep_by(sep; directives) ->
   | sepby1(sep; directives) ->
     let directives = list.map translate_directive directives in
     let sep_directives = list.intersperse directives sep in
@@ -110,4 +106,5 @@ let translate_row = \(row : row) -> match row with {
 
 \(lang : lang) -> match lang with { rows(rows) -> list.map translate_row rows }
 |}
-;;
+  ;;
+end
