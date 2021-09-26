@@ -386,10 +386,12 @@ c_type := Computation(v_type; list string)
         [%expect {| bool!{#bar, #baz} |}]
       ;;
 
+      (* TODO
       let%expect_test _ =
         parse_print_v_type "bool!{#bar, #baz} => bool!{}";
         [%expect {| bool!{#bar, #baz} => bool!{} |}]
       ;;
+      *)
 
       let%expect_test _ =
         parse_print_v_type "bool -> bool!{}";

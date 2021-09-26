@@ -7,10 +7,11 @@ module Lang =
 list : * -> *  // module Lvca_core.List_model.List
 string : *  // module Primitive.String
 term : *  // module Nominal.Term
+binding_aware_pattern : *  // TODO module Binding_aware_pattern
 
 lang := Rows(list row)
 
-row := Row(term[term]. directive)
+row := Row(binding_aware_pattern; directive)
 
 directive :=
   | Literal(string)
