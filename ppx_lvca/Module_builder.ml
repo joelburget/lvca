@@ -1,15 +1,12 @@
 open Base
 open Lvca_syntax
 open Lvca_provenance
+open Lvca_util
 open Ppxlib
-module Util = Lvca_util
-module SSet = Util.String.Set
-module SMap = Util.String.Map
+module SSet = String.Set
+module SMap = String.Map
 module Syn = Abstract_syntax
 module Graph = Directed_graph.Make (Base.String)
-module Tuple2 = Util.Tuple2
-
-let ( >> ), ( << ) = Util.(( >> ), ( << ))
 
 (** {2 Sort variables}
 
