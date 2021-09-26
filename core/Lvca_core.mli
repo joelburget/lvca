@@ -30,7 +30,7 @@ module Binding_aware_pattern_model : [%lvca.abstract_syntax_module_sig
 {|
 string : *  // module Primitive.String
 primitive : *  // module Primitive.All
-list : * -> *  // module* List_model.List
+list : * -> *  // module List_model.List
 
 pattern :=
   | Operator(string; list scope)

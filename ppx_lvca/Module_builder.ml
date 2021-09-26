@@ -290,13 +290,13 @@ let get_sort_ref_info ~prims ~sort_defs =
   SMap.of_alist_exn sort_deps
 ;;
 
-type external_module_type =
-  | Fixed_pattern
-  | Pattern_parameter
-
 type has_info =
   | Plain
   | With_info
+
+type pattern_style =
+  | Ordinary
+  | Binding_aware
 
 (** Is this sort ever bound in the language? *)
 type bound_unbound =
@@ -337,7 +337,7 @@ module Helpers (Context : Builder_context) = struct
     { info : has_info
     ; var_names : SSet.t
     ; mutual_sorts : string Commented.t Syn.Sort_def.t SMap.t
-    ; prims : (external_module_type * string list) option SMap.t
+    ; prims : string list option SMap.t
     }
 
   (** When using a sort, we treat it differently depending on if it's a variable, defined
@@ -346,7 +346,7 @@ module Helpers (Context : Builder_context) = struct
   type defn_status =
     | Variable
     | Mutual_sort
-    | External_sort of (external_module_type * string list) option
+    | External_sort of string list option
 
   let classify_sort context sort =
     let { info = _; var_names; mutual_sorts; prims } = context in
@@ -403,7 +403,7 @@ module Helpers (Context : Builder_context) = struct
            | Nonempty of 'info * 'info Nominal.t * 'info Nominal.t
                                  ^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^
       ]} *)
-  let ptyp_of_sort ~type_decl_context ~context sort =
+  let ptyp_of_sort ~type_decl_context ~pattern_style ~context sort =
     let info_args = match context.info with With_info -> [ [%type: 'info] ] | _ -> [] in
     let rec go sort =
       let loc = sort |> Sort.info |> Commented.get_range |> update_loc in
@@ -413,24 +413,20 @@ module Helpers (Context : Builder_context) = struct
       | Mutual_sort ->
         let sort_args = List.map sort_args ~f:go in
         let names =
-          match type_decl_context, context.info with
-          | Predefinition, _ -> [ name ]
-          | Individual_type_module, With_info -> [ "Wrapper"; "Types"; name ]
-          | Individual_type_module, Plain -> [ "Wrapper"; "Plain"; name ]
+          match type_decl_context, pattern_style, context.info with
+          | Predefinition, _, _ -> [ name ]
+          | Individual_type_module, Ordinary, With_info -> [ "Wrapper"; "Types"; name ]
+          | Individual_type_module, Ordinary, Plain -> [ "Wrapper"; "Plain"; name ]
+          | Individual_type_module, Binding_aware, With_info ->
+            [ "Wrapper"; "Binding_aware"; name ]
+          | Individual_type_module, Binding_aware, Plain ->
+            failwith "Unsupported: Binding_aware, Plain"
         in
-        ptyp_constr
-          { txt = unflatten names; loc }
-          (info_args @ [ [%type: 'pattern] ] @ sort_args)
+        ptyp_constr { txt = unflatten names; loc } (info_args @ sort_args)
       | External_sort mods_opt ->
         let module_path, args =
           match mods_opt with
-          | Some (mod_type, mods) ->
-            let pattern_args =
-              match mod_type with
-              | Fixed_pattern -> []
-              | Pattern_parameter -> [ [%type: 'pattern] ]
-            in
-            mods, info_args @ pattern_args @ List.map sort_args ~f:go
+          | Some mods -> mods, info_args @ List.map sort_args ~f:go
           | None -> nominal_term, info_args
         in
         let module_path =
@@ -476,7 +472,7 @@ module Helpers (Context : Builder_context) = struct
           { txt = unflatten (nominal_term @ [ Supported_function.fun_name fun_defn ])
           ; loc
           }
-      | External_sort (Some (_mod_type, mods)) ->
+      | External_sort (Some mods) ->
         apply
           (pexp_ident
              { txt = unflatten (mods @ [ Supported_function.fun_name fun_defn ]); loc })
@@ -538,25 +534,16 @@ module Helpers (Context : Builder_context) = struct
 
   let plain_typ_var name = ptyp_var name, (NoVariance, NoInjectivity)
 
-  let parse_module_name =
-    let open Lvca_parsing in
-    sep_by1
-      (No_ws.char '.')
-      (No_ws.satisfy Char.is_uppercase
-      >>= fun c0 ->
-      many (Ws.satisfy Char.(fun c -> is_alphanum c || c = '_' || c = '\''))
-      >>| fun cs -> String.of_char_list (c0 :: cs))
-  ;;
-
-  let parse_pattern_annotation =
-    Lvca_parsing.(option Fixed_pattern (return Pattern_parameter <* Ws.char '*'))
-  ;;
-
   let parse_external_module =
-    Lvca_parsing.(
-      whitespace
-      *> Ws.string "module"
-      *> lift2 (fun x y -> x, y) parse_pattern_annotation parse_module_name)
+    let open Lvca_parsing in
+    whitespace
+    *> Ws.string "module"
+    *> sep_by1
+         (No_ws.char '.')
+         (No_ws.satisfy Char.is_uppercase
+         >>= fun c0 ->
+         many (Ws.satisfy Char.(fun c -> is_alphanum c || c = '_' || c = '\''))
+         >>| fun cs -> String.of_char_list (c0 :: cs))
   ;;
 
   let prims_of_externals externals =
@@ -581,11 +568,19 @@ module Ctor_decl (Context : Builder_context) = struct
   open Helpers (Context)
 
   let args_of_valence
+      ~pattern_style
       ~type_decl_context
       context
       (Syn.Valence.Valence (binding_sort_slots, body_sort))
     =
     let { info; _ } = context in
+    let pattern_type =
+      match pattern_style, info with
+      | Binding_aware, With_info -> [%type: 'info Binding_aware_pattern.t]
+      | Binding_aware, Plain -> [%type: 'info Binding_aware_pattern.t]
+      | Ordinary, With_info -> [%type: 'info Pattern.t]
+      | Ordinary, Plain -> [%type: Pattern.Plain.t]
+    in
     let args =
       List.map binding_sort_slots ~f:(function
           | Syn.Sort_slot.Sort_binding sort ->
@@ -593,13 +588,14 @@ module Ctor_decl (Context : Builder_context) = struct
             (match info with
             | With_info -> [%type: 'info Lvca_syntax.Single_var.t]
             | _ -> [%type: Lvca_syntax.Single_var.Plain.t])
-          | Sort_pattern _sort -> [%type: 'pattern])
+          | Sort_pattern _sort -> pattern_type)
     in
-    args @ [ ptyp_of_sort ~type_decl_context ~context body_sort ]
+    args @ [ ptyp_of_sort ~type_decl_context ~pattern_style ~context body_sort ]
   ;;
 
   let args_of_arity
       ~info
+      ~pattern_style
       ~type_decl_context
       ~var_names
       ~mutual_sorts
@@ -607,7 +603,10 @@ module Ctor_decl (Context : Builder_context) = struct
       (Syn.Arity.Arity (_, arity))
     =
     let args_of_valence =
-      args_of_valence ~type_decl_context { info; var_names; mutual_sorts; prims }
+      args_of_valence
+        ~type_decl_context
+        ~pattern_style
+        { info; var_names; mutual_sorts; prims }
     in
     arity
     |> List.map ~f:args_of_valence
@@ -617,6 +616,7 @@ module Ctor_decl (Context : Builder_context) = struct
 
   let mk
       ~info
+      ~pattern_style
       ~type_decl_context
       ~var_names
       ~mutual_sorts
@@ -624,7 +624,14 @@ module Ctor_decl (Context : Builder_context) = struct
       (Syn.Operator_def.Operator_def (_info, op_name, arity))
     =
     let args =
-      args_of_arity ~info ~type_decl_context ~var_names ~mutual_sorts ~prims arity
+      args_of_arity
+        ~info
+        ~pattern_style
+        ~type_decl_context
+        ~var_names
+        ~mutual_sorts
+        ~prims
+        arity
     in
     constructor_declaration
       ~name:{ txt = ctor_name op_name; loc }
@@ -644,6 +651,7 @@ module Type_decls (Context : Builder_context) = struct
       ~sort_def_map:mutual_sorts
       ~prims
       ~info
+      ~pattern_style
       ~sort_name
       ~sort_binding_status
       (Syn.Sort_def.Sort_def (vars, op_defs))
@@ -652,7 +660,14 @@ module Type_decls (Context : Builder_context) = struct
     let op_ctors =
       List.map
         op_defs
-        ~f:(Ctor_decl.mk ~info ~type_decl_context ~var_names ~mutual_sorts ~prims)
+        ~f:
+          (Ctor_decl.mk
+             ~info
+             ~pattern_style
+             ~type_decl_context
+             ~var_names
+             ~mutual_sorts
+             ~prims)
     in
     let var_ctor =
       let args =
@@ -671,7 +686,7 @@ module Type_decls (Context : Builder_context) = struct
     | _ -> op_ctors
   ;;
 
-  let mk ~info ~sort_def_map ~sorted_scc_graph ~prims ~sort_binding_status =
+  let mk ~info ~pattern_style ~sort_def_map ~sorted_scc_graph ~prims ~sort_binding_status =
     let info_params = match info with With_info -> [ plain_typ_var "info" ] | _ -> [] in
     List.map sorted_scc_graph ~f:(fun (_scc_num, sort_name_set) ->
         sort_name_set
@@ -679,9 +694,7 @@ module Type_decls (Context : Builder_context) = struct
         |> List.map ~f:(fun sort_name ->
                let sort_def = Map.find_exn sort_def_map sort_name in
                let (Syn.Sort_def.Sort_def (vars, _op_defs)) = sort_def in
-               let params = vars |> List.map ~f:fst in
-               let params = "pattern" :: params in
-               let params = List.map params ~f:plain_typ_var in
+               let params = vars |> List.map ~f:fst |> List.map ~f:plain_typ_var in
                let params = info_params @ params in
                let op_ctors =
                  mk_op_ctors
@@ -689,6 +702,7 @@ module Type_decls (Context : Builder_context) = struct
                    ~type_decl_context:Predefinition
                    ~prims
                    ~info
+                   ~pattern_style
                    ~sort_name
                    ~sort_binding_status
                    sort_def
@@ -765,6 +779,7 @@ module Operator_exp (Context : Builder_context) = struct
 
   let mk
       ~has_info (* Building a plain or with-info data type *)
+      ~pattern_style
       ~var_names
       ~prims
       ?(f = false)
@@ -773,6 +788,18 @@ module Operator_exp (Context : Builder_context) = struct
       (Syn.Operator_def.Operator_def (_info, op_name, Arity (_, arity)))
     =
     let v = evar_allocator "x" in
+    let pattern_mod =
+      match pattern_style with
+      | Binding_aware -> "Binding_aware_pattern"
+      | Ordinary -> "Pattern"
+    in
+    let pattern_converter =
+      pexp_ident
+        { txt =
+            unflatten [ "Lvca_syntax"; pattern_mod; Supported_function.fun_name fun_defn ]
+        ; loc
+        }
+    in
     let f_args = if f then [ labelled_arg "f" ] else [] in
     let classify_sort =
       classify_sort { info = With_info; var_names; mutual_sorts = sort_defs; prims }
@@ -799,7 +826,8 @@ module Operator_exp (Context : Builder_context) = struct
                          Lvca_syntax.Single_var.{ info = [%e info]; name = [%e v].name }]
                      | Plain ->
                        [%expr Lvca_syntax.Single_var.Plain.{ name = [%e v ()].name }])
-                   | Sort_pattern _ -> v ())
+                   | Sort_pattern _ ->
+                     pexp_apply pattern_converter (f_args @ [ Nolabel, v () ]))
              in
              slots_args @ [ body_arg body_sort ])
       |> List.map ~f:mk_exp_tuple
@@ -845,7 +873,14 @@ module To_plain (Context : Builder_context) = struct
     let f op_def =
       let lhs = Operator_pat.mk ~has_info:With_info op_def in
       let rhs =
-        Operator_exp.mk ~var_names ~prims ~has_info:Plain sort_defs Fun_to_plain op_def
+        Operator_exp.mk
+          ~var_names
+          ~prims
+          ~has_info:Plain
+          ~pattern_style:Ordinary
+          sort_defs
+          Fun_to_plain
+          op_def
       in
       case ~lhs ~guard ~rhs
     in
@@ -894,6 +929,7 @@ module Of_plain (Context : Builder_context) = struct
           ~var_names
           ~prims
           ~has_info:With_info
+          ~pattern_style:Ordinary
           sort_defs
           Fun_of_plain
           op_def
@@ -947,6 +983,7 @@ module Map_info (Context : Builder_context) = struct
           ~var_names
           ~prims
           ~has_info:With_info
+          ~pattern_style:Ordinary
           ~f:true
           sort_defs
           Fun_map_info
@@ -1374,7 +1411,7 @@ module Wrapper_module (Context : Builder_context) = struct
     let adapt
         ?definite_rec
         (maker :
-          prims:(external_module_type * string list) option SMap.t
+          prims:string list option SMap.t
           -> sort_binding_status:(string, bound_unbound) Hashtbl.t
           -> _ Syn.Sort_def.t SMap.t
           -> string
@@ -1407,14 +1444,19 @@ module Wrapper_module (Context : Builder_context) = struct
     let type_decls =
       Type_decls.mk ~sort_def_map ~sorted_scc_graph ~prims ~sort_binding_status
     in
-    let info_decls = type_decls ~info:With_info in
-    let plain_decls = type_decls ~info:Plain in
+    let info_decls = type_decls ~pattern_style:Ordinary ~info:With_info in
+    let binding_aware_decls = type_decls ~pattern_style:Binding_aware ~info:With_info in
+    let plain_decls = type_decls ~pattern_style:Ordinary ~info:Plain in
     let defs =
       (* Each of these functions is potentially recursive (across multiple
          types), pre-declare. *)
       [%str
         module Types = struct
           [%%i pstr_type Recursive info_decls]
+        end
+
+        module Binding_aware = struct
+          [%%i pstr_type Recursive binding_aware_decls]
         end
 
         module Plain = struct
@@ -1436,12 +1478,17 @@ module Wrapper_module (Context : Builder_context) = struct
     let type_decls =
       Type_decls.mk ~sort_def_map ~sorted_scc_graph ~prims ~sort_binding_status
     in
-    let info_decls = type_decls ~info:With_info in
-    let plain_decls = type_decls ~info:Plain in
+    let info_decls = type_decls ~pattern_style:Ordinary ~info:With_info in
+    let binding_aware_decls = type_decls ~pattern_style:Binding_aware ~info:With_info in
+    let plain_decls = type_decls ~pattern_style:Ordinary ~info:Plain in
     [%sig:
       module Wrapper : sig
         module Types : sig
           [%%i psig_type Recursive info_decls]
+        end
+
+        module Binding_aware : sig
+          [%%i psig_type Recursive binding_aware_decls]
         end
 
         module Plain : sig
@@ -1457,10 +1504,10 @@ module Individual_type_sig (Context : Builder_context) = struct
   open Helpers (Context)
   module Type_decls = Type_decls (Context)
 
-  let mk ~prims ~sort_def_map ~sort_binding_status ~info sort_name sort_def =
+  let mk ~prims ~sort_def_map ~sort_binding_status ~info ~pattern_style sort_name sort_def
+    =
     let (Syn.Sort_def.Sort_def (vars, _op_defs)) = sort_def in
     let var_names = List.map vars ~f:fst in
-    let var_names = "pattern" :: var_names in
     let var_names = match info with With_info -> "info" :: var_names | _ -> var_names in
     let params = List.map var_names ~f:plain_typ_var in
     let op_ctors =
@@ -1469,6 +1516,7 @@ module Individual_type_sig (Context : Builder_context) = struct
         ~sort_def_map
         ~prims
         ~info
+        ~pattern_style
         ~sort_name
         ~sort_binding_status
         sort_def
@@ -1476,9 +1524,11 @@ module Individual_type_sig (Context : Builder_context) = struct
     let manifest =
       let type_vars = List.map var_names ~f:ptyp_var in
       let module_names =
-        match info with
-        | With_info -> [ "Wrapper"; "Types"; sort_name ]
-        | Plain -> [ "Wrapper"; "Plain"; sort_name ]
+        match pattern_style, info with
+        | Binding_aware, With_info -> [ "Wrapper"; "Binding_aware"; sort_name ]
+        | Binding_aware, Plain -> failwith "unsupported: Binding_aware, Plain"
+        | Ordinary, With_info -> [ "Wrapper"; "Types"; sort_name ]
+        | Ordinary, Plain -> [ "Wrapper"; "Plain"; sort_name ]
       in
       Some (ptyp_constr { txt = unflatten module_names; loc } type_vars)
     in
@@ -1504,7 +1554,6 @@ module Individual_type_module (Context : Builder_context) = struct
   let mk ~prims ~sort_def_map ~sort_binding_status sort_name sort_def =
     let (Syn.Sort_def.Sort_def (vars, op_defs)) = sort_def in
     let var_names = List.map vars ~f:fst in
-    let var_names = "pattern" :: var_names in
     let type_vars = List.map var_names ~f:ptyp_var in
     let params = List.map var_names ~f:plain_typ_var in
     let plain_type_decl =
@@ -1520,6 +1569,7 @@ module Individual_type_module (Context : Builder_context) = struct
           ~sort_def_map
           ~prims
           ~info:Plain
+          ~pattern_style:Ordinary
           ~sort_name
           ~sort_binding_status
           sort_def
@@ -1548,6 +1598,7 @@ module Individual_type_module (Context : Builder_context) = struct
           ~sort_def_map
           ~prims
           ~info:With_info
+          ~pattern_style:Ordinary
           ~sort_name
           ~sort_binding_status
           sort_def
@@ -1688,8 +1739,44 @@ module Individual_type_module (Context : Builder_context) = struct
             [%%i plain_type_decl]
           end]
     in
+    let binding_aware_mod =
+      let binding_aware_type_decl =
+        let manifest =
+          Some
+            (ptyp_constr
+               { txt = unflatten [ "Wrapper"; "Binding_aware"; sort_name ]; loc }
+               (ptyp_var "info" :: type_vars))
+        in
+        let op_ctors =
+          Type_decls.mk_op_ctors
+            ~type_decl_context:Individual_type_module
+            ~sort_def_map
+            ~prims
+            ~info:With_info
+            ~pattern_style:Binding_aware
+            ~sort_name
+            ~sort_binding_status
+            sort_def
+        in
+        pstr_type
+          Recursive
+          [ type_declaration
+              ~name:{ txt = "t"; loc }
+              ~params:(plain_typ_var "info" :: params)
+              ~cstrs:[]
+              ~kind:(Ptype_variant op_ctors)
+              ~private_:Public
+              ~manifest
+          ]
+      in
+      [%stri
+        module Binding_aware = struct
+          [%%i binding_aware_type_decl]
+        end]
+    in
     let expr =
-      pmod_structure (((info_type_decl :: fun_defs) @ ctor_funs) @ [ plain_mod ])
+      pmod_structure
+        (((info_type_decl :: fun_defs) @ ctor_funs) @ [ plain_mod; binding_aware_mod ])
     in
     module_binding ~name:{ txt = Some (module_name sort_name); loc } ~expr |> pstr_module
   ;;
@@ -1736,6 +1823,7 @@ module Container_module (Context : Builder_context) = struct
     pmod_structure
       ([ wrapper_module
        ; [%stri module Types = Wrapper.Types]
+       ; [%stri module Binding_aware = Wrapper.Binding_aware]
        ; [%stri module Plain = Wrapper.Plain]
        ; [%stri let language = [%e Syntax_quoter.Exp.language ~loc lang]]
        ]
@@ -1768,12 +1856,13 @@ module Sig (Context : Builder_context) = struct
       List.map
         sort_defs
         ~f:(fun (sort_name, (Syn.Sort_def.Sort_def (vars, op_defs) as sort_def)) ->
-          let mk_ty info =
+          let mk_ty info pattern_style =
             Individual_type_sig.mk
               ~prims
               ~sort_def_map
               ~sort_binding_status
               ~info
+              ~pattern_style
               sort_name
               sort_def
           in
@@ -1788,10 +1877,6 @@ module Sig (Context : Builder_context) = struct
           let unique_vars = List.map unique_var_names ~f:(Tuple2.map ~f:ptyp_var) in
           let unique_vars_1, unique_vars_2 = List.unzip unique_vars in
           let info_v, taken = Unique.generate_name ~base:"info" taken in
-          let pattern_v, taken = Unique.generate_name ~base:"pattern" taken in
-          let pattern_v = ptyp_var pattern_v in
-          let unique_vars_1 = pattern_v :: unique_vars_1 in
-          let unique_vars_2 = pattern_v :: unique_vars_2 in
           let t = ptyp_constr { txt = Lident "t"; loc } in
           let plain_t = ptyp_constr { txt = unflatten [ "Plain"; "t" ]; loc } in
           let info_a, info_b =
@@ -1811,7 +1896,7 @@ module Sig (Context : Builder_context) = struct
               (value_description ~name:{ txt; loc } ~type_:(fold_ty ~init ~f) ~prim:[])
           in
           let signature_items =
-            [ mk_ty With_info
+            [ mk_ty With_info Ordinary
             ; [%sigi:
                 module Plain : [%m
                 let declare name ~f =
@@ -1820,7 +1905,7 @@ module Sig (Context : Builder_context) = struct
                 if List.is_empty vars
                 then
                   pmty_signature
-                    [ mk_ty Plain
+                    [ mk_ty Plain Ordinary
                     ; declare "pp" ~f:(fun ty -> [%type: [%t ty] Fmt.t])
                     ; declare
                         (if List.is_empty vars then "=" else "equal")
@@ -1831,7 +1916,10 @@ module Sig (Context : Builder_context) = struct
                     ; declare "unjsonify" ~f:(fun ty ->
                           [%type: [%t ty] Lvca_util.Json.deserializer])
                     ]
-                else pmty_signature [ mk_ty Plain ]]]
+                else pmty_signature [ mk_ty Plain Ordinary ]]]
+            ; [%sigi:
+                module Binding_aware : [%m
+                pmty_signature [ mk_ty With_info Binding_aware ]]]
             ; declare
                 "to_plain"
                 ~init:
@@ -1877,12 +1965,13 @@ module Sig (Context : Builder_context) = struct
           let args_of_arity =
             Ctor_decl.args_of_arity
               ~info:With_info
+              ~pattern_style:Ordinary
               ~type_decl_context:Individual_type_module
               ~var_names:taken
               ~mutual_sorts:sort_def_map
               ~prims
           in
-          let result_ty = "info" :: "pattern" :: var_names |> List.map ~f:ptyp_var |> t in
+          let result_ty = t (ptyp_var "info" :: List.map ~f:ptyp_var var_names) in
           let ctor_funs =
             List.map op_defs ~f:(fun (Operator_def (_, name, arity)) ->
                 (* Take the tail to remove the extra 'info arg *)

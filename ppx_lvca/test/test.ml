@@ -19,7 +19,7 @@ module Lang =
 integer : *
 string : *  // module Primitive.String
 maybe : * -> *
-list : * -> *  // module* List_model.List
+list : * -> *  // module List_model.List
 
 foo :=
   | Foo(integer)
