@@ -124,35 +124,12 @@ module List_model :
           | Nil of 'info 
           | Cons of 'info * 'a * ('info, 'a) list 
       end
-      module Binding_aware :
-      sig
-        type ('info, 'a) list =
-          | Nil of 'info 
-          | Cons of 'info * 'a * ('info, 'a) list 
-      end
-      module Plain : sig type 'a list =
-                           | Nil 
-                           | Cons of 'a * 'a list  end
     end
     module List :
     sig
       type ('info, 'a) t = ('info, 'a) Wrapper.Types.list =
         | Nil of 'info 
         | Cons of 'info * 'a * ('info, 'a) Wrapper.Types.list 
-      module Plain :
-      sig
-        type 'a t = 'a Wrapper.Plain.list =
-          | Nil 
-          | Cons of 'a * 'a Wrapper.Plain.list 
-      end
-      module Binding_aware :
-      sig
-        type ('info, 'a) t = ('info, 'a) Wrapper.Binding_aware.list =
-          | Nil of 'info 
-          | Cons of 'info * 'a * ('info, 'a) Wrapper.Binding_aware.list 
-      end
-      val to_plain : ('a_ -> 'a__) -> (_, 'a_) t -> 'a__ Plain.t
-      val of_plain : ('a_ -> 'a__) -> 'a_ Plain.t -> (unit, 'a__) t
       val to_nominal :
         ('a_ -> 'infoa Lvca_syntax.Nominal.Term.t) ->
           ('infoa, 'a_) t -> 'infoa Lvca_syntax.Nominal.Term.t
@@ -180,33 +157,10 @@ module List_model :
               | Nil of 'info 
               | Cons of 'info * 'a * ('info, 'a) list 
           end
-        module Binding_aware =
-          struct
-            type ('info, 'a) list =
-              | Nil of 'info 
-              | Cons of 'info * 'a * ('info, 'a) list 
-          end
-        module Plain = struct type 'a list =
-                                | Nil 
-                                | Cons of 'a * 'a list  end
         module Info =
           struct
             let list _a =
               function | Types.Nil x0 -> x0 | Types.Cons (x0, _, _) -> x0
-          end
-        module To_plain =
-          struct
-            let rec list a =
-              function
-              | Types.Nil _ -> Plain.Nil
-              | Types.Cons (_, x1, x2) -> Plain.Cons ((a x1), (list a x2))
-          end
-        module Of_plain =
-          struct
-            let rec list a =
-              function
-              | Plain.Nil -> Types.Nil ()
-              | Plain.Cons (x1, x2) -> Types.Cons ((), (a x1), (list a x2))
           end
         module Map_info =
           struct
@@ -248,8 +202,6 @@ module List_model :
           end
       end
     module Types = Wrapper.Types
-    module Binding_aware = Wrapper.Binding_aware
-    module Plain = Wrapper.Plain
     let language =
       let open Lvca_syntax.Abstract_syntax in
         {
@@ -361,25 +313,11 @@ module List_model :
           | Nil of 'info 
           | Cons of 'info * 'a * ('info, 'a) Wrapper.Types.list 
         let info = Wrapper.Info.list
-        let to_plain = Wrapper.To_plain.list
-        let of_plain = Wrapper.Of_plain.list
         let map_info = Wrapper.Map_info.list
         let to_nominal = Wrapper.To_nominal.list
         let of_nominal = Wrapper.Of_nominal.list
         let mk_Nil ~info  = Nil info
         let mk_Cons ~info  x_0 x_1 = Cons (info, x_0, x_1)
-        module Plain =
-          struct
-            type 'a t = 'a Wrapper.Plain.list =
-              | Nil 
-              | Cons of 'a * 'a Wrapper.Plain.list 
-          end
-        module Binding_aware =
-          struct
-            type ('info, 'a) t = ('info, 'a) Wrapper.Binding_aware.list =
-              | Nil of 'info 
-              | Cons of 'info * 'a * ('info, 'a) Wrapper.Binding_aware.list 
-          end
       end
   end 
 module Lang =
@@ -410,54 +348,6 @@ module Lang =
               | Nonempty of 'info * 'info Primitive.String.t * ('info,
               'info Primitive.String.t) List_model.List.t 
           end
-        module Binding_aware =
-          struct
-            type 'info nat =
-              | Z of 'info 
-              | S of 'info * 'info nat 
-            and 'info mut_a =
-              | Mut_a of 'info * 'info mut_b 
-            and 'info mut_b =
-              | Mut_b of 'info * 'info mut_a 
-            and 'info term =
-              | Operator of 'info * ('info, 'info term) List_model.List.t 
-            and ('info, 'a, 'b) pair_plus =
-              | PairPlus of 'info * 'a * 'b * 'info foo 
-            and 'info foo =
-              | Foo of 'info * 'info Lvca_syntax.Nominal.Term.t 
-              | Bar of 'info * ('info Binding_aware_pattern.t * 'info
-              Lvca_syntax.Single_var.t * 'info foo) 
-              | Foo_var of 'info * string 
-            and ('info, 'a, 'b) pair =
-              | Pair of 'info * 'a * 'b 
-            and 'info nonempty =
-              | Nonempty of 'info * 'info Primitive.String.t * ('info,
-              'info Primitive.String.t) List_model.List.t 
-          end
-        module Plain =
-          struct
-            type nat =
-              | Z 
-              | S of nat 
-            and mut_a =
-              | Mut_a of mut_b 
-            and mut_b =
-              | Mut_b of mut_a 
-            and term =
-              | Operator of term List_model.List.Plain.t 
-            and ('a, 'b) pair_plus =
-              | PairPlus of 'a * 'b * foo 
-            and foo =
-              | Foo of Lvca_syntax.Nominal.Term.Plain.t 
-              | Bar of (Pattern.Plain.t * Lvca_syntax.Single_var.Plain.t *
-              foo) 
-              | Foo_var of string 
-            and ('a, 'b) pair =
-              | Pair of 'a * 'b 
-            and nonempty =
-              | Nonempty of Primitive.String.Plain.t *
-              Primitive.String.Plain.t List_model.List.Plain.t 
-          end
         module Info =
           struct
             let nonempty = function | Types.Nonempty (x0, _, _) -> x0
@@ -473,83 +363,6 @@ module Lang =
             let mut_a = function | Types.Mut_a (x0, _) -> x0
             and mut_b = function | Types.Mut_b (x0, _) -> x0
             let nat = function | Types.Z x0 -> x0 | Types.S (x0, _) -> x0
-          end
-        module To_plain =
-          struct
-            let nonempty =
-              function
-              | Types.Nonempty (_, x1, x2) ->
-                  Plain.Nonempty
-                    ((Primitive.String.to_plain x1),
-                      (List_model.List.to_plain Primitive.String.to_plain x2))
-            let pair a b =
-              function
-              | Types.Pair (_, x1, x2) -> Plain.Pair ((a x1), (b x2))
-            let rec foo =
-              function
-              | Types.Foo (_, x1) ->
-                  Plain.Foo (Lvca_syntax.Nominal.Term.to_plain x1)
-              | Types.Bar (_, (x1, x2, x3)) ->
-                  Plain.Bar
-                    ((Lvca_syntax.Pattern.to_plain x1),
-                      (let open Lvca_syntax.Single_var.Plain in
-                         { name = (x2.name) }), (foo x3))
-              | Types.Foo_var (_, name) -> Plain.Foo_var name
-            let pair_plus a b =
-              function
-              | Types.PairPlus (_, x1, x2, x3) ->
-                  Plain.PairPlus ((a x1), (b x2), (foo x3))
-            let rec term =
-              function
-              | Types.Operator (_, x1) ->
-                  Plain.Operator (List_model.List.to_plain term x1)
-            let rec mut_a =
-              function | Types.Mut_a (_, x1) -> Plain.Mut_a (mut_b x1)
-            and mut_b =
-              function | Types.Mut_b (_, x1) -> Plain.Mut_b (mut_a x1)
-            let rec nat =
-              function
-              | Types.Z _ -> Plain.Z
-              | Types.S (_, x1) -> Plain.S (nat x1)
-          end
-        module Of_plain =
-          struct
-            let nonempty =
-              function
-              | Plain.Nonempty (x1, x2) ->
-                  Types.Nonempty
-                    ((), (Primitive.String.of_plain x1),
-                      (List_model.List.of_plain Primitive.String.of_plain x2))
-            let pair a b =
-              function
-              | Plain.Pair (x1, x2) -> Types.Pair ((), (a x1), (b x2))
-            let rec foo =
-              function
-              | Plain.Foo x1 ->
-                  Types.Foo ((), (Lvca_syntax.Nominal.Term.of_plain x1))
-              | Plain.Bar (x1, x2, x3) ->
-                  Types.Bar
-                    ((),
-                      ((Lvca_syntax.Pattern.of_plain x1),
-                        (let open Lvca_syntax.Single_var in
-                           { info = (); name = (x2.name) }), (foo x3)))
-              | Plain.Foo_var name -> Types.Foo_var ((), name)
-            let pair_plus a b =
-              function
-              | Plain.PairPlus (x1, x2, x3) ->
-                  Types.PairPlus ((), (a x1), (b x2), (foo x3))
-            let rec term =
-              function
-              | Plain.Operator x1 ->
-                  Types.Operator ((), (List_model.List.of_plain term x1))
-            let rec mut_a =
-              function | Plain.Mut_a x1 -> Types.Mut_a ((), (mut_b x1))
-            and mut_b =
-              function | Plain.Mut_b x1 -> Types.Mut_b ((), (mut_a x1))
-            let rec nat =
-              function
-              | Plain.Z -> Types.Z ()
-              | Plain.S x1 -> Types.S ((), (nat x1))
           end
         module Map_info =
           struct
@@ -780,8 +593,6 @@ module Lang =
           end
       end
     module Types = Wrapper.Types
-    module Binding_aware = Wrapper.Binding_aware
-    module Plain = Wrapper.Plain
     let language =
       let open Lvca_syntax.Abstract_syntax in
         {
@@ -1335,60 +1146,12 @@ module Lang =
           * 'info Wrapper.Types.foo) 
           | Foo_var of 'info * string 
         let info = Wrapper.Info.foo
-        let to_plain = Wrapper.To_plain.foo
-        let of_plain = Wrapper.Of_plain.foo
         let map_info = Wrapper.Map_info.foo
         let to_nominal = Wrapper.To_nominal.foo
         let of_nominal = Wrapper.Of_nominal.foo
         let mk_Foo ~info  x_0 = Foo (info, x_0)
         let mk_Bar ~info  x_0 = Bar (info, x_0)
         let mk_Foo_var ~info  name = Foo_var (info, name)
-        module Plain =
-          struct
-            type t = Wrapper.Plain.foo =
-              | Foo of Lvca_syntax.Nominal.Term.Plain.t 
-              | Bar of (Pattern.Plain.t * Lvca_syntax.Single_var.Plain.t *
-              Wrapper.Plain.foo) 
-              | Foo_var of string 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.foo =
-              | Foo of 'info * 'info Lvca_syntax.Nominal.Term.t 
-              | Bar of 'info * ('info Binding_aware_pattern.t * 'info
-              Lvca_syntax.Single_var.t * 'info Wrapper.Binding_aware.foo) 
-              | Foo_var of 'info * string 
-          end
       end
     module Nat =
       struct
@@ -1396,101 +1159,31 @@ module Lang =
           | Z of 'info 
           | S of 'info * 'info Wrapper.Types.nat 
         let info = Wrapper.Info.nat
-        let to_plain = Wrapper.To_plain.nat
-        let of_plain = Wrapper.Of_plain.nat
         let map_info = Wrapper.Map_info.nat
         let to_nominal = Wrapper.To_nominal.nat
         let of_nominal = Wrapper.Of_nominal.nat
         let mk_Z ~info  = Z info
         let mk_S ~info  x_0 = S (info, x_0)
-        module Plain =
-          struct
-            type t = Wrapper.Plain.nat =
-              | Z 
-              | S of Wrapper.Plain.nat 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.nat =
-              | Z of 'info 
-              | S of 'info * 'info Wrapper.Binding_aware.nat 
-          end
       end
     module Pair =
       struct
         type ('info, 'a, 'b) t = ('info, 'a, 'b) Wrapper.Types.pair =
           | Pair of 'info * 'a * 'b 
         let info = Wrapper.Info.pair
-        let to_plain = Wrapper.To_plain.pair
-        let of_plain = Wrapper.Of_plain.pair
         let map_info = Wrapper.Map_info.pair
         let to_nominal = Wrapper.To_nominal.pair
         let of_nominal = Wrapper.Of_nominal.pair
         let mk_Pair ~info  x_0 x_1 = Pair (info, x_0, x_1)
-        module Plain =
-          struct
-            type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair =
-              | Pair of 'a * 'b 
-          end
-        module Binding_aware =
-          struct
-            type ('info, 'a, 'b) t =
-              ('info, 'a, 'b) Wrapper.Binding_aware.pair =
-              | Pair of 'info * 'a * 'b 
-          end
       end
     module Pair_plus =
       struct
         type ('info, 'a, 'b) t = ('info, 'a, 'b) Wrapper.Types.pair_plus =
           | PairPlus of 'info * 'a * 'b * 'info Wrapper.Types.foo 
         let info = Wrapper.Info.pair_plus
-        let to_plain = Wrapper.To_plain.pair_plus
-        let of_plain = Wrapper.Of_plain.pair_plus
         let map_info = Wrapper.Map_info.pair_plus
         let to_nominal = Wrapper.To_nominal.pair_plus
         let of_nominal = Wrapper.Of_nominal.pair_plus
         let mk_PairPlus ~info  x_0 x_1 x_2 = PairPlus (info, x_0, x_1, x_2)
-        module Plain =
-          struct
-            type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair_plus =
-              | PairPlus of 'a * 'b * Wrapper.Plain.foo 
-          end
-        module Binding_aware =
-          struct
-            type ('info, 'a, 'b) t =
-              ('info, 'a, 'b) Wrapper.Binding_aware.pair_plus =
-              | PairPlus of 'info * 'a * 'b * 'info Wrapper.Binding_aware.foo 
-          end
       end
     module Nonempty =
       struct
@@ -1498,54 +1191,10 @@ module Lang =
           | Nonempty of 'info * 'info Primitive.String.t * ('info,
           'info Primitive.String.t) List_model.List.t 
         let info = Wrapper.Info.nonempty
-        let to_plain = Wrapper.To_plain.nonempty
-        let of_plain = Wrapper.Of_plain.nonempty
         let map_info = Wrapper.Map_info.nonempty
         let to_nominal = Wrapper.To_nominal.nonempty
         let of_nominal = Wrapper.Of_nominal.nonempty
         let mk_Nonempty ~info  x_0 x_1 = Nonempty (info, x_0, x_1)
-        module Plain =
-          struct
-            type t = Wrapper.Plain.nonempty =
-              | Nonempty of Primitive.String.Plain.t *
-              Primitive.String.Plain.t List_model.List.Plain.t 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.nonempty =
-              | Nonempty of 'info * 'info Primitive.String.t * ('info,
-              'info Primitive.String.t) List_model.List.t 
-          end
       end
     module Term =
       struct
@@ -1553,157 +1202,30 @@ module Lang =
           | Operator of 'info * ('info, 'info Wrapper.Types.term)
           List_model.List.t 
         let info = Wrapper.Info.term
-        let to_plain = Wrapper.To_plain.term
-        let of_plain = Wrapper.Of_plain.term
         let map_info = Wrapper.Map_info.term
         let to_nominal = Wrapper.To_nominal.term
         let of_nominal = Wrapper.Of_nominal.term
         let mk_Operator ~info  x_0 = Operator (info, x_0)
-        module Plain =
-          struct
-            type t = Wrapper.Plain.term =
-              | Operator of Wrapper.Plain.term List_model.List.Plain.t 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.term =
-              | Operator of 'info * ('info, 'info Wrapper.Binding_aware.term)
-              List_model.List.t 
-          end
       end
     module Mut_a =
       struct
         type 'info t = 'info Wrapper.Types.mut_a =
           | Mut_a of 'info * 'info Wrapper.Types.mut_b 
         let info = Wrapper.Info.mut_a
-        let to_plain = Wrapper.To_plain.mut_a
-        let of_plain = Wrapper.Of_plain.mut_a
         let map_info = Wrapper.Map_info.mut_a
         let to_nominal = Wrapper.To_nominal.mut_a
         let of_nominal = Wrapper.Of_nominal.mut_a
         let mk_Mut_a ~info  x_0 = Mut_a (info, x_0)
-        module Plain =
-          struct
-            type t = Wrapper.Plain.mut_a =
-              | Mut_a of Wrapper.Plain.mut_b 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.mut_a =
-              | Mut_a of 'info * 'info Wrapper.Binding_aware.mut_b 
-          end
       end
     module Mut_b =
       struct
         type 'info t = 'info Wrapper.Types.mut_b =
           | Mut_b of 'info * 'info Wrapper.Types.mut_a 
         let info = Wrapper.Info.mut_b
-        let to_plain = Wrapper.To_plain.mut_b
-        let of_plain = Wrapper.Of_plain.mut_b
         let map_info = Wrapper.Map_info.mut_b
         let to_nominal = Wrapper.To_nominal.mut_b
         let of_nominal = Wrapper.Of_nominal.mut_b
         let mk_Mut_b ~info  x_0 = Mut_b (info, x_0)
-        module Plain =
-          struct
-            type t = Wrapper.Plain.mut_b =
-              | Mut_b of Wrapper.Plain.mut_a 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.mut_b =
-              | Mut_b of 'info * 'info Wrapper.Binding_aware.mut_a 
-          end
       end
   end
 module Ifz_lang :
@@ -1719,19 +1241,6 @@ module Ifz_lang :
           'info ifz) * 'info ifz 
           | Ifz_var of 'info * string 
       end
-      module Binding_aware :
-      sig
-        type 'info ifz =
-          | Ifz of 'info * 'info ifz * ('info Lvca_syntax.Single_var.t *
-          'info ifz) * 'info ifz 
-          | Ifz_var of 'info * string 
-      end
-      module Plain :
-      sig
-        type ifz =
-          | Ifz of ifz * (Lvca_syntax.Single_var.Plain.t * ifz) * ifz 
-          | Ifz_var of string 
-      end
     end
     module Ifz :
     sig
@@ -1740,28 +1249,6 @@ module Ifz_lang :
         Lvca_syntax.Single_var.t * 'info Wrapper.Types.ifz) * 'info
         Wrapper.Types.ifz 
         | Ifz_var of 'info * string 
-      module Plain :
-      sig
-        type t = Wrapper.Plain.ifz =
-          | Ifz of Wrapper.Plain.ifz * (Lvca_syntax.Single_var.Plain.t *
-          Wrapper.Plain.ifz) * Wrapper.Plain.ifz 
-          | Ifz_var of string 
-        val pp : t Fmt.t
-        val (=) : t -> t -> bool
-        val parse : t Lvca_parsing.t
-        val jsonify : t Lvca_util.Json.serializer
-        val unjsonify : t Lvca_util.Json.deserializer
-      end
-      module Binding_aware :
-      sig
-        type 'info t = 'info Wrapper.Binding_aware.ifz =
-          | Ifz of 'info * 'info Wrapper.Binding_aware.ifz * ('info
-          Lvca_syntax.Single_var.t * 'info Wrapper.Binding_aware.ifz) * 'info
-          Wrapper.Binding_aware.ifz 
-          | Ifz_var of 'info * string 
-      end
-      val to_plain : _ t -> Plain.t
-      val of_plain : Plain.t -> unit t
       val to_nominal : 'infoa t -> 'infoa Lvca_syntax.Nominal.Term.t
       val of_nominal :
         'infoa Lvca_syntax.Nominal.Term.t ->
@@ -1786,48 +1273,12 @@ module Ifz_lang :
               'info ifz) * 'info ifz 
               | Ifz_var of 'info * string 
           end
-        module Binding_aware =
-          struct
-            type 'info ifz =
-              | Ifz of 'info * 'info ifz * ('info Lvca_syntax.Single_var.t *
-              'info ifz) * 'info ifz 
-              | Ifz_var of 'info * string 
-          end
-        module Plain =
-          struct
-            type ifz =
-              | Ifz of ifz * (Lvca_syntax.Single_var.Plain.t * ifz) * ifz 
-              | Ifz_var of string 
-          end
         module Info =
           struct
             let ifz =
               function
               | Types.Ifz (x0, _, (_, _), _) -> x0
               | Types.Ifz_var (info, _) -> info
-          end
-        module To_plain =
-          struct
-            let rec ifz =
-              function
-              | Types.Ifz (_, x1, (x2, x3), x4) ->
-                  Plain.Ifz
-                    ((ifz x1),
-                      ((let open Lvca_syntax.Single_var.Plain in
-                          { name = (x2.name) }), (ifz x3)), (ifz x4))
-              | Types.Ifz_var (_, name) -> Plain.Ifz_var name
-          end
-        module Of_plain =
-          struct
-            let rec ifz =
-              function
-              | Plain.Ifz (x1, (x2, x3), x4) ->
-                  Types.Ifz
-                    ((), (ifz x1),
-                      ((let open Lvca_syntax.Single_var in
-                          { info = (); name = (x2.name) }), (ifz x3)),
-                      (ifz x4))
-              | Plain.Ifz_var name -> Types.Ifz_var ((), name)
           end
         module Map_info =
           struct
@@ -1887,8 +1338,6 @@ module Ifz_lang :
           end
       end
     module Types = Wrapper.Types
-    module Binding_aware = Wrapper.Binding_aware
-    module Plain = Wrapper.Plain
     let language =
       let open Lvca_syntax.Abstract_syntax in
         {
@@ -1974,58 +1423,11 @@ module Ifz_lang :
           Wrapper.Types.ifz 
           | Ifz_var of 'info * string 
         let info = Wrapper.Info.ifz
-        let to_plain = Wrapper.To_plain.ifz
-        let of_plain = Wrapper.Of_plain.ifz
         let map_info = Wrapper.Map_info.ifz
         let to_nominal = Wrapper.To_nominal.ifz
         let of_nominal = Wrapper.Of_nominal.ifz
         let mk_Ifz ~info  x_0 x_1 x_2 = Ifz (info, x_0, x_1, x_2)
         let mk_Ifz_var ~info  name = Ifz_var (info, name)
-        module Plain =
-          struct
-            type t = Wrapper.Plain.ifz =
-              | Ifz of Wrapper.Plain.ifz * (Lvca_syntax.Single_var.Plain.t *
-              Wrapper.Plain.ifz) * Wrapper.Plain.ifz 
-              | Ifz_var of string 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.ifz =
-              | Ifz of 'info * 'info Wrapper.Binding_aware.ifz * ('info
-              Lvca_syntax.Single_var.t * 'info Wrapper.Binding_aware.ifz) *
-              'info Wrapper.Binding_aware.ifz 
-              | Ifz_var of 'info * string 
-          end
       end
   end 
 module List_lang =
@@ -2059,57 +1461,6 @@ module List_lang =
               | Nil of 'info 
               | Cons of 'info * 'a * ('info, 'a) list 
           end
-        module Binding_aware =
-          struct
-            type 'info list_external =
-              | List_external of 'info * ('info,
-              'info Lvca_syntax.Nominal.Term.t) list 
-            and 'info list_predefined =
-              | List_predefined of 'info * ('info, 'info predefined) list 
-            and 'info list_list_string_2 =
-              | List_list_string_2 of 'info * ('info,
-              'info Lvca_syntax.Nominal.Term.t) list_list_a 
-            and 'info list_list_string_1 =
-              | List_list_string_1 of 'info * ('info,
-              ('info, 'info Lvca_syntax.Nominal.Term.t) list) list 
-            and 'info list_list_predefined_2 =
-              | List_list_predefined_2 of 'info * ('info, 'info predefined)
-              list_list_a 
-            and ('info, 'a) list_list_a =
-              | List_list_a of 'info * ('info, ('info, 'a) list) list 
-            and 'info list_list_predefined_1 =
-              | List_list_predefined_1 of 'info * ('info,
-              ('info, 'info predefined) list) list 
-            and 'info predefined =
-              | Predefined of 'info 
-            and ('info, 'a) list =
-              | Nil of 'info 
-              | Cons of 'info * 'a * ('info, 'a) list 
-          end
-        module Plain =
-          struct
-            type list_external =
-              | List_external of Lvca_syntax.Nominal.Term.Plain.t list 
-            and list_predefined =
-              | List_predefined of predefined list 
-            and list_list_string_2 =
-              | List_list_string_2 of Lvca_syntax.Nominal.Term.Plain.t
-              list_list_a 
-            and list_list_string_1 =
-              | List_list_string_1 of Lvca_syntax.Nominal.Term.Plain.t list
-              list 
-            and list_list_predefined_2 =
-              | List_list_predefined_2 of predefined list_list_a 
-            and 'a list_list_a =
-              | List_list_a of 'a list list 
-            and list_list_predefined_1 =
-              | List_list_predefined_1 of predefined list list 
-            and predefined =
-              | Predefined 
-            and 'a list =
-              | Nil 
-              | Cons of 'a * 'a list 
-          end
         module Info =
           struct
             let list _a =
@@ -2127,88 +1478,6 @@ module List_lang =
             let list_predefined =
               function | Types.List_predefined (x0, _) -> x0
             let list_external = function | Types.List_external (x0, _) -> x0
-          end
-        module To_plain =
-          struct
-            let rec list a =
-              function
-              | Types.Nil _ -> Plain.Nil
-              | Types.Cons (_, x1, x2) -> Plain.Cons ((a x1), (list a x2))
-            let predefined =
-              function | Types.Predefined _ -> Plain.Predefined
-            let list_list_predefined_1 =
-              function
-              | Types.List_list_predefined_1 (_, x1) ->
-                  Plain.List_list_predefined_1 (list (list predefined) x1)
-            let list_list_a a =
-              function
-              | Types.List_list_a (_, x1) ->
-                  Plain.List_list_a (list (list a) x1)
-            let list_list_predefined_2 =
-              function
-              | Types.List_list_predefined_2 (_, x1) ->
-                  Plain.List_list_predefined_2 (list_list_a predefined x1)
-            let list_list_string_1 =
-              function
-              | Types.List_list_string_1 (_, x1) ->
-                  Plain.List_list_string_1
-                    (list (list Lvca_syntax.Nominal.Term.to_plain) x1)
-            let list_list_string_2 =
-              function
-              | Types.List_list_string_2 (_, x1) ->
-                  Plain.List_list_string_2
-                    (list_list_a Lvca_syntax.Nominal.Term.to_plain x1)
-            let list_predefined =
-              function
-              | Types.List_predefined (_, x1) ->
-                  Plain.List_predefined (list predefined x1)
-            let list_external =
-              function
-              | Types.List_external (_, x1) ->
-                  Plain.List_external
-                    (list Lvca_syntax.Nominal.Term.to_plain x1)
-          end
-        module Of_plain =
-          struct
-            let rec list a =
-              function
-              | Plain.Nil -> Types.Nil ()
-              | Plain.Cons (x1, x2) -> Types.Cons ((), (a x1), (list a x2))
-            let predefined =
-              function | Plain.Predefined -> Types.Predefined ()
-            let list_list_predefined_1 =
-              function
-              | Plain.List_list_predefined_1 x1 ->
-                  Types.List_list_predefined_1
-                    ((), (list (list predefined) x1))
-            let list_list_a a =
-              function
-              | Plain.List_list_a x1 ->
-                  Types.List_list_a ((), (list (list a) x1))
-            let list_list_predefined_2 =
-              function
-              | Plain.List_list_predefined_2 x1 ->
-                  Types.List_list_predefined_2
-                    ((), (list_list_a predefined x1))
-            let list_list_string_1 =
-              function
-              | Plain.List_list_string_1 x1 ->
-                  Types.List_list_string_1
-                    ((), (list (list Lvca_syntax.Nominal.Term.of_plain) x1))
-            let list_list_string_2 =
-              function
-              | Plain.List_list_string_2 x1 ->
-                  Types.List_list_string_2
-                    ((), (list_list_a Lvca_syntax.Nominal.Term.of_plain x1))
-            let list_predefined =
-              function
-              | Plain.List_predefined x1 ->
-                  Types.List_predefined ((), (list predefined x1))
-            let list_external =
-              function
-              | Plain.List_external x1 ->
-                  Types.List_external
-                    ((), (list Lvca_syntax.Nominal.Term.of_plain x1))
           end
         module Map_info =
           struct
@@ -2421,8 +1690,6 @@ module List_lang =
           end
       end
     module Types = Wrapper.Types
-    module Binding_aware = Wrapper.Binding_aware
-    module Plain = Wrapper.Plain
     let language =
       let open Lvca_syntax.Abstract_syntax in
         {
@@ -3193,52 +2460,10 @@ module List_lang =
         type 'info t = 'info Wrapper.Types.predefined =
           | Predefined of 'info 
         let info = Wrapper.Info.predefined
-        let to_plain = Wrapper.To_plain.predefined
-        let of_plain = Wrapper.Of_plain.predefined
         let map_info = Wrapper.Map_info.predefined
         let to_nominal = Wrapper.To_nominal.predefined
         let of_nominal = Wrapper.Of_nominal.predefined
         let mk_Predefined ~info  = Predefined info
-        module Plain =
-          struct
-            type t = Wrapper.Plain.predefined =
-              | Predefined 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.predefined =
-              | Predefined of 'info 
-          end
       end
     module List =
       struct
@@ -3246,25 +2471,11 @@ module List_lang =
           | Nil of 'info 
           | Cons of 'info * 'a * ('info, 'a) Wrapper.Types.list 
         let info = Wrapper.Info.list
-        let to_plain = Wrapper.To_plain.list
-        let of_plain = Wrapper.Of_plain.list
         let map_info = Wrapper.Map_info.list
         let to_nominal = Wrapper.To_nominal.list
         let of_nominal = Wrapper.Of_nominal.list
         let mk_Nil ~info  = Nil info
         let mk_Cons ~info  x_0 x_1 = Cons (info, x_0, x_1)
-        module Plain =
-          struct
-            type 'a t = 'a Wrapper.Plain.list =
-              | Nil 
-              | Cons of 'a * 'a Wrapper.Plain.list 
-          end
-        module Binding_aware =
-          struct
-            type ('info, 'a) t = ('info, 'a) Wrapper.Binding_aware.list =
-              | Nil of 'info 
-              | Cons of 'info * 'a * ('info, 'a) Wrapper.Binding_aware.list 
-          end
       end
     module List_external =
       struct
@@ -3272,54 +2483,10 @@ module List_lang =
           | List_external of 'info * ('info,
           'info Lvca_syntax.Nominal.Term.t) Wrapper.Types.list 
         let info = Wrapper.Info.list_external
-        let to_plain = Wrapper.To_plain.list_external
-        let of_plain = Wrapper.Of_plain.list_external
         let map_info = Wrapper.Map_info.list_external
         let to_nominal = Wrapper.To_nominal.list_external
         let of_nominal = Wrapper.Of_nominal.list_external
         let mk_List_external ~info  x_0 = List_external (info, x_0)
-        module Plain =
-          struct
-            type t = Wrapper.Plain.list_external =
-              | List_external of Lvca_syntax.Nominal.Term.Plain.t
-              Wrapper.Plain.list 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.list_external =
-              | List_external of 'info * ('info,
-              'info Lvca_syntax.Nominal.Term.t) Wrapper.Binding_aware.list 
-          end
       end
     module List_predefined =
       struct
@@ -3327,55 +2494,10 @@ module List_lang =
           | List_predefined of 'info * ('info,
           'info Wrapper.Types.predefined) Wrapper.Types.list 
         let info = Wrapper.Info.list_predefined
-        let to_plain = Wrapper.To_plain.list_predefined
-        let of_plain = Wrapper.Of_plain.list_predefined
         let map_info = Wrapper.Map_info.list_predefined
         let to_nominal = Wrapper.To_nominal.list_predefined
         let of_nominal = Wrapper.Of_nominal.list_predefined
         let mk_List_predefined ~info  x_0 = List_predefined (info, x_0)
-        module Plain =
-          struct
-            type t = Wrapper.Plain.list_predefined =
-              | List_predefined of Wrapper.Plain.predefined
-              Wrapper.Plain.list 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.list_predefined =
-              | List_predefined of 'info * ('info,
-              'info Wrapper.Binding_aware.predefined)
-              Wrapper.Binding_aware.list 
-          end
       end
     module List_list_a =
       struct
@@ -3383,25 +2505,10 @@ module List_lang =
           | List_list_a of 'info * ('info, ('info, 'a) Wrapper.Types.list)
           Wrapper.Types.list 
         let info = Wrapper.Info.list_list_a
-        let to_plain = Wrapper.To_plain.list_list_a
-        let of_plain = Wrapper.Of_plain.list_list_a
         let map_info = Wrapper.Map_info.list_list_a
         let to_nominal = Wrapper.To_nominal.list_list_a
         let of_nominal = Wrapper.Of_nominal.list_list_a
         let mk_List_list_a ~info  x_0 = List_list_a (info, x_0)
-        module Plain =
-          struct
-            type 'a t = 'a Wrapper.Plain.list_list_a =
-              | List_list_a of 'a Wrapper.Plain.list Wrapper.Plain.list 
-          end
-        module Binding_aware =
-          struct
-            type ('info, 'a) t =
-              ('info, 'a) Wrapper.Binding_aware.list_list_a =
-              | List_list_a of 'info * ('info,
-              ('info, 'a) Wrapper.Binding_aware.list)
-              Wrapper.Binding_aware.list 
-          end
       end
     module List_list_string_1 =
       struct
@@ -3410,56 +2517,10 @@ module List_lang =
           ('info, 'info Lvca_syntax.Nominal.Term.t) Wrapper.Types.list)
           Wrapper.Types.list 
         let info = Wrapper.Info.list_list_string_1
-        let to_plain = Wrapper.To_plain.list_list_string_1
-        let of_plain = Wrapper.Of_plain.list_list_string_1
         let map_info = Wrapper.Map_info.list_list_string_1
         let to_nominal = Wrapper.To_nominal.list_list_string_1
         let of_nominal = Wrapper.Of_nominal.list_list_string_1
         let mk_List_list_string_1 ~info  x_0 = List_list_string_1 (info, x_0)
-        module Plain =
-          struct
-            type t = Wrapper.Plain.list_list_string_1 =
-              | List_list_string_1 of Lvca_syntax.Nominal.Term.Plain.t
-              Wrapper.Plain.list Wrapper.Plain.list 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.list_list_string_1 =
-              | List_list_string_1 of 'info * ('info,
-              ('info, 'info Lvca_syntax.Nominal.Term.t)
-                Wrapper.Binding_aware.list)
-              Wrapper.Binding_aware.list 
-          end
       end
     module List_list_string_2 =
       struct
@@ -3467,55 +2528,10 @@ module List_lang =
           | List_list_string_2 of 'info * ('info,
           'info Lvca_syntax.Nominal.Term.t) Wrapper.Types.list_list_a 
         let info = Wrapper.Info.list_list_string_2
-        let to_plain = Wrapper.To_plain.list_list_string_2
-        let of_plain = Wrapper.Of_plain.list_list_string_2
         let map_info = Wrapper.Map_info.list_list_string_2
         let to_nominal = Wrapper.To_nominal.list_list_string_2
         let of_nominal = Wrapper.Of_nominal.list_list_string_2
         let mk_List_list_string_2 ~info  x_0 = List_list_string_2 (info, x_0)
-        module Plain =
-          struct
-            type t = Wrapper.Plain.list_list_string_2 =
-              | List_list_string_2 of Lvca_syntax.Nominal.Term.Plain.t
-              Wrapper.Plain.list_list_a 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.list_list_string_2 =
-              | List_list_string_2 of 'info * ('info,
-              'info Lvca_syntax.Nominal.Term.t)
-              Wrapper.Binding_aware.list_list_a 
-          end
       end
     module List_list_predefined_1 =
       struct
@@ -3524,58 +2540,11 @@ module List_lang =
           ('info, 'info Wrapper.Types.predefined) Wrapper.Types.list)
           Wrapper.Types.list 
         let info = Wrapper.Info.list_list_predefined_1
-        let to_plain = Wrapper.To_plain.list_list_predefined_1
-        let of_plain = Wrapper.Of_plain.list_list_predefined_1
         let map_info = Wrapper.Map_info.list_list_predefined_1
         let to_nominal = Wrapper.To_nominal.list_list_predefined_1
         let of_nominal = Wrapper.Of_nominal.list_list_predefined_1
         let mk_List_list_predefined_1 ~info  x_0 =
           List_list_predefined_1 (info, x_0)
-        module Plain =
-          struct
-            type t = Wrapper.Plain.list_list_predefined_1 =
-              | List_list_predefined_1 of Wrapper.Plain.predefined
-              Wrapper.Plain.list Wrapper.Plain.list 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.list_list_predefined_1
-              =
-              | List_list_predefined_1 of 'info * ('info,
-              ('info, 'info Wrapper.Binding_aware.predefined)
-                Wrapper.Binding_aware.list)
-              Wrapper.Binding_aware.list 
-          end
       end
     module List_list_predefined_2 =
       struct
@@ -3583,57 +2552,11 @@ module List_lang =
           | List_list_predefined_2 of 'info * ('info,
           'info Wrapper.Types.predefined) Wrapper.Types.list_list_a 
         let info = Wrapper.Info.list_list_predefined_2
-        let to_plain = Wrapper.To_plain.list_list_predefined_2
-        let of_plain = Wrapper.Of_plain.list_list_predefined_2
         let map_info = Wrapper.Map_info.list_list_predefined_2
         let to_nominal = Wrapper.To_nominal.list_list_predefined_2
         let of_nominal = Wrapper.Of_nominal.list_list_predefined_2
         let mk_List_list_predefined_2 ~info  x_0 =
           List_list_predefined_2 (info, x_0)
-        module Plain =
-          struct
-            type t = Wrapper.Plain.list_list_predefined_2 =
-              | List_list_predefined_2 of Wrapper.Plain.predefined
-              Wrapper.Plain.list_list_a 
-            let (=) x y =
-              let x = (x |> of_plain) |> to_nominal in
-              let y = (y |> of_plain) |> to_nominal in
-              let open Lvca_syntax.Nominal.Term in
-                equal ~info_eq:Base.Unit.(=) (erase x) (erase y)
-            let jsonify tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                Lvca_syntax.Nominal.Term.jsonify
-            let unjsonify json =
-              (json |> Lvca_syntax.Nominal.Term.unjsonify) |>
-                (Base.Option.bind
-                   ~f:(fun tm ->
-                         match of_nominal tm with
-                         | Ok tm -> Some (to_plain tm)
-                         | Error _ -> None))
-            let pp ppf tm =
-              ((tm |> of_plain) |> to_nominal) |>
-                (Lvca_syntax.Nominal.Term.pp ppf)
-            let parse =
-              let parse_prim =
-                Lvca_parsing.fail "Generated parser parse_prim always fails" in
-              let open Lvca_parsing in
-                (Lvca_syntax.Nominal.Term.parse
-                   ~comment:Lvca_parsing.c_comment ~parse_prim)
-                  >>=
-                  (fun tm ->
-                     match of_nominal tm with
-                     | Ok tm -> return (to_plain tm)
-                     | Error _ ->
-                         fail "Generated parser failed nominal conversion")
-          end
-        module Binding_aware =
-          struct
-            type 'info t = 'info Wrapper.Binding_aware.list_list_predefined_2
-              =
-              | List_list_predefined_2 of 'info * ('info,
-              'info Wrapper.Binding_aware.predefined)
-              Wrapper.Binding_aware.list_list_a 
-          end
       end
   end
 module type Is_rec_sig  =
@@ -3655,57 +2578,12 @@ module type Is_rec_sig  =
           | Rec of 'info 
           | No_rec of 'info 
       end
-      module Binding_aware :
-      sig
-        type 'info ty =
-          | Sort of 'info * 'info Lvca_syntax.Nominal.Term.t 
-          | Arrow of 'info * 'info ty * 'info ty 
-        and 'info mut_a =
-          | Mut_a of 'info * 'info mut_b 
-        and 'info mut_b =
-          | Mut_b of 'info * 'info mut_a 
-        and 'info is_rec =
-          | Rec of 'info 
-          | No_rec of 'info 
-      end
-      module Plain :
-      sig
-        type ty =
-          | Sort of Lvca_syntax.Nominal.Term.Plain.t 
-          | Arrow of ty * ty 
-        and mut_a =
-          | Mut_a of mut_b 
-        and mut_b =
-          | Mut_b of mut_a 
-        and is_rec =
-          | Rec 
-          | No_rec 
-      end
     end
     module Is_rec :
     sig
       type 'info t = 'info Wrapper.Types.is_rec =
         | Rec of 'info 
         | No_rec of 'info 
-      module Plain :
-      sig
-        type t = Wrapper.Plain.is_rec =
-          | Rec 
-          | No_rec 
-        val pp : t Fmt.t
-        val (=) : t -> t -> bool
-        val parse : t Lvca_parsing.t
-        val jsonify : t Lvca_util.Json.serializer
-        val unjsonify : t Lvca_util.Json.deserializer
-      end
-      module Binding_aware :
-      sig
-        type 'info t = 'info Wrapper.Binding_aware.is_rec =
-          | Rec of 'info 
-          | No_rec of 'info 
-      end
-      val to_plain : _ t -> Plain.t
-      val of_plain : Plain.t -> unit t
       val to_nominal : 'infoa t -> 'infoa Lvca_syntax.Nominal.Term.t
       val of_nominal :
         'infoa Lvca_syntax.Nominal.Term.t ->
@@ -3720,26 +2598,6 @@ module type Is_rec_sig  =
       type 'info t = 'info Wrapper.Types.ty =
         | Sort of 'info * 'info Lvca_syntax.Nominal.Term.t 
         | Arrow of 'info * 'info Wrapper.Types.ty * 'info Wrapper.Types.ty 
-      module Plain :
-      sig
-        type t = Wrapper.Plain.ty =
-          | Sort of Lvca_syntax.Nominal.Term.Plain.t 
-          | Arrow of Wrapper.Plain.ty * Wrapper.Plain.ty 
-        val pp : t Fmt.t
-        val (=) : t -> t -> bool
-        val parse : t Lvca_parsing.t
-        val jsonify : t Lvca_util.Json.serializer
-        val unjsonify : t Lvca_util.Json.deserializer
-      end
-      module Binding_aware :
-      sig
-        type 'info t = 'info Wrapper.Binding_aware.ty =
-          | Sort of 'info * 'info Lvca_syntax.Nominal.Term.t 
-          | Arrow of 'info * 'info Wrapper.Binding_aware.ty * 'info
-          Wrapper.Binding_aware.ty 
-      end
-      val to_plain : _ t -> Plain.t
-      val of_plain : Plain.t -> unit t
       val to_nominal : 'infoa t -> 'infoa Lvca_syntax.Nominal.Term.t
       val of_nominal :
         'infoa Lvca_syntax.Nominal.Term.t ->
@@ -3755,23 +2613,6 @@ module type Is_rec_sig  =
     sig
       type 'info t = 'info Wrapper.Types.mut_a =
         | Mut_a of 'info * 'info Wrapper.Types.mut_b 
-      module Plain :
-      sig
-        type t = Wrapper.Plain.mut_a =
-          | Mut_a of Wrapper.Plain.mut_b 
-        val pp : t Fmt.t
-        val (=) : t -> t -> bool
-        val parse : t Lvca_parsing.t
-        val jsonify : t Lvca_util.Json.serializer
-        val unjsonify : t Lvca_util.Json.deserializer
-      end
-      module Binding_aware :
-      sig
-        type 'info t = 'info Wrapper.Binding_aware.mut_a =
-          | Mut_a of 'info * 'info Wrapper.Binding_aware.mut_b 
-      end
-      val to_plain : _ t -> Plain.t
-      val of_plain : Plain.t -> unit t
       val to_nominal : 'infoa t -> 'infoa Lvca_syntax.Nominal.Term.t
       val of_nominal :
         'infoa Lvca_syntax.Nominal.Term.t ->
@@ -3784,23 +2625,6 @@ module type Is_rec_sig  =
     sig
       type 'info t = 'info Wrapper.Types.mut_b =
         | Mut_b of 'info * 'info Wrapper.Types.mut_a 
-      module Plain :
-      sig
-        type t = Wrapper.Plain.mut_b =
-          | Mut_b of Wrapper.Plain.mut_a 
-        val pp : t Fmt.t
-        val (=) : t -> t -> bool
-        val parse : t Lvca_parsing.t
-        val jsonify : t Lvca_util.Json.serializer
-        val unjsonify : t Lvca_util.Json.deserializer
-      end
-      module Binding_aware :
-      sig
-        type 'info t = 'info Wrapper.Binding_aware.mut_b =
-          | Mut_b of 'info * 'info Wrapper.Binding_aware.mut_a 
-      end
-      val to_plain : _ t -> Plain.t
-      val of_plain : Plain.t -> unit t
       val to_nominal : 'infoa t -> 'infoa Lvca_syntax.Nominal.Term.t
       val of_nominal :
         'infoa Lvca_syntax.Nominal.Term.t ->
@@ -3820,31 +2644,12 @@ module Option_model :
       sig type ('info, 'a) option =
             | None of 'info 
             | Some of 'info * 'a  end
-      module Binding_aware :
-      sig type ('info, 'a) option =
-            | None of 'info 
-            | Some of 'info * 'a  end
-      module Plain : sig type 'a option =
-                           | None 
-                           | Some of 'a  end
     end
     module Option :
     sig
       type ('info, 'a) t = ('info, 'a) Wrapper.Types.option =
         | None of 'info 
         | Some of 'info * 'a 
-      module Plain :
-      sig type 'a t = 'a Wrapper.Plain.option =
-            | None 
-            | Some of 'a  end
-      module Binding_aware :
-      sig
-        type ('info, 'a) t = ('info, 'a) Wrapper.Binding_aware.option =
-          | None of 'info 
-          | Some of 'info * 'a 
-      end
-      val to_plain : ('a_ -> 'a__) -> (_, 'a_) t -> 'a__ Plain.t
-      val of_plain : ('a_ -> 'a__) -> 'a_ Plain.t -> (unit, 'a__) t
       val to_nominal :
         ('a_ -> 'infoa Lvca_syntax.Nominal.Term.t) ->
           ('infoa, 'a_) t -> 'infoa Lvca_syntax.Nominal.Term.t
@@ -3871,33 +2676,10 @@ module Option_model :
               | None of 'info 
               | Some of 'info * 'a 
           end
-        module Binding_aware =
-          struct
-            type ('info, 'a) option =
-              | None of 'info 
-              | Some of 'info * 'a 
-          end
-        module Plain = struct type 'a option =
-                                | None 
-                                | Some of 'a  end
         module Info =
           struct
             let option _a =
               function | Types.None x0 -> x0 | Types.Some (x0, _) -> x0
-          end
-        module To_plain =
-          struct
-            let option a =
-              function
-              | Types.None _ -> Plain.None
-              | Types.Some (_, x1) -> Plain.Some (a x1)
-          end
-        module Of_plain =
-          struct
-            let option a =
-              function
-              | Plain.None -> Types.None ()
-              | Plain.Some x1 -> Types.Some ((), (a x1))
           end
         module Map_info =
           struct
@@ -3934,8 +2716,6 @@ module Option_model :
           end
       end
     module Types = Wrapper.Types
-    module Binding_aware = Wrapper.Binding_aware
-    module Plain = Wrapper.Plain
     let language =
       let open Lvca_syntax.Abstract_syntax in
         {
@@ -3999,24 +2779,10 @@ module Option_model :
           | None of 'info 
           | Some of 'info * 'a 
         let info = Wrapper.Info.option
-        let to_plain = Wrapper.To_plain.option
-        let of_plain = Wrapper.Of_plain.option
         let map_info = Wrapper.Map_info.option
         let to_nominal = Wrapper.To_nominal.option
         let of_nominal = Wrapper.Of_nominal.option
         let mk_None ~info  = None info
         let mk_Some ~info  x_0 = Some (info, x_0)
-        module Plain =
-          struct
-            type 'a t = 'a Wrapper.Plain.option =
-              | None 
-              | Some of 'a 
-          end
-        module Binding_aware =
-          struct
-            type ('info, 'a) t = ('info, 'a) Wrapper.Binding_aware.option =
-              | None of 'info 
-              | Some of 'info * 'a 
-          end
       end
   end 
