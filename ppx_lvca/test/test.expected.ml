@@ -124,6 +124,12 @@ module List_model :
           | Nil of 'info 
           | Cons of 'info * 'a * ('info, 'a) list 
       end
+      module Binding_aware :
+      sig
+        type ('info, 'a) list =
+          | Nil of 'info 
+          | Cons of 'info * 'a * ('info, 'a) list 
+      end
       module Plain : sig type 'a list =
                            | Nil 
                            | Cons of 'a * 'a list  end
@@ -138,6 +144,12 @@ module List_model :
         type 'a t = 'a Wrapper.Plain.list =
           | Nil 
           | Cons of 'a * 'a Wrapper.Plain.list 
+      end
+      module Binding_aware :
+      sig
+        type ('info, 'a) t = ('info, 'a) Wrapper.Binding_aware.list =
+          | Nil of 'info 
+          | Cons of 'info * 'a * ('info, 'a) Wrapper.Binding_aware.list 
       end
       val to_plain : ('a_ -> 'a__) -> (_, 'a_) t -> 'a__ Plain.t
       val of_plain : ('a_ -> 'a__) -> 'a_ Plain.t -> (unit, 'a__) t
@@ -163,6 +175,12 @@ module List_model :
     module Wrapper =
       struct
         module Types =
+          struct
+            type ('info, 'a) list =
+              | Nil of 'info 
+              | Cons of 'info * 'a * ('info, 'a) list 
+          end
+        module Binding_aware =
           struct
             type ('info, 'a) list =
               | Nil of 'info 
@@ -230,6 +248,7 @@ module List_model :
           end
       end
     module Types = Wrapper.Types
+    module Binding_aware = Wrapper.Binding_aware
     module Plain = Wrapper.Plain
     let language =
       let open Lvca_syntax.Abstract_syntax in
@@ -355,6 +374,12 @@ module List_model :
               | Nil 
               | Cons of 'a * 'a Wrapper.Plain.list 
           end
+        module Binding_aware =
+          struct
+            type ('info, 'a) t = ('info, 'a) Wrapper.Binding_aware.list =
+              | Nil of 'info 
+              | Cons of 'info * 'a * ('info, 'a) Wrapper.Binding_aware.list 
+          end
       end
   end 
 module Lang =
@@ -377,6 +402,30 @@ module Lang =
             and 'info foo =
               | Foo of 'info * 'info Lvca_syntax.Nominal.Term.t 
               | Bar of 'info * ('info Pattern.t * 'info
+              Lvca_syntax.Single_var.t * 'info foo) 
+              | Foo_var of 'info * string 
+            and ('info, 'a, 'b) pair =
+              | Pair of 'info * 'a * 'b 
+            and 'info nonempty =
+              | Nonempty of 'info * 'info Primitive.String.t * ('info,
+              'info Primitive.String.t) List_model.List.t 
+          end
+        module Binding_aware =
+          struct
+            type 'info nat =
+              | Z of 'info 
+              | S of 'info * 'info nat 
+            and 'info mut_a =
+              | Mut_a of 'info * 'info mut_b 
+            and 'info mut_b =
+              | Mut_b of 'info * 'info mut_a 
+            and 'info term =
+              | Operator of 'info * ('info, 'info term) List_model.List.t 
+            and ('info, 'a, 'b) pair_plus =
+              | PairPlus of 'info * 'a * 'b * 'info foo 
+            and 'info foo =
+              | Foo of 'info * 'info Lvca_syntax.Nominal.Term.t 
+              | Bar of 'info * ('info Binding_aware_pattern.t * 'info
               Lvca_syntax.Single_var.t * 'info foo) 
               | Foo_var of 'info * string 
             and ('info, 'a, 'b) pair =
@@ -731,6 +780,7 @@ module Lang =
           end
       end
     module Types = Wrapper.Types
+    module Binding_aware = Wrapper.Binding_aware
     module Plain = Wrapper.Plain
     let language =
       let open Lvca_syntax.Abstract_syntax in
@@ -1331,6 +1381,14 @@ module Lang =
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
           end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.foo =
+              | Foo of 'info * 'info Lvca_syntax.Nominal.Term.t 
+              | Bar of 'info * ('info Binding_aware_pattern.t * 'info
+              Lvca_syntax.Single_var.t * 'info Wrapper.Binding_aware.foo) 
+              | Foo_var of 'info * string 
+          end
       end
     module Nat =
       struct
@@ -1381,6 +1439,12 @@ module Lang =
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
           end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.nat =
+              | Z of 'info 
+              | S of 'info * 'info Wrapper.Binding_aware.nat 
+          end
       end
     module Pair =
       struct
@@ -1398,6 +1462,12 @@ module Lang =
             type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair =
               | Pair of 'a * 'b 
           end
+        module Binding_aware =
+          struct
+            type ('info, 'a, 'b) t =
+              ('info, 'a, 'b) Wrapper.Binding_aware.pair =
+              | Pair of 'info * 'a * 'b 
+          end
       end
     module Pair_plus =
       struct
@@ -1414,6 +1484,12 @@ module Lang =
           struct
             type ('a, 'b) t = ('a, 'b) Wrapper.Plain.pair_plus =
               | PairPlus of 'a * 'b * Wrapper.Plain.foo 
+          end
+        module Binding_aware =
+          struct
+            type ('info, 'a, 'b) t =
+              ('info, 'a, 'b) Wrapper.Binding_aware.pair_plus =
+              | PairPlus of 'info * 'a * 'b * 'info Wrapper.Binding_aware.foo 
           end
       end
     module Nonempty =
@@ -1464,6 +1540,12 @@ module Lang =
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
           end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.nonempty =
+              | Nonempty of 'info * 'info Primitive.String.t * ('info,
+              'info Primitive.String.t) List_model.List.t 
+          end
       end
     module Term =
       struct
@@ -1512,6 +1594,12 @@ module Lang =
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
           end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.term =
+              | Operator of 'info * ('info, 'info Wrapper.Binding_aware.term)
+              List_model.List.t 
+          end
       end
     module Mut_a =
       struct
@@ -1558,6 +1646,11 @@ module Lang =
                      | Ok tm -> return (to_plain tm)
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
+          end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.mut_a =
+              | Mut_a of 'info * 'info Wrapper.Binding_aware.mut_b 
           end
       end
     module Mut_b =
@@ -1606,6 +1699,11 @@ module Lang =
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
           end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.mut_b =
+              | Mut_b of 'info * 'info Wrapper.Binding_aware.mut_a 
+          end
       end
   end
 module Ifz_lang :
@@ -1615,6 +1713,13 @@ module Ifz_lang :
     module Wrapper :
     sig
       module Types :
+      sig
+        type 'info ifz =
+          | Ifz of 'info * 'info ifz * ('info Lvca_syntax.Single_var.t *
+          'info ifz) * 'info ifz 
+          | Ifz_var of 'info * string 
+      end
+      module Binding_aware :
       sig
         type 'info ifz =
           | Ifz of 'info * 'info ifz * ('info Lvca_syntax.Single_var.t *
@@ -1647,6 +1752,14 @@ module Ifz_lang :
         val jsonify : t Lvca_util.Json.serializer
         val unjsonify : t Lvca_util.Json.deserializer
       end
+      module Binding_aware :
+      sig
+        type 'info t = 'info Wrapper.Binding_aware.ifz =
+          | Ifz of 'info * 'info Wrapper.Binding_aware.ifz * ('info
+          Lvca_syntax.Single_var.t * 'info Wrapper.Binding_aware.ifz) * 'info
+          Wrapper.Binding_aware.ifz 
+          | Ifz_var of 'info * string 
+      end
       val to_plain : _ t -> Plain.t
       val of_plain : Plain.t -> unit t
       val to_nominal : 'infoa t -> 'infoa Lvca_syntax.Nominal.Term.t
@@ -1667,6 +1780,13 @@ module Ifz_lang :
     module Wrapper =
       struct
         module Types =
+          struct
+            type 'info ifz =
+              | Ifz of 'info * 'info ifz * ('info Lvca_syntax.Single_var.t *
+              'info ifz) * 'info ifz 
+              | Ifz_var of 'info * string 
+          end
+        module Binding_aware =
           struct
             type 'info ifz =
               | Ifz of 'info * 'info ifz * ('info Lvca_syntax.Single_var.t *
@@ -1767,6 +1887,7 @@ module Ifz_lang :
           end
       end
     module Types = Wrapper.Types
+    module Binding_aware = Wrapper.Binding_aware
     module Plain = Wrapper.Plain
     let language =
       let open Lvca_syntax.Abstract_syntax in
@@ -1897,6 +2018,14 @@ module Ifz_lang :
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
           end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.ifz =
+              | Ifz of 'info * 'info Wrapper.Binding_aware.ifz * ('info
+              Lvca_syntax.Single_var.t * 'info Wrapper.Binding_aware.ifz) *
+              'info Wrapper.Binding_aware.ifz 
+              | Ifz_var of 'info * string 
+          end
       end
   end 
 module List_lang =
@@ -1904,6 +2033,33 @@ module List_lang =
     module Wrapper =
       struct
         module Types =
+          struct
+            type 'info list_external =
+              | List_external of 'info * ('info,
+              'info Lvca_syntax.Nominal.Term.t) list 
+            and 'info list_predefined =
+              | List_predefined of 'info * ('info, 'info predefined) list 
+            and 'info list_list_string_2 =
+              | List_list_string_2 of 'info * ('info,
+              'info Lvca_syntax.Nominal.Term.t) list_list_a 
+            and 'info list_list_string_1 =
+              | List_list_string_1 of 'info * ('info,
+              ('info, 'info Lvca_syntax.Nominal.Term.t) list) list 
+            and 'info list_list_predefined_2 =
+              | List_list_predefined_2 of 'info * ('info, 'info predefined)
+              list_list_a 
+            and ('info, 'a) list_list_a =
+              | List_list_a of 'info * ('info, ('info, 'a) list) list 
+            and 'info list_list_predefined_1 =
+              | List_list_predefined_1 of 'info * ('info,
+              ('info, 'info predefined) list) list 
+            and 'info predefined =
+              | Predefined of 'info 
+            and ('info, 'a) list =
+              | Nil of 'info 
+              | Cons of 'info * 'a * ('info, 'a) list 
+          end
+        module Binding_aware =
           struct
             type 'info list_external =
               | List_external of 'info * ('info,
@@ -2265,6 +2421,7 @@ module List_lang =
           end
       end
     module Types = Wrapper.Types
+    module Binding_aware = Wrapper.Binding_aware
     module Plain = Wrapper.Plain
     let language =
       let open Lvca_syntax.Abstract_syntax in
@@ -3077,6 +3234,11 @@ module List_lang =
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
           end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.predefined =
+              | Predefined of 'info 
+          end
       end
     module List =
       struct
@@ -3096,6 +3258,12 @@ module List_lang =
             type 'a t = 'a Wrapper.Plain.list =
               | Nil 
               | Cons of 'a * 'a Wrapper.Plain.list 
+          end
+        module Binding_aware =
+          struct
+            type ('info, 'a) t = ('info, 'a) Wrapper.Binding_aware.list =
+              | Nil of 'info 
+              | Cons of 'info * 'a * ('info, 'a) Wrapper.Binding_aware.list 
           end
       end
     module List_external =
@@ -3146,6 +3314,12 @@ module List_lang =
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
           end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.list_external =
+              | List_external of 'info * ('info,
+              'info Lvca_syntax.Nominal.Term.t) Wrapper.Binding_aware.list 
+          end
       end
     module List_predefined =
       struct
@@ -3195,6 +3369,13 @@ module List_lang =
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
           end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.list_predefined =
+              | List_predefined of 'info * ('info,
+              'info Wrapper.Binding_aware.predefined)
+              Wrapper.Binding_aware.list 
+          end
       end
     module List_list_a =
       struct
@@ -3212,6 +3393,14 @@ module List_lang =
           struct
             type 'a t = 'a Wrapper.Plain.list_list_a =
               | List_list_a of 'a Wrapper.Plain.list Wrapper.Plain.list 
+          end
+        module Binding_aware =
+          struct
+            type ('info, 'a) t =
+              ('info, 'a) Wrapper.Binding_aware.list_list_a =
+              | List_list_a of 'info * ('info,
+              ('info, 'a) Wrapper.Binding_aware.list)
+              Wrapper.Binding_aware.list 
           end
       end
     module List_list_string_1 =
@@ -3263,6 +3452,14 @@ module List_lang =
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
           end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.list_list_string_1 =
+              | List_list_string_1 of 'info * ('info,
+              ('info, 'info Lvca_syntax.Nominal.Term.t)
+                Wrapper.Binding_aware.list)
+              Wrapper.Binding_aware.list 
+          end
       end
     module List_list_string_2 =
       struct
@@ -3311,6 +3508,13 @@ module List_lang =
                      | Ok tm -> return (to_plain tm)
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
+          end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.list_list_string_2 =
+              | List_list_string_2 of 'info * ('info,
+              'info Lvca_syntax.Nominal.Term.t)
+              Wrapper.Binding_aware.list_list_a 
           end
       end
     module List_list_predefined_1 =
@@ -3363,6 +3567,15 @@ module List_lang =
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
           end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.list_list_predefined_1
+              =
+              | List_list_predefined_1 of 'info * ('info,
+              ('info, 'info Wrapper.Binding_aware.predefined)
+                Wrapper.Binding_aware.list)
+              Wrapper.Binding_aware.list 
+          end
       end
     module List_list_predefined_2 =
       struct
@@ -3413,6 +3626,14 @@ module List_lang =
                      | Error _ ->
                          fail "Generated parser failed nominal conversion")
           end
+        module Binding_aware =
+          struct
+            type 'info t = 'info Wrapper.Binding_aware.list_list_predefined_2
+              =
+              | List_list_predefined_2 of 'info * ('info,
+              'info Wrapper.Binding_aware.predefined)
+              Wrapper.Binding_aware.list_list_a 
+          end
       end
   end
 module type Is_rec_sig  =
@@ -3422,6 +3643,19 @@ module type Is_rec_sig  =
     module Wrapper :
     sig
       module Types :
+      sig
+        type 'info ty =
+          | Sort of 'info * 'info Lvca_syntax.Nominal.Term.t 
+          | Arrow of 'info * 'info ty * 'info ty 
+        and 'info mut_a =
+          | Mut_a of 'info * 'info mut_b 
+        and 'info mut_b =
+          | Mut_b of 'info * 'info mut_a 
+        and 'info is_rec =
+          | Rec of 'info 
+          | No_rec of 'info 
+      end
+      module Binding_aware :
       sig
         type 'info ty =
           | Sort of 'info * 'info Lvca_syntax.Nominal.Term.t 
@@ -3464,6 +3698,12 @@ module type Is_rec_sig  =
         val jsonify : t Lvca_util.Json.serializer
         val unjsonify : t Lvca_util.Json.deserializer
       end
+      module Binding_aware :
+      sig
+        type 'info t = 'info Wrapper.Binding_aware.is_rec =
+          | Rec of 'info 
+          | No_rec of 'info 
+      end
       val to_plain : _ t -> Plain.t
       val of_plain : Plain.t -> unit t
       val to_nominal : 'infoa t -> 'infoa Lvca_syntax.Nominal.Term.t
@@ -3490,6 +3730,13 @@ module type Is_rec_sig  =
         val parse : t Lvca_parsing.t
         val jsonify : t Lvca_util.Json.serializer
         val unjsonify : t Lvca_util.Json.deserializer
+      end
+      module Binding_aware :
+      sig
+        type 'info t = 'info Wrapper.Binding_aware.ty =
+          | Sort of 'info * 'info Lvca_syntax.Nominal.Term.t 
+          | Arrow of 'info * 'info Wrapper.Binding_aware.ty * 'info
+          Wrapper.Binding_aware.ty 
       end
       val to_plain : _ t -> Plain.t
       val of_plain : Plain.t -> unit t
@@ -3518,6 +3765,11 @@ module type Is_rec_sig  =
         val jsonify : t Lvca_util.Json.serializer
         val unjsonify : t Lvca_util.Json.deserializer
       end
+      module Binding_aware :
+      sig
+        type 'info t = 'info Wrapper.Binding_aware.mut_a =
+          | Mut_a of 'info * 'info Wrapper.Binding_aware.mut_b 
+      end
       val to_plain : _ t -> Plain.t
       val of_plain : Plain.t -> unit t
       val to_nominal : 'infoa t -> 'infoa Lvca_syntax.Nominal.Term.t
@@ -3542,6 +3794,11 @@ module type Is_rec_sig  =
         val jsonify : t Lvca_util.Json.serializer
         val unjsonify : t Lvca_util.Json.deserializer
       end
+      module Binding_aware :
+      sig
+        type 'info t = 'info Wrapper.Binding_aware.mut_b =
+          | Mut_b of 'info * 'info Wrapper.Binding_aware.mut_a 
+      end
       val to_plain : _ t -> Plain.t
       val of_plain : Plain.t -> unit t
       val to_nominal : 'infoa t -> 'infoa Lvca_syntax.Nominal.Term.t
@@ -3563,6 +3820,10 @@ module Option_model :
       sig type ('info, 'a) option =
             | None of 'info 
             | Some of 'info * 'a  end
+      module Binding_aware :
+      sig type ('info, 'a) option =
+            | None of 'info 
+            | Some of 'info * 'a  end
       module Plain : sig type 'a option =
                            | None 
                            | Some of 'a  end
@@ -3576,6 +3837,12 @@ module Option_model :
       sig type 'a t = 'a Wrapper.Plain.option =
             | None 
             | Some of 'a  end
+      module Binding_aware :
+      sig
+        type ('info, 'a) t = ('info, 'a) Wrapper.Binding_aware.option =
+          | None of 'info 
+          | Some of 'info * 'a 
+      end
       val to_plain : ('a_ -> 'a__) -> (_, 'a_) t -> 'a__ Plain.t
       val of_plain : ('a_ -> 'a__) -> 'a_ Plain.t -> (unit, 'a__) t
       val to_nominal :
@@ -3599,6 +3866,12 @@ module Option_model :
     module Wrapper =
       struct
         module Types =
+          struct
+            type ('info, 'a) option =
+              | None of 'info 
+              | Some of 'info * 'a 
+          end
+        module Binding_aware =
           struct
             type ('info, 'a) option =
               | None of 'info 
@@ -3661,6 +3934,7 @@ module Option_model :
           end
       end
     module Types = Wrapper.Types
+    module Binding_aware = Wrapper.Binding_aware
     module Plain = Wrapper.Plain
     let language =
       let open Lvca_syntax.Abstract_syntax in
@@ -3737,6 +4011,12 @@ module Option_model :
             type 'a t = 'a Wrapper.Plain.option =
               | None 
               | Some of 'a 
+          end
+        module Binding_aware =
+          struct
+            type ('info, 'a) t = ('info, 'a) Wrapper.Binding_aware.option =
+              | None of 'info 
+              | Some of 'info * 'a 
           end
       end
   end 
