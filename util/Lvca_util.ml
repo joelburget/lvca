@@ -445,11 +445,14 @@ module Unique = struct
   ;;
 
   let generate_name ?(base = "") taken =
-    if String.(base = "")
-    then Sequence.find_exn name_sequence ~f:(fun name -> not (Set.mem taken name))
-    else (
-      let sequence = empty_name_sequence |> Sequence.map ~f:(fun name -> base ^ name) in
-      Sequence.find_exn sequence ~f:(fun name -> not (Set.mem taken name)))
+    let name =
+      if String.(base = "")
+      then Sequence.find_exn name_sequence ~f:(fun name -> not (Set.mem taken name))
+      else (
+        let sequence = empty_name_sequence |> Sequence.map ~f:(fun name -> base ^ name) in
+        Sequence.find_exn sequence ~f:(fun name -> not (Set.mem taken name)))
+    in
+    name, Set.add taken name
   ;;
 
   let generate_names ?(base = "") taken =
@@ -464,8 +467,8 @@ module Unique = struct
     (module struct
       let%expect_test _ =
         let taken = String.Set.empty in
-        Stdio.printf "%s\n" (generate_name taken);
-        Stdio.printf "%s\n" (generate_name ~base:"b" taken);
+        Stdio.printf "%s\n" (generate_name taken |> fst);
+        Stdio.printf "%s\n" (generate_name ~base:"b" taken |> fst);
         Sequence.take (generate_names ~base:"b" taken) 5
         |> Sequence.iter ~f:(Stdio.printf "%s\n");
         [%expect {|
@@ -480,8 +483,8 @@ module Unique = struct
 
       let%expect_test _ =
         let taken = String.Set.of_list [ "a"; "b" ] in
-        Stdio.printf "%s\n" (generate_name taken);
-        Stdio.printf "%s\n" (generate_name ~base:"a" taken);
+        Stdio.printf "%s\n" (generate_name taken |> fst);
+        Stdio.printf "%s\n" (generate_name ~base:"a" taken |> fst);
         Sequence.take (generate_names taken) 5 |> Sequence.iter ~f:(Stdio.printf "%s\n");
         [%expect {|
       c
@@ -495,8 +498,8 @@ module Unique = struct
 
       let%expect_test _ =
         let taken = String.Set.of_list alphabet in
-        Stdio.printf "%s\n" (generate_name taken);
-        Stdio.printf "%s\n" (generate_name ~base:"c" taken);
+        Stdio.printf "%s\n" (generate_name taken |> fst);
+        Stdio.printf "%s\n" (generate_name ~base:"c" taken |> fst);
         Sequence.take (generate_names taken) 5 |> Sequence.iter ~f:(Stdio.printf "%s\n");
         [%expect {|
       aa
@@ -511,7 +514,7 @@ module Unique = struct
       let%expect_test _ =
         let taken = String.Set.empty in
         let base = "the quick brown fox jumps over the lazy dog" in
-        Stdio.printf "%s\n" (generate_name ~base taken);
+        Stdio.printf "%s\n" (generate_name ~base taken |> fst);
         Sequence.take (generate_names ~base taken) 5
         |> Sequence.iter ~f:(Stdio.printf "%s\n");
         [%expect

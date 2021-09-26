@@ -1870,16 +1870,13 @@ module Sig (Context : Builder_context) = struct
           let taken = SSet.of_list var_names in
           let taken, unique_var_names =
             List.fold_map vars ~init:taken ~f:(fun taken (name, _) ->
-                let name' = Unique.generate_name ~base:(name ^ "_") taken in
-                let taken = Set.add taken name' in
-                let name'' = Unique.generate_name ~base:(name ^ "__") taken in
-                let taken = Set.add taken name'' in
+                let name', taken = Unique.generate_name ~base:(name ^ "_") taken in
+                let name'', taken = Unique.generate_name ~base:(name ^ "__") taken in
                 taken, (name', name''))
           in
           let unique_vars = List.map unique_var_names ~f:(Tuple2.map ~f:ptyp_var) in
           let unique_vars_1, unique_vars_2 = List.unzip unique_vars in
-          let info_v = Unique.generate_name ~base:"info" taken in
-          let taken = Set.add taken info_v in
+          let info_v, taken = Unique.generate_name ~base:"info" taken in
           let t = ptyp_constr { txt = Lident "t"; loc } in
           let plain_t = ptyp_constr { txt = unflatten [ "Plain"; "t" ]; loc } in
           let info_a, info_b =
