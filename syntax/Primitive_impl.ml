@@ -1,15 +1,21 @@
 open Base
 open Lvca_util
 
-module Make (Base_plain : Language_object_intf.Base_plain_s) = struct
-  type 'info t = 'info * Base_plain.t
+module type Base_plain_s = sig
+  type t
 
-  module Plain = Base_plain
+  val pp : t Fmt.t
+  val ( = ) : t -> t -> bool
+  val parse : t Lvca_parsing.t
+  val jsonify : t Json.serializer
+  val unjsonify : t Json.deserializer
+end
+
+module Make (Base_plain : Base_plain_s) = struct
+  type 'info t = 'info * Base_plain.t
 
   let info (i, _) = i
   let erase (_, p) = (), p
-  let to_plain (_, x) = x
-  let of_plain x = (), x
   let equal ~info_eq (i1, x1) (i2, x2) = info_eq i1 i2 && Base_plain.(x1 = x2)
   let map_info ~f (i, z) = f i, z
 
@@ -184,8 +190,8 @@ module All = struct
   include All_kernel
 
   let pp ppf p = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p
-  let jsonify (_, p) = Plain.jsonify p
-  let unjsonify json = Plain.unjsonify json |> Option.map ~f:(fun prim -> (), prim)
+  let jsonify (_, p) = All_plain.jsonify p
+  let unjsonify json = All_plain.unjsonify json |> Option.map ~f:(fun prim -> (), prim)
 
   let check prim sort =
     match snd prim, sort with

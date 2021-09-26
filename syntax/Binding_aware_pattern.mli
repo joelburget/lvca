@@ -12,18 +12,6 @@ type 'info t =
 
 and 'info scope = Scope of ('info * string) list * 'info t
 
-module Plain : sig
-  type t =
-    | Operator of string * scope list
-    | Primitive of Primitive_impl.All.Plain.t
-    | Var of string
-
-  and scope = Scope of string list * t
-end
-
-val to_plain : _ t -> Plain.t
-val of_plain : Plain.t -> unit t
-
 module Capture_type : sig
   type 'info t =
     | Bound_var of 'info Sort.t

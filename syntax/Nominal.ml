@@ -12,37 +12,6 @@ module Types = struct
   and 'info scope = Scope of 'info Pattern.t list * 'info term
 end
 
-module Plain = struct
-  type term =
-    | Operator of string * scope list
-    | Var of string
-    | Primitive of Primitive_impl.All.Plain.t
-
-  and scope = Scope of Pattern.Plain.t list * term
-end
-
-module ToPlain = struct
-  let rec term = function
-    | Types.Operator (_, name, scopes) -> Plain.Operator (name, List.map scopes ~f:scope)
-    | Var (_, name) -> Var name
-    | Primitive prim -> Primitive (Primitive_impl.All.to_plain prim)
-
-  and scope (Types.Scope (pats, tm)) =
-    Plain.Scope (List.map pats ~f:Pattern.to_plain, term tm)
-  ;;
-end
-
-module OfPlain = struct
-  let rec term = function
-    | Plain.Operator (name, scopes) -> Types.Operator ((), name, List.map scopes ~f:scope)
-    | Var name -> Var ((), name)
-    | Primitive prim -> Primitive (Primitive_impl.All.of_plain prim)
-
-  and scope (Plain.Scope (pats, tm)) =
-    Types.Scope (List.map pats ~f:Pattern.of_plain, term tm)
-  ;;
-end
-
 let info = function
   | Types.Operator (info, _, _) | Var (info, _) -> info
   | Primitive p -> Primitive_impl.All.info p
@@ -187,15 +156,6 @@ module Term = struct
     | Var of 'info * string
     | Primitive of 'info Primitive_impl.All.t
 
-  module Plain = struct
-    type t = Plain.term =
-      | Operator of string * Plain.scope list
-      | Var of string
-      | Primitive of Primitive_impl.All.Plain.t
-  end
-
-  let to_plain = ToPlain.term
-  let of_plain = OfPlain.term
   let to_nominal x = x
   let of_nominal x = Ok x
   let equal = Equal.term
@@ -498,8 +458,8 @@ module Term = struct
     let string_round_trip1 t =
       match t |> to_string |> parse with
       | Ok t' ->
-        let t'' = erase t' in
-        Property_result.check (t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
+        let t' = erase t' in
+        Property_result.check (t' = t) (Fmt.str "%a <> %a" pp t' pp t)
       | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
     ;;
 
@@ -527,12 +487,6 @@ end
 module Scope = struct
   type 'info t = 'info Types.scope = Scope of 'info Pattern.t list * 'info Types.term
 
-  module Plain = struct
-    type t = Plain.scope = Scope of Pattern.Plain.t list * Plain.term
-  end
-
-  let to_plain = ToPlain.scope
-  let of_plain = OfPlain.scope
   let equal = Equal.scope
   let pp_generic = PpGeneric.scope
   let subst_all = SubstAll.scope
@@ -606,8 +560,7 @@ module Convertible = struct
     val parse : comment:'a Lvca_parsing.t -> 'a Commented.t t Lvca_parsing.t
   end
 
-  module Extend (Object : S) :
-    Extended_s with type 'info t = 'info Object.t and module Plain = Object.Plain = struct
+  module Extend (Object : S) : Extended_s with type 'info t = 'info Object.t = struct
     include Object
 
     let erase tm = Object.map_info ~f:(fun _ -> ()) tm

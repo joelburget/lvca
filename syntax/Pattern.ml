@@ -8,25 +8,6 @@ type 'info t =
   | Primitive of 'info Primitive_impl.All.t
   | Var of 'info * string
 
-module Plain = struct
-  type t =
-    | Operator of string * t list
-    | Primitive of Primitive_impl.All.Plain.t
-    | Var of string
-end
-
-let rec to_plain = function
-  | Operator (_, name, pats) -> Plain.Operator (name, List.map ~f:to_plain pats)
-  | Primitive prim -> Plain.Primitive (Primitive_impl.All.to_plain prim)
-  | Var (_, name) -> Plain.Var name
-;;
-
-let rec of_plain = function
-  | Plain.Operator (name, pats) -> Operator ((), name, List.map ~f:of_plain pats)
-  | Primitive prim -> Primitive (Primitive_impl.All.of_plain prim)
-  | Var name -> Var ((), name)
-;;
-
 let rec equal ~info_eq pat1 pat2 =
   match pat1, pat2 with
   | Operator (i1, name1, pats1), Operator (i2, name2, pats2) ->

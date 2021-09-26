@@ -12,20 +12,12 @@ and 'info ap_list =
   | Nil of 'info
   | Cons of 'info * 'info t * 'info ap_list
 
-module Plain : sig
-  type t =
-    | Ap of string * t list
-    | Name of string
-end
-
 module Ap_list : sig
   val to_list : 'info ap_list -> 'info t list
   val of_list : default_info:'info -> 'info t list -> 'info ap_list
   val map : f:('info t -> 'info t) -> 'info ap_list -> 'info ap_list
 end
 
-val of_plain : Plain.t -> unit t
-val to_plain : _ t -> Plain.t
 val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
 val info : 'info t -> 'info
 val pp : _ t Fmt.t

@@ -10,12 +10,6 @@ and 'info ap_list =
   | Nil of 'info
   | Cons of 'info * 'info t * 'info ap_list
 
-module Plain = struct
-  type t =
-    | Ap of string * t list
-    | Name of string
-end
-
 let rec equal ~info_eq s1 s2 =
   match s1, s2 with
   | Ap (i1, name1, ts1), Ap (i2, name2, ts2) ->
@@ -43,24 +37,6 @@ and list_map_info ~f = function
 ;;
 
 let erase_info sort = map_info ~f:(fun _ -> ()) sort
-
-let rec of_plain = function
-  | Plain.Ap (name, ts) -> Ap ((), name, list_of_plain ts)
-  | Name name -> Name ((), name)
-
-and list_of_plain = function
-  | [] -> Nil ()
-  | x :: xs -> Cons ((), of_plain x, list_of_plain xs)
-;;
-
-let rec to_plain = function
-  | Ap (_, name, ts) -> Plain.Ap (name, list_to_plain ts)
-  | Name (_, name) -> Name name
-
-and list_to_plain = function
-  | Nil _ -> []
-  | Cons (_, x, xs) -> to_plain x :: list_to_plain xs
-;;
 
 module Ap_list = struct
   let rec to_list = function Nil _ -> [] | Cons (_, x, xs) -> x :: to_list xs

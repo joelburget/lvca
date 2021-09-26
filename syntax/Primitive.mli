@@ -1,36 +1,15 @@
 (* TODO: potentially add (u)int8, (u)int64, etc via stdint. Downside: "integers
    smaller than the standard integer type are stored in a standard int." Or
    possibly using bitvec? (https://stackoverflow.com/a/65080349) *)
-module Integer :
-  Nominal.Convertible.Extended_s
-    with type 'info t = 'info * Z.t
-     and module Plain = Primitive_impl.Integer.Plain
-
-module Int32 :
-  Nominal.Convertible.Extended_s
-    with type 'info t = 'info * int32
-     and module Plain = Primitive_impl.Int32.Plain
-
-module Float :
-  Nominal.Convertible.Extended_s
-    with type 'info t = 'info * float
-     and module Plain = Primitive_impl.Float.Plain
-
-module Char :
-  Nominal.Convertible.Extended_s
-    with type 'info t = 'info * char
-     and module Plain = Primitive_impl.Char.Plain
-
-module String :
-  Nominal.Convertible.Extended_s
-    with type 'info t = 'info * string
-     and module Plain = Primitive_impl.String.Plain
+module Integer : Nominal.Convertible.Extended_s with type 'info t = 'info * Z.t
+module Int32 : Nominal.Convertible.Extended_s with type 'info t = 'info * int32
+module Float : Nominal.Convertible.Extended_s with type 'info t = 'info * float
+module Char : Nominal.Convertible.Extended_s with type 'info t = 'info * char
+module String : Nominal.Convertible.Extended_s with type 'info t = 'info * string
 
 module All : sig
   include
-    Nominal.Convertible.Extended_s
-      with type 'info t = 'info * Primitive_impl.All.Plain.t
-       and module Plain = Primitive_impl.All.Plain
+    Nominal.Convertible.Extended_s with type 'info t = 'info * Primitive_impl.All_plain.t
 
   val check : _ t -> 'info Sort.t -> string option
 

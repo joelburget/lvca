@@ -8,15 +8,6 @@ type 'info t =
   | Primitive of 'info Primitive_impl.All.t
   | Var of 'info * string
 
-module Plain : sig
-  type t =
-    | Operator of string * t list
-    | Primitive of Primitive_impl.All.Plain.t
-    | Var of string
-end
-
-val to_plain : _ t -> Plain.t
-val of_plain : Plain.t -> unit t
 val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
 
 (** {1 Vars} *)

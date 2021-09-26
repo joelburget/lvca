@@ -50,35 +50,6 @@ type 'info t =
 
 and 'info scope = Scope of ('info * string) list * 'info t
 
-module Plain = struct
-  type t =
-    | Operator of string * scope list
-    | Primitive of Primitive_impl.All.Plain.t
-    | Var of string
-
-  and scope = Scope of string list * t
-end
-
-let rec to_plain = function
-  | Operator (_, name, scopes) -> Plain.Operator (name, List.map ~f:scope_to_plain scopes)
-  | Primitive prim -> Plain.Primitive (Primitive_impl.All.to_plain prim)
-  | Var (_, name) -> Plain.Var name
-
-and scope_to_plain (Scope (names, t)) =
-  let names = List.map ~f:snd names in
-  Plain.Scope (names, to_plain t)
-;;
-
-let rec of_plain = function
-  | Plain.Operator (name, pats) -> Operator ((), name, List.map ~f:scope_of_plain pats)
-  | Primitive prim -> Primitive (Primitive_impl.All.of_plain prim)
-  | Var name -> Var ((), name)
-
-and scope_of_plain (Plain.Scope (names, t)) =
-  let names = List.map names ~f:(fun name -> (), name) in
-  Scope (names, of_plain t)
-;;
-
 let rec equal ~info_eq t1 t2 =
   match t1, t2 with
   | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
