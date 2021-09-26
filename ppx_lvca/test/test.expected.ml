@@ -385,7 +385,7 @@ module Lang =
             and ('info, 'pattern) mut_b =
               | Mut_b of 'info * ('info, 'pattern) mut_a 
             and ('info, 'pattern) term =
-              | Operator of 'info * ('info, ('info, 'pattern) term)
+              | Operator of 'info * ('info, 'pattern, ('info, 'pattern) term)
               List_model.List.t 
             and ('info, 'pattern, 'a, 'b) pair_plus =
               | PairPlus of 'info * 'a * 'b * ('info, 'pattern) foo 
@@ -393,12 +393,12 @@ module Lang =
               | Foo of 'info * 'info Lvca_syntax.Nominal.Term.t 
               | Bar of 'info * ('pattern * 'info Lvca_syntax.Single_var.t *
               ('info, 'pattern) foo) 
-              | Foo_var of 'pattern * 'info * string 
+              | Foo_var of 'info * string 
             and ('info, 'pattern, 'a, 'b) pair =
               | Pair of 'info * 'a * 'b 
             and ('info, 'pattern) nonempty =
               | Nonempty of 'info * 'info Primitive.String.t * ('info,
-              'info Primitive.String.t) List_model.List.t 
+              'pattern, 'info Primitive.String.t) List_model.List.t 
           end
         module Plain =
           struct
@@ -410,19 +410,19 @@ module Lang =
             and 'pattern mut_b =
               | Mut_b of 'pattern mut_a 
             and 'pattern term =
-              | Operator of 'pattern term List_model.List.Plain.t 
+              | Operator of ('pattern, 'pattern term) List_model.List.Plain.t 
             and ('pattern, 'a, 'b) pair_plus =
               | PairPlus of 'a * 'b * 'pattern foo 
             and 'pattern foo =
               | Foo of Lvca_syntax.Nominal.Term.Plain.t 
               | Bar of ('pattern * Lvca_syntax.Single_var.Plain.t * 'pattern
               foo) 
-              | Foo_var of 'pattern * string 
+              | Foo_var of string 
             and ('pattern, 'a, 'b) pair =
               | Pair of 'a * 'b 
             and 'pattern nonempty =
-              | Nonempty of Primitive.String.Plain.t *
-              Primitive.String.Plain.t List_model.List.Plain.t 
+              | Nonempty of Primitive.String.Plain.t * ('pattern,
+              Primitive.String.Plain.t) List_model.List.Plain.t 
           end
         module Info =
           struct
@@ -789,7 +789,7 @@ module Lang =
                           (Some
                              (let open Lvca_provenance.Range in
                                 { start = 74; finish = 80 }));
-                        comment = (Some " module List_model.List")
+                        comment = (Some " module* List_model.List")
                       })), 2)))];
           sort_defs =
             [("foo",
@@ -801,7 +801,7 @@ module Lang =
                               range =
                                 (Some
                                    (let open Lvca_provenance.Range in
-                                      { start = 120; finish = 132 }));
+                                      { start = 121; finish = 133 }));
                               comment = None
                             })), "Foo",
                          (Lvca_syntax.Abstract_syntax.Arity.Arity
@@ -810,7 +810,7 @@ module Lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 123; finish = 132 }));
+                                           { start = 124; finish = 133 }));
                                    comment = None
                                  })),
                               [Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -822,8 +822,8 @@ module Lang =
                                                (Some
                                                   (let open Lvca_provenance.Range in
                                                      {
-                                                       start = 124;
-                                                       finish = 131
+                                                       start = 125;
+                                                       finish = 132
                                                      }));
                                              comment = None
                                            })), "integer")))])));
@@ -833,7 +833,7 @@ module Lang =
                              range =
                                (Some
                                   (let open Lvca_provenance.Range in
-                                     { start = 137; finish = 160 }));
+                                     { start = 138; finish = 161 }));
                              comment = None
                            })), "Bar",
                         (Lvca_syntax.Abstract_syntax.Arity.Arity
@@ -842,7 +842,7 @@ module Lang =
                                   range =
                                     (Some
                                        (let open Lvca_provenance.Range in
-                                          { start = 140; finish = 160 }));
+                                          { start = 141; finish = 161 }));
                                   comment = None
                                 })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -856,8 +856,8 @@ module Lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 141;
-                                                            finish = 144
+                                                            start = 142;
+                                                            finish = 145
                                                           }));
                                                   comment = None
                                                 })), "foo"));
@@ -869,8 +869,8 @@ module Lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 145;
-                                                            finish = 148
+                                                            start = 146;
+                                                            finish = 149
                                                           }));
                                                   comment = None
                                                 })), "foo"))
@@ -883,8 +883,8 @@ module Lang =
                                                (Some
                                                   (let open Lvca_provenance.Range in
                                                      {
-                                                       start = 151;
-                                                       finish = 154
+                                                       start = 152;
+                                                       finish = 155
                                                      }));
                                              comment = None
                                            })), "foo"))],
@@ -895,8 +895,8 @@ module Lang =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 156;
-                                                      finish = 159
+                                                      start = 157;
+                                                      finish = 160
                                                     }));
                                             comment = None
                                           })), "foo")))])))])));
@@ -909,7 +909,7 @@ module Lang =
                              range =
                                (Some
                                   (let open Lvca_provenance.Range in
-                                     { start = 169; finish = 172 }));
+                                     { start = 170; finish = 173 }));
                              comment = None
                            })), "Z",
                         (Lvca_syntax.Abstract_syntax.Arity.Arity
@@ -918,7 +918,7 @@ module Lang =
                                   range =
                                     (Some
                                        (let open Lvca_provenance.Range in
-                                          { start = 170; finish = 172 }));
+                                          { start = 171; finish = 173 }));
                                   comment = None
                                 })), [])));
                    Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
@@ -927,7 +927,7 @@ module Lang =
                             range =
                               (Some
                                  (let open Lvca_provenance.Range in
-                                    { start = 175; finish = 181 }));
+                                    { start = 176; finish = 182 }));
                             comment = None
                           })), "S",
                        (Lvca_syntax.Abstract_syntax.Arity.Arity
@@ -936,7 +936,7 @@ module Lang =
                                  range =
                                    (Some
                                       (let open Lvca_provenance.Range in
-                                         { start = 176; finish = 181 }));
+                                         { start = 177; finish = 182 }));
                                  comment = None
                                })),
                             [Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -948,8 +948,8 @@ module Lang =
                                              (Some
                                                 (let open Lvca_provenance.Range in
                                                    {
-                                                     start = 177;
-                                                     finish = 180
+                                                     start = 178;
+                                                     finish = 181
                                                    }));
                                            comment = None
                                          })), "nat")))])))])));
@@ -962,7 +962,7 @@ module Lang =
                              range =
                                (Some
                                   (let open Lvca_provenance.Range in
-                                     { start = 195; finish = 205 }));
+                                     { start = 196; finish = 206 }));
                              comment = None
                            })), "Pair",
                         (Lvca_syntax.Abstract_syntax.Arity.Arity
@@ -971,7 +971,7 @@ module Lang =
                                   range =
                                     (Some
                                        (let open Lvca_provenance.Range in
-                                          { start = 199; finish = 205 }));
+                                          { start = 200; finish = 206 }));
                                   comment = None
                                 })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -983,8 +983,8 @@ module Lang =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 200;
-                                                      finish = 201
+                                                      start = 201;
+                                                      finish = 202
                                                     }));
                                             comment = None
                                           })), "a")));
@@ -997,8 +997,8 @@ module Lang =
                                              (Some
                                                 (let open Lvca_provenance.Range in
                                                    {
-                                                     start = 203;
-                                                     finish = 204
+                                                     start = 204;
+                                                     finish = 205
                                                    }));
                                            comment = None
                                          })), "b")))])))])));
@@ -1011,7 +1011,7 @@ module Lang =
                              range =
                                (Some
                                   (let open Lvca_provenance.Range in
-                                     { start = 223; finish = 242 }));
+                                     { start = 224; finish = 243 }));
                              comment = None
                            })), "PairPlus",
                         (Lvca_syntax.Abstract_syntax.Arity.Arity
@@ -1020,7 +1020,7 @@ module Lang =
                                   range =
                                     (Some
                                        (let open Lvca_provenance.Range in
-                                          { start = 231; finish = 242 }));
+                                          { start = 232; finish = 243 }));
                                   comment = None
                                 })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -1032,8 +1032,8 @@ module Lang =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 232;
-                                                      finish = 233
+                                                      start = 233;
+                                                      finish = 234
                                                     }));
                                             comment = None
                                           })), "a")));
@@ -1046,8 +1046,8 @@ module Lang =
                                              (Some
                                                 (let open Lvca_provenance.Range in
                                                    {
-                                                     start = 235;
-                                                     finish = 236
+                                                     start = 236;
+                                                     finish = 237
                                                    }));
                                            comment = None
                                          })), "b")));
@@ -1060,8 +1060,8 @@ module Lang =
                                              (Some
                                                 (let open Lvca_provenance.Range in
                                                    {
-                                                     start = 238;
-                                                     finish = 241
+                                                     start = 239;
+                                                     finish = 242
                                                    }));
                                            comment = None
                                          })), "foo")))])))])));
@@ -1074,7 +1074,7 @@ module Lang =
                              range =
                                (Some
                                   (let open Lvca_provenance.Range in
-                                     { start = 256; finish = 285 }));
+                                     { start = 257; finish = 286 }));
                              comment = None
                            })), "Nonempty",
                         (Lvca_syntax.Abstract_syntax.Arity.Arity
@@ -1083,7 +1083,7 @@ module Lang =
                                   range =
                                     (Some
                                        (let open Lvca_provenance.Range in
-                                          { start = 264; finish = 285 }));
+                                          { start = 265; finish = 286 }));
                                   comment = None
                                 })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -1095,8 +1095,8 @@ module Lang =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 265;
-                                                      finish = 271
+                                                      start = 266;
+                                                      finish = 272
                                                     }));
                                             comment = None
                                           })), "string")));
@@ -1109,8 +1109,8 @@ module Lang =
                                              (Some
                                                 (let open Lvca_provenance.Range in
                                                    {
-                                                     start = 273;
-                                                     finish = 277
+                                                     start = 274;
+                                                     finish = 278
                                                    }));
                                            comment = None
                                          })), "list",
@@ -1121,8 +1121,8 @@ module Lang =
                                                   (Some
                                                      (let open Lvca_provenance.Range in
                                                         {
-                                                          start = 273;
-                                                          finish = 277
+                                                          start = 274;
+                                                          finish = 278
                                                         }));
                                                 comment = None
                                               })),
@@ -1133,8 +1133,8 @@ module Lang =
                                                        (Some
                                                           (let open Lvca_provenance.Range in
                                                              {
-                                                               start = 278;
-                                                               finish = 284
+                                                               start = 279;
+                                                               finish = 285
                                                              }));
                                                      comment = None
                                                    })), "string")),
@@ -1145,8 +1145,8 @@ module Lang =
                                                       (Some
                                                          (let open Lvca_provenance.Range in
                                                             {
-                                                              start = 273;
-                                                              finish = 277
+                                                              start = 274;
+                                                              finish = 278
                                                             }));
                                                     comment = None
                                                   }))))))))])))])));
@@ -1159,7 +1159,7 @@ module Lang =
                              range =
                                (Some
                                   (let open Lvca_provenance.Range in
-                                     { start = 295; finish = 314 }));
+                                     { start = 296; finish = 315 }));
                              comment = None
                            })), "Operator",
                         (Lvca_syntax.Abstract_syntax.Arity.Arity
@@ -1168,7 +1168,7 @@ module Lang =
                                   range =
                                     (Some
                                        (let open Lvca_provenance.Range in
-                                          { start = 303; finish = 314 }));
+                                          { start = 304; finish = 315 }));
                                   comment = None
                                 })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -1180,8 +1180,8 @@ module Lang =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 304;
-                                                      finish = 308
+                                                      start = 305;
+                                                      finish = 309
                                                     }));
                                             comment = None
                                           })), "list",
@@ -1192,8 +1192,8 @@ module Lang =
                                                    (Some
                                                       (let open Lvca_provenance.Range in
                                                          {
-                                                           start = 304;
-                                                           finish = 308
+                                                           start = 305;
+                                                           finish = 309
                                                          }));
                                                  comment = None
                                                })),
@@ -1204,8 +1204,8 @@ module Lang =
                                                         (Some
                                                            (let open Lvca_provenance.Range in
                                                               {
-                                                                start = 309;
-                                                                finish = 313
+                                                                start = 310;
+                                                                finish = 314
                                                               }));
                                                       comment = None
                                                     })), "term")),
@@ -1216,8 +1216,8 @@ module Lang =
                                                        (Some
                                                           (let open Lvca_provenance.Range in
                                                              {
-                                                               start = 304;
-                                                               finish = 308
+                                                               start = 305;
+                                                               finish = 309
                                                              }));
                                                      comment = None
                                                    }))))))))])))])));
@@ -1230,7 +1230,7 @@ module Lang =
                              range =
                                (Some
                                   (let open Lvca_provenance.Range in
-                                     { start = 325; finish = 337 }));
+                                     { start = 326; finish = 338 }));
                              comment = None
                            })), "Mut_a",
                         (Lvca_syntax.Abstract_syntax.Arity.Arity
@@ -1239,7 +1239,7 @@ module Lang =
                                   range =
                                     (Some
                                        (let open Lvca_provenance.Range in
-                                          { start = 330; finish = 337 }));
+                                          { start = 331; finish = 338 }));
                                   comment = None
                                 })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -1251,8 +1251,8 @@ module Lang =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 331;
-                                                      finish = 336
+                                                      start = 332;
+                                                      finish = 337
                                                     }));
                                             comment = None
                                           })), "mut_b")))])))])));
@@ -1265,7 +1265,7 @@ module Lang =
                              range =
                                (Some
                                   (let open Lvca_provenance.Range in
-                                     { start = 347; finish = 359 }));
+                                     { start = 348; finish = 360 }));
                              comment = None
                            })), "Mut_b",
                         (Lvca_syntax.Abstract_syntax.Arity.Arity
@@ -1274,7 +1274,7 @@ module Lang =
                                   range =
                                     (Some
                                        (let open Lvca_provenance.Range in
-                                          { start = 352; finish = 359 }));
+                                          { start = 353; finish = 360 }));
                                   comment = None
                                 })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
@@ -1286,8 +1286,8 @@ module Lang =
                                               (Some
                                                  (let open Lvca_provenance.Range in
                                                     {
-                                                      start = 353;
-                                                      finish = 358
+                                                      start = 354;
+                                                      finish = 359
                                                     }));
                                             comment = None
                                           })), "mut_a")))])))])))]
@@ -1298,7 +1298,7 @@ module Lang =
           | Foo of 'info * 'info Lvca_syntax.Nominal.Term.t 
           | Bar of 'info * ('pattern * 'info Lvca_syntax.Single_var.t *
           ('info, 'pattern) Wrapper.Types.foo) 
-          | Foo_var of 'pattern * 'info * string 
+          | Foo_var of 'info * string 
         let info = Wrapper.Info.foo
         let to_plain = Wrapper.To_plain.foo
         let of_plain = Wrapper.Of_plain.foo
@@ -1314,7 +1314,7 @@ module Lang =
               | Foo of Lvca_syntax.Nominal.Term.Plain.t 
               | Bar of ('pattern * Lvca_syntax.Single_var.Plain.t * 'pattern
               Wrapper.Plain.foo) 
-              | Foo_var of 'pattern * string 
+              | Foo_var of string 
             let (=) x y =
               let x = (x |> of_plain) |> to_nominal in
               let y = (y |> of_plain) |> to_nominal in
@@ -1439,7 +1439,7 @@ module Lang =
       struct
         type ('info, 'pattern) t = ('info, 'pattern) Wrapper.Types.nonempty
           =
-          | Nonempty of 'info * 'info Primitive.String.t * ('info,
+          | Nonempty of 'info * 'info Primitive.String.t * ('info, 'pattern,
           'info Primitive.String.t) List_model.List.t 
         let info = Wrapper.Info.nonempty
         let to_plain = Wrapper.To_plain.nonempty
@@ -1451,8 +1451,8 @@ module Lang =
         module Plain =
           struct
             type 'pattern t = 'pattern Wrapper.Plain.nonempty =
-              | Nonempty of Primitive.String.Plain.t *
-              Primitive.String.Plain.t List_model.List.Plain.t 
+              | Nonempty of Primitive.String.Plain.t * ('pattern,
+              Primitive.String.Plain.t) List_model.List.Plain.t 
             let (=) x y =
               let x = (x |> of_plain) |> to_nominal in
               let y = (y |> of_plain) |> to_nominal in
@@ -1488,8 +1488,8 @@ module Lang =
     module Term =
       struct
         type ('info, 'pattern) t = ('info, 'pattern) Wrapper.Types.term =
-          | Operator of 'info * ('info, ('info, 'pattern) Wrapper.Types.term)
-          List_model.List.t 
+          | Operator of 'info * ('info, 'pattern,
+          ('info, 'pattern) Wrapper.Types.term) List_model.List.t 
         let info = Wrapper.Info.term
         let to_plain = Wrapper.To_plain.term
         let of_plain = Wrapper.Of_plain.term
@@ -1500,7 +1500,7 @@ module Lang =
         module Plain =
           struct
             type 'pattern t = 'pattern Wrapper.Plain.term =
-              | Operator of 'pattern Wrapper.Plain.term
+              | Operator of ('pattern, 'pattern Wrapper.Plain.term)
               List_model.List.Plain.t 
             let (=) x y =
               let x = (x |> of_plain) |> to_nominal in
@@ -1641,14 +1641,14 @@ module Ifz_lang :
           | Ifz of 'info * ('info, 'pattern) ifz * ('info
           Lvca_syntax.Single_var.t * ('info, 'pattern) ifz) * ('info,
           'pattern) ifz 
-          | Ifz_var of 'pattern * 'info * string 
+          | Ifz_var of 'info * string 
       end
       module Plain :
       sig
         type 'pattern ifz =
           | Ifz of 'pattern ifz * (Lvca_syntax.Single_var.Plain.t * 'pattern
           ifz) * 'pattern ifz 
-          | Ifz_var of 'pattern * string 
+          | Ifz_var of string 
       end
     end
     module Ifz :
@@ -1657,14 +1657,14 @@ module Ifz_lang :
         | Ifz of 'info * ('info, 'pattern) Wrapper.Types.ifz * ('info
         Lvca_syntax.Single_var.t * ('info, 'pattern) Wrapper.Types.ifz) *
         ('info, 'pattern) Wrapper.Types.ifz 
-        | Ifz_var of 'pattern * 'info * string 
+        | Ifz_var of 'info * string 
       module Plain :
       sig
         type 'pattern t = 'pattern Wrapper.Plain.ifz =
           | Ifz of 'pattern Wrapper.Plain.ifz *
           (Lvca_syntax.Single_var.Plain.t * 'pattern Wrapper.Plain.ifz) *
           'pattern Wrapper.Plain.ifz 
-          | Ifz_var of 'pattern * string 
+          | Ifz_var of string 
         val pp : 'pattern t Fmt.t
         val (=) : 'pattern t -> 'pattern t -> bool
         val parse : 'pattern t Lvca_parsing.t
@@ -1699,14 +1699,14 @@ module Ifz_lang :
               | Ifz of 'info * ('info, 'pattern) ifz * ('info
               Lvca_syntax.Single_var.t * ('info, 'pattern) ifz) * ('info,
               'pattern) ifz 
-              | Ifz_var of 'pattern * 'info * string 
+              | Ifz_var of 'info * string 
           end
         module Plain =
           struct
             type 'pattern ifz =
               | Ifz of 'pattern ifz * (Lvca_syntax.Single_var.Plain.t *
               'pattern ifz) * 'pattern ifz 
-              | Ifz_var of 'pattern * string 
+              | Ifz_var of string 
           end
         module Info =
           struct
@@ -1880,7 +1880,7 @@ module Ifz_lang :
           | Ifz of 'info * ('info, 'pattern) Wrapper.Types.ifz * ('info
           Lvca_syntax.Single_var.t * ('info, 'pattern) Wrapper.Types.ifz) *
           ('info, 'pattern) Wrapper.Types.ifz 
-          | Ifz_var of 'pattern * 'info * string 
+          | Ifz_var of 'info * string 
         let info = Wrapper.Info.ifz
         let to_plain = Wrapper.To_plain.ifz
         let of_plain = Wrapper.Of_plain.ifz
@@ -1895,7 +1895,7 @@ module Ifz_lang :
               | Ifz of 'pattern Wrapper.Plain.ifz *
               (Lvca_syntax.Single_var.Plain.t * 'pattern Wrapper.Plain.ifz) *
               'pattern Wrapper.Plain.ifz 
-              | Ifz_var of 'pattern * string 
+              | Ifz_var of string 
             let (=) x y =
               let x = (x |> of_plain) |> to_nominal in
               let y = (y |> of_plain) |> to_nominal in

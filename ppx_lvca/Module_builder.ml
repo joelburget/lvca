@@ -290,6 +290,10 @@ let get_sort_ref_info ~prims ~sort_defs =
   SMap.of_alist_exn sort_deps
 ;;
 
+type external_module_type =
+  | Fixed_pattern
+  | Pattern_parameter
+
 type has_info =
   | Plain
   | With_info
@@ -333,7 +337,7 @@ module Helpers (Context : Builder_context) = struct
     { info : has_info
     ; var_names : SSet.t
     ; mutual_sorts : string Commented.t Syn.Sort_def.t SMap.t
-    ; prims : string list option SMap.t
+    ; prims : (external_module_type * string list) option SMap.t
     }
 
   (** When using a sort, we treat it differently depending on if it's a variable, defined
@@ -342,7 +346,7 @@ module Helpers (Context : Builder_context) = struct
   type defn_status =
     | Variable
     | Mutual_sort
-    | External_sort of string list option
+    | External_sort of (external_module_type * string list) option
 
   let classify_sort context sort =
     let { info = _; var_names; mutual_sorts; prims } = context in
@@ -420,7 +424,13 @@ module Helpers (Context : Builder_context) = struct
       | External_sort mods_opt ->
         let module_path, args =
           match mods_opt with
-          | Some mods -> mods, info_args @ List.map sort_args ~f:go
+          | Some (mod_type, mods) ->
+            let pattern_args =
+              match mod_type with
+              | Fixed_pattern -> []
+              | Pattern_parameter -> [ [%type: 'pattern] ]
+            in
+            mods, info_args @ pattern_args @ List.map sort_args ~f:go
           | None -> nominal_term, info_args
         in
         let module_path =
@@ -466,7 +476,7 @@ module Helpers (Context : Builder_context) = struct
           { txt = unflatten (nominal_term @ [ Supported_function.fun_name fun_defn ])
           ; loc
           }
-      | External_sort (Some mods) ->
+      | External_sort (Some (_mod_type, mods)) ->
         apply
           (pexp_ident
              { txt = unflatten (mods @ [ Supported_function.fun_name fun_defn ]); loc })
@@ -528,16 +538,25 @@ module Helpers (Context : Builder_context) = struct
 
   let plain_typ_var name = ptyp_var name, (NoVariance, NoInjectivity)
 
-  let parse_external_module =
+  let parse_module_name =
     let open Lvca_parsing in
-    whitespace
-    *> Ws.string "module"
-    *> sep_by1
-         (No_ws.char '.')
-         (No_ws.satisfy Char.is_uppercase
-         >>= fun c0 ->
-         many (Ws.satisfy Char.(fun c -> is_alphanum c || c = '_' || c = '\''))
-         >>| fun cs -> String.of_char_list (c0 :: cs))
+    sep_by1
+      (No_ws.char '.')
+      (No_ws.satisfy Char.is_uppercase
+      >>= fun c0 ->
+      many (Ws.satisfy Char.(fun c -> is_alphanum c || c = '_' || c = '\''))
+      >>| fun cs -> String.of_char_list (c0 :: cs))
+  ;;
+
+  let parse_pattern_annotation =
+    Lvca_parsing.(option Fixed_pattern (return Pattern_parameter <* Ws.char '*'))
+  ;;
+
+  let parse_external_module =
+    Lvca_parsing.(
+      whitespace
+      *> Ws.string "module"
+      *> lift2 (fun x y -> x, y) parse_pattern_annotation parse_module_name)
   ;;
 
   let prims_of_externals externals =
@@ -638,8 +657,8 @@ module Type_decls (Context : Builder_context) = struct
     let var_ctor =
       let args =
         match info with
-        | With_info -> [ [%type: 'pattern]; [%type: 'info]; [%type: string] ]
-        | Plain -> [ [%type: 'pattern]; [%type: string] ]
+        | With_info -> [ [%type: 'info]; [%type: string] ]
+        | Plain -> [ [%type: string] ]
       in
       constructor_declaration
         ~name:{ txt = var_ctor_name sort_name; loc }
@@ -1355,7 +1374,7 @@ module Wrapper_module (Context : Builder_context) = struct
     let adapt
         ?definite_rec
         (maker :
-          prims:string list option SMap.t
+          prims:(external_module_type * string list) option SMap.t
           -> sort_binding_status:(string, bound_unbound) Hashtbl.t
           -> _ Syn.Sort_def.t SMap.t
           -> string
