@@ -389,3 +389,140 @@ module Property_result = struct
 
   let check b msg = if b then Ok else Failed msg
 end
+
+module Unique = struct
+  let alphabet =
+    "abcdefghijklmnopqrstuvwxyz" |> String.to_list |> List.map ~f:String.of_char
+  ;;
+
+  (** The sequence "a"; "b"; ...; "z"; "aa"; ... "az"; ... "zz"; "aaa"; ... "aaaa"; ... *)
+  let name_sequence =
+    let letter_seq = Sequence.of_list alphabet in
+    let init = Sequence.of_list [ "" ] in
+    Sequence.unfold ~init ~f:(fun (prev : string Sequence.t) ->
+        let next =
+          Sequence.cartesian_product prev letter_seq
+          |> Sequence.map ~f:(fun (x, y) -> x ^ y)
+        in
+        Some (next, next))
+    |> Sequence.concat
+  ;;
+
+  let empty_name_sequence = Sequence.append (Sequence.singleton "") name_sequence
+
+  let%test_module "name_sequence" =
+    (module struct
+      let%expect_test _ =
+        Stdio.print_string (Sequence.nth_exn name_sequence 0);
+        [%expect "a"]
+      ;;
+
+      let%expect_test _ =
+        Stdio.print_string (Sequence.nth_exn name_sequence 25);
+        [%expect "z"]
+      ;;
+
+      let%expect_test _ =
+        Stdio.print_string (Sequence.nth_exn name_sequence 26);
+        [%expect "aa"]
+      ;;
+
+      let%expect_test _ =
+        Stdio.print_string (Sequence.nth_exn name_sequence 51);
+        [%expect "az"]
+      ;;
+
+      let%expect_test _ =
+        Stdio.print_string (Sequence.nth_exn name_sequence 52);
+        [%expect "ba"]
+      ;;
+
+      let%expect_test _ =
+        Stdio.print_string (Sequence.nth_exn name_sequence 77);
+        [%expect "bz"]
+      ;;
+    end)
+  ;;
+
+  let generate_name ?(base = "") taken =
+    if String.(base = "")
+    then Sequence.find_exn name_sequence ~f:(fun name -> not (Set.mem taken name))
+    else (
+      let sequence = empty_name_sequence |> Sequence.map ~f:(fun name -> base ^ name) in
+      Sequence.find_exn sequence ~f:(fun name -> not (Set.mem taken name)))
+  ;;
+
+  let generate_names ?(base = "") taken =
+    if String.(base = "")
+    then Sequence.filter name_sequence ~f:(fun name -> not (Set.mem taken name))
+    else (
+      let sequence = empty_name_sequence |> Sequence.map ~f:(fun name -> base ^ name) in
+      Sequence.filter sequence ~f:(fun name -> not (Set.mem taken name)))
+  ;;
+
+  let%test_module "generate_name" =
+    (module struct
+      let%expect_test _ =
+        let taken = String.Set.empty in
+        Stdio.printf "%s\n" (generate_name taken);
+        Stdio.printf "%s\n" (generate_name ~base:"b" taken);
+        Sequence.take (generate_names ~base:"b" taken) 5
+        |> Sequence.iter ~f:(Stdio.printf "%s\n");
+        [%expect {|
+      a
+      b
+      b
+      ba
+      bb
+      bc
+      bd |}]
+      ;;
+
+      let%expect_test _ =
+        let taken = String.Set.of_list [ "a"; "b" ] in
+        Stdio.printf "%s\n" (generate_name taken);
+        Stdio.printf "%s\n" (generate_name ~base:"a" taken);
+        Sequence.take (generate_names taken) 5 |> Sequence.iter ~f:(Stdio.printf "%s\n");
+        [%expect {|
+      c
+      aa
+      c
+      d
+      e
+      f
+      g |}]
+      ;;
+
+      let%expect_test _ =
+        let taken = String.Set.of_list alphabet in
+        Stdio.printf "%s\n" (generate_name taken);
+        Stdio.printf "%s\n" (generate_name ~base:"c" taken);
+        Sequence.take (generate_names taken) 5 |> Sequence.iter ~f:(Stdio.printf "%s\n");
+        [%expect {|
+      aa
+      ca
+      aa
+      ab
+      ac
+      ad
+      ae |}]
+      ;;
+
+      let%expect_test _ =
+        let taken = String.Set.empty in
+        let base = "the quick brown fox jumps over the lazy dog" in
+        Stdio.printf "%s\n" (generate_name ~base taken);
+        Sequence.take (generate_names ~base taken) 5
+        |> Sequence.iter ~f:(Stdio.printf "%s\n");
+        [%expect
+          {|
+        the quick brown fox jumps over the lazy dog
+        the quick brown fox jumps over the lazy dog
+        the quick brown fox jumps over the lazy doga
+        the quick brown fox jumps over the lazy dogb
+        the quick brown fox jumps over the lazy dogc
+        the quick brown fox jumps over the lazy dogd |}]
+      ;;
+    end)
+  ;;
+end

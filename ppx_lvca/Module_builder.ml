@@ -325,141 +325,6 @@ let make_binding_status sort_defs =
   result
 ;;
 
-let alphabet =
-  "abcdefghijklmnopqrstuvwxyz" |> String.to_list |> List.map ~f:String.of_char
-;;
-
-(** The sequence "a"; "b"; ...; "z"; "aa"; ... "az"; ... "zz"; "aaa"; ... "aaaa"; ... *)
-let name_sequence =
-  let letter_seq = Sequence.of_list alphabet in
-  let init = Sequence.of_list [ "" ] in
-  Sequence.unfold ~init ~f:(fun (prev : string Sequence.t) ->
-      let next =
-        Sequence.cartesian_product prev letter_seq
-        |> Sequence.map ~f:(fun (x, y) -> x ^ y)
-      in
-      Some (next, next))
-  |> Sequence.concat
-;;
-
-let empty_name_sequence = Sequence.append (Sequence.singleton "") name_sequence
-
-let%test_module "name_sequence" =
-  (module struct
-    let%expect_test _ =
-      Stdio.print_string (Sequence.nth_exn name_sequence 0);
-      [%expect "a"]
-    ;;
-
-    let%expect_test _ =
-      Stdio.print_string (Sequence.nth_exn name_sequence 25);
-      [%expect "z"]
-    ;;
-
-    let%expect_test _ =
-      Stdio.print_string (Sequence.nth_exn name_sequence 26);
-      [%expect "aa"]
-    ;;
-
-    let%expect_test _ =
-      Stdio.print_string (Sequence.nth_exn name_sequence 51);
-      [%expect "az"]
-    ;;
-
-    let%expect_test _ =
-      Stdio.print_string (Sequence.nth_exn name_sequence 52);
-      [%expect "ba"]
-    ;;
-
-    let%expect_test _ =
-      Stdio.print_string (Sequence.nth_exn name_sequence 77);
-      [%expect "bz"]
-    ;;
-  end)
-;;
-
-let generate_unique_name ?(base = "") taken =
-  if String.(base = "")
-  then Sequence.find_exn name_sequence ~f:(fun name -> not (Set.mem taken name))
-  else (
-    let sequence = empty_name_sequence |> Sequence.map ~f:(fun name -> base ^ name) in
-    Sequence.find_exn sequence ~f:(fun name -> not (Set.mem taken name)))
-;;
-
-let generate_unique_names ?(base = "") taken =
-  if String.(base = "")
-  then Sequence.filter name_sequence ~f:(fun name -> not (Set.mem taken name))
-  else (
-    let sequence = empty_name_sequence |> Sequence.map ~f:(fun name -> base ^ name) in
-    Sequence.filter sequence ~f:(fun name -> not (Set.mem taken name)))
-;;
-
-let%test_module "generate_unique_name" =
-  (module struct
-    let%expect_test _ =
-      let taken = SSet.empty in
-      Fmt.pr "%s\n" (generate_unique_name taken);
-      Fmt.pr "%s\n" (generate_unique_name ~base:"b" taken);
-      Sequence.take (generate_unique_names ~base:"b" taken) 5
-      |> Sequence.iter ~f:(Fmt.pr "%s\n");
-      [%expect {|
-      a
-      b
-      b
-      ba
-      bb
-      bc
-      bd |}]
-    ;;
-
-    let%expect_test _ =
-      let taken = SSet.of_list [ "a"; "b" ] in
-      Fmt.pr "%s\n" (generate_unique_name taken);
-      Fmt.pr "%s\n" (generate_unique_name ~base:"a" taken);
-      Sequence.take (generate_unique_names taken) 5 |> Sequence.iter ~f:(Fmt.pr "%s\n");
-      [%expect {|
-      c
-      aa
-      c
-      d
-      e
-      f
-      g |}]
-    ;;
-
-    let%expect_test _ =
-      let taken = SSet.of_list alphabet in
-      Fmt.pr "%s\n" (generate_unique_name taken);
-      Fmt.pr "%s\n" (generate_unique_name ~base:"c" taken);
-      Sequence.take (generate_unique_names taken) 5 |> Sequence.iter ~f:(Fmt.pr "%s\n");
-      [%expect {|
-      aa
-      ca
-      aa
-      ab
-      ac
-      ad
-      ae |}]
-    ;;
-
-    let%expect_test _ =
-      let taken = SSet.empty in
-      let base = "the quick brown fox jumps over the lazy dog" in
-      Fmt.pr "%s\n" (generate_unique_name ~base taken);
-      Sequence.take (generate_unique_names ~base taken) 5
-      |> Sequence.iter ~f:(Fmt.pr "%s\n");
-      [%expect
-        {|
-        the quick brown fox jumps over the lazy dog
-        the quick brown fox jumps over the lazy dog
-        the quick brown fox jumps over the lazy doga
-        the quick brown fox jumps over the lazy dogb
-        the quick brown fox jumps over the lazy dogc
-        the quick brown fox jumps over the lazy dogd |}]
-    ;;
-  end)
-;;
-
 module Helpers (Context : Builder_context) = struct
   open Context
   open Ast
@@ -2005,21 +1870,21 @@ module Sig (Context : Builder_context) = struct
           let taken = SSet.of_list var_names in
           let taken, unique_var_names =
             List.fold_map vars ~init:taken ~f:(fun taken (name, _) ->
-                let name' = generate_unique_name ~base:(name ^ "_") taken in
+                let name' = Unique.generate_name ~base:(name ^ "_") taken in
                 let taken = Set.add taken name' in
-                let name'' = generate_unique_name ~base:(name ^ "__") taken in
+                let name'' = Unique.generate_name ~base:(name ^ "__") taken in
                 let taken = Set.add taken name'' in
                 taken, (name', name''))
           in
           let unique_vars = List.map unique_var_names ~f:(Tuple2.map ~f:ptyp_var) in
           let unique_vars_1, unique_vars_2 = List.unzip unique_vars in
-          let info_v = generate_unique_name ~base:"info" taken in
+          let info_v = Unique.generate_name ~base:"info" taken in
           let taken = Set.add taken info_v in
           let t = ptyp_constr { txt = Lident "t"; loc } in
           let plain_t = ptyp_constr { txt = unflatten [ "Plain"; "t" ]; loc } in
           let info_a, info_b =
             match
-              Sequence.take (generate_unique_names ~base:"info" taken) 2
+              Sequence.take (Unique.generate_names ~base:"info" taken) 2
               |> Sequence.to_list
             with
             | [ x; y ] -> ptyp_var x, ptyp_var y
