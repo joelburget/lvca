@@ -59,9 +59,41 @@ module Exp = struct
         { range = [%e opt_range ~loc range]; comment = [%e option str ~loc comment] }]
   ;;
 
+  let source_code_position ~loc { pos_fname; pos_lnum; pos_bol; pos_cnum } =
+    let pos_fname = str ~loc pos_fname in
+    let pos_lnum = int ~loc pos_lnum in
+    let pos_bol = int ~loc pos_bol in
+    let pos_cnum = int ~loc pos_cnum in
+    [%expr
+      { pos_fname = [%e pos_fname]
+      ; pos_lnum = [%e pos_lnum]
+      ; pos_bol = [%e pos_bol]
+      ; pos_cnum = [%e pos_cnum]
+      }]
+  ;;
+
+  let source_location ~loc (`Implementation pos) =
+    let pos = source_code_position ~loc pos in
+    [%expr `Implementation [%e pos]]
+  ;;
+
+  let provenance ~loc provenance =
+    match provenance with
+    | `Empty -> [%expr `Empty]
+    | `Located Provenance.{ at } ->
+      let at = source_location ~loc at in
+      [%expr `Located { at = [%e at] }]
+    | `Todo_commented c ->
+      let c = commented ~loc c in
+      [%expr `Todo_commented [%e c]]
+    | `Todo_opt_range r ->
+      let r = opt_range ~loc r in
+      [%expr `Todo_opt_range [%e r]]
+  ;;
+
   module Primitive = struct
     let all ~loc (pos, prim) =
-      let pos = commented ~loc pos in
+      let pos = provenance ~loc pos in
       match prim with
       | Primitive_impl.All_plain.Integer i ->
         [%expr [%e pos], Lvca_syntax.Primitive_impl.All_plain.Integer [%e bigint ~loc i]]
@@ -75,11 +107,11 @@ module Exp = struct
         [%expr [%e pos], Lvca_syntax.Primitive_impl.All_plain.Char [%e char ~loc c]]
     ;;
 
-    let integer ~loc (pos, x) = [%expr [%e commented ~loc pos], [%e bigint ~loc x]]
-    let int32 ~loc (pos, x) = [%expr [%e commented ~loc pos], [%e int32 ~loc x]]
-    let float ~loc (pos, x) = [%expr [%e commented ~loc pos], [%e float ~loc x]]
-    let char ~loc (pos, x) = [%expr [%e commented ~loc pos], [%e char ~loc x]]
-    let string ~loc (pos, x) = [%expr [%e commented ~loc pos], [%e str ~loc x]]
+    let integer ~loc (pos, x) = [%expr [%e provenance ~loc pos], [%e bigint ~loc x]]
+    let int32 ~loc (pos, x) = [%expr [%e provenance ~loc pos], [%e int32 ~loc x]]
+    let float ~loc (pos, x) = [%expr [%e provenance ~loc pos], [%e float ~loc x]]
+    let char ~loc (pos, x) = [%expr [%e provenance ~loc pos], [%e char ~loc x]]
+    let string ~loc (pos, x) = [%expr [%e provenance ~loc pos], [%e str ~loc x]]
   end
 
   let rec pattern ~loc = function
@@ -87,9 +119,9 @@ module Exp = struct
       let name_exp = str ~loc name in
       let pats = pats |> List.map ~f:(pattern ~loc) |> list ~loc in
       [%expr
-        Lvca_syntax.Pattern.Operator ([%e commented ~loc pos], [%e name_exp], [%e pats])]
+        Lvca_syntax.Pattern.Operator ([%e provenance ~loc pos], [%e name_exp], [%e pats])]
     | Var (pos, s) ->
-      [%expr Lvca_syntax.Pattern.Var ([%e commented ~loc pos], [%e str ~loc s])]
+      [%expr Lvca_syntax.Pattern.Var ([%e provenance ~loc pos], [%e str ~loc s])]
     | Primitive p -> [%expr Lvca_syntax.Pattern.Primitive [%e Primitive.all ~loc p]]
   ;;
 
@@ -99,9 +131,9 @@ module Exp = struct
       let scopes = scopes |> List.map ~f:(scope ~loc) |> list ~loc in
       [%expr
         Lvca_syntax.Nominal.Term.Operator
-          ([%e commented ~loc pos], [%e name_exp], [%e scopes])]
+          ([%e provenance ~loc pos], [%e name_exp], [%e scopes])]
     | Var (pos, s) ->
-      [%expr Lvca_syntax.Nominal.Term.Var ([%e commented ~loc pos], [%e str ~loc s])]
+      [%expr Lvca_syntax.Nominal.Term.Var ([%e provenance ~loc pos], [%e str ~loc s])]
     | Primitive p -> [%expr Lvca_syntax.Nominal.Term.Primitive [%e Primitive.all ~loc p]]
 
   and scope ~loc (Nominal.Scope.Scope (pats, tm)) =
@@ -110,29 +142,31 @@ module Exp = struct
     [%expr Lvca_syntax.Nominal.Scope.Scope ([%e pats], [%e tm])]
   ;;
 
+  (*
   let rec nonbinding ~loc = function
     | Nonbinding.Operator (pos, name, tms) ->
       let name_exp = str ~loc name in
       let tms = tms |> List.map ~f:(nonbinding ~loc) |> list ~loc in
       [%expr
-        Lvca_syntax.Nonbinding.Operator ([%e commented ~loc pos], [%e name_exp], [%e tms])]
+        Lvca_syntax.Nonbinding.Operator ([%e provenance ~loc pos], [%e name_exp], [%e tms])]
     | Primitive p -> [%expr Lvca_syntax.Nonbinding.Primitive [%e Primitive.all ~loc p]]
   ;;
+     *)
 
   let rec sort ~loc = function
     | Sort.Ap (pos, name, sorts) ->
       [%expr
         Lvca_syntax.Sort.Ap
-          ([%e commented ~loc pos], [%e str ~loc name], [%e ap_list ~loc sorts])]
+          ([%e provenance ~loc pos], [%e str ~loc name], [%e ap_list ~loc sorts])]
     | Sort.Name (pos, name) ->
-      [%expr Lvca_syntax.Sort.Name ([%e commented ~loc pos], [%e str ~loc name])]
+      [%expr Lvca_syntax.Sort.Name ([%e provenance ~loc pos], [%e str ~loc name])]
 
   and ap_list ~loc = function
-    | Sort.Nil info -> [%expr Lvca_syntax.Sort.Nil [%e commented ~loc info]]
+    | Sort.Nil info -> [%expr Lvca_syntax.Sort.Nil [%e provenance ~loc info]]
     | Cons (info, x, xs) ->
       [%expr
         Lvca_syntax.Sort.Cons
-          ([%e commented ~loc info], [%e sort ~loc x], [%e ap_list ~loc xs])]
+          ([%e provenance ~loc info], [%e sort ~loc x], [%e ap_list ~loc xs])]
   ;;
 
   let sort_slot ~loc = function
@@ -155,18 +189,18 @@ module Exp = struct
   let arity ~loc (Arity.Arity (info, valences)) =
     let valences = valences |> List.map ~f:(valence ~loc) |> list ~loc in
     [%expr
-      Lvca_syntax.Abstract_syntax.Arity.Arity ([%e commented ~loc info], [%e valences])]
+      Lvca_syntax.Abstract_syntax.Arity.Arity ([%e provenance ~loc info], [%e valences])]
   ;;
 
   let operator_def ~loc (Operator_def.Operator_def (info, name, arity')) =
     [%expr
       Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
-        ([%e commented ~loc info], [%e str ~loc name], [%e arity ~loc arity'])]
+        ([%e provenance ~loc info], [%e str ~loc name], [%e arity ~loc arity'])]
   ;;
 
   let kind ~loc (Kind.Kind (pos, n)) =
     [%expr
-      Lvca_syntax.Abstract_syntax.Kind.Kind ([%e commented ~loc pos], [%e int ~loc n])]
+      Lvca_syntax.Abstract_syntax.Kind.Kind ([%e provenance ~loc pos], [%e int ~loc n])]
   ;;
 
   let sort_def ~loc (Sort_def.Sort_def (vars, op_defs)) =
@@ -197,6 +231,6 @@ module Exp = struct
   let single_var ~loc Single_var.{ name; info } =
     [%expr
       Lvca_syntax.Single_var.
-        { name = [%e str ~loc name]; info = [%e commented ~loc info] }]
+        { name = [%e str ~loc name]; info = [%e provenance ~loc info] }]
   ;;
 end
