@@ -1,7 +1,6 @@
 (** Statics describe the rules for stating whether an expression is well-formed. This
     implementation is for expressing bidirectional typing rules. *)
 
-open Lvca_provenance
 open Lvca_syntax
 open Lvca_util
 
@@ -12,69 +11,63 @@ open Lvca_util
     rules assert that given both a term and a type we can check if the term is of that
     type. *)
 module Typing_rule : sig
-  type 'info t =
-    { tm : 'info Binding_aware_pattern.t
-    ; ty : 'info Binding_aware_pattern.t
+  type t =
+    { tm : Binding_aware_pattern.t
+    ; ty : Binding_aware_pattern.t
     }
 
-  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-  val erase : _ t -> unit t
+  val ( = ) : t -> t -> bool
 end
 
 module Typing_clause : sig
-  type 'info inference_rule = 'info Typing_rule.t
-  type 'info checking_rule = 'info Typing_rule.t
+  type inference_rule = Typing_rule.t
+  type checking_rule = Typing_rule.t
 
-  type 'info t =
-    | Inference_rule of 'info inference_rule
-    | Checking_rule of 'info checking_rule
+  type t =
+    | Inference_rule of inference_rule
+    | Checking_rule of checking_rule
 
-  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-  val erase : _ t -> unit t
-  val parse : Opt_range.t t Lvca_parsing.t
+  val ( = ) : t -> t -> bool
+  val parse : t Lvca_parsing.t
 end
 
 (** A hypothesis contains a set of variables (and their types) that must appear in the
     context, as well as an inference or checking clause. *)
 module Hypothesis : sig
-  type 'info t = 'info Binding_aware_pattern.t String.Map.t * 'info Typing_clause.t
+  type t = Binding_aware_pattern.t String.Map.t * Typing_clause.t
 
-  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
-  val erase : _ t -> unit t
+  val ( = ) : t -> t -> bool
 
   module Parse : sig
-    val pattern : Opt_range.t Binding_aware_pattern.t Lvca_parsing.t
-    val typed_term : (string * Opt_range.t Binding_aware_pattern.t) Lvca_parsing.t
-    val context : Opt_range.t Binding_aware_pattern.t String.Map.t Lvca_parsing.t
-    val t : Opt_range.t t Lvca_parsing.t
+    val pattern : Binding_aware_pattern.t Lvca_parsing.t
+    val typed_term : (string * Binding_aware_pattern.t) Lvca_parsing.t
+    val context : Binding_aware_pattern.t String.Map.t Lvca_parsing.t
+    val t : t Lvca_parsing.t
   end
 end
 
 (** A rule contains a set of hypotheses, an optional name, and a conclusion *)
 module Rule : sig
-  type 'info t =
-    { hypotheses : 'info Hypothesis.t list
+  type t =
+    { hypotheses : Hypothesis.t list
     ; name : string option
-    ; conclusion : 'info Hypothesis.t
+    ; conclusion : Hypothesis.t
     }
 
-  val erase : _ t -> unit t
-  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+  val ( = ) : t -> t -> bool
 
   module Parse : sig
     val line : string option Lvca_parsing.t
-    val t : Opt_range.t t Lvca_parsing.t
+    val t : t Lvca_parsing.t
   end
 end
 
 module Typing : sig
-  type 'info t = Typing of 'info Nominal.Term.t * 'info Nominal.Term.t
+  type t = Typing of Nominal.Term.t * Nominal.Term.t
 
-  val erase : _ t -> unit t
-  val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+  val ( = ) : t -> t -> bool
 end
 
-type 'info t = 'info Rule.t list
+type t = Rule.t list
 
-val erase : _ t -> unit t
-val parse : Opt_range.t t Lvca_parsing.t
+val parse : t Lvca_parsing.t
