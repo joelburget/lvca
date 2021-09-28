@@ -8,8 +8,11 @@ type t =
   | Primitive of Primitive_impl.All.t
   | Var of Provenance.t * string
 
-let mk_Operator ?(provenance = `Empty) name pats = Operator (provenance, name, pats)
-let mk_Var ?(provenance = `Empty) name = Var (provenance, name)
+let mk_Operator ?(provenance = Provenance.of_here [%here]) name pats =
+  Operator (provenance, name, pats)
+;;
+
+let mk_Var ?(provenance = Provenance.of_here [%here]) name = Var (provenance, name)
 let mk_Primitive prim = Primitive prim
 
 let rec ( = ) pat1 pat2 =

@@ -29,7 +29,7 @@ module Make (Base_plain : Base_plain_s) = struct
 
   let parse =
     let open Lvca_parsing in
-    Base_plain.parse >>| fun value -> `Empty, value
+    Base_plain.parse >>~ fun location value -> `Parse_located location, value
   ;;
 end
 
@@ -184,11 +184,24 @@ module All = struct
   module All_kernel = Make (All_plain)
   include All_kernel
 
-  let mk_String ?(provenance = `Empty) x = provenance, All_plain.String x
-  let mk_Float ?(provenance = `Empty) x = provenance, All_plain.Float x
-  let mk_Char ?(provenance = `Empty) x = provenance, All_plain.Char x
-  let mk_Integer ?(provenance = `Empty) x = provenance, All_plain.Integer x
-  let mk_Int32 ?(provenance = `Empty) x = provenance, All_plain.Int32 x
+  let mk_String ?(provenance = Provenance.of_here [%here]) x =
+    provenance, All_plain.String x
+  ;;
+
+  let mk_Float ?(provenance = Provenance.of_here [%here]) x =
+    provenance, All_plain.Float x
+  ;;
+
+  let mk_Char ?(provenance = Provenance.of_here [%here]) x = provenance, All_plain.Char x
+
+  let mk_Integer ?(provenance = Provenance.of_here [%here]) x =
+    provenance, All_plain.Integer x
+  ;;
+
+  let mk_Int32 ?(provenance = Provenance.of_here [%here]) x =
+    provenance, All_plain.Int32 x
+  ;;
+
   let jsonify (_, p) = All_plain.jsonify p
 
   let unjsonify json =

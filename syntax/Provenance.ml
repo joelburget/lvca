@@ -1,4 +1,5 @@
 open Base
+open Lvca_provenance
 
 (*
 type implementation =
@@ -20,9 +21,8 @@ type located = { at : Source_location.t }
 (* A term is either computed from others or written directly *)
 type t =
   [ `Empty
-  | `Located of located
-  | `Todo_commented of string Lvca_provenance.Commented.t
-  | `Todo_opt_range of Lvca_provenance.Opt_range.t
+  | `Source_located of located
+  | `Parse_located of Opt_range.t
   ]
 (*
   | Computed of
@@ -31,14 +31,12 @@ type t =
       }
                   *)
 
-let of_here pos = `Located { at = `Implementation pos }
+let of_here pos = `Source_located { at = `Implementation pos }
 
 let ( = ) a b =
   match a, b with
-  | `Located a, `Located b -> Source_location.(a.at = b.at)
+  | `Source_located a, `Source_located b -> Source_location.(a.at = b.at)
+  | `Parse_located a, `Parse_located b -> Opt_range.(a = b)
   | `Empty, `Empty -> true
-  | `Todo_commented a, `Todo_commented b ->
-    Lvca_provenance.Commented.equal String.( = ) a b
-  | `Todo_opt_range a, `Todo_opt_range b -> Lvca_provenance.Opt_range.(a = b)
   | _, _ -> false
 ;;

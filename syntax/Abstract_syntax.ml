@@ -11,7 +11,7 @@ let test_parse_with p str =
 module Kind = struct
   type t = Kind of Provenance.t * int
 
-  let mk ?(provenance = `Empty) n = Kind (provenance, n)
+  let mk ?(provenance = Provenance.of_here [%here]) n = Kind (provenance, n)
   let ( = ) (Kind (i1, k1)) (Kind (i2, k2)) = Provenance.(i1 = i2) && Int.(k1 = k2)
   let info (Kind (i, _)) = i
 
@@ -27,7 +27,7 @@ module Kind = struct
 
     let t =
       sep_by1 (Ws.string "->") (Ws.char '*')
-      >>| (fun stars -> Kind (`Empty, List.length stars))
+      >>~ (fun location stars -> Kind (`Parse_located location, List.length stars))
       <?> "kind"
     ;;
 
@@ -41,7 +41,7 @@ module Kind = struct
         let pp_decl ppf (name, decl) = Fmt.pf ppf "%s: %a" name pp decl
 
         let%expect_test _ =
-          let x = test_parse_with decl "foo: * -> * // comment" in
+          let x = test_parse_with decl "foo: * -> *" in
           Fmt.pr "%a" pp_decl x;
           [%expect {|foo: * -> *|}]
         ;;
@@ -52,14 +52,14 @@ module Kind = struct
             test_parse_with
               (many t)
               {|
-              * -> * // comment 1
-              * // comment 2
+              * -> *
+              *
               |}
           in
           let pp ppf kind =
             Fmt.pf
               ppf
-              "%a //%a"
+              "%a"
               pp
               kind
               Fmt.(option string)
@@ -68,8 +68,8 @@ module Kind = struct
           Fmt.(pr "%a" (list ~sep:cut pp) x);
           [%expect
             {|
-            * -> * // comment 1
-            * // comment 2
+            * -> *
+            *
             |}]
         ;;
            *)
@@ -79,8 +79,8 @@ module Kind = struct
             test_parse_with
               (many decl)
               {|
-            foo: * -> * // comment 1
-            bar: * -> * // comment 2
+            foo: * -> *
+            bar: * -> *
             |}
           in
           Fmt.(pr "%a" (list pp_decl) x);
@@ -206,7 +206,7 @@ end
 module Arity = struct
   type t = Arity of Provenance.t * Valence.t list
 
-  let mk ?(provenance = `Empty) valences = Arity (provenance, valences)
+  let mk ?(provenance = Provenance.of_here [%here]) valences = Arity (provenance, valences)
 
   let pp ppf (Arity (_info, valences)) =
     (* TODO open_loc ppf info; *)
@@ -226,7 +226,7 @@ module Arity = struct
   let parse =
     let open Lvca_parsing in
     Ws.parens (sep_by (Ws.char ';') Valence.parse)
-    >>| (fun valences -> Arity (`Empty, valences))
+    >>| (fun valences -> Arity (Provenance.of_here [%here], valences))
     <?> "arity"
   ;;
 
@@ -275,12 +275,9 @@ module Arity = struct
       let%expect_test _ = expect_okay "(tm[tm]. tm[tm]. tm)"
       let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)"
       let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)"
-      let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)  // comment"
+      let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)"
       let%test_unit _ = assert (test_parse_with parse "()" = Arity (none, []))
-
-      let%test_unit _ =
-        assert (test_parse_with parse "()  // comment" = Arity (`Empty, []))
-      ;;
+      let%test_unit _ = assert (test_parse_with parse "()" = Arity (`Empty, []))
     end)
   ;;
 end
@@ -288,7 +285,9 @@ end
 module Operator_def = struct
   type t = Operator_def of Provenance.t * string * Arity.t
 
-  let mk ?(provenance = `Empty) name arity = Operator_def (provenance, name, arity)
+  let mk ?(provenance = Provenance.of_here [%here]) name arity =
+    Operator_def (provenance, name, arity)
+  ;;
 
   let ( = ) (Operator_def (info1, name1, arity1)) (Operator_def (info2, name2, arity2)) =
     Provenance.( = ) info1 info2 && String.(name1 = name2) && Arity.( = ) arity1 arity2
@@ -308,35 +307,19 @@ module Operator_def = struct
   let parse =
     let open Lvca_parsing in
     Ws.identifier
-    >>= (fun ident -> Arity.parse >>| fun arity -> Operator_def (`Empty, ident, arity))
+    >>= (fun ident ->
+          Arity.parse
+          >>~ fun location arity -> Operator_def (`Parse_located location, ident, arity))
     <?> "operator definition"
   ;;
 
   let%test_module "parsing" =
     (module struct
       let%test_unit _ =
-        let info1 =
-          `Todo_commented Commented.{ range = Opt_range.mk 0 5; comment = None }
-        in
-        let info2 =
-          `Todo_commented Commented.{ range = Opt_range.mk 3 5; comment = None }
-        in
+        let info1 = `Parse_located (Opt_range.mk 0 5) in
+        let info2 = `Parse_located (Opt_range.mk 3 5) in
         let parsed = test_parse_with parse "foo()" in
         assert (parsed = Operator_def (info1, "foo", Arity (info2, [])))
-      ;;
-
-      let%test_unit _ =
-        let outer_info =
-          `Todo_commented Commented.{ range = Opt_range.mk 0 16; comment = None }
-        in
-        let inner_info =
-          `Todo_commented
-            Commented.{ range = Opt_range.mk 3 16; comment = Some " comment" }
-        in
-        let str = "foo() // comment" in
-        (*         01234567890123456 *)
-        let parsed = test_parse_with parse str in
-        assert (parsed = Operator_def (outer_info, "foo", Arity (inner_info, [])))
       ;;
     end)
   ;;
@@ -681,13 +664,13 @@ let%test_module "Parser" =
               , Sort_def
                   ( []
                   , [ Operator_def
-                        ( `Todo_opt_range (Opt_range.mk 8 14)
+                        ( `Parse_located (Opt_range.mk 8 14)
                         , "true"
-                        , Arity (`Todo_opt_range (Opt_range.mk 12 14), []) )
+                        , Arity (`Parse_located (Opt_range.mk 12 14), []) )
                     ; Operator_def
-                        ( `Todo_opt_range (Opt_range.mk 17 24)
+                        ( `Parse_located (Opt_range.mk 17 24)
                         , "false"
-                        , Arity (`Todo_opt_range (Opt_range.mk 22 24), []) )
+                        , Arity (`Parse_located (Opt_range.mk 22 24), []) )
                     ] ) )
             ]
         }
@@ -697,11 +680,11 @@ let%test_module "Parser" =
       parse
         {|
       integer : *
-      list : * -> *  // comment
+      list : * -> *
 
       ty :=
-        | bool()  // comment
-        | arr(ty; ty)  // comment
+        | bool()
+        | arr(ty; ty)
 
       tm :=
         | app(tm; tm)
@@ -759,8 +742,8 @@ let%test_module "Parser" =
       |}
       in
       lang.externals
-      = [ "integer", Kind.Kind (`Todo_opt_range (Opt_range.mk 17 18), 1)
-        ; "list", Kind (`Todo_opt_range (Opt_range.mk 32 38), 2)
+      = [ "integer", Kind.Kind (`Parse_located (Opt_range.mk 17 18), 1)
+        ; "list", Kind (`Parse_located (Opt_range.mk 32 38), 2)
         ]
     ;;
 
@@ -809,10 +792,7 @@ term :=
     ;;
 
     let%expect_test _ =
-      parse_print {|
-empty :=
-  // comment
-|};
+      parse_print "empty :=";
       [%expect "empty :="]
     ;;
   end)

@@ -11,11 +11,11 @@ module Types = struct
   and scope = Scope of Pattern.t list * term
 end
 
-let mk_Operator ?(provenance = `Empty) name scopes =
+let mk_Operator ?(provenance = Provenance.of_here [%here]) name scopes =
   Types.Operator (provenance, name, scopes)
 ;;
 
-let mk_Var ?(provenance = `Empty) name = Types.Var (provenance, name)
+let mk_Var ?(provenance = Provenance.of_here [%here]) name = Types.Var (provenance, name)
 let mk_Primitive prim = Types.Primitive prim
 let mk_Scope pats tm = Types.Scope (pats, tm)
 

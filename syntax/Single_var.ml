@@ -15,4 +15,4 @@ let of_nominal = function
   | tm -> Error tm
 ;;
 
-let mk ?(info = `Empty) name = { info; name }
+let mk ?(info = Provenance.of_here [%here]) name = { info; name }

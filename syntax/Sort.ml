@@ -10,10 +10,13 @@ and ap_list =
   | Nil of Provenance.t
   | Cons of Provenance.t * t * ap_list
 
-let mk_Ap ?(provenance = `Empty) name args = Ap (provenance, name, args)
-let mk_Name ?(provenance = `Empty) name = Name (provenance, name)
-let mk_Nil ?(provenance = `Empty) () = Nil provenance
-let mk_Cons ?(provenance = `Empty) x xs = Cons (provenance, x, xs)
+let mk_Ap ?(provenance = Provenance.of_here [%here]) name args =
+  Ap (provenance, name, args)
+;;
+
+let mk_Name ?(provenance = Provenance.of_here [%here]) name = Name (provenance, name)
+let mk_Nil ?(provenance = Provenance.of_here [%here]) () = Nil provenance
+let mk_Cons ?(provenance = Provenance.of_here [%here]) x xs = Cons (provenance, x, xs)
 
 let rec ( = ) s1 s2 =
   match s1, s2 with
