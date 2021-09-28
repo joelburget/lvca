@@ -3,17 +3,21 @@ open Lvca_provenance
 open Lvca_util
 module Format = Stdlib.Format
 
-type 'info t =
-  | Operator of 'info * string * 'info t list
-  | Primitive of 'info Primitive_impl.All.t
-  | Var of 'info * string
+type t =
+  | Operator of Provenance.t * string * t list
+  | Primitive of Primitive_impl.All.t
+  | Var of Provenance.t * string
 
-let rec equal ~info_eq pat1 pat2 =
+let mk_Operator ?(provenance = `Empty) name pats = Operator (provenance, name, pats)
+let mk_Var ?(provenance = `Empty) name = Var (provenance, name)
+let mk_Primitive prim = Primitive prim
+
+let rec ( = ) pat1 pat2 =
   match pat1, pat2 with
   | Operator (i1, name1, pats1), Operator (i2, name2, pats2) ->
-    info_eq i1 i2 && String.(name1 = name2) && List.equal (equal ~info_eq) pats1 pats2
-  | Primitive p1, Primitive p2 -> Primitive_impl.All.equal ~info_eq p1 p2
-  | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
+    Provenance.( = ) i1 i2 && String.(name1 = name2) && List.equal ( = ) pats1 pats2
+  | Primitive p1, Primitive p2 -> Primitive_impl.All.( = ) p1 p2
+  | Var (i1, name1), Var (i2, name2) -> Provenance.( = ) i1 i2 && String.(name1 = name2)
   | _, _ -> false
 ;;
 
@@ -40,40 +44,17 @@ let info = function
   | Primitive p -> Primitive_impl.All.info p
 ;;
 
-let rec pp_generic ~open_loc ~close_loc ppf pat =
+let rec pp ppf pat =
   let list, pf, semi = Fmt.(list, pf, semi) in
-  open_loc ppf (info pat);
-  (match pat with
+  (* TODO open_loc ppf (info pat); *)
+  match pat with
   | Operator (_, name, pats) ->
-    pf
-      ppf
-      "@[<2>@{%s@}(%a)@]"
-      name
-      (pp_generic ~open_loc ~close_loc |> list ~sep:semi)
-      pats
-  | Primitive prim ->
-    Primitive_impl.All.pp_generic
-      ~open_loc:(fun _ _ -> ())
-      ~close_loc:(fun _ _ -> ())
-      ppf
-      prim
-  | Var (_, name) -> Fmt.string ppf name);
-  close_loc ppf (info pat)
+    pf ppf "@[<2>@{%s@}(%a)@]" name (pp |> list ~sep:semi) pats
+  | Primitive prim -> Primitive_impl.All.pp ppf prim
+  | Var (_, name) -> Fmt.string ppf name
 ;;
 
-let pp ppf = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf
-
-let pp_range ppf pat =
-  pp_generic ppf pat ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag
-;;
-
-let pp_ranges ppf pat =
-  pp_generic
-    ppf
-    pat
-    ~open_loc:(fun ppf loc -> Format.pp_open_stag ppf (Source_ranges.Stag loc))
-    ~close_loc:(fun ppf _loc -> Format.pp_close_stag ppf ())
-;;
+(* close_loc ppf (info pat) *)
 
 let rec jsonify pat =
   Lvca_util.Json.(
@@ -91,22 +72,13 @@ let rec unjsonify =
     function
     | Array [| String "o"; String tag; Array subtms |] ->
       let%map subtms' = subtms |> Array.to_list |> List.map ~f:unjsonify |> Option.all in
-      Operator ((), tag, subtms')
+      Operator (Provenance.of_here [%here], tag, subtms')
     | Array [| String "p"; prim |] ->
       let%map prim = Primitive_impl.All.unjsonify prim in
       Primitive prim
-    | Array [| String "v"; String name |] -> Some (Var ((), name))
+    | Array [| String "v"; String name |] -> Some (Var (Provenance.of_here [%here], name))
     | _ -> None)
 ;;
-
-let rec map_info ~f = function
-  | Operator (loc, tag, subpats) ->
-    Operator (f loc, tag, subpats |> List.map ~f:(map_info ~f))
-  | Primitive prim -> Primitive (Primitive_impl.All.map_info ~f prim)
-  | Var (loc, name) -> Var (f loc, name)
-;;
-
-let erase pat = map_info ~f:(fun _ -> ()) pat
 
 let rec select_path ~path pat =
   match path with
@@ -153,10 +125,7 @@ let check lang ~pattern_sort ~var_sort =
       match pat with
       | Var (_, name) when Lvca_util.String.is_ignore name -> Ok String.Map.empty
       | Var (_, name) ->
-        if Sort.equal
-             ~info_eq:Unit.( = )
-             (Sort.erase_info sort)
-             (Sort.erase_info var_sort)
+        if Sort.(sort = var_sort)
         then Ok (String.Map.singleton name sort)
         else
           Error
@@ -223,33 +192,24 @@ let check lang ~pattern_sort ~var_sort =
   check pattern_sort
 ;;
 
-let parse ~comment =
+let parse =
   let open Lvca_parsing in
   fix (fun pat ->
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
-        [ (Primitive_impl.All.parse ~comment >>| fun prim -> Primitive prim)
+        [ (Primitive_impl.All.parse >>| fun prim -> Primitive prim)
         ; (Ws.identifier
-          >>== fun { value = ident; range } ->
+          >>= fun ident ->
           choice
             [ Ws.(
                 parens (sep_end_by (char ';' <* whitespace) pat)
-                >>== fun Parse_result.{ value = children; range = finish } ->
-                option' comment
-                >>|| fun { value = comment; _ } ->
-                let range = Opt_range.union range finish in
-                { value = Operator (Commented.{ range; comment }, ident, children)
-                ; range
-                })
-            ; (option' comment
-              >>| fun comment -> Var (Commented.{ range; comment }, ident))
+                >>| fun children -> Operator (`Empty, ident, children))
+            ; return (Var (`Empty, ident))
             ]
           <?> "pattern body")
         ])
   <?> "pattern"
 ;;
-
-let parse_no_comment = parse ~comment:Lvca_parsing.no_comment
 
 let%test_module "Parsing" =
   (module struct
@@ -260,8 +220,8 @@ let%test_module "Parsing" =
     ;;
 
     let print_parse tm =
-      match Lvca_parsing.parse_string parse_no_comment tm with
-      | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range (map_info ~f:Commented.get_range pat)
+      match Lvca_parsing.parse_string parse tm with
+      | Ok pat -> Fmt.pr "%a" pp pat
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
 
@@ -353,9 +313,8 @@ let%test_module "Parsing" =
 module Properties = struct
   open Property_result
 
-  let parse = Lvca_parsing.parse_string parse_no_comment
+  let parse = Lvca_parsing.parse_string parse
   let to_string = Fmt.to_to_string pp
-  let ( = ) = equal ~info_eq:Unit.( = )
 
   let json_round_trip1 t =
     match t |> jsonify |> unjsonify with
@@ -374,9 +333,7 @@ module Properties = struct
 
   let string_round_trip1 t =
     match t |> to_string |> parse with
-    | Ok t' ->
-      let t'' = erase t' in
-      Property_result.check (t'' = t) (Fmt.str "%a <> %a" pp t'' pp t)
+    | Ok t' -> Property_result.check (t' = t) (Fmt.str "%a <> %a" pp t' pp t)
     | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
   ;;
 
@@ -384,14 +341,14 @@ module Properties = struct
     match parse str with
     | Error _ -> Uninteresting
     | Ok t ->
-      let str' = t |> erase |> to_string in
+      let str' = to_string t in
       if Base.String.(str' = str)
       then Ok
       else (
         match parse str with
         | Error msg -> Failed msg
         | Ok t' ->
-          let str'' = t' |> erase |> to_string in
+          let str'' = to_string t' in
           Property_result.check
             String.(str'' = str')
             (Fmt.str {|"%s" <> "%s"|} str'' str'))
@@ -401,16 +358,12 @@ end
 let%test_module "check" =
   (module struct
     let parse_lang lang_str =
-      Lvca_parsing.(
-        parse_string (whitespace *> Abstract_syntax.parse ~comment:no_comment) lang_str)
+      Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse) lang_str)
       |> Result.ok_or_failwith
     ;;
 
-    let parse_pattern str =
-      Lvca_parsing.parse_string parse_no_comment str |> Result.ok_or_failwith
-    ;;
-
-    let parse_sort str = Lvca_parsing.(parse_string (Sort.parse ~comment:no_comment) str)
+    let parse_pattern str = Lvca_parsing.parse_string parse str |> Result.ok_or_failwith
+    let parse_sort str = Lvca_parsing.(parse_string Sort.parse str)
 
     let lang_desc =
       {|

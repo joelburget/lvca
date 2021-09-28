@@ -12,29 +12,24 @@ module type Base_plain_s = sig
 end
 
 module Make (Base_plain : Base_plain_s) = struct
-  type 'info t = 'info * Base_plain.t
+  type t = Provenance.t * Base_plain.t
 
   let info (i, _) = i
-  let erase (_, p) = (), p
-  let equal ~info_eq (i1, x1) (i2, x2) = info_eq i1 i2 && Base_plain.(x1 = x2)
-  let map_info ~f (i, z) = f i, z
+  let ( = ) (i1, x1) (i2, x2) = Provenance.( = ) i1 i2 && Base_plain.(x1 = x2)
 
-  let pp_generic ~open_loc ~close_loc ppf (i, x) =
-    open_loc ppf i;
-    Base_plain.pp ppf x;
-    close_loc ppf i
+  let pp ppf (_i, x) =
+    (* TODO open_loc ppf i; *)
+    Base_plain.pp ppf x
   ;;
+
+  (* close_loc ppf i *)
 
   let jsonify (_, plain) = Base_plain.jsonify plain
   let unjsonify json = Base_plain.unjsonify json |> Option.map ~f:(fun tm -> (), tm)
 
-  let parse ~comment =
+  let parse =
     let open Lvca_parsing in
-    Base_plain.parse
-    >>== fun Parse_result.{ value; range } ->
-    option' comment
-    >>|| fun { value = comment; _ } ->
-    { value = Lvca_provenance.Commented.{ range; comment }, value; range }
+    Base_plain.parse >>| fun value -> `Empty, value
   ;;
 end
 
@@ -189,9 +184,17 @@ module All = struct
   module All_kernel = Make (All_plain)
   include All_kernel
 
-  let pp ppf p = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p
+  let mk_String ?(provenance = `Empty) x = provenance, All_plain.String x
+  let mk_Float ?(provenance = `Empty) x = provenance, All_plain.Float x
+  let mk_Char ?(provenance = `Empty) x = provenance, All_plain.Char x
+  let mk_Integer ?(provenance = `Empty) x = provenance, All_plain.Integer x
+  let mk_Int32 ?(provenance = `Empty) x = provenance, All_plain.Int32 x
   let jsonify (_, p) = All_plain.jsonify p
-  let unjsonify json = All_plain.unjsonify json |> Option.map ~f:(fun prim -> (), prim)
+
+  let unjsonify json =
+    All_plain.unjsonify json
+    |> Option.map ~f:(fun prim -> Provenance.of_here [%here], prim)
+  ;;
 
   let check prim sort =
     match snd prim, sort with
@@ -206,10 +209,9 @@ module All = struct
   ;;
 
   module Properties = struct
-    let ( = ) = equal ~info_eq:Unit.( = )
     let to_string p = Fmt.to_to_string pp p
 
-    let json_round_trip1 : unit t -> Property_result.t =
+    let json_round_trip1 : t -> Property_result.t =
      fun t ->
       match t with
       | _, All_plain.Float f when Base.Float.is_nan f -> Uninteresting
@@ -227,27 +229,24 @@ module All = struct
       | None -> Uninteresting
    ;;
 
-    let parse_no_comment = parse ~comment:Lvca_parsing.no_comment
-
-    let string_round_trip1 : unit t -> Property_result.t =
+    let string_round_trip1 : t -> Property_result.t =
      fun t ->
-      match t |> to_string |> Lvca_parsing.parse_string parse_no_comment with
-      | Ok prim ->
-        Property_result.check (erase prim = t) (Fmt.str "%a <> %a" pp prim pp t)
+      match t |> to_string |> Lvca_parsing.parse_string parse with
+      | Ok prim -> Property_result.check (prim = t) (Fmt.str "%a <> %a" pp prim pp t)
       | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
    ;;
 
     (* Note: +1 -> 1. If the first round-trip isn't equal, try once more. *)
     let string_round_trip2 : string -> Property_result.t =
      fun str ->
-      match Lvca_parsing.parse_string parse_no_comment str with
+      match Lvca_parsing.parse_string parse str with
       | Error _ -> Uninteresting
       | Ok prim ->
         let str' = to_string prim in
         if Base.String.(str' = str)
         then Ok
         else (
-          match Lvca_parsing.parse_string parse_no_comment str with
+          match Lvca_parsing.parse_string parse str with
           | Error msg -> Failed msg
           | Ok prim' ->
             let str'' = to_string prim' in
@@ -265,10 +264,8 @@ let%test_module "Parsing" =
     open All
     open Lvca_provenance
 
-    let parse_no_comment = parse ~comment:Lvca_parsing.no_comment
-
     let print_parse str =
-      match Lvca_parsing.parse_string_pos parse_no_comment str with
+      match Lvca_parsing.parse_string_pos parse str with
       | Ok { value = prim; range } -> Fmt.pr "%a %a" pp prim Opt_range.pp range
       | Error msg -> Fmt.pr "%s" msg
     ;;

@@ -12,10 +12,10 @@ module Scope = Nominal.Scope
 let ( >> ) = Lvca_util.(( >> ))
 
 module Capture_type = struct
-  type 'info t =
-    | Bound_var of 'info Sort.t
-    | Bound_pattern of 'info Abstract_syntax.Pattern_sort.t
-    | Bound_term of 'info Sort.t
+  type t =
+    | Bound_var of Sort.t
+    | Bound_pattern of Abstract_syntax.Pattern_sort.t
+    | Bound_term of Sort.t
 
   let pp ppf = function
     | Bound_pattern pattern_sort -> Abstract_syntax.Pattern_sort.pp ppf pattern_sort
@@ -24,45 +24,40 @@ module Capture_type = struct
 end
 
 module Capture = struct
-  type 'info t =
-    | Binder of 'info Pattern.t
-    | Term of 'info Term.t
+  type t =
+    | Binder of Pattern.t
+    | Term of Term.t
 
-  let equal ~info_eq cap1 cap2 =
+  let ( = ) cap1 cap2 =
     match cap1, cap2 with
-    | Binder pat1, Binder pat2 -> Pattern.equal ~info_eq pat1 pat2
-    | Term tm1, Term tm2 -> Term.equal ~info_eq tm1 tm2
+    | Binder pat1, Binder pat2 -> Pattern.( = ) pat1 pat2
+    | Term tm1, Term tm2 -> Term.( = ) tm1 tm2
     | _, _ -> false
   ;;
 
-  let pp_generic ~open_loc ~close_loc ppf = function
-    | Binder pat -> Pattern.pp_generic ~open_loc ~close_loc ppf pat
-    | Term tm -> Term.pp_generic ~open_loc ~close_loc ppf tm
-  ;;
-
-  let pp ppf cap = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf cap
+  let pp ppf = function Binder pat -> Pattern.pp ppf pat | Term tm -> Term.pp ppf tm
 end
 
-type 'info t =
-  | Operator of 'info * string * 'info scope list
-  | Primitive of 'info Primitive.All.t
-  | Var of 'info * string
+type t =
+  | Operator of Provenance.t * string * scope list
+  | Primitive of Primitive.All.t
+  | Var of Provenance.t * string
 
-and 'info scope = Scope of ('info * string) list * 'info t
+and scope = Scope of (Provenance.t * string) list * t
 
-let rec equal ~info_eq t1 t2 =
+let rec ( = ) t1 t2 =
   match t1, t2 with
   | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
-    info_eq i1 i2
+    Provenance.( = ) i1 i2
     && String.(name1 = name2)
-    && List.equal (scope_eq ~info_eq) scopes1 scopes2
-  | Primitive p1, Primitive p2 -> Primitive.All.equal ~info_eq p1 p2
-  | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
+    && List.equal scope_eq scopes1 scopes2
+  | Primitive p1, Primitive p2 -> Primitive.All.( = ) p1 p2
+  | Var (i1, name1), Var (i2, name2) -> Provenance.( = ) i1 i2 && String.(name1 = name2)
   | _, _ -> false
 
-and scope_eq ~info_eq (Scope (names1, t1)) (Scope (names2, t2)) =
-  List.equal (Lvca_util.Tuple2.equal info_eq String.( = )) names1 names2
-  && equal ~info_eq t1 t2
+and scope_eq (Scope (names1, t1)) (Scope (names2, t2)) =
+  List.equal (Lvca_util.Tuple2.equal Provenance.( = ) String.( = )) names1 names2
+  && t1 = t2
 ;;
 
 let rec vars_of_pattern = function
@@ -95,18 +90,6 @@ and list_vars_of_scope (Scope (names, pat)) =
   List.unordered_append names pat_vars
 ;;
 
-let rec map_info ~f = function
-  | Operator (info, tag, subpats) ->
-    Operator (f info, tag, subpats |> List.map ~f:(scope_map_info ~f))
-  | Primitive prim -> Primitive (Primitive.All.map_info ~f prim)
-  | Var (info, name) -> Var (f info, name)
-
-and scope_map_info ~f (Scope (names, t)) =
-  Scope (List.map names ~f:(fun (i, name) -> f i, name), map_info ~f t)
-;;
-
-let erase pat = map_info ~f:(fun _ -> ()) pat
-
 let info = function
   | Operator (i, _, _) | Var (i, _) -> i
   | Primitive prim -> Primitive.All.info prim
@@ -114,31 +97,24 @@ let info = function
 
 let any, list, string, semi, pf = Fmt.(any, list, string, semi, pf)
 
-let rec pp_generic ~open_loc ~close_loc ppf tm =
-  open_loc ppf (info tm);
-  (match tm with
+let rec pp ppf tm =
+  (*  TODO open_loc ppf (info tm); *)
+  match tm with
   | Operator (_, tag, subtms) ->
-    pf
-      ppf
-      "@[<hv>%s(%a)@]"
-      tag
-      (list ~sep:semi (pp_scope_generic ~open_loc ~close_loc))
-      subtms
+    pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi pp_scope) subtms
   | Var (_, v) -> string ppf v
-  | Primitive p ->
-    Primitive.All.pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf p);
-  close_loc ppf (info tm)
+  | Primitive p -> Primitive.All.pp ppf p
+(* close_loc ppf (info tm) *)
 
-and pp_scope_generic ~open_loc ~close_loc ppf (Scope (bindings, body)) =
-  let pp_body = pp_generic ~open_loc ~close_loc in
-  let pp_binding ppf (info, name) =
-    open_loc ppf info;
-    string ppf name;
-    close_loc ppf info
+and pp_scope ppf (Scope (bindings, body)) =
+  let pp_binding ppf (_info, name) =
+    (* open_loc ppf info; *)
+    string ppf name
+    (* close_loc ppf info *)
   in
   match bindings with
-  | [] -> pp_body ppf body
-  | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") pp_binding) bindings pp_body body
+  | [] -> pp ppf body
+  | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") pp_binding) bindings pp body
 ;;
 
 let rec select_path ~path pat =
@@ -153,15 +129,15 @@ let rec select_path ~path pat =
       | Some (Scope (_vars, pat)) -> select_path ~path pat))
 ;;
 
-let rec match_term ~info_eq pat tm =
+let rec match_term pat tm =
   match pat, tm with
   | Var (_, name), tm -> Some (SMap.singleton name (Capture.Term tm))
   | Primitive p1, Term.Primitive p2 ->
-    if Primitive.All.equal ~info_eq p1 p2 then Some SMap.empty else None
+    if Primitive.All.( = ) p1 p2 then Some SMap.empty else None
   | Operator (_, name1, pat_scopes), Operator (_, name2, tm_scopes) ->
     if String.(name1 = name2)
     then (
-      match List.map2 pat_scopes tm_scopes ~f:(match_scope ~info_eq) with
+      match List.map2 pat_scopes tm_scopes ~f:match_scope with
       | Unequal_lengths -> None
       | Ok zipped ->
         (match Option.all zipped with
@@ -173,7 +149,7 @@ let rec match_term ~info_eq pat tm =
     else None
   | _, _ -> None
 
-and match_scope ~info_eq (Scope (binder_pats, body_pat)) (Scope.Scope (binders, body)) =
+and match_scope (Scope (binder_pats, body_pat)) (Scope.Scope (binders, body)) =
   let f (_, name) pat =
     if Lvca_util.String.is_ignore name then None else Some (name, Capture.Binder pat)
   in
@@ -186,7 +162,7 @@ and match_scope ~info_eq (Scope (binder_pats, body_pat)) (Scope.Scope (binders, 
       | `Duplicate_key _ -> None (* TODO: error *)
       | `Ok binder_captures -> Some binder_captures
     in
-    let%bind body_match = match_term ~info_eq body_pat body in
+    let%bind body_match = match_term body_pat body in
     (match SMap.strict_union binder_captures body_match with
     | `Duplicate_key _ -> None (* TODO: error *)
     | `Ok result -> Some result)
@@ -194,15 +170,14 @@ and match_scope ~info_eq (Scope (binder_pats, body_pat)) (Scope.Scope (binders, 
 
 let rec match_all pat tm =
   let tm_info = Nominal.Term.info tm in
-  let info_eq _ _ = true in
   match pat, tm with
   | Var (_, _), _ -> [ tm_info ]
   | Primitive p1, Term.Primitive p2 ->
-    if Primitive.All.equal ~info_eq p1 p2 then [ tm_info ] else []
+    if Primitive.All.( = ) p1 p2 then [ tm_info ] else []
   | Operator _, Operator (_, _, scopes) ->
     let f (Scope.Scope (_binders, body)) = match_all pat body in
     let sub_matches = List.concat_map scopes ~f in
-    (match match_term ~info_eq pat tm with
+    (match match_term pat tm with
     | None -> sub_matches
     | Some _ -> tm_info :: sub_matches)
   | _, _ -> []
@@ -308,7 +283,7 @@ let check check_prim lang sort =
   check sort
 ;;
 
-let parse ~comment =
+let parse =
   let open Lvca_parsing in
   let pat_to_ident = function Var (info, name) -> Some (info, name) | _ -> None in
   fix (fun pat ->
@@ -325,42 +300,30 @@ let parse ~comment =
       in
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
-        [ (Primitive.All.parse ~comment >>| fun prim -> Primitive prim)
+        [ (Primitive.All.parse >>| fun prim -> Primitive prim)
         ; (Ws.identifier
-          >>== fun { value = ident; range = ident_range } ->
+          >>= fun ident ->
           choice
             [ Ws.(
                 parens (sep_end_by (char ';') slot)
-                >>== fun { value = slots; range = parens_range } ->
-                option' comment
-                >>|| fun { value = comment; _ } ->
-                let range = Opt_range.union ident_range parens_range in
-                { value = Operator (Commented.{ range; comment }, ident, slots); range })
-            ; (option' comment
-              >>| fun comment -> Var (Commented.{ range = ident_range; comment }, ident))
+                >>| fun slots -> Operator (`Empty, ident, slots))
+            ; return (Var (`Empty, ident))
             ])
         ])
   <?> "binding-aware pattern"
 ;;
 
-let parse_no_comment = parse ~comment:Lvca_parsing.no_comment
-let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
-
 module Properties = struct
   open Util
   open Property_result
 
-  let parse = Lvca_parsing.parse_string parse_no_comment
+  let parse = Lvca_parsing.parse_string parse
   let to_string = Fmt.to_to_string pp
 
   let string_round_trip1 t =
     let str = to_string t in
     match parse str with
-    | Ok t' ->
-      let t' = erase t' in
-      Property_result.check
-        (equal ~info_eq:Unit.( = ) t' t)
-        (Fmt.str "%a <> %a" pp t' pp t)
+    | Ok t' -> Property_result.check (t' = t) (Fmt.str "%a <> %a" pp t' pp t)
     | Error msg -> Failed (Fmt.str {|parse_string %S: %s|} str msg)
   ;;
 
@@ -368,14 +331,14 @@ module Properties = struct
     match parse str with
     | Error _ -> Uninteresting
     | Ok t ->
-      let str' = t |> erase |> to_string in
+      let str' = to_string t in
       if Base.String.(str' = str)
       then Ok
       else (
         match parse str with
         | Error msg -> Failed msg
         | Ok t' ->
-          let str'' = t' |> erase |> to_string in
+          let str'' = to_string t' in
           Property_result.check String.(str'' = str') (Fmt.str {|%S <> %S|} str'' str'))
   ;;
 end
@@ -388,13 +351,9 @@ let%test_module "Parsing" =
       Format.set_mark_tags true
     ;;
 
-    let pp_range ppf tm =
-      pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
-    ;;
-
     let print_parse tm =
-      match Lvca_parsing.parse_string parse_no_comment tm with
-      | Ok pat -> Fmt.pr "%a\n%a" pp pat pp_range (map_info ~f:Commented.get_range pat)
+      match Lvca_parsing.parse_string parse tm with
+      | Ok pat -> Fmt.pr "%a" pp pat
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
 
@@ -490,13 +449,11 @@ test := foo(term[term]. term)
       |}
     ;;
 
-    let language =
-      parse' (Abstract_syntax.parse ~comment:Lvca_parsing.no_comment) lang_desc
-    ;;
+    let language = parse' Abstract_syntax.parse lang_desc
 
     let print_check_pattern sort_str pat_str =
-      let sort = parse' (Sort.parse ~comment:Lvca_parsing.no_comment) sort_str in
-      let pat = parse' parse_no_comment pat_str in
+      let sort = parse' Sort.parse sort_str in
+      let pat = parse' parse pat_str in
       let pp ppf pat = Fmt.pf ppf "pattern: %a" pp pat in
       match check Primitive.All.check language sort pat with
       | Error failure -> Fmt.epr "%a" (Check_failure.pp pp) failure
@@ -636,20 +593,16 @@ test := foo(term[term]. term)
 
 let%test_module "check" =
   (module struct
-    let parse_pattern str =
-      Lvca_parsing.parse_string parse_no_comment str |> Result.ok_or_failwith
-    ;;
+    let parse_pattern str = Lvca_parsing.parse_string parse str |> Result.ok_or_failwith
 
     let parse_term str =
-      Lvca_parsing.parse_string (Nominal.Term.parse' ~comment:Lvca_parsing.no_comment) str
-      |> Result.ok_or_failwith
+      Lvca_parsing.parse_string Nominal.Term.parse' str |> Result.ok_or_failwith
     ;;
 
     let print_match pat_str tm_str =
-      let pattern = pat_str |> parse_pattern |> map_info ~f:Commented.get_range in
-      let tm = tm_str |> parse_term |> Term.map_info ~f:Commented.get_range in
-      let info_eq = Opt_range.( = ) in
-      match match_term ~info_eq pattern tm with
+      let pattern = parse_pattern pat_str in
+      let tm = parse_term tm_str in
+      match match_term pattern tm with
       | None -> ()
       | Some mapping ->
         mapping

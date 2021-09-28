@@ -1,46 +1,42 @@
 (** Patterns for matching non-binding terms. *)
 open Lvca_util
 
-open Lvca_provenance
+type t =
+  | Operator of Provenance.t * string * t list
+  | Primitive of Primitive_impl.All.t
+  | Var of Provenance.t * string
 
-type 'info t =
-  | Operator of 'info * string * 'info t list
-  | Primitive of 'info Primitive_impl.All.t
-  | Var of 'info * string
-
-val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+val mk_Operator : ?provenance:Provenance.t -> string -> t list -> t
+val mk_Primitive : Primitive_impl.All.t -> t
+val mk_Var : ?provenance:Provenance.t -> string -> t
+val ( = ) : t -> t -> bool
 
 (** {1 Vars} *)
 
 (** A set of all the variables bound in a pattern. *)
-val vars_of_pattern : _ t -> String.Set.t
+val vars_of_pattern : t -> String.Set.t
 
 (** A list of all the variables bound in a pattern. Why have this when [vars_of_pattern]
     exists? Because in a list we can also include the info for each var (which we can't do
     in a set). *)
-val list_vars_of_pattern : 'info t -> ('info * string) list
+val list_vars_of_pattern : t -> (Provenance.t * string) list
 
 (** {1 Printing} *)
 
-val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
-val pp : _ t Fmt.t
-val pp_range : Opt_range.t t Fmt.t
-val pp_ranges : Source_ranges.t t Fmt.t
+val pp : t Fmt.t
 
 (** {1 Serialization} *)
 
-val jsonify : 'info t Json.serializer
-val unjsonify : unit t Json.deserializer
+val jsonify : t Json.serializer
+val unjsonify : t Json.deserializer
 
 (** {1 Info} *)
 
-val map_info : f:('a -> 'b) -> 'a t -> 'b t
-val erase : _ t -> unit t
-val info : 'info t -> 'info
+val info : t -> Provenance.t
 
 (** {1 Misc} *)
 
-val select_path : path:int list -> 'info t -> ('info t, string) Result.t
+val select_path : path:int list -> t -> (t, string) Result.t
 
 (** Check that this pattern is valid and return the sort for each variable it binds.
 
@@ -67,16 +63,16 @@ val select_path : path:int list -> 'info t -> ('info t, string) Result.t
      {- Patterns can't see valence: they can only bind subterms with some given sort. }
     } *)
 val check
-  :  'info Abstract_syntax.t (** Abstract syntax *)
-  -> pattern_sort:'info Sort.t (** Sort to check pattern against *)
-  -> var_sort:'info Sort.t (** Sort pattern must yield as variables *)
-  -> 'info t
-  -> ('info Sort.t String.Map.t, ('info, 'info t) Check_failure.t) Result.t
+  :  Abstract_syntax.t (** Abstract syntax *)
+  -> pattern_sort:Sort.t (** Sort to check pattern against *)
+  -> var_sort:Sort.t (** Sort pattern must yield as variables *)
+  -> t
+  -> (Sort.t String.Map.t, t Check_failure.t) Result.t
 
 (** {1 Parsing} *)
-val parse : comment:'a Lvca_parsing.t -> 'a Commented.t t Lvca_parsing.t
+val parse : t Lvca_parsing.t
 
 module Properties : sig
-  include Properties_intf.Parse_pretty_s with type 'info t := 'info t
-  include Properties_intf.Json_s with type 'info t := 'info t
+  include Properties_intf.Parse_pretty_s with type t := t
+  include Properties_intf.Json_s with type t := t
 end

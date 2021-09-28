@@ -91,7 +91,6 @@ case_scope := Case_scope(binding_aware_pattern; term)
 
 module Term : sig
   include Nominal.Convertible.Extended_s with type 'info t = 'info Lang.Term.t
-  (* and module Plain = Lang.Term.Plain *)
 
   val parse_concrete : comment:'a Lvca_parsing.t -> 'a Commented.t t Lvca_parsing.t
   val pp_generic_concrete : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t

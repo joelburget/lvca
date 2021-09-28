@@ -1,5 +1,5 @@
-type 'info t =
-  { info : 'info
+type t =
+  { info : Provenance.t
   ; name : string
   }
 
@@ -15,4 +15,4 @@ let of_nominal = function
   | tm -> Error tm
 ;;
 
-let mk ~info name = { info; name }
+let mk ?(info = `Empty) name = { info; name }

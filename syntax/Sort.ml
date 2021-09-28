@@ -2,48 +2,42 @@ open Base
 open Lvca_util
 module ISet = Lvca_util.Int.Set
 
-type 'info t =
-  | Ap of 'info * string * 'info ap_list (** A higher-kinded sort can be applied *)
-  | Name of 'info * string
+type t =
+  | Ap of Provenance.t * string * ap_list (** A higher-kinded sort can be applied *)
+  | Name of Provenance.t * string
 
-and 'info ap_list =
-  | Nil of 'info
-  | Cons of 'info * 'info t * 'info ap_list
+and ap_list =
+  | Nil of Provenance.t
+  | Cons of Provenance.t * t * ap_list
 
-let rec equal ~info_eq s1 s2 =
+let mk_Ap ?(provenance = `Empty) name args = Ap (provenance, name, args)
+let mk_Name ?(provenance = `Empty) name = Name (provenance, name)
+let mk_Nil ?(provenance = `Empty) () = Nil provenance
+let mk_Cons ?(provenance = `Empty) x xs = Cons (provenance, x, xs)
+
+let rec ( = ) s1 s2 =
   match s1, s2 with
   | Ap (i1, name1, ts1), Ap (i2, name2, ts2) ->
-    info_eq i1 i2 && String.(name1 = name2) && equal_list ~info_eq ts1 ts2
-  | Name (i1, name1), Name (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
+    Provenance.(i1 = i2) && String.(name1 = name2) && equal_list ts1 ts2
+  | Name (i1, name1), Name (i2, name2) -> Provenance.(i1 = i2) && String.(name1 = name2)
   | _, _ -> false
 
-and equal_list ~info_eq l1 l2 =
+and equal_list l1 l2 =
   match l1, l2 with
-  | Nil i1, Nil i2 -> info_eq i1 i2
+  | Nil i1, Nil i2 -> Provenance.(i1 = i2)
   | Cons (i1, x, xs), Cons (i2, y, ys) ->
-    info_eq i1 i2 && equal ~info_eq x y && equal_list ~info_eq xs ys
+    Provenance.(i1 = i2) && x = y && equal_list xs ys
   | _, _ -> false
 ;;
 
 let info = function Ap (i, _, _) | Name (i, _) -> i
 
-let rec map_info ~f = function
-  | Name (info, name) -> Name (f info, name)
-  | Ap (info, name, ts) -> Ap (f info, name, list_map_info ~f ts)
-
-and list_map_info ~f = function
-  | Nil i -> Nil (f i)
-  | Cons (i, x, xs) -> Cons (f i, map_info ~f x, list_map_info ~f xs)
-;;
-
-let erase_info sort = map_info ~f:(fun _ -> ()) sort
-
 module Ap_list = struct
   let rec to_list = function Nil _ -> [] | Cons (_, x, xs) -> x :: to_list xs
 
-  let rec of_list ~default_info = function
-    | [] -> Nil default_info
-    | x :: xs -> Cons (default_info, x, of_list ~default_info xs)
+  let rec of_list = function
+    | [] -> Nil (Provenance.of_here [%here])
+    | x :: xs -> Cons (Provenance.of_here [%here], x, of_list xs)
   ;;
 
   let rec map ~f = function Nil i -> Nil i | Cons (i, x, xs) -> Cons (i, f x, map ~f xs)
@@ -61,12 +55,14 @@ let pp ppf sort =
   pp false ppf sort
 ;;
 
+(* TODO
 let pp_generic ~open_loc ~close_loc ppf sort =
   let info = info sort in
   open_loc ppf info;
   pp ppf sort;
   close_loc ppf info
 ;;
+*)
 
 let rec instantiate arg_mapping = function
   | Name (info, name) ->
@@ -95,19 +91,24 @@ let split = function
   | Ap (_, name, ts) -> name, Ap_list.to_list ts
 ;;
 
-let parse ~comment =
+let parse =
   let open Lvca_parsing in
   fix (fun sort ->
       let atomic_sort =
         choice
           ~failure_msg:"looking for parens or an identifier"
           [ Ws.parens sort
+          ; (Ws.identifier >>| fun value -> Name (`Empty, value))
+            (*
           ; (Ws.identifier
             >>== fun Parse_result.{ value; range } ->
             option' comment
-            >>|| fun { value = comment; _ } ->
-            { value = Name (Lvca_provenance.Commented.{ range; comment }, value); range }
-            )
+            >>|| fun _ ->
+            let value = Name (failwith "TODO", value) in
+            { value (* Name (Lvca_provenance.Commented.{ range; comment }, value) *)
+            ; range
+            })
+                 *)
           ]
       in
       many1 atomic_sort
@@ -120,8 +121,7 @@ let parse ~comment =
           "Higher-order sorts are not allowed. The head of a sort application must be \
            concrete"
       | [ (Name _ as value) ] -> return ~range value
-      | Name (info, name) :: args ->
-        return ~range (Ap (info, name, Ap_list.of_list ~default_info:info args))
+      | Name (info, name) :: args -> return ~range (Ap (info, name, Ap_list.of_list args))
       | [] -> assert false)
 ;;
 
@@ -133,34 +133,20 @@ let%test_module "Sort_Parser" =
       | Error msg -> failwith msg
     ;;
 
-    let a = Name ((), "a")
-
-    let abc =
-      Ap ((), "a", Ap_list.of_list ~default_info:() [ Name ((), "b"); Name ((), "c") ])
-    ;;
+    let a = mk_Name "a"
+    let abc = mk_Ap "a" (Ap_list.of_list [ mk_Name "b"; mk_Name "c" ])
 
     let abcd =
-      Ap
-        ( ()
-        , "a"
-        , Ap_list.of_list
-            ~default_info:()
-            [ Ap ((), "b", Ap_list.of_list ~default_info:() [ Name ((), "c") ])
-            ; Name ((), "d")
-            ] )
+      mk_Ap
+        "a"
+        (Ap_list.of_list [ mk_Ap "b" (Ap_list.of_list [ mk_Name "c" ]); mk_Name "d" ])
     ;;
 
-    let ( = ) = equal ~info_eq:Unit.( = )
-    let parse_no_comment = parse ~comment:Lvca_parsing.no_comment
-
-    let%test_unit _ = assert (parse_with parse_no_comment "a" |> erase_info = a)
-    let%test_unit _ = assert (parse_with parse_no_comment "(a)" |> erase_info = a)
-    let%test_unit _ = assert (parse_with parse_no_comment "a b c" |> erase_info = abc)
-    let%test_unit _ = assert (parse_with parse_no_comment "(a b c)" |> erase_info = abc)
-
-    let%test_unit _ =
-      assert (parse_with parse_no_comment "a (b c) d" |> erase_info = abcd)
-    ;;
+    let%test_unit _ = assert (parse_with parse "a" = a)
+    let%test_unit _ = assert (parse_with parse "(a)" = a)
+    let%test_unit _ = assert (parse_with parse "a b c" = abc)
+    let%test_unit _ = assert (parse_with parse "(a b c)" = abc)
+    let%test_unit _ = assert (parse_with parse "a (b c) d" = abcd)
 
     let%expect_test _ =
       Fmt.pr "%a" pp a;

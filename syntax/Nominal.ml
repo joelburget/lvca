@@ -1,16 +1,23 @@
 open Base
 open Stdio
-open Lvca_provenance
 open Lvca_util
 
 module Types = struct
-  type 'info term =
-    | Operator of 'info * string * 'info scope list
-    | Var of 'info * string
-    | Primitive of 'info Primitive_impl.All.t
+  type term =
+    | Operator of Provenance.t * string * scope list
+    | Var of Provenance.t * string
+    | Primitive of Primitive_impl.All.t
 
-  and 'info scope = Scope of 'info Pattern.t list * 'info term
+  and scope = Scope of Pattern.t list * term
 end
+
+let mk_Operator ?(provenance = `Empty) name scopes =
+  Types.Operator (provenance, name, scopes)
+;;
+
+let mk_Var ?(provenance = `Empty) name = Types.Var (provenance, name)
+let mk_Primitive prim = Types.Primitive prim
+let mk_Scope pats tm = Types.Scope (pats, tm)
 
 let info = function
   | Types.Operator (info, _, _) | Var (info, _) -> info
@@ -18,52 +25,38 @@ let info = function
 ;;
 
 module Equal = struct
-  let rec term ~info_eq t1 t2 =
+  let rec term t1 t2 =
     match t1, t2 with
     | Types.Operator (i1, name1, scopes1), Types.Operator (i2, name2, scopes2) ->
-      info_eq i1 i2
-      && String.(name1 = name2)
-      && List.equal (scope ~info_eq) scopes1 scopes2
-    | Primitive p1, Primitive p2 -> Primitive_impl.All.equal ~info_eq p1 p2
-    | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
+      Provenance.( = ) i1 i2 && String.(name1 = name2) && List.equal scope scopes1 scopes2
+    | Primitive p1, Primitive p2 -> Primitive_impl.All.( = ) p1 p2
+    | Var (i1, name1), Var (i2, name2) -> Provenance.( = ) i1 i2 && String.(name1 = name2)
     | _, _ -> false
 
-  and scope ~info_eq (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
-    List.equal (Pattern.equal ~info_eq) pats1 pats2 && term ~info_eq tm1 tm2
+  and scope (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
+    List.equal Pattern.( = ) pats1 pats2 && term tm1 tm2
   ;;
 end
 
-module PpGeneric = struct
-  let rec term ~open_loc ~close_loc ppf tm =
+module Pp = struct
+  let rec term ppf tm =
     let list, string, semi, pf = Fmt.(list, string, semi, pf) in
-    open_loc ppf (info tm);
-    (match tm with
-    | Operator (_, tag, subtms) ->
-      pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi (scope ~open_loc ~close_loc)) subtms
+    (* TODO open_loc ppf (info tm); *)
+    match tm with
+    | Types.Operator (_, tag, subtms) ->
+      pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi scope) subtms
     | Var (_, v) -> string ppf v
     | Primitive p ->
       (* Note: open_loc and close_loc intentionally nops because we already
          show the location here. *)
-      Primitive_impl.All.pp_generic
-        ~open_loc:(fun _ _ -> ())
-        ~close_loc:(fun _ _ -> ())
-        ppf
-        p);
-    close_loc ppf (info tm)
+      Primitive_impl.All.pp ppf p
+  (* close_loc ppf (info tm) *)
 
-  and scope ~open_loc ~close_loc ppf (Scope (bindings, body)) =
+  and scope ppf (Scope (bindings, body)) =
     let any, list, pf = Fmt.(any, list, pf) in
-    let pp_body = term ~open_loc ~close_loc in
     match bindings with
-    | [] -> pp_body ppf body
-    | _ ->
-      pf
-        ppf
-        "%a.@ %a"
-        (list ~sep:(any ".@ ") (Pattern.pp_generic ~open_loc ~close_loc))
-        bindings
-        pp_body
-        body
+    | [] -> term ppf body
+    | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") Pattern.pp) bindings term body
   ;;
 end
 
@@ -89,11 +82,10 @@ module Unjsonify = struct
   let rec term = function
     | Array [| String "o"; String tag; Array scopes |] ->
       let%map scopes' = scopes |> Array.to_list |> List.map ~f:scope |> Option.all in
-      Types.Operator ((), tag, scopes')
-    | Array [| String "v"; String name |] -> Some (Var ((), name))
+      mk_Operator tag scopes'
+    | Array [| String "v"; String name |] -> Some (mk_Var name)
     | Array [| String "p"; prim |] ->
-      let%map prim = Primitive_impl.All.unjsonify prim in
-      Types.Primitive prim
+      prim |> Primitive_impl.All.unjsonify |> Option.map ~f:mk_Primitive
     | _ -> None
 
   and scope = function
@@ -104,20 +96,6 @@ module Unjsonify = struct
       let%map body = term body in
       Types.Scope (binders, body)
     | _ -> None
-  ;;
-end
-
-module MapInfo = struct
-  let rec term ~f = function
-    | Types.Operator (info, name, pats) ->
-      Types.Operator (f info, name, List.map pats ~f:(scope ~f))
-    | Var (info, name) -> Var (f info, name)
-    | Primitive prim -> Primitive (Primitive_impl.All.map_info ~f prim)
-
-  and scope ~f (Scope (binders, tm)) =
-    let binders = List.map binders ~f:(Pattern.map_info ~f) in
-    let tm = term ~f tm in
-    Scope (binders, tm)
   ;;
 end
 
@@ -151,62 +129,34 @@ module Rename = struct
 end
 
 module Term = struct
-  type 'info t = 'info Types.term =
-    | Operator of 'info * string * 'info Types.scope list
-    | Var of 'info * string
-    | Primitive of 'info Primitive_impl.All.t
+  type t = Types.term =
+    | Operator of Provenance.t * string * Types.scope list
+    | Var of Provenance.t * string
+    | Primitive of Primitive_impl.All.t
 
   let to_nominal x = x
   let of_nominal x = Ok x
-  let equal = Equal.term
-  let map_info = MapInfo.term
+  let ( = ) = Equal.term
   let subst_all = SubstAll.term
   let rename = Rename.term
   let jsonify = Jsonify.term
   let unjsonify = Unjsonify.term
-  let pp_generic = PpGeneric.term
+  let pp = Pp.term
   let info = info
-  let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
-
-  let pp_range ppf tm =
-    pp_generic ~open_loc:Range.open_stag ~close_loc:Range.close_stag ppf tm
-  ;;
-
-  let pp_ranges ppf tm =
-    pp_generic ~open_loc:Ranges.open_stag ~close_loc:Ranges.close_stag ppf tm
-  ;;
-
-  let pp_opt_range ppf tm =
-    pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
-  ;;
-
-  let pp_source_range ppf tm =
-    pp_generic ~open_loc:Source_range.open_stag ~close_loc:Source_range.close_stag ppf tm
-  ;;
-
-  let pp_source_ranges ppf tm =
-    pp_generic
-      ~open_loc:Source_ranges.open_stag
-      ~close_loc:Source_ranges.close_stag
-      ppf
-      tm
-  ;;
-
-  let erase tm = map_info ~f:(fun _ -> ()) tm
   let serialize tm = tm |> jsonify |> Cbor.encode
   let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:unjsonify
   let hash tm = tm |> serialize |> Sha256.hash
 
-  let rec match_pattern ~info_eq pat tm =
+  let rec match_pattern pat tm =
     match pat, tm with
     | Pattern.Var (_, name), tm -> Some (String.Map.singleton name tm)
     | Primitive p1, Primitive p2 ->
-      if Primitive_impl.All.equal ~info_eq p1 p2 then Some String.Map.empty else None
+      if Primitive_impl.All.( = ) p1 p2 then Some String.Map.empty else None
     | Primitive _, _ -> None
     | Operator (_, name1, pats), Operator (_, name2, scopes) ->
       if String.(name1 = name2)
       then (
-        match List.map2 pats scopes ~f:(match_scope ~info_eq) with
+        match List.map2 pats scopes ~f:match_scope with
         | Ok zipped ->
           (match String.Map.join_helper zipped with
           | `Ok result -> result
@@ -215,8 +165,8 @@ module Term = struct
       else None
     | _ -> None
 
-  and match_scope ~info_eq pat (Scope (binders, tm)) =
-    match binders with [] -> match_pattern ~info_eq pat tm | _ -> None
+  and match_scope pat (Scope (binders, tm)) =
+    match binders with [] -> match_pattern pat tm | _ -> None
   ;;
 
   let free_vars tm =
@@ -264,10 +214,7 @@ module Term = struct
             Some
               (Check_failure.err (Printf.sprintf "Unknown variable %s (is it bound?)" v))
           | Some var_sort ->
-            if Sort.equal
-                 ~info_eq:Unit.( = )
-                 (Sort.erase_info var_sort)
-                 (Sort.erase_info expected_sort)
+            if Sort.( = ) var_sort expected_sort
             then None
             else
               Some
@@ -379,21 +326,20 @@ module Term = struct
 
   and scope_to_pattern = function
     | Scope ([], tm) -> to_pattern tm
-    | Scope (binders, tm) ->
-      Error (Types.Scope (List.map binders ~f:Pattern.erase, erase tm))
+    | Scope (binders, tm) -> Error (Types.Scope (binders, tm))
   ;;
 
   let rec of_pattern = function
     | Pattern.Operator (info, name, pats) ->
       Operator
         ( info
-        , name (* TODO: should the scope really inherit the 'info? *)
+        , name (* TODO: should the scope really inherit the ? *)
         , List.map pats ~f:(fun pat -> Types.Scope ([], of_pattern pat)) )
     | Primitive prim -> Primitive prim
     | Var (info, name) -> Var (info, name)
   ;;
 
-  let parse ~comment ~parse_prim =
+  let parse ~parse_prim =
     let open Lvca_parsing in
     fix (fun term ->
         let slot =
@@ -408,39 +354,26 @@ module Term = struct
           ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
           [ parse_prim
           ; (Ws.identifier
-            >>== fun Parse_result.{ value = ident; range = ident_range } ->
+            >>= fun ident ->
             choice
               [ (Ws.parens (sep_end_by (Ws.char ';') slot)
-                >>== fun { value = slots; range = parens_range } ->
-                option' comment
-                >>|| fun { value = comment; _ } ->
-                let range = Opt_range.union ident_range parens_range in
-                Parse_result.
-                  { value = Operator (Commented.{ range; comment }, ident, slots); range }
-                )
-              ; (option' comment
-                >>| fun comment -> Var (Commented.{ range = ident_range; comment }, ident)
-                )
+                >>| fun slots -> mk_Operator ident slots)
+              ; return (mk_Var ident)
               ])
           ])
     <?> "term"
   ;;
 
-  let parse' ~comment =
+  let parse' =
     parse
-      ~comment
-      ~parse_prim:
-        Lvca_parsing.(Primitive_impl.All.parse ~comment >>| fun prim -> Primitive prim)
+      ~parse_prim:Lvca_parsing.(Primitive_impl.All.parse >>| fun prim -> Primitive prim)
   ;;
-
-  let parse_no_comment = parse' ~comment:Lvca_parsing.no_comment
 
   module Properties = struct
     open Property_result
 
-    let parse = Lvca_parsing.parse_string parse_no_comment
+    let parse = Lvca_parsing.parse_string parse'
     let to_string tm = Fmt.to_to_string pp tm
-    let ( = ) = equal ~info_eq:Unit.( = )
 
     let json_round_trip1 t =
       match t |> jsonify |> unjsonify with
@@ -457,9 +390,7 @@ module Term = struct
 
     let string_round_trip1 t =
       match t |> to_string |> parse with
-      | Ok t' ->
-        let t' = erase t' in
-        Property_result.check (t' = t) (Fmt.str "%a <> %a" pp t' pp t)
+      | Ok t' -> Property_result.check (t' = t) (Fmt.str "%a <> %a" pp t' pp t)
       | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
     ;;
 
@@ -485,100 +416,51 @@ module Term = struct
 end
 
 module Scope = struct
-  type 'info t = 'info Types.scope = Scope of 'info Pattern.t list * 'info Types.term
+  type t = Types.scope = Scope of Pattern.t list * Types.term
 
-  let equal = Equal.scope
-  let pp_generic = PpGeneric.scope
+  let ( = ) = Equal.scope
+  let pp = Pp.scope
   let subst_all = SubstAll.scope
   let rename = Rename.scope
-  let map_info = MapInfo.scope
   let jsonify = Jsonify.scope
   let unjsonify = Unjsonify.scope
-  let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
-
-  let pp_range ppf tm =
-    pp_generic ~open_loc:Range.open_stag ~close_loc:Range.close_stag ppf tm
-  ;;
-
-  let pp_ranges ppf tm =
-    pp_generic ~open_loc:Ranges.open_stag ~close_loc:Ranges.close_stag ppf tm
-  ;;
-
-  let pp_opt_range ppf tm =
-    pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag ppf tm
-  ;;
-
-  let pp_source_range ppf tm =
-    pp_generic ~open_loc:Source_range.open_stag ~close_loc:Source_range.close_stag ppf tm
-  ;;
-
-  let pp_source_ranges ppf tm =
-    pp_generic
-      ~open_loc:Source_ranges.open_stag
-      ~close_loc:Source_ranges.close_stag
-      ppf
-      tm
-  ;;
-
-  let erase (Scope (pats, tm)) = Scope (List.map pats ~f:Pattern.erase, Term.erase tm)
 end
 
 module Convertible = struct
   module type S = sig
     include Language_object_intf.S
 
-    val to_nominal : 'info t -> 'info Term.t
-    val of_nominal : 'info Term.t -> ('info t, 'info Term.t) Result.t
+    val to_nominal : t -> Term.t
+    val of_nominal : Term.t -> (t, Term.t) Result.t
   end
 
   module type Extended_s = sig
     include S
 
-    val equal : info_eq:('info -> 'info -> bool) -> 'info t -> 'info t -> bool
+    val ( = ) : t -> t -> bool
     (* TODO: should they be comparable as well? *)
-
-    val erase : _ t -> unit t
-    val pp : _ t Fmt.t
-    val to_string : _ t -> string
 
     (* TODO: to_pattern, of_pattern *)
 
-    val select_path
-      :  path:int list
-      -> 'info t
-      -> ('info t, (string, 'info Term.t) Base.Either.t) Result.t
+    val select_path : path:int list -> t -> (t, (string, Term.t) Base.Either.t) Result.t
 
     (** {1 Serialization} *)
-    include Language_object_intf.Json_convertible with type 'info t := 'info t
+    include Language_object_intf.Json_convertible with type t := t
 
-    include Language_object_intf.Serializable with type 'info t := 'info t
+    include Language_object_intf.Serializable with type t := t
 
     (** {1 Printing / Parsing} *)
-    val pp_generic : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info t Fmt.t
 
-    val pp_opt_range : Lvca_provenance.Opt_range.t t Fmt.t
-    val parse : comment:'a Lvca_parsing.t -> 'a Commented.t t Lvca_parsing.t
+    val pp : t Fmt.t
+    val to_string : t -> string
+    val parse : t Lvca_parsing.t
   end
 
-  module Extend (Object : S) : Extended_s with type 'info t = 'info Object.t = struct
+  module Extend (Object : S) : Extended_s with type t = Object.t = struct
     include Object
 
-    let erase tm = Object.map_info ~f:(fun _ -> ()) tm
-    let equal ~info_eq t1 t2 = Term.equal ~info_eq (to_nominal t1) (to_nominal t2)
-
-    let pp_generic ~open_loc ~close_loc ppf tm =
-      Term.pp_generic ~open_loc ~close_loc ppf (to_nominal tm)
-    ;;
-
-    let pp_opt_range ppf tm =
-      pp_generic
-        ~open_loc:Lvca_provenance.Opt_range.open_stag
-        ~close_loc:Lvca_provenance.Opt_range.close_stag
-        ppf
-        tm
-    ;;
-
-    let pp ppf tm = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
+    let ( = ) t1 t2 = Term.( = ) (to_nominal t1) (to_nominal t2)
+    let pp ppf tm = Term.pp ppf (to_nominal tm)
     let to_string tm = Fmt.to_to_string pp tm
 
     let select_path ~path tm =
@@ -602,9 +484,9 @@ module Convertible = struct
     let deserialize buf = buf |> Cbor.decode |> Option.bind ~f:unjsonify
     let hash tm = tm |> serialize |> Sha256.hash
 
-    let parse ~comment =
+    let parse =
       let open Lvca_parsing in
-      Term.parse' ~comment
+      Term.parse'
       >>= fun nom ->
       match of_nominal nom with
       | Error nom -> fail Fmt.(str "Parse: failed to convert %a from nominal" Term.pp nom)
@@ -613,23 +495,19 @@ module Convertible = struct
   end
 
   module Check_parse_pretty (Object : S) :
-    Properties_intf.Parse_pretty_s with type 'info t = 'info Object.t = struct
+    Properties_intf.Parse_pretty_s with type t = Object.t = struct
     open Property_result
     module Object = Extend (Object)
     open Object
 
-    type 'info t = 'info Object.t
+    type t = Object.t
 
     let to_string = Fmt.to_to_string Object.pp
-    let parse = Lvca_parsing.parse_string (parse ~comment:Lvca_parsing.no_comment)
+    let parse = Lvca_parsing.parse_string parse
 
     let string_round_trip1 t =
       match t |> to_string |> parse with
-      | Ok t' ->
-        let t'' = Object.erase t' in
-        Property_result.check
-          Object.(equal ~info_eq:Unit.( = ) t'' t)
-          (Fmt.str "%a <> %a" pp t'' pp t)
+      | Ok t' -> Property_result.check Object.(t' = t) (Fmt.str "%a <> %a" pp t' pp t)
       | Error msg -> Failed (Fmt.str {|parse_string "%a": %s|} pp t msg)
     ;;
 
@@ -637,35 +515,32 @@ module Convertible = struct
       match parse str with
       | Error _ -> Uninteresting
       | Ok t ->
-        let str' = t |> Object.erase |> to_string in
+        let str' = to_string t in
         if String.(str' = str)
         then Ok
         else (
           match parse str with
           | Error msg -> Failed msg
           | Ok t' ->
-            let str'' = t' |> Object.erase |> to_string in
+            let str'' = to_string t' in
             Property_result.check
               String.(str'' = str')
               (Fmt.str {|"%s" <> "%s"|} str'' str'))
     ;;
   end
 
-  module Check_json (Object : S) :
-    Properties_intf.Json_s with type 'info t = 'info Object.t = struct
+  module Check_json (Object : S) : Properties_intf.Json_s with type t = Object.t = struct
     open Property_result
     module Object = Extend (Object)
     open Object
 
-    type 'info t = 'info Object.t
+    type t = Object.t
 
     let json_round_trip1 t =
       match t |> Object.jsonify |> Object.unjsonify with
       | None -> Failed (Fmt.str "Failed to unjsonify %a" pp t)
       | Some t' ->
-        Property_result.check
-          (Object.equal ~info_eq:Unit.( = ) t t')
-          (Fmt.str "%a <> %a" pp t' pp t)
+        Property_result.check (Object.( = ) t t') (Fmt.str "%a <> %a" pp t' pp t)
     ;;
 
     let json_round_trip2 json =
@@ -678,8 +553,7 @@ module Convertible = struct
     ;;
   end
 
-  module Check_properties (Object : S) :
-    Properties_intf.S with type 'info t = 'info Object.t = struct
+  module Check_properties (Object : S) : Properties_intf.S with type t = Object.t = struct
     include Check_parse_pretty (Object)
     include Check_json (Object)
   end
@@ -696,7 +570,7 @@ let%test_module "Nominal" =
 
     let print_hash tm = printf "%s" (Term.hash tm)
     let ( = ) = Json.( = )
-    let tm = Term.Var ((), "x")
+    let tm = mk_Var "x"
     let j_tm = Json.(Array [| String "v"; String "x" |])
 
     let%test _ = Term.jsonify tm = j_tm
@@ -711,7 +585,7 @@ let%test_module "Nominal" =
       [%expect {| bbc37ed1e26f8481398dc797bd0b3ec2e3ae954e1c3f69b461a487d8703ec3d6 |}]
     ;;
 
-    let tm = Term.Operator ((), "Z", [])
+    let tm = mk_Operator "Z" []
 
     let%test _ = Term.jsonify tm = Json.(Array [| String "o"; String "Z"; Array [||] |])
 
@@ -725,9 +599,7 @@ let%test_module "Nominal" =
       [%expect {| 2380ed848a0c5ce3d0ad7420e841578e4068f394b37b9b11bd3c34cea391436c |}]
     ;;
 
-    let tm =
-      Term.Operator ((), "S", [ Scope.Scope ([ Pattern.Var ((), "x") ], Var ((), "x")) ])
-    ;;
+    let tm = mk_Operator "S" [ Scope.Scope ([ Pattern.mk_Var "x" ], mk_Var "x") ]
 
     let%test _ =
       Term.jsonify tm
@@ -754,7 +626,7 @@ let%test_module "Nominal" =
       [%expect {| 391e4a6e3dc6964d60c642c52416d18b102dca357a3e4953834dfefc0e02dfbc |}]
     ;;
 
-    let tm = Term.Primitive ((), Integer (Z.of_string "12345"))
+    let tm = mk_Primitive (Primitive_impl.All.mk_Integer (Z.of_string "12345"))
 
     let%test _ =
       Term.jsonify tm
@@ -781,25 +653,27 @@ let%test_module "Nominal" =
       [%expect {| e69505a495d739f89cf515c31cf3a2cca4e29a1a4fede9a331b45207a6fb33e5 |}]
     ;;
 
+    (*
     let to_pattern_exn tm =
       match Term.to_pattern tm with
       | Ok pat -> pat
       | Error _ -> failwith "failed to convert term to pattern"
     ;;
 
-    let ( = ) = Pattern.equal ~info_eq:Int.( = )
+    let ( = ) = Pattern.( = )
 
-    let%test _ = to_pattern_exn (Var (1, "abc")) = Var (1, "abc")
-    let%test _ = to_pattern_exn (Var (2, "_abc")) = Var (2, "_abc")
-    let%test _ = to_pattern_exn (Var (3, "_")) = Var (3, "_")
+    let%test _ = to_pattern_exn (Var (i 1, "abc")) = Var (1, "abc")
+    let%test _ = to_pattern_exn (Var (i 2, "_abc")) = Var (2, "_abc")
+    let%test _ = to_pattern_exn (Var (i 3, "_")) = Var (3, "_")
 
-    let ( = ) = Term.equal ~info_eq:Int.( = )
+    let ( = ) = Term.( = )
 
     let%test _ = Term.of_pattern (Var (4, "_abc")) = Var (4, "_abc")
     let%test _ = Term.of_pattern (Var (5, "_")) = Var (5, "_")
+       *)
 
     let parse_exn str =
-      let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse_no_comment)) in
+      let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse')) in
       match parse str with Error msg -> failwith msg | Ok tm -> tm
     ;;
 
@@ -827,45 +701,44 @@ let%test_module "Nominal" =
 
 let%test_module "TermParser" =
   (module struct
-    let ( = ) = Result.equal (Term.equal ~info_eq:Unit.( = )) String.( = )
-    let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse_no_comment))
-    let parse_erase str = parse str |> Result.map ~f:Term.erase
+    let ( = ) = Result.equal Term.( = ) String.( = )
+    let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse'))
 
     let print_parse str =
       match parse str with
       | Error msg -> print_string ("failed: " ^ msg)
-      | Ok tm ->
-        Fmt.pr "%a\n" Term.pp tm;
-        Fmt.pr "%a" Term.pp_opt_range (Term.map_info ~f:Commented.get_range tm)
+      | Ok tm -> Fmt.pr "%a" Term.pp tm
     ;;
 
-    let%test _ = parse_erase "x" = Ok (Var ((), "x"))
-    let%test _ = parse_erase "123" = Ok (Primitive ((), Integer (Z.of_int 123)))
-    let%test _ = parse_erase "\"abc\"" = Ok (Primitive ((), String "abc"))
-
-    let x = Term.Var ((), "x")
-    let t = Term.Operator ((), "true", [])
+    let%test _ = parse "x" = Ok (mk_Var "x")
 
     let%test _ =
-      parse_erase "lam(x. x)"
-      = Ok (Operator ((), "lam", [ Scope ([ Var ((), "x") ], x) ]))
+      parse "123" = Ok (mk_Primitive (Primitive_impl.All.mk_Integer (Z.of_int 123)))
     ;;
 
-    let%test _ = parse_erase {| match() |} = Ok (Operator ((), "match", []))
+    let%test _ = parse "\"abc\"" = Ok (mk_Primitive (Primitive_impl.All.mk_String "abc"))
+
+    let x = mk_Var "x"
+    let t = mk_Operator "true" []
 
     let%test _ =
-      parse_erase {| match(x; x) |}
-      = Ok (Operator ((), "match", [ Scope ([], x); Scope ([], x) ]))
+      parse "lam(x. x)" = Ok (mk_Operator "lam" [ Scope ([ Pattern.mk_Var "x" ], x) ])
+    ;;
+
+    let%test _ = parse {| match() |} = Ok (mk_Operator "match" [])
+
+    let%test _ =
+      parse {| match(x; x) |} = Ok (mk_Operator "match" [ Scope ([], x); Scope ([], x) ])
     ;;
 
     let%test _ =
-      parse_erase {| match(true(); true()) |}
-      = Ok (Operator ((), "match", [ Scope ([], t); Scope ([], t) ]))
+      parse {| match(true(); true()) |}
+      = Ok (mk_Operator "match" [ Scope ([], t); Scope ([], t) ])
     ;;
 
     (* TODO
     let%test _ =
-      parse_erase {| match(x;) |} = Ok (Operator ((), "match", [ Scope ([], x) ]))
+      parse {| match(x;) |} = Ok (mk_Operator "match" [ Scope ([], x) ])
     ;;
     *)
 
@@ -968,16 +841,15 @@ match(x; match_lines(
 let%test_module "check" =
   (module struct
     let parse_lang lang_str =
-      Lvca_parsing.(
-        parse_string (whitespace *> Abstract_syntax.parse ~comment:no_comment) lang_str)
+      Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse) lang_str)
       |> Result.ok_or_failwith
     ;;
 
     let parse_term term_str =
-      Lvca_parsing.parse_string Term.parse_no_comment term_str |> Result.ok_or_failwith
+      Lvca_parsing.parse_string Term.parse' term_str |> Result.ok_or_failwith
     ;;
 
-    let parse_sort str = Lvca_parsing.(parse_string (Sort.parse ~comment:no_comment) str)
+    let parse_sort str = Lvca_parsing.(parse_string Sort.parse str)
 
     let lang_desc =
       {|

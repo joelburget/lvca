@@ -2,9 +2,9 @@ open Base
 module Format = Stdlib.Format
 
 module Frame = struct
-  type ('info, 'term) t =
+  type 'term t =
     { term : 'term
-    ; sort : 'info Sort.t
+    ; sort : Sort.t
     }
 
   let pp term_pp ppf { term; sort } =
@@ -12,9 +12,9 @@ module Frame = struct
   ;;
 end
 
-type ('info, 'term) t =
+type 'term t =
   { message : string
-  ; stack : ('info, 'term) Frame.t list
+  ; stack : 'term Frame.t list
   }
 
 let err message = { message; stack = [] }

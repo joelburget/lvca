@@ -1,38 +1,37 @@
 open Lvca_util
 
 module type Has_info = sig
-  type 'info t
+  type t
 
-  val info : 'info t -> 'info
-  val map_info : f:('a -> 'b) -> 'a t -> 'b t
+  val info : t -> Provenance.t
 end
 
 module type Json_convertible = sig
-  type 'info t
+  type t
 
-  val jsonify : 'info t Json.serializer
-  val unjsonify : unit t Json.deserializer
+  val jsonify : t Json.serializer
+  val unjsonify : t Json.deserializer
 end
 
 module type Serializable = sig
-  type 'info t
+  type t
 
   (** Encode (using {{:https://cbor.io} CBOR}) as bytes. *)
-  val serialize : _ t -> Bytes.t
+  val serialize : t -> Bytes.t
 
   (** Decode from {{:https://cbor.io} CBOR}). *)
-  val deserialize : Bytes.t -> unit t option
+  val deserialize : Bytes.t -> t option
 
   (** The SHA-256 hash of the serialized term. This is useful for content-identifying
       terms. *)
-  val hash : _ t -> string
+  val hash : t -> string
 end
 
 (** A signature all language objects satisfy. *)
 module type S = sig
   (** {1 Data type with attached info} *)
-  type 'info t
+  type t
 
   (** {1 Info} *)
-  include Has_info with type 'info t := 'info t
+  include Has_info with type t := t
 end
