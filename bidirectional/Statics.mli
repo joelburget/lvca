@@ -16,6 +16,7 @@ module Typing_rule : sig
     ; ty : Binding_aware_pattern.t
     }
 
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
 end
 
@@ -27,6 +28,7 @@ module Typing_clause : sig
     | Inference_rule of inference_rule
     | Checking_rule of checking_rule
 
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
   val parse : t Lvca_parsing.t
 end
@@ -36,10 +38,10 @@ end
 module Hypothesis : sig
   type t = Binding_aware_pattern.t String.Map.t * Typing_clause.t
 
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
 
   module Parse : sig
-    val pattern : Binding_aware_pattern.t Lvca_parsing.t
     val typed_term : (string * Binding_aware_pattern.t) Lvca_parsing.t
     val context : Binding_aware_pattern.t String.Map.t Lvca_parsing.t
     val t : t Lvca_parsing.t
@@ -54,6 +56,7 @@ module Rule : sig
     ; conclusion : Hypothesis.t
     }
 
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
 
   module Parse : sig
@@ -65,6 +68,7 @@ end
 module Typing : sig
   type t = Typing of Nominal.Term.t * Nominal.Term.t
 
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
 end
 

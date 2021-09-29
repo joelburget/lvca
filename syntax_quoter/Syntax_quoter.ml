@@ -53,12 +53,6 @@ module Exp = struct
       [%expr Some Lvca_provenance.Range.{ start = [%e start]; finish = [%e finish] }]
   ;;
 
-  let commented ~loc Lvca_provenance.Commented.{ range; comment } =
-    [%expr
-      Lvca_provenance.Commented.
-        { range = [%e opt_range ~loc range]; comment = [%e option str ~loc comment] }]
-  ;;
-
   let source_code_position ~loc { pos_fname; pos_lnum; pos_bol; pos_cnum } =
     let pos_fname = str ~loc pos_fname in
     let pos_lnum = int ~loc pos_lnum in
@@ -77,18 +71,11 @@ module Exp = struct
     [%expr `Implementation [%e pos]]
   ;;
 
-  let provenance ~loc provenance =
-    match provenance with
+  let provenance ~loc : Provenance.t -> expression = function
     | `Empty -> [%expr `Empty]
-    | `Located Provenance.{ at } ->
-      let at = source_location ~loc at in
-      [%expr `Located { at = [%e at] }]
-    | `Todo_commented c ->
-      let c = commented ~loc c in
-      [%expr `Todo_commented [%e c]]
-    | `Todo_opt_range r ->
-      let r = opt_range ~loc r in
-      [%expr `Todo_opt_range [%e r]]
+    | `Source_located Provenance.{ at } ->
+      [%expr `Located { at = [%e source_location ~loc at] }]
+    | `Parse_located r -> [%expr `Todo_opt_range [%e opt_range ~loc r]]
   ;;
 
   module Primitive = struct

@@ -15,14 +15,18 @@ let mk_Operator ?(provenance = Provenance.of_here [%here]) name pats =
 let mk_Var ?(provenance = Provenance.of_here [%here]) name = Var (provenance, name)
 let mk_Primitive prim = Primitive prim
 
-let rec ( = ) pat1 pat2 =
+let rec equivalent ~info_eq pat1 pat2 =
   match pat1, pat2 with
   | Operator (i1, name1, pats1), Operator (i2, name2, pats2) ->
-    Provenance.( = ) i1 i2 && String.(name1 = name2) && List.equal ( = ) pats1 pats2
-  | Primitive p1, Primitive p2 -> Primitive_impl.All.( = ) p1 p2
+    Provenance.(i1 = i2)
+    && String.(name1 = name2)
+    && List.equal (equivalent ~info_eq) pats1 pats2
+  | Primitive p1, Primitive p2 -> Primitive_impl.All.equivalent ~info_eq p1 p2
   | Var (i1, name1), Var (i2, name2) -> Provenance.( = ) i1 i2 && String.(name1 = name2)
   | _, _ -> false
 ;;
+
+let ( = ) = equivalent ~info_eq:Provenance.( = )
 
 let rec vars_of_pattern = function
   | Operator (_, _, pats) ->

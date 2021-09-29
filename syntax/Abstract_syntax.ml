@@ -12,7 +12,12 @@ module Kind = struct
   type t = Kind of Provenance.t * int
 
   let mk ?(provenance = Provenance.of_here [%here]) n = Kind (provenance, n)
-  let ( = ) (Kind (i1, k1)) (Kind (i2, k2)) = Provenance.(i1 = i2) && Int.(k1 = k2)
+
+  let equivalent ?(info_eq = fun _ _ -> true) (Kind (i1, k1)) (Kind (i2, k2)) =
+    info_eq i1 i2 && Int.(k1 = k2)
+  ;;
+
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
   let info (Kind (i, _)) = i
 
   let pp ppf (Kind (_info, k)) =
@@ -100,9 +105,12 @@ module Pattern_sort = struct
     ; var_sort : Sort.t
     }
 
-  let ( = ) ps1 ps2 =
-    Sort.(ps1.pattern_sort = ps2.pattern_sort) && Sort.(ps1.var_sort = ps2.var_sort)
+  let equivalent ?(info_eq = fun _ _ -> true) ps1 ps2 =
+    Sort.equivalent ~info_eq ps1.pattern_sort ps2.pattern_sort
+    && Sort.equivalent ~info_eq ps1.var_sort ps2.var_sort
   ;;
+
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
 
   let pp ppf { pattern_sort; var_sort } =
     match pattern_sort with
@@ -122,12 +130,14 @@ module Sort_slot = struct
     | Sort_binding of Sort.t
     | Sort_pattern of Pattern_sort.t
 
-  let ( = ) slot1 slot2 =
+  let equivalent ?(info_eq = fun _ _ -> true) slot1 slot2 =
     match slot1, slot2 with
-    | Sort_binding s1, Sort_binding s2 -> Sort.(s1 = s2)
-    | Sort_pattern ps1, Sort_pattern ps2 -> Pattern_sort.(ps1 = ps2)
+    | Sort_binding s1, Sort_binding s2 -> Sort.equivalent ~info_eq s1 s2
+    | Sort_pattern ps1, Sort_pattern ps2 -> Pattern_sort.equivalent ~info_eq ps1 ps2
     | _, _ -> false
   ;;
+
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
 
   let pp ppf = function
     | Sort_binding sort -> Sort.pp ppf sort
@@ -161,9 +171,16 @@ end
 module Valence = struct
   type t = Valence of Sort_slot.t list * Sort.t
 
-  let ( = ) (Valence (slots1, sort1)) (Valence (slots2, sort2)) =
-    List.equal Sort_slot.( = ) slots1 slots2 && Sort.( = ) sort1 sort2
+  let equivalent
+      ?(info_eq = fun _ _ -> true)
+      (Valence (slots1, sort1))
+      (Valence (slots2, sort2))
+    =
+    List.equal Sort_slot.(equivalent ~info_eq) slots1 slots2
+    && Sort.(equivalent ~info_eq) sort1 sort2
   ;;
+
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
 
   let pp ppf (Valence (binders, result)) =
     match binders with
@@ -215,9 +232,15 @@ module Arity = struct
 
   (* close_loc ppf info *)
 
-  let ( = ) (Arity (i1, valences1)) (Arity (i2, valences2)) =
-    Provenance.(i1 = i2) && List.equal Valence.( = ) valences1 valences2
+  let equivalent
+      ?(info_eq = fun _ _ -> true)
+      (Arity (i1, valences1))
+      (Arity (i2, valences2))
+    =
+    info_eq i1 i2 && List.equal Valence.(equivalent ~info_eq) valences1 valences2
   ;;
+
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
 
   let instantiate env (Arity (info, valences)) =
     Arity (info, List.map ~f:(Valence.instantiate env) valences)
@@ -289,9 +312,17 @@ module Operator_def = struct
     Operator_def (provenance, name, arity)
   ;;
 
-  let ( = ) (Operator_def (info1, name1, arity1)) (Operator_def (info2, name2, arity2)) =
-    Provenance.( = ) info1 info2 && String.(name1 = name2) && Arity.( = ) arity1 arity2
+  let equivalent
+      ?(info_eq = fun _ _ -> true)
+      (Operator_def (info1, name1, arity1))
+      (Operator_def (info2, name2, arity2))
+    =
+    info_eq info1 info2
+    && String.(name1 = name2)
+    && Arity.equivalent ~info_eq arity1 arity2
   ;;
+
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
 
   let kind_check env (Operator_def (_info, _name, Arity (_, valences))) =
     List.fold valences ~init:env ~f:Valence.kind_check
@@ -328,10 +359,19 @@ end
 module Sort_def = struct
   type t = Sort_def of (string * Kind.t option) list * Operator_def.t list
 
-  let ( = ) (Sort_def (vars1, ops1)) (Sort_def (vars2, ops2)) =
-    List.equal (Tuple2.equal String.( = ) (Option.equal Kind.( = ))) vars1 vars2
-    && List.equal Operator_def.( = ) ops1 ops2
+  let equivalent
+      ?(info_eq = fun _ _ -> true)
+      (Sort_def (vars1, ops1))
+      (Sort_def (vars2, ops2))
+    =
+    List.equal
+      (Tuple2.equal String.( = ) (Option.equal Kind.(equivalent ~info_eq)))
+      vars1
+      vars2
+    && List.equal Operator_def.(equivalent ~info_eq) ops1 ops2
   ;;
+
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
 
   let kind_check env sort_name (Sort_def (vars, operators)) =
     let update_env env name n =
@@ -493,11 +533,15 @@ let mk_unordered { externals; sort_defs } =
   | `Duplicate_key k, _ | _, `Duplicate_key k -> `Duplicate_key k
 ;;
 
-let ( = ) t1 t2 =
-  let sort_defs_eq = List.equal (Tuple2.equal String.( = ) Sort_def.( = )) in
-  let externals_eq = List.equal (Tuple2.equal String.( = ) Kind.( = )) in
+let equivalent ?(info_eq = fun _ _ -> true) t1 t2 =
+  let sort_defs_eq =
+    List.equal (Tuple2.equal String.( = ) Sort_def.(equivalent ~info_eq))
+  in
+  let externals_eq = List.equal (Tuple2.equal String.( = ) Kind.(equivalent ~info_eq)) in
   externals_eq t1.externals t2.externals && sort_defs_eq t1.sort_defs t2.sort_defs
 ;;
+
+let ( = ) = equivalent ~info_eq:Provenance.( = )
 
 let lookup_operator { externals = _; sort_defs } sort_name op_name =
   let open Option.Let_syntax in

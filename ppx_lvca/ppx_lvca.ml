@@ -3,39 +3,40 @@ open Ppxlib
 open Syntax_quoter
 
 let parse p = Lvca_parsing.(parse_string (whitespace *> p))
-let comment = Lvca_parsing.c_comment
 
 let expand_nominal ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string ~loc expr in
-  match parse (Nominal.Term.parse' ~comment) str with
+  match parse Nominal.Term.parse' str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> Exp.nominal ~loc tm
 ;;
 
+(*
 let expand_nonbinding ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string ~loc expr in
-  match parse (Nonbinding.parse ~comment) str with
+  match parse Nonbinding.parse str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> Exp.nonbinding ~loc tm
 ;;
+   *)
 
 let expand_pattern ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string ~loc expr in
-  match parse (Pattern.parse ~comment) str with
+  match parse Pattern.parse str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> Exp.pattern ~loc tm
 ;;
 
 let expand_abstract_syntax ~(loc : Location.t) ~path:_ (expr : expression) : expression =
   let str, loc = extract_string ~loc expr in
-  match parse (Abstract_syntax.parse ~comment) str with
+  match parse Abstract_syntax.parse str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax -> Exp.language ~loc syntax
 ;;
 
 let expand_module ~(loc : Location.t) ~path:_ (lang_str_expr : expression) : module_expr =
   let str, loc = extract_string ~loc lang_str_expr in
-  match parse (Abstract_syntax.parse ~comment) str with
+  match parse Abstract_syntax.parse str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax ->
     let module Builder_context = struct
@@ -52,7 +53,7 @@ let expand_module ~(loc : Location.t) ~path:_ (lang_str_expr : expression) : mod
 
 let expand_module_sig ~(loc : Location.t) ~path:_ (expr : expression) : module_type =
   let str, loc = extract_string ~loc expr in
-  match parse (Abstract_syntax.parse ~comment) str with
+  match parse Abstract_syntax.parse str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax ->
     let module Builder_context = struct
@@ -75,6 +76,7 @@ let term_extension =
     expand_nominal
 ;;
 
+(*
 let nonbinding_extension =
   Extension.declare
     "lvca.nonbinding"
@@ -82,6 +84,7 @@ let nonbinding_extension =
     Ast_pattern.(single_expr_payload __)
     expand_nonbinding
 ;;
+*)
 
 let pattern_extension =
   Extension.declare
@@ -120,7 +123,7 @@ let () =
     "lvca"
     ~rules:
       [ Context_free.Rule.extension term_extension
-      ; Context_free.Rule.extension nonbinding_extension
+        (* ; Context_free.Rule.extension nonbinding_extension *)
       ; Context_free.Rule.extension pattern_extension
       ; Context_free.Rule.extension abstract_syntax_extension
       ; Context_free.Rule.extension abstract_syntax_module_extension

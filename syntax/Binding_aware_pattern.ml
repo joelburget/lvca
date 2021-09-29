@@ -28,13 +28,14 @@ module Capture = struct
     | Binder of Pattern.t
     | Term of Term.t
 
-  let ( = ) cap1 cap2 =
+  let equivalent ?(info_eq = fun _ _ -> true) cap1 cap2 =
     match cap1, cap2 with
-    | Binder pat1, Binder pat2 -> Pattern.( = ) pat1 pat2
-    | Term tm1, Term tm2 -> Term.( = ) tm1 tm2
+    | Binder pat1, Binder pat2 -> Pattern.equivalent ~info_eq pat1 pat2
+    | Term tm1, Term tm2 -> Term.equivalent ~info_eq tm1 tm2
     | _, _ -> false
   ;;
 
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
   let pp ppf = function Binder pat -> Pattern.pp ppf pat | Term tm -> Term.pp ppf tm
 end
 
@@ -45,20 +46,22 @@ type t =
 
 and scope = Scope of (Provenance.t * string) list * t
 
-let rec ( = ) t1 t2 =
+let rec equivalent ?(info_eq = fun _ _ -> true) t1 t2 =
   match t1, t2 with
   | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
     Provenance.( = ) i1 i2
     && String.(name1 = name2)
-    && List.equal scope_eq scopes1 scopes2
+    && List.equal (scope_equivalent ~info_eq) scopes1 scopes2
   | Primitive p1, Primitive p2 -> Primitive.All.( = ) p1 p2
   | Var (i1, name1), Var (i2, name2) -> Provenance.( = ) i1 i2 && String.(name1 = name2)
   | _, _ -> false
 
-and scope_eq (Scope (names1, t1)) (Scope (names2, t2)) =
+and scope_equivalent ~info_eq (Scope (names1, t1)) (Scope (names2, t2)) =
   List.equal (Lvca_util.Tuple2.equal Provenance.( = ) String.( = )) names1 names2
-  && t1 = t2
+  && equivalent ~info_eq t1 t2
 ;;
+
+let ( = ) = equivalent ~info_eq:Provenance.( = )
 
 let rec vars_of_pattern = function
   | Operator (_, _, pats) ->

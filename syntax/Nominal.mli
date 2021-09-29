@@ -23,6 +23,7 @@ module Term : sig
 
   val to_nominal : t -> t
   val of_nominal : t -> (t, t) Result.t
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
   val info : t -> Provenance.t
   val pp : t Fmt.t
@@ -93,6 +94,7 @@ end
 module Scope : sig
   type t = Types.scope = Scope of Pattern.t list * Types.term
 
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
   val pp : t Fmt.t
   val jsonify : t Json.serializer
@@ -135,6 +137,7 @@ module Convertible : sig
   module type Extended_s = sig
     include S
 
+    val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
     val ( = ) : t -> t -> bool
     (* TODO: should they be comparable as well? *)
 

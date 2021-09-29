@@ -15,6 +15,7 @@ module Kind : sig
   type t = Kind of Provenance.t * int
 
   val mk : ?provenance:Provenance.t -> int -> t
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
   val info : t -> Provenance.t
   val pp : t Fmt.t
@@ -33,6 +34,7 @@ module Pattern_sort : sig
     ; var_sort : Sort.t
     }
 
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
   val pp : t Fmt.t
   val instantiate : Sort.t String.Map.t -> t -> t
@@ -44,6 +46,7 @@ module Sort_slot : sig
     | Sort_binding of Sort.t
     | Sort_pattern of Pattern_sort.t
 
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
   val pp : t Fmt.t
   val kind_check : Int.Set.t String.Map.t -> t -> Int.Set.t String.Map.t
@@ -59,6 +62,7 @@ end
 module Valence : sig
   type t = Valence of Sort_slot.t list * Sort.t
 
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
   val pp : t Fmt.t
 
@@ -73,6 +77,7 @@ module Arity : sig
   type t = Arity of Provenance.t * Valence.t list
 
   val mk : ?provenance:Provenance.t -> Valence.t list -> t
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
   val pp : t Fmt.t
 
@@ -88,6 +93,7 @@ module Operator_def : sig
         (** An operator is defined by its tag and arity. *)
 
   val mk : ?provenance:Provenance.t -> string -> Arity.t -> t
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
   val pp : t Fmt.t
   val parse : t Lvca_parsing.t
@@ -98,6 +104,7 @@ module Sort_def : sig
     | Sort_def of (string * Kind.t option) list * Operator_def.t list
         (** A sort is defined by a set of variables and a set of operators. *)
 
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
   val pp : name:string -> t Fmt.t
   val kind_check : Int.Set.t String.Map.t -> string -> t -> Int.Set.t String.Map.t
@@ -122,6 +129,7 @@ module Unordered : sig
 end
 
 val mk_unordered : t -> [ `Ok of Unordered.t | `Duplicate_key of string ]
+val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
 val ( = ) : t -> t -> bool
 
 (** {1 Misc} *)

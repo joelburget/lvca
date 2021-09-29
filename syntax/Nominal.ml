@@ -24,17 +24,19 @@ let info = function
   | Primitive p -> Primitive_impl.All.info p
 ;;
 
-module Equal = struct
-  let rec term t1 t2 =
+module Equivalent = struct
+  let rec term ?(info_eq = fun _ _ -> true) t1 t2 =
     match t1, t2 with
     | Types.Operator (i1, name1, scopes1), Types.Operator (i2, name2, scopes2) ->
-      Provenance.( = ) i1 i2 && String.(name1 = name2) && List.equal scope scopes1 scopes2
+      Provenance.( = ) i1 i2
+      && String.(name1 = name2)
+      && List.equal (scope ~info_eq) scopes1 scopes2
     | Primitive p1, Primitive p2 -> Primitive_impl.All.( = ) p1 p2
     | Var (i1, name1), Var (i2, name2) -> Provenance.( = ) i1 i2 && String.(name1 = name2)
     | _, _ -> false
 
-  and scope (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
-    List.equal Pattern.( = ) pats1 pats2 && term tm1 tm2
+  and scope ?(info_eq = fun _ _ -> true) (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
+    List.equal Pattern.( = ) pats1 pats2 && term ~info_eq tm1 tm2
   ;;
 end
 
@@ -136,7 +138,8 @@ module Term = struct
 
   let to_nominal x = x
   let of_nominal x = Ok x
-  let ( = ) = Equal.term
+  let equivalent = Equivalent.term
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
   let subst_all = SubstAll.term
   let rename = Rename.term
   let jsonify = Jsonify.term
@@ -418,7 +421,8 @@ end
 module Scope = struct
   type t = Types.scope = Scope of Pattern.t list * Types.term
 
-  let ( = ) = Equal.scope
+  let equivalent = Equivalent.scope
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
   let pp = Pp.scope
   let subst_all = SubstAll.scope
   let rename = Rename.scope
@@ -437,6 +441,7 @@ module Convertible = struct
   module type Extended_s = sig
     include S
 
+    val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
     val ( = ) : t -> t -> bool
     (* TODO: should they be comparable as well? *)
 
@@ -459,7 +464,11 @@ module Convertible = struct
   module Extend (Object : S) : Extended_s with type t = Object.t = struct
     include Object
 
-    let ( = ) t1 t2 = Term.( = ) (to_nominal t1) (to_nominal t2)
+    let equivalent ?info_eq t1 t2 =
+      Term.equivalent ?info_eq (to_nominal t1) (to_nominal t2)
+    ;;
+
+    let ( = ) = equivalent ~info_eq:Provenance.( = )
     let pp ppf tm = Term.pp ppf (to_nominal tm)
     let to_string tm = Fmt.to_to_string pp tm
 

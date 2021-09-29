@@ -38,6 +38,8 @@ module type Builder_context = sig
   module Ast : Ast_builder.S
 end
 
+let get_range = function `Parse_located range -> range | _ -> None
+
 module Update_loc (Context : Builder_context) = struct
   open Context
 
@@ -313,7 +315,7 @@ module Helpers (Context : Builder_context) = struct
   (** Context for classifying a sort ([classify_sort]) as [defn_status]. *)
   type context =
     { var_names : SSet.t
-    ; mutual_sorts : string Commented.t Syn.Sort_def.t SMap.t
+    ; mutual_sorts : Syn.Sort_def.t SMap.t
     ; prims : string list option SMap.t
     }
 
@@ -382,7 +384,7 @@ module Helpers (Context : Builder_context) = struct
   let ptyp_of_sort ~type_decl_context ~context sort =
     let info_args = [ [%type: 'info] ] in
     let rec go sort =
-      let loc = sort |> Sort.info |> Commented.get_range |> update_loc in
+      let loc = sort |> Sort.info |> get_range |> update_loc in
       let name, sort_args = Sort.split sort in
       match classify_sort context sort with
       | Variable -> ptyp_var name
@@ -422,7 +424,7 @@ module Helpers (Context : Builder_context) = struct
         expression like [foo ~args] or [list (a ~args) ~args] . *)
   let mk_sort_app ~fun_defn ~classify_sort ~args sort =
     let rec go sort =
-      let loc = sort |> Sort.info |> Commented.get_range |> update_loc in
+      let loc = sort |> Sort.info |> get_range |> update_loc in
       let txt = Lident (sort_head sort) in
       let apply sort_fun =
         match sort with
@@ -512,7 +514,9 @@ module Helpers (Context : Builder_context) = struct
          >>| fun cs -> String.of_char_list (c0 :: cs))
   ;;
 
-  let prims_of_externals externals =
+  let prims_of_externals _externals = SMap.empty
+  (* TODO *)
+  (*
     externals
     |> List.map
          ~f:(fun (name, Abstract_syntax.Kind.Kind (Commented.{ comment; _ }, _kind)) ->
@@ -524,7 +528,7 @@ module Helpers (Context : Builder_context) = struct
            in
            name, m_opt)
     |> SMap.of_alist_exn
-  ;;
+         *)
 end
 
 (** Helper for declaring a constructor. *)
@@ -542,7 +546,7 @@ module Ctor_decl (Context : Builder_context) = struct
     let args =
       List.map binding_sort_slots ~f:(function
           | Syn.Sort_slot.Sort_binding sort ->
-            let loc = sort |> Sort.info |> Commented.get_range |> update_loc in
+            let loc = sort |> Sort.info |> get_range |> update_loc in
             [%type: 'info Lvca_syntax.Single_var.t]
           | Sort_pattern _sort -> pattern_type)
     in
@@ -1175,9 +1179,9 @@ module Wrapper_module (Context : Builder_context) = struct
         (maker :
           prims:string list option SMap.t
           -> sort_binding_status:(string, bound_unbound) Hashtbl.t
-          -> _ Syn.Sort_def.t SMap.t
+          -> Syn.Sort_def.t SMap.t
           -> string
-          -> _ Syn.Sort_def.t
+          -> Syn.Sort_def.t
           -> Ppxlib.value_binding)
       =
       ordered_sccs
@@ -1537,10 +1541,7 @@ module Sig (Context : Builder_context) = struct
           psig_module
             (module_declaration ~name:{ txt = Some (module_name sort_name); loc } ~type_))
     in
-    let language =
-      [%sigi:
-        val language : string Lvca_provenance.Commented.t Lvca_syntax.Abstract_syntax.t]
-    in
+    let language = [%sigi: val language : Lvca_syntax.Abstract_syntax.t] in
     pmty_signature
       ((language
        :: Wrapper_module.mk_sigs

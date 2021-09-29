@@ -1,42 +1,49 @@
 open Base
-open Lvca_provenance
 open Lvca_syntax
 open Lvca_util
 
 module Typing_rule = struct
-  type 'info t =
-    { tm : 'info Binding_aware_pattern.t
-    ; ty : 'info Binding_aware_pattern.t
+  type t =
+    { tm : Binding_aware_pattern.t
+    ; ty : Binding_aware_pattern.t
     }
 
-  let equal ~info_eq a b =
-    Binding_aware_pattern.(equal ~info_eq a.tm b.tm && equal ~info_eq a.ty b.ty)
+  let equivalent ?(info_eq = fun _ _ -> true) a b =
+    Binding_aware_pattern.(equivalent ~info_eq a.tm b.tm && equivalent ~info_eq a.ty b.ty)
   ;;
 
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
+
+  (*
   let erase { tm; ty } =
     { tm = Binding_aware_pattern.erase tm; ty = Binding_aware_pattern.erase ty }
   ;;
+     *)
 end
 
 module Typing_clause = struct
-  type 'info inference_rule = 'info Typing_rule.t
-  type 'info checking_rule = 'info Typing_rule.t
+  type inference_rule = Typing_rule.t
+  type checking_rule = Typing_rule.t
 
-  type 'info t =
-    | Inference_rule of 'info inference_rule
-    | Checking_rule of 'info checking_rule
+  type t =
+    | Inference_rule of inference_rule
+    | Checking_rule of checking_rule
 
+  (*
   let erase = function
     | Inference_rule rule -> Inference_rule (Typing_rule.erase rule)
     | Checking_rule rule -> Checking_rule (Typing_rule.erase rule)
   ;;
+     *)
 
-  let equal ~info_eq a b =
+  let equivalent ?(info_eq = fun _ _ -> true) a b =
     match a, b with
-    | Inference_rule a, Inference_rule b -> Typing_rule.equal ~info_eq a b
-    | Checking_rule a, Checking_rule b -> Typing_rule.equal ~info_eq a b
+    | Inference_rule a, Inference_rule b -> Typing_rule.equivalent ~info_eq a b
+    | Checking_rule a, Checking_rule b -> Typing_rule.equivalent ~info_eq a b
     | _, _ -> false
   ;;
+
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
 
   module Parse = struct
     open Lvca_parsing
@@ -45,25 +52,19 @@ module Typing_clause = struct
       | LeftArr
       | RightArr
 
-    let pattern =
-      Binding_aware_pattern.parse ~comment:Lvca_parsing.no_comment
-      >>| Binding_aware_pattern.map_info ~f:Commented.get_range
-      <?> "pattern"
-    ;;
-
     let t =
       lift3
         (fun tm dir ty ->
           match dir with
           | LeftArr -> Checking_rule { tm; ty }
           | RightArr -> Inference_rule { tm; ty })
-        pattern
+        Binding_aware_pattern.parse
         (choice
            ~failure_msg:"looking for <= or =>"
            [ (Ws.string "<=" >>| fun _ -> LeftArr)
            ; (Ws.string "=>" >>| fun _ -> RightArr)
            ])
-        pattern
+        Binding_aware_pattern.parse
       <?> "typing clause"
     ;;
   end
@@ -72,12 +73,11 @@ module Typing_clause = struct
 
   let%test_module _ =
     (module struct
-      let ( = ) = Result.equal (equal ~info_eq:Unit.( = )) String.( = )
+      let ( = ) = Result.equal (equivalent ~info_eq:(fun _ _ -> true)) String.( = )
 
       let%test _ =
         Lvca_parsing.parse_string parse "tm => ty"
-        |> Result.map ~f:erase
-        = Ok (Inference_rule { tm = Var ((), "tm"); ty = Var ((), "ty") })
+        = Ok (Inference_rule { tm = Var (`Empty, "tm"); ty = Var (`Empty, "ty") })
       ;;
     end)
   ;;
@@ -86,29 +86,30 @@ end
 exception StaticsParseError of string
 
 module Hypothesis = struct
-  type 'info t = 'info Binding_aware_pattern.t String.Map.t * 'info Typing_clause.t
+  type t = Binding_aware_pattern.t String.Map.t * Typing_clause.t
 
-  let equal ~info_eq (m1, c1) (m2, c2) =
-    Map.equal (Binding_aware_pattern.equal ~info_eq) m1 m2
-    && Typing_clause.equal ~info_eq c1 c2
+  let equivalent ?(info_eq = fun _ _ -> true) (m1, c1) (m2, c2) =
+    Map.equal (Binding_aware_pattern.equivalent ~info_eq) m1 m2
+    && Typing_clause.equivalent ~info_eq c1 c2
   ;;
 
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
+
+  (*
   let erase (env, clause) =
     Map.map env ~f:Binding_aware_pattern.erase, Typing_clause.erase clause
   ;;
+     *)
 
   module Parse = struct
     open Lvca_parsing
 
-    (* TODO: remove duplication *)
-    let pattern =
-      Binding_aware_pattern.parse ~comment:Lvca_parsing.no_comment
-      >>| Binding_aware_pattern.map_info ~f:Commented.get_range
-      <?> "pattern"
-    ;;
-
     let typed_term =
-      lift3 (fun ident _ tm -> ident, tm) Ws.identifier (Ws.char ':') pattern
+      lift3
+        (fun ident _ tm -> ident, tm)
+        Ws.identifier
+        (Ws.char ':')
+        Binding_aware_pattern.parse
       <?> "typed pattern"
     ;;
 
@@ -148,34 +149,38 @@ module Hypothesis = struct
         | Ok (m, rule) ->
           Map.is_empty m
           && Typing_clause.(
-               equal
-                 ~info_eq:Unit.( = )
-                 (erase rule)
-                 (Checking_rule { tm = Var ((), "t1"); ty = Operator ((), "bool", []) }))
+               equivalent
+                 rule
+                 (Checking_rule
+                    { tm = Var (`Empty, "t1"); ty = Operator (`Empty, "bool", []) }))
       ;;
     end)
   ;;
 end
 
 module Rule = struct
-  type 'a t =
-    { hypotheses : 'a Hypothesis.t list
+  type t =
+    { hypotheses : Hypothesis.t list
     ; name : string option
-    ; conclusion : 'a Hypothesis.t
+    ; conclusion : Hypothesis.t
     }
 
+  (*
   let erase { hypotheses; name; conclusion } =
     { hypotheses = List.map hypotheses ~f:Hypothesis.erase
     ; name
     ; conclusion = Hypothesis.erase conclusion
     }
   ;;
+     *)
 
-  let equal ~info_eq a b =
-    List.equal (Hypothesis.equal ~info_eq) a.hypotheses b.hypotheses
+  let equivalent ?(info_eq = fun _ _ -> true) a b =
+    List.equal (Hypothesis.equivalent ~info_eq) a.hypotheses b.hypotheses
     && Option.equal String.( = ) a.name b.name
-    && Hypothesis.equal ~info_eq a.conclusion b.conclusion
+    && Hypothesis.equivalent ~info_eq a.conclusion b.conclusion
   ;;
+
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
 
   module Parse = struct
     open Lvca_parsing
@@ -201,18 +206,20 @@ module Rule = struct
 end
 
 module Typing = struct
-  type 'a t = Typing of 'a Nominal.Term.t * 'a Nominal.Term.t
+  type t = Typing of Nominal.Term.t * Nominal.Term.t
 
-  let erase (Typing (t1, t2)) = Typing (Nominal.Term.erase t1, Nominal.Term.erase t2)
+  (* let erase (Typing (t1, t2)) = Typing (Nominal.Term.erase t1, Nominal.Term.erase t2) *)
 
-  let equal ~info_eq (Typing (t11, t12)) (Typing (t21, t22)) =
-    Nominal.Term.equal ~info_eq t11 t21 && Nominal.Term.equal ~info_eq t12 t22
+  let equivalent ?(info_eq = fun _ _ -> true) (Typing (t11, t12)) (Typing (t21, t22)) =
+    Nominal.Term.equivalent ~info_eq t11 t21 && Nominal.Term.equivalent ~info_eq t12 t22
   ;;
+
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
 end
 
-type 'a t = 'a Rule.t list
+type t = Rule.t list
 
-let erase = List.map ~f:Rule.erase
+(* let erase = List.map ~f:Rule.erase *)
 let parse = Lvca_parsing.many Rule.Parse.t
 
 let%test_module "Parsing" =

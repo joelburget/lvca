@@ -24,6 +24,7 @@ module Capture : sig
     | Binder of Pattern.t
     | Term of Nominal.Term.t
 
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
   val pp : t Fmt.t
 end
@@ -45,6 +46,7 @@ val match_scope : scope -> Nominal.Scope.t -> Capture.t String.Map.t option
 val match_all : t -> Nominal.Term.t -> Provenance.t list
 
 (** {1 Pretty-printing} *)
+val pp : t Fmt.t
 
 (** {1 Info} *)
 
@@ -53,6 +55,7 @@ val info : t -> Provenance.t
 (** {1 Misc} *)
 val select_path : path:int list -> t -> (t, string) Result.t
 
+val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
 val ( = ) : t -> t -> bool
 
 (** Check that this pattern is valid and return the valence for each variable it binds.

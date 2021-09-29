@@ -18,21 +18,22 @@ let mk_Name ?(provenance = Provenance.of_here [%here]) name = Name (provenance, 
 let mk_Nil ?(provenance = Provenance.of_here [%here]) () = Nil provenance
 let mk_Cons ?(provenance = Provenance.of_here [%here]) x xs = Cons (provenance, x, xs)
 
-let rec ( = ) s1 s2 =
+let rec equivalent ~info_eq s1 s2 =
   match s1, s2 with
   | Ap (i1, name1, ts1), Ap (i2, name2, ts2) ->
-    Provenance.(i1 = i2) && String.(name1 = name2) && equal_list ts1 ts2
-  | Name (i1, name1), Name (i2, name2) -> Provenance.(i1 = i2) && String.(name1 = name2)
+    info_eq i1 i2 && String.(name1 = name2) && equal_list ~info_eq ts1 ts2
+  | Name (i1, name1), Name (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
   | _, _ -> false
 
-and equal_list l1 l2 =
+and equal_list ~info_eq l1 l2 =
   match l1, l2 with
-  | Nil i1, Nil i2 -> Provenance.(i1 = i2)
+  | Nil i1, Nil i2 -> info_eq i1 i2
   | Cons (i1, x, xs), Cons (i2, y, ys) ->
-    Provenance.(i1 = i2) && x = y && equal_list xs ys
+    info_eq i1 i2 && equivalent ~info_eq x y && equal_list ~info_eq xs ys
   | _, _ -> false
 ;;
 
+let ( = ) = equivalent ~info_eq:Provenance.( = )
 let info = function Ap (i, _, _) | Name (i, _) -> i
 
 module Ap_list = struct

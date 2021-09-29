@@ -4,18 +4,33 @@ open Lvca_util
 module type Base_plain_s = sig
   type t
 
-  val pp : t Fmt.t
   val ( = ) : t -> t -> bool
+  val pp : t Fmt.t
   val parse : t Lvca_parsing.t
   val jsonify : t Json.serializer
   val unjsonify : t Json.deserializer
 end
 
-module Make (Base_plain : Base_plain_s) = struct
+module Make (Base_plain : Base_plain_s) : sig
+  type t = Provenance.t * Base_plain.t
+
+  val info : t -> Provenance.t
+  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
+  val ( = ) : t -> t -> bool
+  val pp : t Fmt.t
+  val parse : t Lvca_parsing.t
+  val jsonify : t Json.serializer
+  val unjsonify : t Json.deserializer
+end = struct
   type t = Provenance.t * Base_plain.t
 
   let info (i, _) = i
-  let ( = ) (i1, x1) (i2, x2) = Provenance.( = ) i1 i2 && Base_plain.(x1 = x2)
+
+  let equivalent ?(info_eq = fun _ _ -> true) (i1, x1) (i2, x2) =
+    info_eq i1 i2 && Base_plain.(x1 = x2)
+  ;;
+
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
 
   let pp ppf (_i, x) =
     (* TODO open_loc ppf i; *)
@@ -25,7 +40,10 @@ module Make (Base_plain : Base_plain_s) = struct
   (* close_loc ppf i *)
 
   let jsonify (_, plain) = Base_plain.jsonify plain
-  let unjsonify json = Base_plain.unjsonify json |> Option.map ~f:(fun tm -> (), tm)
+
+  let unjsonify json =
+    Base_plain.unjsonify json |> Option.map ~f:(fun tm -> Provenance.of_here [%here], tm)
+  ;;
 
   let parse =
     let open Lvca_parsing in
@@ -223,6 +241,7 @@ module All = struct
 
   module Properties = struct
     let to_string p = Fmt.to_to_string pp p
+    let ( = ) = equivalent ~info_eq:(fun _ _ -> true)
 
     let json_round_trip1 : t -> Property_result.t =
      fun t ->
