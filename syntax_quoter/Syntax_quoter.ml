@@ -74,8 +74,8 @@ module Exp = struct
   let provenance ~loc : Provenance.t -> expression = function
     | `Empty -> [%expr `Empty]
     | `Source_located Provenance.{ at } ->
-      [%expr `Located { at = [%e source_location ~loc at] }]
-    | `Parse_located r -> [%expr `Todo_opt_range [%e opt_range ~loc r]]
+      [%expr `Source_located Lvca_syntax.Provenance.{ at = [%e source_location ~loc at] }]
+    | `Parse_located r -> [%expr `Parse_located [%e opt_range ~loc r]]
   ;;
 
   module Primitive = struct

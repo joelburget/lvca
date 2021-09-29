@@ -354,7 +354,12 @@ module Helpers (Context : Builder_context) = struct
       | None ->
         (match Map.find prims sort_name with
         | Some mods_opt -> External_sort mods_opt
-        | None -> Location.raise_errorf ~loc "Unknown sort: %s" sort_name))
+        | None ->
+          Location.raise_errorf
+            ~loc
+            "Unknown sort: %s (known: {%s})"
+            sort_name
+            Fmt.(str "%a" (list string) (Map.keys prims))))
   ;;
 
   let nominal_term = [ "Lvca_syntax"; "Nominal"; "Term" ]
@@ -370,19 +375,18 @@ module Helpers (Context : Builder_context) = struct
       If [list] is defined in this module:
 
       {[
-        'info nonempty = Nonempty of 'info * 'info Nominal.t * 'info list
-                                             ^^^^^^^^^^^^^^^   ^^^^^^^^^^
+        nonempty = Nonempty of Provenance.t * Nominal.t * list
+                                             ^^^^^^^^^^   ^^^^
       ]}
 
       If [list] is an external:
 
       {[
-        'info nonempty =
-           | Nonempty of 'info * 'info Nominal.t * 'info Nominal.t
-                                 ^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^
+        nonempty =
+           | Nonempty of Provenance.t * Nominal.t * Nominal.t
+                                        ^^^^^^^^^   ^^^^^^^^^
       ]} *)
   let ptyp_of_sort ~type_decl_context ~context sort =
-    let info_args = [ [%type: 'info] ] in
     let rec go sort =
       let loc = sort |> Sort.info |> get_range |> update_loc in
       let name, sort_args = Sort.split sort in
@@ -395,12 +399,12 @@ module Helpers (Context : Builder_context) = struct
           | Predefinition -> [ name ]
           | Individual_type_module -> [ "Wrapper"; "Types"; name ]
         in
-        ptyp_constr { txt = unflatten names; loc } (info_args @ sort_args)
+        ptyp_constr { txt = unflatten names; loc } sort_args
       | External_sort mods_opt ->
         let module_path, args =
           match mods_opt with
-          | Some mods -> mods, info_args @ List.map sort_args ~f:go
-          | None -> nominal_term, info_args
+          | Some mods -> mods, List.map sort_args ~f:go
+          | None -> nominal_term, []
         in
         ptyp_constr { txt = unflatten (module_path @ [ "t" ]); loc } args
     in
@@ -514,21 +518,9 @@ module Helpers (Context : Builder_context) = struct
          >>| fun cs -> String.of_char_list (c0 :: cs))
   ;;
 
-  let prims_of_externals _externals = SMap.empty
-  (* TODO *)
-  (*
-    externals
-    |> List.map
-         ~f:(fun (name, Abstract_syntax.Kind.Kind (Commented.{ comment; _ }, _kind)) ->
-           let m_opt =
-             Option.bind comment ~f:(fun comment ->
-                 match Lvca_parsing.parse_string parse_external_module comment with
-                 | Ok m -> Some m
-                 | Error _ -> None)
-           in
-           name, m_opt)
-    |> SMap.of_alist_exn
-         *)
+  let prims_of_externals externals =
+    externals |> List.map ~f:(fun (name, _) -> name, None) |> SMap.of_alist_exn
+  ;;
 end
 
 (** Helper for declaring a constructor. *)
@@ -542,12 +534,12 @@ module Ctor_decl (Context : Builder_context) = struct
       context
       (Syn.Valence.Valence (binding_sort_slots, body_sort))
     =
-    let pattern_type = [%type: 'info Pattern.t] in
+    let pattern_type = [%type: Pattern.t] in
     let args =
       List.map binding_sort_slots ~f:(function
           | Syn.Sort_slot.Sort_binding sort ->
             let loc = sort |> Sort.info |> get_range |> update_loc in
-            [%type: 'info Lvca_syntax.Single_var.t]
+            [%type: Lvca_syntax.Single_var.t]
           | Sort_pattern _sort -> pattern_type)
     in
     args @ [ ptyp_of_sort ~type_decl_context ~context body_sort ]
@@ -565,7 +557,7 @@ module Ctor_decl (Context : Builder_context) = struct
     in
     arity
     |> List.map ~f:args_of_valence
-    |> List.cons [ [%type: 'info] ]
+    |> List.cons [ [%type: Lvca_syntax.Provenance.t] ]
     |> List.map ~f:(function [] -> [%type: unit] | [ ty ] -> ty | tys -> ptyp_tuple tys)
   ;;
 
@@ -605,7 +597,7 @@ module Type_decls (Context : Builder_context) = struct
         ~f:(Ctor_decl.mk ~type_decl_context ~var_names ~mutual_sorts ~prims)
     in
     let var_ctor =
-      let args = [ [%type: 'info]; [%type: string] ] in
+      let args = [ [%type: Lvca_syntax.Provenance.t]; [%type: string] ] in
       constructor_declaration
         ~name:{ txt = var_ctor_name sort_name; loc }
         ~args:(Pcstr_tuple args)
@@ -618,7 +610,6 @@ module Type_decls (Context : Builder_context) = struct
   ;;
 
   let mk ~sort_def_map ~sorted_scc_graph ~prims ~sort_binding_status =
-    let info_params = [ plain_typ_var "info" ] in
     List.map sorted_scc_graph ~f:(fun (_scc_num, sort_name_set) ->
         sort_name_set
         |> Set.to_list
@@ -626,7 +617,6 @@ module Type_decls (Context : Builder_context) = struct
                let sort_def = Map.find_exn sort_def_map sort_name in
                let (Syn.Sort_def.Sort_def (vars, _op_defs)) = sort_def in
                let params = vars |> List.map ~f:fst |> List.map ~f:plain_typ_var in
-               let params = info_params @ params in
                let op_ctors =
                  mk_op_ctors
                    ~sort_def_map
@@ -727,7 +717,7 @@ module Operator_exp (Context : Builder_context) = struct
                      let info =
                        match fun_defn with
                        | Fun_map_info -> [%expr f [%e v].info]
-                       | _ -> failwith "Not supported by Operator_exp.mk (With_info)"
+                       | _ -> failwith "Not supported by Operator_exp.mk"
                      in
                      [%expr
                        Lvca_syntax.Single_var.{ info = [%e info]; name = [%e v].name }]
@@ -740,7 +730,7 @@ module Operator_exp (Context : Builder_context) = struct
     let expr =
       match fun_defn with
       | Fun_map_info -> [%expr f x0]
-      | _ -> failwith "Not supported by Operator_exp.mk (With_info)"
+      | _ -> failwith "Not supported by Operator_exp.mk"
     in
     let contents = expr :: contents in
     pexp_construct { txt = unflatten [ "Types"; op_name ]; loc } (mk_exp_tuple' contents)
@@ -1219,7 +1209,8 @@ module Wrapper_module (Context : Builder_context) = struct
         end
 
         module Info = [%m adapt ~definite_rec:Nonrecursive Info.mk]
-        module Map_info = [%m adapt Map_info.mk]
+
+        (* module Map_info = [%m adapt Map_info.mk] *)
         module To_nominal = [%m adapt To_nominal.mk]
         module Of_nominal = [%m adapt Of_nominal.mk]]
     in
@@ -1249,7 +1240,6 @@ module Individual_type_sig (Context : Builder_context) = struct
   let mk ~prims ~sort_def_map ~sort_binding_status sort_name sort_def =
     let (Syn.Sort_def.Sort_def (vars, _op_defs)) = sort_def in
     let var_names = List.map vars ~f:fst in
-    let var_names = "info" :: var_names in
     let params = List.map var_names ~f:plain_typ_var in
     let op_ctors =
       Type_decls.mk_op_ctors
@@ -1294,7 +1284,7 @@ module Individual_type_module (Context : Builder_context) = struct
         Some
           (ptyp_constr
              { txt = unflatten [ "Wrapper"; "Types"; sort_name ]; loc }
-             (ptyp_var "info" :: type_vars))
+             type_vars)
       in
       let op_ctors =
         Type_decls.mk_op_ctors
@@ -1309,7 +1299,7 @@ module Individual_type_module (Context : Builder_context) = struct
         Recursive
         [ type_declaration
             ~name:{ txt = "t"; loc }
-            ~params:(plain_typ_var "info" :: params)
+            ~params
             ~cstrs:[]
             ~kind:(Ptype_variant op_ctors)
             ~private_:Public
@@ -1317,7 +1307,7 @@ module Individual_type_module (Context : Builder_context) = struct
         ]
     in
     let fun_defs =
-      [ Supported_function.Fun_info; Fun_map_info; Fun_to_nominal; Fun_of_nominal ]
+      [ Supported_function.Fun_info; (* Fun_map_info; *) Fun_to_nominal; Fun_of_nominal ]
       |> List.map ~f:(fun fun_defn ->
              let fun_name = Supported_function.fun_name fun_defn in
              let wrapper_fun =
@@ -1335,13 +1325,12 @@ module Individual_type_module (Context : Builder_context) = struct
     let ctor_funs =
       List.map op_defs ~f:(fun (Operator_def (_, name, Arity (_, valences))) ->
           let var_names = List.mapi valences ~f:(fun i _ -> Fmt.str "x_%i" i) in
+          let contents = evar "info" :: List.map var_names ~f:evar in
+          let init = pexp_construct { txt = Lident name; loc } (mk_exp_tuple' contents) in
           let rhs =
-            let contents = evar "info" :: List.map var_names ~f:evar in
-            pexp_construct { txt = Lident name; loc } (mk_exp_tuple' contents)
-          in
-          let rhs =
-            List.fold_right var_names ~init:rhs ~f:(fun arg_name rhs ->
-                pexp_fun Nolabel None (pvar arg_name) rhs)
+            var_names
+            |> List.map ~f:pvar
+            |> List.fold_right ~init ~f:(pexp_fun Nolabel None)
           in
           let expr = pexp_fun (Labelled "info") None (pvar "info") rhs in
           pstr_value Nonrecursive [ value_binding ~pat:(pvar ("mk_" ^ name)) ~expr ])
@@ -1448,16 +1437,7 @@ module Sig (Context : Builder_context) = struct
           in
           let unique_vars = List.map unique_var_names ~f:(Tuple2.map ~f:ptyp_var) in
           let unique_vars_1, unique_vars_2 = List.unzip unique_vars in
-          let info_v, taken = Unique.generate_name ~base:"info" taken in
           let t = ptyp_constr { txt = Lident "t"; loc } in
-          let info_a, info_b =
-            match
-              Sequence.take (Unique.generate_names ~base:"info" taken) 2
-              |> Sequence.to_list
-            with
-            | [ x; y ] -> ptyp_var x, ptyp_var y
-            | _ -> Lvca_util.invariant_violation ~here:[%here] "expected two names"
-          in
           let fold_ty ~init ~f =
             List.fold_right unique_vars ~init ~f:(fun v1v2 ty ->
                 [%type: [%t f v1v2] -> [%t ty]])
@@ -1473,25 +1453,24 @@ module Sig (Context : Builder_context) = struct
                 ~sort_binding_status
                 sort_name
                 sort_def
-            ; (let template dom =
-                 [%type: [%t dom] -> [%t info_a] Lvca_syntax.Nominal.Term.t]
-               in
+            ; (let template dom = [%type: [%t dom] -> Lvca_syntax.Nominal.Term.t] in
                declare
                  "to_nominal"
-                 ~init:(template (t (info_a :: unique_vars_1)))
+                 ~init:(template (t unique_vars_1))
                  ~f:(fun (v1, _) -> template v1))
-            ; (let term = [%type: [%t info_a] Lvca_syntax.Nominal.Term.t] in
+            ; (let term = [%type: Lvca_syntax.Nominal.Term.t] in
                let template codom =
                  [%type: [%t term] -> ([%t codom], [%t term]) Result.t]
                in
                declare
                  "of_nominal"
-                 ~init:(template (t (info_a :: unique_vars_1)))
+                 ~init:(template (t unique_vars_1))
                  ~f:(fun (v1, _) -> template v1))
             ; declare
                 "info"
-                ~init:[%type: [%t t (ptyp_var info_v :: unique_vars_2)] -> 'info]
+                ~init:[%type: [%t t unique_vars_2] -> Lvca_syntax.Provenance.t]
                 ~f:(fun _ -> ptyp_any)
+              (*
             ; declare
                 "map_info"
                 ~init:
@@ -1501,6 +1480,7 @@ module Sig (Context : Builder_context) = struct
                     -> [%t t (info_b :: unique_vars_2)]]
                 ~f:(fun (v1, v2) ->
                   [%type: f:([%t info_a] -> [%t info_b]) -> [%t v1] -> [%t v2]])
+                   *)
             ]
           in
           let args_of_arity =
@@ -1510,7 +1490,7 @@ module Sig (Context : Builder_context) = struct
               ~mutual_sorts:sort_def_map
               ~prims
           in
-          let result_ty = t (ptyp_var "info" :: List.map ~f:ptyp_var var_names) in
+          let result_ty = t (List.map ~f:ptyp_var var_names) in
           let ctor_funs =
             List.map op_defs ~f:(fun (Operator_def (_, name, arity)) ->
                 (* Take the tail to remove the extra 'info arg *)
@@ -1519,12 +1499,14 @@ module Sig (Context : Builder_context) = struct
                   List.fold_right args ~init:result_ty ~f:(fun arg_ty result_ty ->
                       [%type: [%t arg_ty] -> [%t result_ty]])
                 in
-                let type_ = [%type: info:'info -> [%t type_]] in
+                let type_ = [%type: info:Lvca_syntax.Provenance.t -> [%t type_]] in
                 psig_value
                   (value_description ~name:{ txt = "mk_" ^ name; loc } ~type_ ~prim:[]))
           in
           let var_ctor_fun =
-            let type_ = [%type: info:'info -> string -> [%t result_ty]] in
+            let type_ =
+              [%type: info:Lvca_syntax.Provenance.t -> string -> [%t result_ty]]
+            in
             psig_value
               (value_description
                  ~name:{ txt = "mk_" ^ var_ctor_name sort_name; loc }

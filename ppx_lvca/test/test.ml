@@ -1,7 +1,8 @@
 open Lvca_syntax
 
 let test_nominal = [%lvca.nominal "foo(x. x)"]
-let test_nonbinding = [%lvca.nonbinding "foo(bar(1))"]
+
+(* let test_nonbinding = [%lvca.nonbinding "foo(bar(1))"] *)
 let test_pattern = [%lvca.pattern "foo(x)"]
 
 let test_language = [%lvca.abstract_syntax {|
@@ -17,9 +18,9 @@ module Lang =
 [%lvca.abstract_syntax_module
 {|
 integer : *
-string : *  // module Primitive.String
+string : *
 maybe : * -> *
-list : * -> *  // module List_model.List
+list : * -> *
 
 foo :=
   | Foo(integer)
