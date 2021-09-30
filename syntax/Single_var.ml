@@ -3,6 +3,11 @@ type t =
   ; name : string
   }
 
+let equivalent ?(info_eq = fun _ _ -> true) t1 t2 =
+  info_eq t1.info t2.info && Base.String.(t1.name = t2.name)
+;;
+
+let ( = ) = equivalent ~info_eq:Provenance.( = )
 let map_info ~f { info; name } = { info = f info; name }
 
 let to_nominal { info; name } =
