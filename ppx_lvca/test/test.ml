@@ -1,6 +1,12 @@
 open Lvca_syntax
 
-let test_nominal = [%lvca.nominal "foo(x. x)"]
+module Test4 =
+[%lvca.abstract_syntax_module
+{|
+term: *
+
+list := Nil() | Cons(term; list)
+|}, { term = "Nominal.Term" }]
 
 (* let test_nonbinding = [%lvca.nonbinding "foo(bar(1))"] *)
 let test_pattern = [%lvca.pattern "foo(x)"]
@@ -13,6 +19,15 @@ module List_model : [%lvca.abstract_syntax_module_sig
 "list a := Nil() | Cons(a; list a)"] =
 [%lvca.abstract_syntax_module
 "list a := Nil() | Cons(a; list a)"]
+
+module List = struct
+  type 'a t
+
+  let to_nominal _ _ = Nominal.Term.Var (`Empty, "")
+  let of_nominal _ tm = Error tm
+end
+
+module Maybe = List
 
 module Lang =
 [%lvca.abstract_syntax_module
@@ -37,7 +52,12 @@ term := Operator(list term)
 
 mut_a := Mut_a(mut_b)
 mut_b := Mut_b(mut_a)
-|}]
+|}
+, { integer = "Primitive.Integer"
+  ; string = "Primitive.String"
+  ; maybe = "Maybe"
+  ; list = "List"
+  }]
 
 module Ifz_lang : [%lvca.abstract_syntax_module_sig "ifz := Ifz(ifz; ifz. ifz; ifz)"] =
 [%lvca.abstract_syntax_module
@@ -58,7 +78,8 @@ list_list_string_1 := List_list_string_1(list (list string))
 list_list_string_2 := List_list_string_2(list_list_a string)
 list_list_predefined_1 := List_list_predefined_1(list (list predefined))
 list_list_predefined_2 := List_list_predefined_2(list_list_a predefined)
-|}]
+|}
+, { string = "Nominal.Term" }]
 
 module type Is_rec_sig = [%lvca.abstract_syntax_module_sig
 {|
@@ -67,7 +88,8 @@ is_rec := Rec() | No_rec()
 ty := Sort(sort) | Arrow(ty; ty)
 mut_a := Mut_a(mut_b)
 mut_b := Mut_b(mut_a)
-|}]
+|}
+, { sort = "Sort" }]
 
 module Option_model : [%lvca.abstract_syntax_module_sig "option a := None() | Some(a)"] =
 [%lvca.abstract_syntax_module

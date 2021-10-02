@@ -1,45 +1,123 @@
 open Lvca_syntax
-let test_nominal =
-  Lvca_syntax.Nominal.Term.Operator
-    ((`Source_located
-        (let open Lvca_syntax.Provenance in
-           {
-             at =
-               (`Implementation
-                  {
-                    pos_fname = "syntax/Nominal.ml";
-                    pos_lnum = 14;
-                    pos_bol = 252;
-                    pos_cnum = 302
-                  })
-           })), "foo",
-      [Lvca_syntax.Nominal.Scope.Scope
-         ([Lvca_syntax.Pattern.Var
-             ((`Source_located
-                 ((let open Lvca_syntax.Provenance in
-                     {
-                       at =
-                         (`Implementation
-                            {
-                              pos_fname = "syntax/Nominal.ml";
-                              pos_lnum = 18;
-                              pos_bol = 373;
-                              pos_cnum = 418
-                            })
-                     }))), "x")],
-           (Lvca_syntax.Nominal.Term.Var
-              ((`Source_located
-                  ((let open Lvca_syntax.Provenance in
-                      {
-                        at =
-                          (`Implementation
-                             {
-                               pos_fname = "syntax/Nominal.ml";
-                               pos_lnum = 18;
-                               pos_bol = 373;
-                               pos_cnum = 418
-                             })
-                      }))), "x")))])
+module Test4 =
+  struct
+    module Wrapper =
+      struct
+        module Types =
+          struct
+            type list =
+              | Nil of Lvca_syntax.Provenance.t 
+              | Cons of Lvca_syntax.Provenance.t * Nominal.Term.t * list 
+          end
+        module Info =
+          struct
+            let list =
+              function | Types.Nil x0 -> x0 | Types.Cons (x0, _, _) -> x0
+          end
+        module To_nominal =
+          struct
+            let rec list =
+              function
+              | Types.Nil x0 ->
+                  Lvca_syntax.Nominal.Term.Operator (x0, "Nil", [])
+              | Types.Cons (x0, x1, x2) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Cons",
+                      [Lvca_syntax.Nominal.Scope.Scope
+                         ([], (Nominal.Term.to_nominal x1));
+                      Lvca_syntax.Nominal.Scope.Scope ([], (list x2))])
+          end
+        module Of_nominal =
+          struct
+            let rec list =
+              function
+              | Lvca_syntax.Nominal.Term.Operator (x0, "Nil", []) ->
+                  Ok (Types.Nil x0)
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "Cons", (Lvca_syntax.Nominal.Scope.Scope
+                   ([], x1))::(Lvca_syntax.Nominal.Scope.Scope ([], x2))::[])
+                  ->
+                  (match Nominal.Term.of_nominal x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 ->
+                       (match list x2 with
+                        | Error msg -> Error msg
+                        | Ok x2 -> Ok (Types.Cons (x0, x1, x2))))
+              | tm -> Error tm
+          end
+      end
+    module Types = Wrapper.Types
+    let language =
+      let open Lvca_syntax.Abstract_syntax in
+        {
+          externals =
+            [("term",
+               (Lvca_syntax.Abstract_syntax.Kind.Kind
+                  ((`Parse_located
+                      (Some
+                         ((let open Lvca_provenance.Range in
+                             { start = 7; finish = 8 })))), 1)))];
+          sort_defs =
+            [("list",
+               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                  ([],
+                    [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                       ((`Parse_located
+                           (Some
+                              ((let open Lvca_provenance.Range in
+                                  { start = 21; finish = 23 })))), "Nil",
+                         (Lvca_syntax.Abstract_syntax.Arity.Arity
+                            ((`Source_located
+                                ((let open Lvca_syntax.Provenance in
+                                    {
+                                      at =
+                                        (`Implementation
+                                           {
+                                             pos_fname =
+                                               "syntax/Abstract_syntax.ml";
+                                             pos_lnum = 252;
+                                             pos_bol = 6468;
+                                             pos_cnum = 6519
+                                           })
+                                    }))), [])));
+                    Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ((`Parse_located
+                          (Some
+                             ((let open Lvca_provenance.Range in
+                                 { start = 30; finish = 42 })))), "Cons",
+                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                           ((`Source_located
+                               ((let open Lvca_syntax.Provenance in
+                                   {
+                                     at =
+                                       (`Implementation
+                                          {
+                                            pos_fname =
+                                              "syntax/Abstract_syntax.ml";
+                                            pos_lnum = 252;
+                                            pos_bol = 6468;
+                                            pos_cnum = 6519
+                                          })
+                                   }))),
+                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                                ([],
+                                  (Lvca_syntax.Sort.Name (`Empty, "term")));
+                             Lvca_syntax.Abstract_syntax.Valence.Valence
+                               ([], (Lvca_syntax.Sort.Name (`Empty, "list")))])))])))]
+        }
+    module List =
+      struct
+        type t = Wrapper.Types.list =
+          | Nil of Lvca_syntax.Provenance.t 
+          | Cons of Lvca_syntax.Provenance.t * Nominal.Term.t *
+          Wrapper.Types.list 
+        let info = Wrapper.Info.list
+        let to_nominal = Wrapper.To_nominal.list
+        let of_nominal = Wrapper.Of_nominal.list
+        let mk_Nil ~info  = Nil info
+        let mk_Cons ~info  x_0 x_1 = Cons (info, x_0, x_1)
+      end
+  end
 let test_pattern =
   Lvca_syntax.Pattern.Operator
     (`Empty, "foo", [Lvca_syntax.Pattern.Var (`Empty, "x")])
@@ -247,6 +325,13 @@ module List_model :
         let mk_Cons ~info  x_0 x_1 = Cons (info, x_0, x_1)
       end
   end 
+module List =
+  struct
+    type 'a t
+    let to_nominal _ _ = Nominal.Term.Var (`Empty, "")
+    let of_nominal _ tm = Error tm
+  end
+module Maybe = List
 module Lang =
   struct
     module Wrapper =
@@ -261,21 +346,19 @@ module Lang =
             and mut_b =
               | Mut_b of Lvca_syntax.Provenance.t * mut_a 
             and term =
-              | Operator of Lvca_syntax.Provenance.t *
-              Lvca_syntax.Nominal.Term.t 
+              | Operator of Lvca_syntax.Provenance.t * term List.t 
             and ('a, 'b) pair_plus =
               | PairPlus of Lvca_syntax.Provenance.t * 'a * 'b * foo 
             and foo =
-              | Foo of Lvca_syntax.Provenance.t * Lvca_syntax.Nominal.Term.t
-              
+              | Foo of Lvca_syntax.Provenance.t * Primitive.Integer.t 
               | Bar of Lvca_syntax.Provenance.t * (Pattern.t *
               Lvca_syntax.Single_var.t * foo) 
               | Foo_var of Lvca_syntax.Provenance.t * string 
             and ('a, 'b) pair =
               | Pair of Lvca_syntax.Provenance.t * 'a * 'b 
             and nonempty =
-              | Nonempty of Lvca_syntax.Provenance.t *
-              Lvca_syntax.Nominal.Term.t * Lvca_syntax.Nominal.Term.t 
+              | Nonempty of Lvca_syntax.Provenance.t * Primitive.String.t *
+              Primitive.String.t List.t 
           end
         module Info =
           struct
@@ -301,9 +384,10 @@ module Lang =
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "Nonempty",
                       [Lvca_syntax.Nominal.Scope.Scope
-                         ([], (Lvca_syntax.Nominal.Term.to_nominal x1));
+                         ([], (Primitive.String.to_nominal x1));
                       Lvca_syntax.Nominal.Scope.Scope
-                        ([], (Lvca_syntax.Nominal.Term.to_nominal x2))])
+                        ([],
+                          (List.to_nominal Primitive.String.to_nominal x2))])
             let pair a b =
               function
               | Types.Pair (x0, x1, x2) ->
@@ -317,7 +401,7 @@ module Lang =
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "Foo",
                       [Lvca_syntax.Nominal.Scope.Scope
-                         ([], (Lvca_syntax.Nominal.Term.to_nominal x1))])
+                         ([], (Primitive.Integer.to_nominal x1))])
               | Types.Bar (x0, (x1, x2, x3)) ->
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "Bar",
@@ -335,13 +419,13 @@ module Lang =
                       [Lvca_syntax.Nominal.Scope.Scope ([], (a x1));
                       Lvca_syntax.Nominal.Scope.Scope ([], (b x2));
                       Lvca_syntax.Nominal.Scope.Scope ([], (foo x3))])
-            let term =
+            let rec term =
               function
               | Types.Operator (x0, x1) ->
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "Operator",
                       [Lvca_syntax.Nominal.Scope.Scope
-                         ([], (Lvca_syntax.Nominal.Term.to_nominal x1))])
+                         ([], (List.to_nominal term x1))])
             let rec mut_a =
               function
               | Types.Mut_a (x0, x1) ->
@@ -369,7 +453,14 @@ module Lang =
               | Lvca_syntax.Nominal.Term.Operator
                   (x0, "Nonempty", (Lvca_syntax.Nominal.Scope.Scope
                    ([], x1))::(Lvca_syntax.Nominal.Scope.Scope ([], x2))::[])
-                  -> Ok (Types.Nonempty (x0, x1, x2))
+                  ->
+                  (match Primitive.String.of_nominal x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 ->
+                       (match List.of_nominal Primitive.String.of_nominal x2
+                        with
+                        | Error msg -> Error msg
+                        | Ok x2 -> Ok (Types.Nonempty (x0, x1, x2))))
               | tm -> Error tm
             let pair a b =
               function
@@ -388,7 +479,10 @@ module Lang =
               function
               | Lvca_syntax.Nominal.Term.Operator
                   (x0, "Foo", (Lvca_syntax.Nominal.Scope.Scope ([], x1))::[])
-                  -> Ok (Types.Foo (x0, x1))
+                  ->
+                  (match Primitive.Integer.of_nominal x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 -> Ok (Types.Foo (x0, x1)))
               | Lvca_syntax.Nominal.Term.Operator
                   (x0, "Bar", (Lvca_syntax.Nominal.Scope.Scope
                    (x1::(Lvca_syntax.Pattern.Var (x2, x3))::[], x4))::[])
@@ -422,12 +516,15 @@ module Lang =
                              | Error msg -> Error msg
                              | Ok x3 -> Ok (Types.PairPlus (x0, x1, x2, x3)))))
               | tm -> Error tm
-            let term =
+            let rec term =
               function
               | Lvca_syntax.Nominal.Term.Operator
                   (x0, "Operator", (Lvca_syntax.Nominal.Scope.Scope
                    ([], x1))::[])
-                  -> Ok (Types.Operator (x0, x1))
+                  ->
+                  (match List.of_nominal term x1 with
+                   | Error msg -> Error msg
+                   | Ok x1 -> Ok (Types.Operator (x0, x1)))
               | tm -> Error tm
             let rec mut_a =
               function
@@ -819,7 +916,7 @@ module Lang =
     module Foo =
       struct
         type t = Wrapper.Types.foo =
-          | Foo of Lvca_syntax.Provenance.t * Lvca_syntax.Nominal.Term.t 
+          | Foo of Lvca_syntax.Provenance.t * Primitive.Integer.t 
           | Bar of Lvca_syntax.Provenance.t * (Pattern.t *
           Lvca_syntax.Single_var.t * Wrapper.Types.foo) 
           | Foo_var of Lvca_syntax.Provenance.t * string 
@@ -863,8 +960,8 @@ module Lang =
     module Nonempty =
       struct
         type t = Wrapper.Types.nonempty =
-          | Nonempty of Lvca_syntax.Provenance.t * Lvca_syntax.Nominal.Term.t
-          * Lvca_syntax.Nominal.Term.t 
+          | Nonempty of Lvca_syntax.Provenance.t * Primitive.String.t *
+          Primitive.String.t List.t 
         let info = Wrapper.Info.nonempty
         let to_nominal = Wrapper.To_nominal.nonempty
         let of_nominal = Wrapper.Of_nominal.nonempty
@@ -873,7 +970,7 @@ module Lang =
     module Term =
       struct
         type t = Wrapper.Types.term =
-          | Operator of Lvca_syntax.Provenance.t * Lvca_syntax.Nominal.Term.t 
+          | Operator of Lvca_syntax.Provenance.t * Wrapper.Types.term List.t 
         let info = Wrapper.Info.term
         let to_nominal = Wrapper.To_nominal.term
         let of_nominal = Wrapper.Of_nominal.term
@@ -1051,16 +1148,16 @@ module List_lang =
         module Types =
           struct
             type list_external =
-              | List_external of Lvca_syntax.Provenance.t *
-              Lvca_syntax.Nominal.Term.t list 
+              | List_external of Lvca_syntax.Provenance.t * Nominal.Term.t
+              list 
             and list_predefined =
               | List_predefined of Lvca_syntax.Provenance.t * predefined list 
             and list_list_string_2 =
               | List_list_string_2 of Lvca_syntax.Provenance.t *
-              Lvca_syntax.Nominal.Term.t list_list_a 
+              Nominal.Term.t list_list_a 
             and list_list_string_1 =
               | List_list_string_1 of Lvca_syntax.Provenance.t *
-              Lvca_syntax.Nominal.Term.t list list 
+              Nominal.Term.t list list 
             and list_list_predefined_2 =
               | List_list_predefined_2 of Lvca_syntax.Provenance.t *
               predefined list_list_a 
@@ -1135,18 +1232,14 @@ module List_lang =
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "List_list_string_1",
                       [Lvca_syntax.Nominal.Scope.Scope
-                         ([],
-                           (list (list Lvca_syntax.Nominal.Term.to_nominal)
-                              x1))])
+                         ([], (list (list Nominal.Term.to_nominal) x1))])
             let list_list_string_2 =
               function
               | Types.List_list_string_2 (x0, x1) ->
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "List_list_string_2",
                       [Lvca_syntax.Nominal.Scope.Scope
-                         ([],
-                           (list_list_a Lvca_syntax.Nominal.Term.to_nominal
-                              x1))])
+                         ([], (list_list_a Nominal.Term.to_nominal x1))])
             let list_predefined =
               function
               | Types.List_predefined (x0, x1) ->
@@ -1160,7 +1253,7 @@ module List_lang =
                   Lvca_syntax.Nominal.Term.Operator
                     (x0, "List_external",
                       [Lvca_syntax.Nominal.Scope.Scope
-                         ([], (list Lvca_syntax.Nominal.Term.to_nominal x1))])
+                         ([], (list Nominal.Term.to_nominal x1))])
           end
         module Of_nominal =
           struct
@@ -1220,8 +1313,7 @@ module List_lang =
                   (x0, "List_list_string_1", (Lvca_syntax.Nominal.Scope.Scope
                    ([], x1))::[])
                   ->
-                  (match list (list Lvca_syntax.Nominal.Term.of_nominal) x1
-                   with
+                  (match list (list Nominal.Term.of_nominal) x1 with
                    | Error msg -> Error msg
                    | Ok x1 -> Ok (Types.List_list_string_1 (x0, x1)))
               | tm -> Error tm
@@ -1231,8 +1323,7 @@ module List_lang =
                   (x0, "List_list_string_2", (Lvca_syntax.Nominal.Scope.Scope
                    ([], x1))::[])
                   ->
-                  (match list_list_a Lvca_syntax.Nominal.Term.of_nominal x1
-                   with
+                  (match list_list_a Nominal.Term.of_nominal x1 with
                    | Error msg -> Error msg
                    | Ok x1 -> Ok (Types.List_list_string_2 (x0, x1)))
               | tm -> Error tm
@@ -1252,7 +1343,7 @@ module List_lang =
                   (x0, "List_external", (Lvca_syntax.Nominal.Scope.Scope
                    ([], x1))::[])
                   ->
-                  (match list Lvca_syntax.Nominal.Term.of_nominal x1 with
+                  (match list Nominal.Term.of_nominal x1 with
                    | Error msg -> Error msg
                    | Ok x1 -> Ok (Types.List_external (x0, x1)))
               | tm -> Error tm
@@ -1918,8 +2009,8 @@ module List_lang =
     module List_external =
       struct
         type t = Wrapper.Types.list_external =
-          | List_external of Lvca_syntax.Provenance.t *
-          Lvca_syntax.Nominal.Term.t Wrapper.Types.list 
+          | List_external of Lvca_syntax.Provenance.t * Nominal.Term.t
+          Wrapper.Types.list 
         let info = Wrapper.Info.list_external
         let to_nominal = Wrapper.To_nominal.list_external
         let of_nominal = Wrapper.Of_nominal.list_external
@@ -1948,8 +2039,8 @@ module List_lang =
     module List_list_string_1 =
       struct
         type t = Wrapper.Types.list_list_string_1 =
-          | List_list_string_1 of Lvca_syntax.Provenance.t *
-          Lvca_syntax.Nominal.Term.t Wrapper.Types.list Wrapper.Types.list 
+          | List_list_string_1 of Lvca_syntax.Provenance.t * Nominal.Term.t
+          Wrapper.Types.list Wrapper.Types.list 
         let info = Wrapper.Info.list_list_string_1
         let to_nominal = Wrapper.To_nominal.list_list_string_1
         let of_nominal = Wrapper.Of_nominal.list_list_string_1
@@ -1958,8 +2049,8 @@ module List_lang =
     module List_list_string_2 =
       struct
         type t = Wrapper.Types.list_list_string_2 =
-          | List_list_string_2 of Lvca_syntax.Provenance.t *
-          Lvca_syntax.Nominal.Term.t Wrapper.Types.list_list_a 
+          | List_list_string_2 of Lvca_syntax.Provenance.t * Nominal.Term.t
+          Wrapper.Types.list_list_a 
         let info = Wrapper.Info.list_list_string_2
         let to_nominal = Wrapper.To_nominal.list_list_string_2
         let of_nominal = Wrapper.Of_nominal.list_list_string_2
@@ -1996,7 +2087,7 @@ module type Is_rec_sig  =
       module Types :
       sig
         type ty =
-          | Sort of Lvca_syntax.Provenance.t * Lvca_syntax.Nominal.Term.t 
+          | Sort of Lvca_syntax.Provenance.t * Sort.t 
           | Arrow of Lvca_syntax.Provenance.t * ty * ty 
         and mut_a =
           | Mut_a of Lvca_syntax.Provenance.t * mut_b 
@@ -2023,7 +2114,7 @@ module type Is_rec_sig  =
     module Ty :
     sig
       type t = Wrapper.Types.ty =
-        | Sort of Lvca_syntax.Provenance.t * Lvca_syntax.Nominal.Term.t 
+        | Sort of Lvca_syntax.Provenance.t * Sort.t 
         | Arrow of Lvca_syntax.Provenance.t * Wrapper.Types.ty *
         Wrapper.Types.ty 
       val to_nominal : t -> Lvca_syntax.Nominal.Term.t
@@ -2031,8 +2122,7 @@ module type Is_rec_sig  =
         Lvca_syntax.Nominal.Term.t ->
           (t, Lvca_syntax.Nominal.Term.t) Result.t
       val info : t -> Lvca_syntax.Provenance.t
-      val mk_Sort :
-        info:Lvca_syntax.Provenance.t -> Lvca_syntax.Nominal.Term.t -> t
+      val mk_Sort : info:Lvca_syntax.Provenance.t -> Sort.t -> t
       val mk_Arrow :
         info:Lvca_syntax.Provenance.t ->
           Wrapper.Types.ty -> Wrapper.Types.ty -> t
