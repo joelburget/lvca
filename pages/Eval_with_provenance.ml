@@ -1,6 +1,5 @@
 open Base
 open Common
-open Lvca_provenance
 open Lvca_syntax
 open Note
 module Tuple2 = Lvca_util.Tuple2
@@ -13,12 +12,16 @@ module Model = struct
   {|
 term : *
 string : *
-opt_range : *
-result : * -> * -> *
-lang : *
 
-model := Model(string; result term string; lang; result term string; opt_range; opt_range)
-    |}]
+lang := Lambda() | Term()
+
+result a b :=
+  | Ok(a)
+  | Error(b)
+
+model := Model(string; result term string; lang; result term string)
+|}
+  , { term = "Nominal.Term"; string = "Primitive.String" }]
 
   type t =
     { input : string

@@ -4,6 +4,7 @@ val extract_string : loc:Ppxlib.location -> Ppxlib.expression -> string * Warnin
 
 module Exp : sig
   val str : loc:Ppxlib.location -> string -> Ppxlib.expression
+  val provenance : loc:Ppxlib.location -> Provenance.t -> Ppxlib.expression
 
   module Primitive : sig
     val integer : loc:Ppxlib.location -> Primitive.Integer.t -> Ppxlib.expression

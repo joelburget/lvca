@@ -10,7 +10,7 @@ module Model = struct
   module Internal =
   [%lvca.abstract_syntax_module
   {|
-  int32: *  // module Lvca_syntax.Primitive.Int32
+  int32 : *
 
   date := Date(int32; int32; int32)
 
@@ -32,7 +32,6 @@ module Model = struct
     | Store_view()
     | Bidirectional_debugger()
 
-    // moved from blog
     | Finding_terms()
     | Huttons_razor()
     | Lambda_concrete_and_abstract()
@@ -69,7 +68,8 @@ module Model = struct
     | Progress_november_7_2020()
     | Progress_october_8_2020()
     | Progress_september_23_2020()
-    |}]
+    |}
+  , { int32 = "Lvca_syntax.Primitive.Int32" }]
 
   module Page = Internal.Page.Plain
   module Date = Internal.Date.Plain

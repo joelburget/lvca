@@ -12,11 +12,12 @@ module Evaluation = struct
   module Lang =
   [%lvca.abstract_syntax_module
   {|
-string : *  // module Primitive.String
-nominal : *  // module Nominal.Term
+string : *
+nominal : *
 
 evaluation := Evaluation(string; nominal)
-    |}]
+    |}
+  , { string = "Primitive.String"; nominal = "Nominal.Term" }]
 
   include Lang.Evaluation
 

@@ -10,9 +10,9 @@ module Format = Stdlib.Format
 module List_model = struct
   include [%lvca.abstract_syntax_module "list a := Nil() | Cons(a; list a)"]
 
-  let rec of_list ~empty_info = function
-    | [] -> List.Nil empty_info
-    | x :: xs -> Cons (empty_info, x, of_list ~empty_info xs)
+  let rec of_list =
+    let info = Provenance.of_here [%here] in
+    function [] -> List.mk_Nil ~info | x :: xs -> Cons (info, x, of_list xs)
   ;;
 
   let rec to_list = function List.Nil _ -> [] | Cons (_, x, xs) -> x :: to_list xs
@@ -26,22 +26,21 @@ end
 module Option_model = struct
   include [%lvca.abstract_syntax_module "option a := None() | Some(a)"]
 
-  let of_option ~empty_info = function
-    | None -> Option.None empty_info
-    | Some a -> Some (empty_info, a)
+  let of_option =
+    let info = Provenance.of_here [%here] in
+    function None -> Option.None info | Some a -> Some (info, a)
   ;;
 
   let to_option = function Option.None _ -> None | Some (_, a) -> Some a
   let map ~f = function Option.None i -> Option.None i | Some (i, a) -> Some (i, f a)
 end
 
-module Binding_aware_pattern_model = struct
-  include
-    [%lvca.abstract_syntax_module
-    {|
-string : *  // module Primitive.String
-primitive : *  // module Primitive.All
-list : * -> *  // module List_model.List
+module Binding_aware_pattern_model =
+[%lvca.abstract_syntax_module
+{|
+string : *
+primitive : *
+list : * -> *
 
 pattern :=
   | Operator(string; list scope)
@@ -49,20 +48,29 @@ pattern :=
   | Var(string)
 
 scope := Scope(list string; pattern)
-|}]
+|}
+, { string = "Primitive.String"; primitive = "Primitive.All"; list = "List_model.List" }]
 
-  let rec into ~empty_info = function
+module X = struct
+  let rec into : Binding_aware_pattern.t -> Binding_aware_pattern_model.Pattern.t =
+    let here_info = Provenance.of_here [%here] in
+    function
     | Binding_aware_pattern.Operator (info, str, scopes) ->
-      let scopes =
-        scopes |> List.map ~f:(scope ~empty_info) |> List_model.of_list ~empty_info
+      let scopes : Binding_aware_pattern_model.Scope.t list =
+        scopes |> List.map ~f:scope
       in
-      Pattern.Operator (info, (empty_info, str), scopes)
-    | Primitive (info, prim) -> Primitive (info, (empty_info, prim))
-    | Var (info, str) -> Var (info, (empty_info, str))
+      let scopes : Binding_aware_pattern_model.Scope.t List_model.List.t =
+        List_model.of_list scopes
+      in
+      Binding_aware_pattern_model.Pattern.Operator (info, (here_info, str), scopes)
+    | Primitive (info, prim) -> Primitive (info, (here_info, prim))
+    | Var (info, str) -> Var (info, (here_info, str))
 
-  and scope ~empty_info (Binding_aware_pattern.Scope (names, pat)) =
-    let names = names |> List_model.of_list ~empty_info in
-    Scope.Scope (empty_info, names, into ~empty_info pat)
+  and scope (Binding_aware_pattern.Scope (names, pat))
+      : Binding_aware_pattern_model.Scope.t
+    =
+    Binding_aware_pattern_model.Scope.Scope
+      (Provenance.of_here [%here], List_model.of_list names, into pat)
   ;;
 
   let rec out = function
@@ -80,7 +88,7 @@ end
 module Sort_model =
 [%lvca.abstract_syntax_module
 {|
-string : *  // module Primitive.String
+string : *
 
 sort :=
   | Ap(string; ap_list)
@@ -89,7 +97,8 @@ sort :=
 ap_list :=
   | Nil()
   | Cons(sort; ap_list)
-|}]
+|}
+, { string = "Primitive.String" }]
 
 module Sort = struct
   include Nominal.Convertible.Extend (Sort_model.Sort)
@@ -119,11 +128,12 @@ module Lang = struct
   include
     [%lvca.abstract_syntax_module
     {|
-sort : *  // module Sort_model.Sort
-nominal : *  // module Nominal.Term
-list : * -> *  // module List_model.List
-option : * -> *  // module Option_model.Option
-binding_aware_pattern : * -> *  // module Binding_aware_pattern_model.Pattern
+sort : *
+nominal : *
+list : * -> *
+option : * -> *
+binding_aware_pattern : * -> *
+string : *
 
 is_rec := Rec() | No_rec()
 
@@ -138,7 +148,14 @@ term :=
   | Subst(term. term; term)
 
 case_scope := Case_scope(binding_aware_pattern; term)
-|}]
+|}
+    , { sort = "Sort_model.Sort"
+      ; nominal = "Nominal.Term"
+      ; list = "List_model.List"
+      ; option = "Option_model.Option"
+      ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
+      ; string = "Primitive.String"
+      }]
 
   module Is_rec = struct
     include Nominal.Convertible.Extend (Is_rec)
@@ -164,7 +181,7 @@ end
 module Type = struct
   include Lang.Ty
 
-  let pp_generic ~open_loc ~close_loc ppf =
+  let pp ppf =
     let rec go need_parens ppf = function
       | Arrow (_, t1, t2) ->
         Fmt.pf
@@ -174,18 +191,16 @@ module Type = struct
           t1
           (go false)
           t2
-      | Sort (_, s) -> Lvca_syntax.Sort.pp_generic ~open_loc ~close_loc ppf (Sort.out s)
+      | Sort (_, s) -> Lvca_syntax.Sort.pp ppf (Sort.out s)
     in
     go false ppf
   ;;
-
-  let pp ty = pp_generic ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ty
 
   module Parse = struct
     open Lvca_parsing
 
     let none = Commented.none
-    let arrow s1 s2 = Arrow (none, s1, s2)
+    let arrow s1 s2 = Arrow (Provenance.of_here [%here], s1, s2)
 
     let rec of_list = function
       | [] ->
@@ -196,11 +211,11 @@ module Type = struct
       | sort :: sorts -> arrow sort (of_list sorts)
     ;;
 
-    let t ~comment =
+    let t =
       fix (fun t ->
           let atom =
             Ws.parens t
-            <|> (Lvca_syntax.Sort.parse ~comment
+            <|> (Lvca_syntax.Sort.parse
                 >>| fun sort ->
                 let sort = Sort.into sort in
                 Sort (Sort.info sort, sort))
@@ -209,12 +224,12 @@ module Type = struct
       <?> "core type"
     ;;
 
+    (*
     let%test_module "parsing" =
       (module struct
-        let parse = parse_string (t ~comment:c_comment) >> Result.ok_or_failwith >> erase
-        let ( = ) = equal ~info_eq:Unit.( = )
-        let bool = Sort_model.Sort.Name ((), ((), "bool"))
-        let list_bool = Sort_model.Sort.Ap ((), ((), "list"), Cons ((), bool, Nil ()))
+        let parse = parse_string t >> Result.ok_or_failwith
+        let bool = Sort_model.Sort.mk_Name "bool"
+        let list_bool = Sort_model.Sort.mk_Ap "list" (mk_Cons bool mk_Nil)
 
         let%test _ = parse "bool" = Sort ((), bool)
         let%test _ = parse "list bool" = Sort ((), list_bool)
@@ -223,41 +238,38 @@ module Type = struct
 
     let%test_module "of_list" =
       (module struct
-        let ( = ) = equal ~info_eq:(Commented.equal String.( = ))
-        let s = Sort_model.Sort.Name (none, (none, "s"))
-        let sort s = Sort (none, s)
+        let s = Sort_model.Sort.mk_Name "s"
 
-        let%test _ = of_list [ sort s ] = sort s
-        let%test _ = of_list [ sort s; sort s ] = arrow (sort s) (sort s)
+        let%test _ = of_list [ mk_Sort s ] = mk_Sort s
+        let%test _ = of_list [ mk_Sort s; mk_Sort s ] = arrow (mk_Sort s) (mk_Sort s)
 
         let%test _ =
-          of_list [ sort s; sort s; sort s ] = arrow (sort s) (arrow (sort s) (sort s))
+          of_list [ mk_Sort s; mk_Sort s; mk_Sort s ] = arrow (mk_Sort s) (arrow (mk_Sort s) (mk_Sort s))
         ;;
 
         let%test _ =
-          of_list [ sort s; sort s; sort s; sort s ]
-          = arrow (sort s) (arrow (sort s) (arrow (sort s) (sort s)))
+          of_list [ mk_Sort s; mk_Sort s; mk_Sort s; mk_Sort s ]
+          = arrow (mk_Sort s) (arrow (mk_Sort s) (arrow (mk_Sort s) (mk_Sort s)))
         ;;
 
         let%test _ =
-          of_list [ of_list [ sort s; sort s ]; sort s ]
-          = arrow (arrow (sort s) (sort s)) (sort s)
+          of_list [ of_list [ mk_Sort s; mk_Sort s ]; mk_Sort s ]
+          = arrow (arrow (mk_Sort s) (mk_Sort s)) (mk_Sort s)
         ;;
 
         let%test _ =
-          of_list [ sort s; of_list [ sort s; sort s ] ]
-          = arrow (sort s) (arrow (sort s) (sort s))
+          of_list [ mk_Sort s; of_list [ mk_Sort s; mk_Sort s ] ]
+          = arrow (mk_Sort s) (arrow (mk_Sort s) (mk_Sort s))
         ;;
 
         let%test _ =
-          of_list [ arrow (sort s) (sort s); arrow (sort s) (sort s) ]
-          = arrow (arrow (sort s) (sort s)) (arrow (sort s) (sort s))
+          of_list [ arrow (mk_Sort s) (mk_Sort s); arrow (mk_Sort s) (mk_Sort s) ]
+          = arrow (arrow (mk_Sort s) (mk_Sort s)) (arrow (mk_Sort s) (mk_Sort s))
         ;;
       end)
     ;;
+    *)
   end
-
-  let parse ~comment = Parse.t ~comment
 end
 
 module Pp_generic = struct
@@ -265,50 +277,41 @@ module Pp_generic = struct
 
   (* TODO: add parse <-> pretty tests *)
 
-  let rec term : open_loc:'info Fmt.t -> close_loc:'info Fmt.t -> 'info Lang.Term.t Fmt.t =
-   fun ~open_loc ~close_loc ppf tm ->
-    let pp = term ~open_loc ~close_loc in
-    open_loc ppf (Lang.Term.info tm);
-    (match tm with
+  let rec term : Lang.Term.t Fmt.t =
+   fun ppf tm ->
+    (* TODO open_loc ppf (Lang.Term.info tm); *)
+    match tm with
     | Lang.Term.Term_var (_, v) -> Fmt.string ppf v
-    | Embedded (_, tm) -> braces (Nominal.Term.pp_generic ~open_loc ~close_loc) ppf tm
+    | Embedded (_, tm) -> braces Nominal.Term.pp ppf tm
     | Lambda (_, ty, (Single_var.{ name; info = _ }, body)) ->
-      pf
-        ppf
-        "@[<hv>\\@[<hv>(%s : %a)@] ->@ %a@]"
-        name
-        (Type.pp_generic ~open_loc ~close_loc)
-        ty
-        pp
-        body
+      pf ppf "@[<hv>\\@[<hv>(%s : %a)@] ->@ %a@]" name Type.pp ty term body
     (* TODO: parens if necessary *)
     | Ap (_, f, args) ->
-      pf ppf "@[<h>%a@ @[<hov>%a@]@]" pp f (list ~sep:sp pp) (List_model.to_list args)
+      pf ppf "@[<h>%a@ @[<hov>%a@]@]" term f (list ~sep:sp term) (List_model.to_list args)
     | Case (_, arg, cases') ->
       pf
         ppf
         "@[<hv>match %a with {%t%a@ }@]"
-        pp
+        term
         arg
         (* Before `|`, emit a single space if on the same line, or two when broken *)
         (Format.pp_print_custom_break ~fits:("", 1, "") ~breaks:("", 2, "| "))
-        (cases ~open_loc ~close_loc)
+        cases
         cases'
     | Let (_, is_rec, tm, ty, (Single_var.{ name; info = _ }, body)) ->
-      let_ ~open_loc ~close_loc ppf is_rec tm ty name body
+      let_ ppf is_rec tm ty name body
     | Subst (_, (Single_var.{ name; info = _ }, body), arg) ->
       let formatter =
         match body with
         | Embedded _ | Subst _ -> pf ppf "@[%a[%s := %a]@]"
         | _ -> pf ppf "@[@[(%a)@][%s := %a]@]"
       in
-      formatter pp body name pp arg);
-    close_loc ppf (Lang.Term.info tm)
+      formatter term body name term arg
+  (* close_loc ppf (Lang.Term.info tm) *)
 
-  and let_ ~open_loc ~close_loc ppf is_rec tm ty name body =
+  and let_ ppf is_rec tm ty name body =
     let pp_ty ppf = function
-      | Option_model.Option.Some (_, ty) ->
-        pf ppf ": %a" (Type.pp_generic ~open_loc ~close_loc) ty
+      | Option_model.Option.Some (_, ty) -> pf ppf ": %a" Type.pp ty
       | None _ -> ()
     in
     pf
@@ -318,34 +321,27 @@ module Pp_generic = struct
       name
       pp_ty
       ty
-      (term ~open_loc ~close_loc)
+      term
       tm
-      (term ~open_loc ~close_loc)
+      term
       body
 
-  and cases ~open_loc ~close_loc ppf x =
-    list
-      ~sep:(any "@;<1 2>| ")
-      (case_scope ~open_loc ~close_loc)
-      ppf
-      (List_model.to_list x)
+  and cases ppf x = list ~sep:(any "@;<1 2>| ") case_scope ppf (List_model.to_list x)
 
-  and case_scope ~open_loc ~close_loc ppf (Lang.Case_scope.Case_scope (info, pat, body)) =
-    open_loc ppf info;
+  and case_scope ppf (Lang.Case_scope.Case_scope (_info, pat, body)) =
+    (* open_loc ppf info; *)
     pf
       ppf
       "@[%a@ -> %a@]"
-      (Binding_aware_pattern.pp_generic ~open_loc ~close_loc)
+      Binding_aware_pattern.pp
       (Binding_aware_pattern_model.out pat)
-      (term ~open_loc ~close_loc)
-      body;
-    close_loc ppf info
+      term
+      body
   ;;
+  (* close_loc ppf info *)
 end
 
-let pp_term ppf tm =
-  Pp_generic.term ~open_loc:(fun _ _ -> ()) ~close_loc:(fun _ _ -> ()) ppf tm
-;;
+let pp_term ppf tm = Pp_generic.term ppf tm
 
 module Parse = struct
   open Lvca_parsing
@@ -362,25 +358,22 @@ module Parse = struct
     else return ident
   ;;
 
-  let make_apps : 'a Commented.t Term.t list -> 'a Commented.t Term.t = function
+  let make_apps : Term.t list -> Term.t = function
     | [] -> Lvca_util.invariant_violation ~here:[%here] "must be a nonempty list"
     | [ x ] -> x
     | f :: args as xs ->
-      let pos =
-        xs |> List.map ~f:(Term.info >> Commented.get_range) |> Opt_range.list_range
-      in
+      (* let pos = xs |> List.map ~f:Term.info |> Opt_range.list_range in *)
       Ap
-        ( Commented.{ range = pos; comment = None }
+        ( `Empty (* TODO Commented.{ range = pos; comment = None } *)
         , f
-        , List_model.of_list ~empty_info:Commented.none args )
+        , List_model.of_list args )
   ;;
 
-  let term ~comment =
+  let term =
     fix (fun term ->
         let parse_prim =
           choice
-            [ (Primitive_impl.All.parse ~comment
-              >>| fun prim -> Nominal.Term.Primitive prim)
+            [ (Primitive_impl.All.parse >>| fun prim -> Nominal.Term.Primitive prim)
             ; Ws.braces term >>| Term.to_nominal
             ]
         in
@@ -390,14 +383,9 @@ module Parse = struct
               "looking for a parenthesized term, identifier, or expression in braces"
             [ Ws.parens term
             ; (identifier
-              >>== fun { value; range } ->
-              option' comment
-              >>|| fun { value = comment; _ } ->
-              { value = Term.Term_var (Commented.{ range; comment }, value); range })
-            ; Ws.braces (Nominal.Term.parse ~parse_prim ~comment)
-              >>|| (fun { value = tm; range } ->
-                     (* TODO: add comments *)
-                     { value = Term.Embedded (Commented.of_opt_range range, tm); range })
+              >>~ fun range value -> Term.Term_var (`Parse_located range, value))
+            ; Ws.braces (Nominal.Term.parse ~parse_prim)
+              >>~ (fun range tm -> Term.Embedded (`Parse_located range, tm))
               <?> "quoted term"
             ]
         in
@@ -410,11 +398,10 @@ module Parse = struct
                  >>= fun name -> Ws.string ":=" >>= fun _ -> term >>| fun arg -> name, arg
                  )
               >>== fun { range = bracket_range; value = name, arg } ->
-              option' comment
-              >>~ fun _ comment ->
               let range = Opt_range.union bracket_range body_range in
-              let info = Commented.{ range; comment } in
-              Term.Subst (info, (Single_var.{ info = Commented.none; name }, body), arg))
+              let info = `Parse_located range in
+              Term.Subst
+                (info, (Single_var.{ info (* TODO: wrong info *); name }, body), arg))
             ; return body
             ]
           (* TODO: add comments *)
@@ -508,9 +495,9 @@ module Term = struct
 end
 
 module Module = struct
-  type 'info t =
-    { externals : (string * 'info Type.t) list
-    ; defs : (string * 'info Lang.Term.t) list
+  type t =
+    { externals : (string * Type.t) list
+    ; defs : (string * Lang.Term.t) list
     }
 
   let pp_generic ~open_loc ~close_loc ppf { externals; defs } =
@@ -555,23 +542,23 @@ module Module = struct
   ;;
 end
 
-type 'info env = 'info Nominal.Term.t String.Map.t
+type env = Nominal.Term.t String.Map.t
 
 let preimage _ = failwith "TODO"
 let reverse _tm _cases = failwith "TODO"
 
-type 'info check_env =
-  { type_env : 'info Type.t String.Map.t
-  ; syntax : 'info Abstract_syntax.t
+type check_env =
+  { type_env : Type.t String.Map.t
+  ; syntax : Abstract_syntax.t
   }
 
 module Check_error' = struct
-  type 'info t =
+  type t =
     | Cant_infer_case
     | Cant_infer_lambda
     | Var_not_found
     | Operator_not_found
-    | Mismatch of 'info Type.t
+    | Mismatch of Type.t
 
   let pp ppf tm (ty_opt : _ option Type.t option) = function
     | Cant_infer_case -> Fmt.pf ppf "can't infer cases"
@@ -590,21 +577,21 @@ module Check_error' = struct
 end
 
 module Check_error = struct
-  type 'info t =
-    { env : 'info check_env
-    ; tm : 'info Lang.Term.t
-    ; ty : 'info Type.t
-    ; error : 'info Check_error'.t
+  type t =
+    { env : check_env
+    ; tm : Lang.Term.t
+    ; ty : Type.t
+    ; error : Check_error'.t
     }
 
   let pp ppf { env = _; tm; ty; error } = Check_error'.pp ppf tm (Some ty) error
 end
 
 module Infer_error = struct
-  type 'info t =
-    { env : 'info check_env
-    ; tm : 'info Lang.Term.t
-    ; error : 'info Check_error'.t
+  type t =
+    { env : check_env
+    ; tm : Lang.Term.t
+    ; error : Check_error'.t
     }
 
   let pp ppf { env = _; tm; error } = Check_error'.pp ppf tm None error

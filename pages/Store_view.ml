@@ -10,14 +10,15 @@ module Model = struct
   module Internal =
   [%lvca.abstract_syntax_module
   {|
-string : *  // module Lvca_syntax.Primitive.String
+string : *
 
 t :=
   | Selected_tag(string)
   | Selected_hash(string)
   | Selected_filter(string)
   | No_selection()
-    |}]
+    |}
+  , { string = "Lvca_syntax.Primitive.String" }]
 
   include Internal.T.Plain
 
