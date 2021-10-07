@@ -3,30 +3,38 @@ module String = Lvca_util.String
 open Option.Let_syntax
 
 module Kernel = struct
-  type 'info term =
-    | Operator of 'info * string * ('info scope, 'info term) Either.t list
-    | BoundVar of 'info * int
-    | FreeVar of 'info * string
-    | Primitive of 'info Primitive.All.t
+  type term =
+    | Operator of Provenance.t * string * (scope, term) Either.t list
+    | Bound_var of Provenance.t * int
+    | Free_var of Provenance.t * string
+    | Primitive of Primitive.All.t
 
-  and 'info scope = Scope of 'info * string * 'info term
+  and scope = Scope of Provenance.t * string * term
 
-  let rec map_info ~f = function
-    | Operator (i, name, subtms) ->
-      let subtms =
-        subtms
-        |> List.map ~f:(function
-               | Either.First scope -> Either.First (scope_map_info ~f scope)
-               | Second tm -> Second (map_info ~f tm))
-      in
-      Operator (f i, name, subtms)
-    | BoundVar (i, n) -> BoundVar (f i, n)
-    | FreeVar (i, n) -> FreeVar (f i, n)
-    | Primitive p -> Primitive (Primitive.All.map_info ~f p)
+  let rec equivalent ?(info_eq = fun _ _ -> true) t1 t2 =
+    match t1, t2 with
+    | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
+      info_eq i1 i2
+      && String.(name1 = name2)
+      && List.equal
+           (Either.equal (scope_eq ~info_eq) (equivalent ~info_eq))
+           scopes1
+           scopes2
+    | Free_var (i1, name1), Free_var (i2, name2) ->
+      info_eq i1 i2 && String.(name1 = name2)
+    | Bound_var (p1, i1), Bound_var (p2, i2) -> info_eq p1 p2 && Int.(i1 = i2)
+    | Primitive p1, Primitive p2 -> Primitive_impl.All.equivalent ~info_eq p1 p2
+    | _, _ -> false
 
-  and scope_map_info ~f (Scope (i, name, tm)) = Scope (f i, name, map_info ~f tm)
+  and scope_eq
+      ?(info_eq = fun _ _ -> true)
+      (Scope (i1, name1, tm1))
+      (Scope (i2, name2, tm2))
+    =
+    info_eq i1 i2 && String.(name1 = name2) && equivalent ~info_eq tm1 tm2
+  ;;
 
-  let erase tm = map_info ~f:(fun _ -> ()) tm
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
 
   let rec open_term target_ix subst_tm tm =
     match tm with
@@ -41,16 +49,16 @@ module Kernel = struct
                   ~second:(open_term target_ix subst_tm))
       in
       Operator (info, tag, subtms')
-    | BoundVar (_, i) -> if i = target_ix then subst_tm else tm
-    | FreeVar _ | Primitive _ -> tm
+    | Bound_var (_, i) -> if Int.(i = target_ix) then subst_tm else tm
+    | Free_var _ | Primitive _ -> tm
   ;;
 
   let open_scope subst_tm (Scope (_, _, tms)) = open_term 0 subst_tm tms
 
   let rec to_nominal' ctx = function
-    | BoundVar (info, ix) ->
+    | Bound_var (info, ix) ->
       ix |> List.nth ctx |> Option.map ~f:(fun name -> Nominal.Term.Var (info, name))
-    | FreeVar (info, name) -> Some (Var (info, name))
+    | Free_var (info, name) -> Some (Var (info, name))
     | Operator (info, tag, subtms) ->
       subtms
       |> List.map ~f:(scope_or_term_to_nominal ctx)
@@ -80,8 +88,8 @@ module Kernel = struct
     | Var (info, name) ->
       Ok
         (match Map.find env name with
-        | None -> FreeVar (info, name)
-        | Some i -> BoundVar (info, i))
+        | None -> Free_var (info, name)
+        | Some i -> Bound_var (info, i))
     | Primitive prim -> Ok (Primitive prim)
 
   and scope_of_nominal env (Scope (pats, body) as scope) =
@@ -114,25 +122,21 @@ module Kernel = struct
         in
         List.for_all zipped ~f
       | Unequal_lengths -> false)
-    | BoundVar (_, i1), BoundVar (_, i2) -> i1 = i2
-    | FreeVar (_, name1), FreeVar (_, name2) -> String.(name1 = name2)
-    | Primitive p1, Primitive p2 ->
-      Primitive.All.equal
-        ~info_eq:Unit.( = )
-        (Primitive.All.erase p1)
-        (Primitive.All.erase p2)
+    | Bound_var (_, i1), Bound_var (_, i2) -> Int.(i1 = i2)
+    | Free_var (_, name1), Free_var (_, name2) -> String.(name1 = name2)
+    | Primitive p1, Primitive p2 -> Primitive.All.equivalent p1 p2
     | _, _ -> false
   ;;
 
-  let pp_generic ~open_loc ~close_loc ppf tm =
+  let pp ppf tm =
     match to_nominal tm with
     | None -> Fmt.pf ppf "DeBruijn.pp: failed to convert de Bruijn term to nominal"
-    | Some tm -> Nominal.Term.pp_generic ~open_loc ~close_loc ppf tm
+    | Some tm -> Nominal.Term.pp ppf tm
   ;;
 
-  let parse ~comment =
+  let parse =
     let open Lvca_parsing in
-    Nominal.Term.parse' ~comment
+    Nominal.Term.parse'
     >>= fun tm ->
     match of_nominal tm with
     | Ok tm -> return tm

@@ -56,19 +56,21 @@ end
 module Parse = struct
   open Lvca_parsing
 
-  let lit : Opt_range.t Nonbinding.term Lvca_parsing.t =
+  let lit : Nonbinding.term Lvca_parsing.t =
     Ws.integer_lit
     >>~ fun range str ->
+    let range = Provenance.of_range range in
     Nonbinding.(Operator (range, "lit", [ Primitive (range, Integer (Z.of_string str)) ]))
   ;;
 
-  let t : Opt_range.t Nonbinding.term Lvca_parsing.t =
+  let t : Nonbinding.term Lvca_parsing.t =
     fix (fun t ->
         let atom = attach_pos (lit <|> Ws.parens t) in
         let plus = Ws.char '+' in
         let f (l, rng1) (r, rng2) =
           let rng = Opt_range.union rng1 rng2 in
-          Nonbinding.Operator (rng, "add", [ l; r ]), rng
+          let info = Provenance.of_range rng in
+          Nonbinding.Operator (info, "add", [ l; r ]), rng
         in
         atom
         >>= fun init -> many (plus *> atom) >>| fun lst -> List.fold lst ~init ~f |> fst)
@@ -101,7 +103,7 @@ let pp =
   pp' 0
 ;;
 
-let rec eval_tm : _ Nonbinding.term -> (Z.t, string) Result.t = function
+let rec eval_tm : Nonbinding.term -> (Z.t, string) Result.t = function
   | Operator (_, "add", [ a; b ]) ->
     (match eval_tm a, eval_tm b with
     | Ok a', Ok b' -> Ok Z.(a' + b')
@@ -159,7 +161,6 @@ let%test_module "Hutton's Razor" =
       | Error str -> print_string str
       | Ok tm ->
         Fmt.pr "%a\n" Nonbinding.pp tm;
-        Fmt.pr "%a\n" Nonbinding.pp_opt_range tm;
         Fmt.pr "%a" pp tm
     ;;
 

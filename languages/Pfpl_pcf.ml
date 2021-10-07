@@ -18,6 +18,27 @@ exp :=
 
 module Exp = Nominal.Convertible.Extend (Lang.Exp)
 
+let map_info ~f = function
+  | Lang.Exp.Zero i -> Lang.Exp.Zero (f i)
+  | Succ (i, a) -> Succ (f i, a)
+  | Ifz (i, a, b, c) -> Ifz (f i, a, b, c)
+  | Fun (i, a, b) -> Fun (f i, a, b)
+  | Ap (i, a, b) -> Ap (f i, a, b)
+  | Fix (i, a, b) -> Fix (f i, a, b)
+  | Exp_var (i, a) -> Exp_var (f i, a)
+;;
+
+let info = function
+  | Lang.Exp.Zero i
+  | Succ (i, _)
+  | Ifz (i, _, _, _)
+  | Fun (i, _, _)
+  | Ap (i, _, _)
+  | Fix (i, _, _)
+  | Exp_var (i, _) ->
+    i
+;;
+
 let rec to_tex = function
   | Lang.Exp.Zero info ->
     Nominal.Term.Primitive (info, Primitive_impl.All_plain.String "Z")
@@ -108,12 +129,12 @@ in eval
 ;;
 
 let rec is_val ~eager = function
-  | Lang.Plain.Zero | Fun _ -> true
-  | Succ e -> (not eager) || is_val ~eager e
+  | Lang.Exp.Zero _ | Fun _ -> true
+  | Succ (_, e) -> (not eager) || is_val ~eager e
   | _ -> false
 ;;
 
-let is_val' ~eager tm = tm |> Lang.Exp.to_plain |> is_val ~eager
+let is_val' ~eager tm = tm |> is_val ~eager
 
 let rec subst v name exp =
   match exp with
@@ -133,27 +154,10 @@ let rec subst v name exp =
   | Exp_var (_info, name') -> if String.(name = name') then v else exp
 ;;
 
-module Provenance = struct
-  type 'info t =
-    | Root of 'info
-    | Derived of 'info t Lang.Exp.t
-
-  let rec equal ~info_eq p1 p2 =
-    match p1, p2 with
-    | Root i1, Root i2 -> info_eq i1 i2
-    | Derived e1, Derived e2 -> Exp.equal ~info_eq:(equal ~info_eq) e1 e2
-    | _, _ -> false
-  ;;
-
-  let rec get_root_info = function
-    | Root info -> info
-    | Derived tm -> tm |> Lang.Exp.info |> get_root_info
-  ;;
-end
-
 let rec transition ~eager tm =
-  let info = Provenance.Derived tm in
-  let set_info = Lang.Exp.map_info ~f:(fun _ -> info) in
+  let info = Provenance.calculated_here [%here] [ info tm ] in
+  (* let info = Provenance.Derived tm in *)
+  let set_info = map_info ~f:(fun _ -> info) in
   match tm with
   | Lang.Exp.Zero _ | Fun _ | Exp_var _ -> Error ("stuck", tm)
   | Succ (_, tm) ->
@@ -200,12 +204,12 @@ let eval ?(eager = true) ?(step_limit = 50) tm =
 let%test_module _ =
   (module struct
     let go ?(eager = true) str =
-      match
-        Lvca_parsing.(parse_string (whitespace *> Exp.parse ~comment:c_comment) str)
-      with
+      match Lvca_parsing.(parse_string (whitespace *> Exp.parse) str) with
       | Error msg -> Fmt.pr "%s" msg
       | Ok tm ->
-        let tm = Lang.Exp.map_info ~f:(fun info -> Provenance.Root info) tm in
+        let tm =
+          map_info ~f:(fun info -> Provenance.calculated_here [%here] [ info ]) tm
+        in
         (match eval ~eager tm with
         | _, Error (msg, tm) -> Fmt.pr "%s: %a" msg Exp.pp tm
         | _, Ok tm -> Exp.pp Fmt.stdout tm)

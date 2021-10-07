@@ -1,14 +1,15 @@
 open Base
 open Lvca_syntax
 open Lvca_provenance
+open Lvca_util
 open Stdio
 module List_model = Lvca_core.List_model
 
 module Lang =
 [%lvca.abstract_syntax_module
 {|
-integer : *  // module Primitive.Integer
-float : *  // module Primitive.Float
+integer : *
+float : *
 
 either a b := Left(a) | Right(b)
 
@@ -36,17 +37,19 @@ expr :=
   | E()
 
   | Lit(either integer float)
-|}]
+|}
+, { integer = "Primitive.Integer"; float = "Primitive.Float" }]
 
 open Lang
 
-let rec to_tex ~none expr =
+let rec to_tex expr =
   let open Tex_math.Tex in
+  let here = Provenance.of_here [%here] in
   let list = List_model.of_list in
   let go x =
-    match to_tex ~none x with
+    match to_tex x with
     | List_model.List.Cons (_, x, Nil _) -> x
-    | xs -> Grouped (none, xs)
+    | xs -> Grouped (here, xs)
   in
   match expr with
   | Expr.Add (i, x, y) | Sub (i, x, y) | Mul (i, x, y) | Div (i, x, y) ->
@@ -58,22 +61,20 @@ let rec to_tex ~none expr =
       | Div _ -> '/'
       | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected constructor"
     in
-    list ~empty_info:i [ go x; Token (i, (none, c)); go y ]
-  | Max (i, x, y) ->
-    list ~empty_info:i [ Control_seq (none, (none, "\\max")); go x; go y ]
-  | Min (i, x, y) ->
-    list ~empty_info:i [ Control_seq (none, (none, "\\min")); go x; go y ]
-  | Negate (i, x) -> list ~empty_info:i (Tex_math.literal i "-" @ [ go x ])
-  | Sqrt (i, x)
-  | Abs (i, x)
-  | Exp (i, x)
-  | Ln (i, x)
-  | Sin (i, x)
-  | Cos (i, x)
-  | Tan (i, x)
-  | Asin (i, x)
-  | Acos (i, x)
-  | Atan (i, x) ->
+    list [ go x; Token (i, (here, c)); go y ]
+  | Max (_, x, y) -> list [ Control_seq (here, (here, "\\max")); go x; go y ]
+  | Min (_, x, y) -> list [ Control_seq (here, (here, "\\min")); go x; go y ]
+  | Negate (i, x) -> list (Tex_math.literal i "-" @ [ go x ])
+  | Sqrt (_, x)
+  | Abs (_, x)
+  | Exp (_, x)
+  | Ln (_, x)
+  | Sin (_, x)
+  | Cos (_, x)
+  | Tan (_, x)
+  | Asin (_, x)
+  | Acos (_, x)
+  | Atan (_, x) ->
     let control_seq =
       match expr with
       | Sqrt _ -> "\\sqrt"
@@ -88,19 +89,17 @@ let rec to_tex ~none expr =
       | Atan _ -> "\\atan"
       | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected constructor"
     in
-    list ~empty_info:i [ Control_seq (none, (none, control_seq)); go x ]
-  | Pi i -> list ~empty_info:i [ Control_seq (i, (none, "\\pi")) ]
-  | E i -> list ~empty_info:i [ Token (i, (none, 'e')) ]
-  | Lit (i, lit) ->
+    list [ Control_seq (here, (here, control_seq)); go x ]
+  | Pi i -> list [ Control_seq (i, (here, "\\pi")) ]
+  | E i -> list [ Token (i, (here, 'e')) ]
+  | Lit (_, lit) ->
     let x =
       match lit with
       | Left (i, x) -> Tex_math.literal i (Primitive.Integer.to_string x)
       | Right (i, x) -> Tex_math.literal i (Primitive.Float.to_string x)
     in
-    list ~empty_info:i x
+    list x
 ;;
-
-type term = Opt_range.t Expr.t
 
 let unary_operators =
   [ "negate"; "sqrt"; "abs"; "exp"; "ln"; "sin"; "cos"; "tan"; "asin"; "acos"; "atan" ]
@@ -111,19 +110,23 @@ let constants = [ "pi"; "e" ]
 module Parse = struct
   open Lvca_parsing
 
-  let lit : term Lvca_parsing.t =
+  let lit : Expr.t Lvca_parsing.t =
     (* TODO: this fails on too-large float lits *)
     Ws.integer_or_float_lit
     >>~ fun range lit ->
     let lit =
       match lit with
-      | Base.Either.First str -> Either.Left (range, (range, Z.of_string str))
-      | Second f -> Right (range, (range, f))
+      | Base.Either.First str ->
+        Either.Left
+          (Provenance.of_range range, (Provenance.of_range range, Z.of_string str))
+      | Second f -> Right (Provenance.of_range range, (Provenance.of_range range, f))
     in
-    Expr.Lit (range, lit)
+    let pos = Provenance.of_range range in
+    Expr.Lit (pos, lit)
   ;;
 
   let mk_const range name =
+    let range = Provenance.of_range range in
     match name with
     | "pi" -> Expr.Pi range
     | "e" -> E range
@@ -169,22 +172,22 @@ module Parse = struct
    * *, /
    * +, -
    *)
-  let t : term Lvca_parsing.t =
+  let t : Expr.t Lvca_parsing.t =
     fix (fun t ->
-        let atom : term Lvca_parsing.t =
+        let atom : Expr.t Lvca_parsing.t =
           choice
             ~failure_msg:"looking for a literal, constant, or parenthesized expression"
             [ lit; const; Ws.parens t ]
         in
         (* TODO: rename negate to - *)
-        let unary_op : term Lvca_parsing.t =
+        let unary_op : Expr.t Lvca_parsing.t =
           unary_operators
           |> List.map ~f:(fun name ->
                  Ws.string name
                  >>== fun { value = name; range = p1 } ->
                  atom
-                 >>| fun body ->
-                 let pos = Opt_range.union p1 (Expr.info body) in
+                 >>~ fun p2 body ->
+                 let pos = Opt_range.union p1 p2 |> Provenance.of_range in
                  mk_unary pos name body)
           |> choice ~failure_msg:"looking for a unary operator expression"
         in
@@ -195,43 +198,55 @@ module Parse = struct
               ~failure_msg:"looking for min or max"
             >>== fun { value = name; range = p1 } ->
             lift2
-              (fun atom1 atom2 ->
-                let pos = Opt_range.union p1 (Expr.info atom2) in
+              (fun atom1 (atom2, p2) ->
+                let pos = Opt_range.union p1 p2 |> Provenance.of_range in
                 mk_binary pos name atom1 atom2)
               atom
-              atom
+              (attach_pos atom)
           in
           atom <|> unary_op <|> min_max
         in
         let pair p1 p2 = lift2 (fun x y -> x, y) p1 p2 in
-        let mul_div : term Lvca_parsing.t =
+        let mul_div : Expr.t Lvca_parsing.t =
           let op = Ws.char '*' <|> Ws.char '/' in
-          let f l (op, r) =
-            let rng = Opt_range.union (Expr.info l) (Expr.info r) in
-            match op with
-            | '*' -> Expr.Mul (rng, l, r)
-            | '/' -> Div (rng, l, r)
-            | _ -> failwith "error: impossible operator"
+          let f (l, l_range) (op, (r, r_range)) =
+            let range = Opt_range.union l_range r_range in
+            let info = Provenance.of_range range in
+            let tm =
+              match op with
+              | '*' -> Expr.Mul (info, l, r)
+              | '/' -> Div (info, l, r)
+              | _ -> failwith "error: impossible operator"
+            in
+            tm, range
           in
-          application >>= fun init -> many (pair op application) >>| List.fold ~init ~f
+          attach_pos application
+          >>= fun init ->
+          many (pair op (attach_pos application)) >>| (List.fold ~init ~f >> fst)
         in
-        let add_sub : term Lvca_parsing.t =
+        let add_sub : Expr.t Lvca_parsing.t =
           let op = Ws.char '+' <|> Ws.char '-' in
-          let f l (op, r) =
-            let rng = Opt_range.union (Expr.info l) (Expr.info r) in
-            match op with
-            | '+' -> Expr.Add (rng, l, r)
-            | '-' -> Sub (rng, l, r)
-            | _ -> failwith "error: impossible operator"
+          let f (l, l_range) (op, (r, r_range)) =
+            let range = Opt_range.union l_range r_range in
+            let info = Provenance.of_range range in
+            let tm =
+              match op with
+              | '+' -> Expr.Add (info, l, r)
+              | '-' -> Sub (info, l, r)
+              | _ -> failwith "error: impossible operator"
+            in
+            tm, range
           in
-          mul_div >>= fun init -> many (pair op mul_div) >>| List.fold ~init ~f
+          attach_pos mul_div
+          >>= fun init ->
+          many (pair op (attach_pos mul_div)) >>| (List.fold ~init ~f >> fst)
         in
         add_sub)
     <?> "parser"
   ;;
 end
 
-let rec interpret : term -> Constructive_real.t =
+let rec interpret : Expr.t -> Constructive_real.t =
  fun tm ->
   match tm with
   | Lit (_, Left (_, (_, i))) -> Constructive_real.of_bigint i
@@ -331,9 +346,8 @@ let%test_module "to_tex" =
       | Error msg -> print_endline msg
       | Ok tm ->
         tm
-        |> to_tex ~none:None
+        |> to_tex
         |> List_model.to_list
-        |> List.map ~f:Tex_math.Tex.to_plain
         |> Fmt.pr "%a\n" Fmt.(list ~sep:nop Tex_math.pp)
     ;;
 

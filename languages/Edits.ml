@@ -1,23 +1,26 @@
 open Base
 open Lvca_syntax
-open Lvca_provenance
 open Lvca_core
 open Stdio
 
 module Lang =
 [%lvca.abstract_syntax_module
 {|
-core : *  // module Lvca_core.Lang.Term
-string : *  // module Primitive.String
-list : * -> *  // module Lvca_core.List_model.List
+core : *
+string : *
+list : * -> *
 
 edit :=
   | Atomic(core)
   | Labeled(edit; string)
   | List(list edit)
-|}]
+|}
+, { core = "Lvca_core.Lang.Term"
+  ; string = "Primitive.String"
+  ; list = "Lvca_core.List_model.List"
+  }]
 
-type core = Opt_range.t Term.t
+type core = Term.t
 
 type 'lang t =
   | Atomic of 'lang
@@ -57,16 +60,13 @@ let parse lang_p =
   <?> "edit"
 ;;
 
-type term = Opt_range.t Nominal.Term.t
+type term = Nominal.Term.t
 
 let%test_module "Parsing" =
   (module struct
-    let comment = Lvca_parsing.no_comment
-
     let parse (str : string) : (core t, string) Result.t =
       Lvca_parsing.(
-        parse_string (whitespace *> parse (Ws.braces (Lvca_core.Parse.term ~comment))) str)
-      |> Result.map ~f:(map_t ~f:(Term.map_info ~f:Commented.get_range))
+        parse_string (whitespace *> parse (Ws.braces Lvca_core.Parse.term)) str)
     ;;
 
     let parse_and_print : string -> unit =
@@ -76,12 +76,11 @@ let%test_module "Parsing" =
       | Error msg -> print_string msg
    ;;
 
-    let eval_atom : term -> core -> (term, Opt_range.t eval_error) Result.t =
+    let eval_atom : term -> core -> (term, eval_error) Result.t =
      fun tm core ->
       let open Lvca_core.Lang.Term in
-      eval
-        ~no_info:None
-        (Ap (None, core, List_model.of_list ~empty_info:None [ Embedded (None, tm) ]))
+      let here = Provenance.of_here [%here] in
+      eval (Ap (here, core, List_model.of_list [ Embedded (here, tm) ]))
    ;;
 
     (* TODO: don't throw away this information, switch from strings *)
@@ -102,8 +101,7 @@ let%test_module "Parsing" =
       let open Result.Let_syntax in
       match
         let%bind edit = parse edit in
-        let%bind tm = Lvca_parsing.parse_string (Nominal.Term.parse' ~comment) tm in
-        let tm = Nominal.Term.map_info ~f:Commented.get_range tm in
+        let%bind tm = Lvca_parsing.parse_string Nominal.Term.parse' tm in
         let%map tm = eval tm edit in
         Nominal.Term.pp Caml.Format.std_formatter tm
       with

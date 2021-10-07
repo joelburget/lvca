@@ -9,11 +9,11 @@ let ( >> ) = Lvca_util.( >> )
 module Lang =
 [%lvca.abstract_syntax_module
 {|
-char : *  // module Primitive.Char
-int32 : *  // module Primitive.Int32
-string : *  // module Primitive.String
-option : * -> *  // module Option_model
-list : * -> *  // module List_model
+char : *
+int32 : *
+string : *
+option : * -> *
+list : * -> *
 
 attribute := Attribute(string; string)
 
@@ -54,7 +54,13 @@ block :=
   | Definition_list(list attribute; list def_elt)
 
 doc := Doc(list block)
-|}]
+|}
+, { char = "Primitive.Char"
+  ; int32 = "Primitive.Int32"
+  ; string = "Primitive.String"
+  ; option = "Option_model"
+  ; list = "List_model"
+  }]
 
 module Attrs = struct
   let inline = function
@@ -85,76 +91,83 @@ module Attrs = struct
 end
 
 module Of_omd = struct
-  let attribute : string * string -> Lang.Plain.attribute = fun (x, y) -> Attribute (x, y)
+  let here = Provenance.of_here [%here]
 
-  let option : ('a -> 'b) -> 'a option -> 'b Option_model.Plain.t =
-   fun f -> Lvca_core.Option_model.(of_option ~empty_info:() >> Option.to_plain f)
+  let attribute : string * string -> Lang.Attribute.t =
+   fun (x, y) -> Attribute (here, (here, x), (here, y))
  ;;
 
-  let list : ('a -> 'b) -> 'a list -> 'b List_model.Plain.t =
-   fun f -> Lvca_core.List_model.(of_list ~empty_info:() >> List.to_plain f)
+  let option : ('a -> 'b) -> 'a option -> 'b Option_model.t =
+   fun f opt -> opt |> Option.map ~f |> Lvca_core.Option_model.of_option
  ;;
 
-  let attributes : Omd.attributes -> Lang.Plain.attribute List_model.Plain.t =
-    list attribute
+  let list : ('a -> 'b) -> 'a list -> 'b List_model.t =
+   fun f lst -> lst |> List.map ~f |> Lvca_core.List_model.of_list
+ ;;
+
+  let attributes : Omd.attributes -> Lang.Attribute.t List_model.t = list attribute
+
+  let list_type : Omd.list_type -> Lang.List_type.t = function
+    | Ordered (i, c) -> Ordered (here, (here, Int32.of_int_exn i), (here, c))
+    | Bullet c -> Bullet (here, (here, c))
   ;;
 
-  let list_type : Omd.list_type -> Lang.Plain.list_type = function
-    | Ordered (i, c) -> Ordered (Int32.of_int_exn i, c)
-    | Bullet c -> Bullet c
+  let list_spacing : Omd.list_spacing -> Lang.List_spacing.t = function
+    | Loose -> Loose here
+    | Tight -> Tight here
   ;;
 
-  let list_spacing : Omd.list_spacing -> Lang.Plain.list_spacing = function
-    | Loose -> Loose
-    | Tight -> Tight
-  ;;
+  let rec inline : Omd.attributes Omd.inline -> Lang.Inline.t = function
+    | Concat (attrs, inlines) -> Concat (here, attributes attrs, list inline inlines)
+    | Text (attrs, str) -> Text (here, attributes attrs, (here, str))
+    | Emph (attrs, inl) -> Emph (here, attributes attrs, inline inl)
+    | Strong (attrs, inl) -> Strong (here, attributes attrs, inline inl)
+    | Code (attrs, str) -> Code (here, attributes attrs, (here, str))
+    | Hard_break attrs -> Hard_break (here, attributes attrs)
+    | Soft_break attrs -> Soft_break (here, attributes attrs)
+    | Html (attrs, str) -> Html (here, attributes attrs, (here, str))
+    | Link (attrs, link_def) -> Link (here, attributes attrs, link link_def)
+    | Image (attrs, link_def) -> Image (here, attributes attrs, link link_def)
 
-  let rec inline : Omd.attributes Omd.inline -> Lang.Plain.inline = function
-    | Concat (attrs, inlines) -> Concat (attributes attrs, list inline inlines)
-    | Text (attrs, str) -> Text (attributes attrs, str)
-    | Emph (attrs, inl) -> Emph (attributes attrs, inline inl)
-    | Strong (attrs, inl) -> Strong (attributes attrs, inline inl)
-    | Code (attrs, str) -> Code (attributes attrs, str)
-    | Hard_break attrs -> Hard_break (attributes attrs)
-    | Soft_break attrs -> Soft_break (attributes attrs)
-    | Html (attrs, str) -> Html (attributes attrs, str)
-    | Link (attrs, link_def) -> Link (attributes attrs, link link_def)
-    | Image (attrs, link_def) -> Image (attributes attrs, link link_def)
-
-  and link : Omd.attributes Omd.link -> Lang.Plain.link =
+  and link : Omd.attributes Omd.link -> Lang.Link.t =
    fun { label; destination; title } ->
-    Link_def (inline label, destination, option Fn.id title)
+    let title =
+      match title with None -> Option_model.None here | Some x -> Some (here, (here, x))
+    in
+    Link_def (here, inline label, (here, destination), title)
  ;;
 
-  let def_elt : Omd.attributes Omd.def_elt -> Lang.Plain.def_elt =
-   fun { term; defs } -> Def_elt (inline term, list inline defs)
+  let def_elt : Omd.attributes Omd.def_elt -> Lang.Def_elt.t =
+   fun { term; defs } -> Def_elt (here, inline term, list inline defs)
  ;;
 
-  let rec block : Omd.attributes Omd.block -> Lang.Plain.block = function
-    | Paragraph (attrs, inl) -> Paragraph (attributes attrs, inline inl)
+  let rec block : Omd.attributes Omd.block -> Lang.Block.t = function
+    | Paragraph (attrs, inl) -> Paragraph (here, attributes attrs, inline inl)
     | List (attrs, t, s, blocks) ->
-      List (attributes attrs, list_type t, list_spacing s, list (list block) blocks)
-    | Blockquote (attrs, blocks) -> Blockquote (attributes attrs, list block blocks)
-    | Thematic_break attrs -> Thematic_break (attributes attrs)
-    | Heading (attrs, n, inl) -> Heading (attributes attrs, Int32.of_int_exn n, inline inl)
-    | Code_block (attrs, x, y) -> Code_block (attributes attrs, x, y)
-    | Html_block (attrs, str) -> Html_block (attributes attrs, str)
+      List (here, attributes attrs, list_type t, list_spacing s, list (list block) blocks)
+    | Blockquote (attrs, blocks) -> Blockquote (here, attributes attrs, list block blocks)
+    | Thematic_break attrs -> Thematic_break (here, attributes attrs)
+    | Heading (attrs, n, inl) ->
+      Heading (here, attributes attrs, (here, Int32.of_int_exn n), inline inl)
+    | Code_block (attrs, x, y) -> Code_block (here, attributes attrs, (here, x), (here, y))
+    | Html_block (attrs, str) -> Html_block (here, attributes attrs, (here, str))
     | Definition_list (attrs, def_elts) ->
-      Definition_list (attributes attrs, list def_elt def_elts)
+      Definition_list (here, attributes attrs, list def_elt def_elts)
   ;;
 
-  let document : Omd.doc -> Lang.Plain.doc = fun blocks -> Doc (list block blocks)
+  let document : Omd.doc -> Lang.Doc.t = fun blocks -> Doc (here, list block blocks)
 end
 
+(*
 let to_nonbinding
-    :  'info Lang.Doc.t
-    -> ('info Nonbinding.term, 'info Nonbinding.nominal_conversion_error) Result.t
+    : Lang.Doc.t -> (Nonbinding.term, Nonbinding.nominal_conversion_error) Result.t
   =
  fun doc -> doc |> Lang.Doc.to_nominal |> Nonbinding.of_nominal
 ;;
+   *)
 
-let term_of_doc : Omd.doc -> unit Lang.Doc.t = Of_omd.document >> Lang.Doc.of_plain
-let parse : string -> unit Lang.Doc.t = Omd.of_string >> term_of_doc
+let term_of_doc : Omd.doc -> Lang.Doc.t = Of_omd.document
+let parse : string -> Lang.Doc.t = Omd.of_string >> term_of_doc
 
 let%test_module _ =
   (module struct

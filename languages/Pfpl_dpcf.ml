@@ -15,7 +15,8 @@ exp :=
   | Fun(exp. exp)
   | Ap(exp; exp)
   | Fix(exp. exp)
-|}]
+|}
+, { integer = "Primitive.Integer" }]
 
 module Exp = Nominal.Convertible.Extend (Lang.Exp)
 
@@ -40,48 +41,31 @@ let rec subst v name exp =
   | Exp_var (_info, name') -> if String.(name = name') then v else exp
 ;;
 
-let succ = function
-  | Lang.Exp.Num (_, Nominal.Term.Primitive (info, Integer z)) ->
-    Ok (Nominal.Term.Primitive (info, Integer Z.(succ z)))
-  | tm -> Error ("succ: expected an integer", tm)
-;;
-
-let pred = function
-  | Lang.Exp.Num (_, Nominal.Term.Primitive (info, Integer z)) ->
-    Ok (Nominal.Term.Primitive (info, Integer (Z.pred z)))
-  | tm -> Error ("pred: expected an integer", tm)
-;;
-
-let is_zero = function
-  | Lang.Exp.Num (_, Nominal.Term.Primitive (_, Integer z)) -> Ok Z.(equal z zero)
-  | tm -> Error ("is_zero: expected an integer", tm)
-;;
-
 let rec transition tm =
   match tm with
-  | Lang.Exp.Zero info -> Ok (Lang.Exp.Num (info, [%lvca.nominal "0"])) (* 22.4a *)
-  | Succ (info, d) ->
+  | Lang.Exp.Zero info -> Ok (Lang.Exp.Num (info, (info, Z.of_int 0))) (* 22.4a *)
+  | Succ (info1, d) ->
     (match d with
-    | Lang.Exp.Num _ ->
+    | Lang.Exp.Num (info2, (_, d)) ->
       (* 22.4d *)
-      let%map z = succ d in
-      Lang.Exp.Num (info, z)
+      let info = Provenance.calculated_here [%here] [ info1; info2 ] in
+      Ok (Lang.Exp.Num (info, (info, Z.succ d)))
     | _ ->
       let%map d = transition d in
+      let info = Provenance.calculated_here [%here] [ info1 ] in
       Lang.Exp.Succ (info, d))
-  | Ifz (info, d0, (x, d1), d) ->
+  | Ifz (info1, d0, (x, d1), d) ->
     (* 22.4f-j *)
     (match d with
-    | Lang.Exp.Num _ ->
-      let%bind is_zero = is_zero d in
-      if is_zero
+    | Lang.Exp.Num (info2, (_, d)) ->
+      let info = Provenance.calculated_here [%here] [ info1; info2 ] in
+      if Z.(equal zero d)
       then Ok d0 (* 22.4h *)
-      else (
-        let%map z = pred d in
-        subst (Num (info, z)) x.name d1)
+      else Ok (subst (Num (info, (info, Z.pred d))) x.name d1)
       (* 22.4i *)
     | _ ->
       let%map d = transition d in
+      let info = Provenance.calculated_here [%here] [ info1 ] in
       Lang.Exp.Ifz (info, d0, (x, d1), d))
   | Ap (info, d1, d2) ->
     (* 22.4k-n *)
@@ -106,9 +90,7 @@ let rec eval tm =
 let%test_module _ =
   (module struct
     let go str =
-      match
-        Lvca_parsing.(parse_string (whitespace *> Exp.parse ~comment:no_comment)) str
-      with
+      match Lvca_parsing.(parse_string (whitespace *> Exp.parse)) str with
       | Error msg -> Fmt.pr "%s" msg
       | Ok tm ->
         (match eval tm with

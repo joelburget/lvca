@@ -23,7 +23,7 @@ module List_model : [%lvca.abstract_syntax_module_sig
 module List = struct
   type 'a t
 
-  let to_nominal _ _ = Nominal.Term.Var (`Empty, "")
+  let to_nominal _ _ = Nominal.Term.Var (failwith "no provenance", "")
   let of_nominal _ tm = Error tm
 end
 

@@ -38,7 +38,10 @@ module type Builder_context = sig
   module Ast : Ast_builder.S
 end
 
-let get_range = function `Parse_located range -> range | _ -> None
+let get_range = function
+  | `Located (Provenance.Located.Parse_located range) -> range
+  | _ -> None
+;;
 
 module Update_loc (Context : Builder_context) = struct
   open Context

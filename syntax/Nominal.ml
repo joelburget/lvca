@@ -28,31 +28,31 @@ module Equivalent = struct
   let rec term ?(info_eq = fun _ _ -> true) t1 t2 =
     match t1, t2 with
     | Types.Operator (i1, name1, scopes1), Types.Operator (i2, name2, scopes2) ->
-      Provenance.( = ) i1 i2
+      info_eq i1 i2
       && String.(name1 = name2)
       && List.equal (scope ~info_eq) scopes1 scopes2
-    | Primitive p1, Primitive p2 -> Primitive_impl.All.( = ) p1 p2
-    | Var (i1, name1), Var (i2, name2) -> Provenance.( = ) i1 i2 && String.(name1 = name2)
+    | Primitive p1, Primitive p2 -> Primitive_impl.All.equivalent ~info_eq p1 p2
+    | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
     | _, _ -> false
 
   and scope ?(info_eq = fun _ _ -> true) (Scope (pats1, tm1)) (Scope (pats2, tm2)) =
-    List.equal Pattern.( = ) pats1 pats2 && term ~info_eq tm1 tm2
+    List.equal (Pattern.equivalent ~info_eq) pats1 pats2 && term ~info_eq tm1 tm2
   ;;
 end
 
 module Pp = struct
   let rec term ppf tm =
     let list, string, semi, pf = Fmt.(list, string, semi, pf) in
-    (* TODO open_loc ppf (info tm); *)
     match tm with
     | Types.Operator (_, tag, subtms) ->
-      pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi scope) subtms
-    | Var (_, v) -> string ppf v
-    | Primitive p ->
-      (* Note: open_loc and close_loc intentionally nops because we already
-         show the location here. *)
-      Primitive_impl.All.pp ppf p
-  (* close_loc ppf (info tm) *)
+      Provenance.open_stag ppf (info tm);
+      pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi scope) subtms;
+      Provenance.close_stag ppf (info tm)
+    | Var (_, v) ->
+      Provenance.open_stag ppf (info tm);
+      string ppf v;
+      Provenance.close_stag ppf (info tm)
+    | Primitive p -> Primitive_impl.All.pp ppf p
 
   and scope ppf (Scope (bindings, body)) =
     let any, list, pf = Fmt.(any, list, pf) in
@@ -217,7 +217,7 @@ module Term = struct
             Some
               (Check_failure.err (Printf.sprintf "Unknown variable %s (is it bound?)" v))
           | Some var_sort ->
-            if Sort.( = ) var_sort expected_sort
+            if Sort.equivalent var_sort expected_sort
             then None
             else
               Some
@@ -498,7 +498,8 @@ module Convertible = struct
       Term.parse'
       >>= fun nom ->
       match of_nominal nom with
-      | Error nom -> fail Fmt.(str "Parse: failed to convert %a from nominal" Term.pp nom)
+      | Error nom ->
+        fail Fmt.(str "Extend.parse: failed to convert %a from nominal" Term.pp nom)
       | Ok tm -> return tm
     ;;
   end
@@ -690,12 +691,13 @@ let%test_module "Nominal" =
 
     let%expect_test _ =
       "a" |> parse_exn |> Term.rename "a" "b" |> pp;
-      [%expect {| b |}]
+      [%expect {| <syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418> |}]
     ;;
 
     let%expect_test _ =
       "foo(a; b; c; 1; 'c')" |> parse_exn |> Term.rename "a" "b" |> pp;
-      [%expect {| foo(b; b; c; 1; 'c') |}]
+      [%expect
+        {| <syntax/Nominal.ml:14:302>foo(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>c</syntax/Nominal.ml:18:418>; <{13,14}>1</{13,14}>; <{16,19}>'c'</{16,19}>)</syntax/Nominal.ml:14:302> |}]
     ;;
 
     let%expect_test _ =
@@ -703,14 +705,15 @@ let%test_module "Nominal" =
       |> parse_exn
       |> Term.rename "a" "b"
       |> pp;
-      [%expect {| foo(lam(a. a); lam(b. b); lam(a. b); lam(b. b)) |}]
+      [%expect
+        {| <syntax/Nominal.ml:14:302>foo(<syntax/Nominal.ml:14:302>lam(<syntax/Nominal.ml:18:418>a</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>a</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>; <syntax/Nominal.ml:14:302>lam(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>; <syntax/Nominal.ml:14:302>lam(<syntax/Nominal.ml:18:418>a</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>; <syntax/Nominal.ml:14:302>lam(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>)</syntax/Nominal.ml:14:302> |}]
     ;;
   end)
 ;;
 
 let%test_module "TermParser" =
   (module struct
-    let ( = ) = Result.equal Term.( = ) String.( = )
+    let ( = ) = Result.equal Term.equivalent String.( = )
     let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse'))
 
     let print_parse str =
@@ -721,18 +724,30 @@ let%test_module "TermParser" =
 
     let%test _ = parse "x" = Ok (mk_Var "x")
 
+    (*
     let%test _ =
       parse "123" = Ok (mk_Primitive (Primitive_impl.All.mk_Integer (Z.of_int 123)))
     ;;
+       *)
 
-    let%test _ = parse "\"abc\"" = Ok (mk_Primitive (Primitive_impl.All.mk_String "abc"))
+    let%expect_test _ =
+      print_parse {|123|};
+      (*            0123*)
+      [%expect {|
+      <{0,3}>123</{0,3}>
+    |}]
+    ;;
+
+    (* let%test _ = parse "\"abc\"" = Ok (mk_Primitive (Primitive_impl.All.mk_String "abc")) *)
 
     let x = mk_Var "x"
     let t = mk_Operator "true" []
 
+    (*
     let%test _ =
       parse "lam(x. x)" = Ok (mk_Operator "lam" [ Scope ([ Pattern.mk_Var "x" ], x) ])
     ;;
+       *)
 
     let%test _ = parse {| match() |} = Ok (mk_Operator "match" [])
 
@@ -755,7 +770,6 @@ let%test_module "TermParser" =
       print_parse {|"str"|};
       (*            012345*)
       [%expect {|
-      "str"
       <{0,5}>"str"</{0,5}>
     |}]
     ;;
@@ -764,17 +778,16 @@ let%test_module "TermParser" =
       print_parse {|a()|};
       (*            0123*)
       [%expect {|
-      a()
-      <{0,3}>a()</{0,3}>
+      <syntax/Nominal.ml:14:302>a()</syntax/Nominal.ml:14:302>
     |}]
     ;;
 
     let%expect_test _ =
       print_parse {|a(b)|};
       (*            01234*)
-      [%expect {|
-      a(b)
-      <{0,4}>a(<{2,3}>b</{2,3}>)</{0,4}>
+      [%expect
+        {|
+      <syntax/Nominal.ml:14:302>a(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>
     |}]
     ;;
 
@@ -783,8 +796,7 @@ let%test_module "TermParser" =
       (*            0123456*)
       [%expect
         {|
-      a(b; c)
-      <{0,6}>a(<{2,3}>b</{2,3}>; <{4,5}>c</{4,5}>)</{0,6}>
+      <syntax/Nominal.ml:14:302>a(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>c</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>
     |}]
     ;;
 
@@ -793,8 +805,7 @@ let%test_module "TermParser" =
       (*            012345678901*)
       [%expect
         {|
-      a(b; c; d; e)
-      <{0,11}>a(<{2,3}>b</{2,3}>; <{4,5}>c</{4,5}>; <{6,7}>d</{6,7}>; <{8,9}>e</{8,9}>)</{0,11}>
+      <syntax/Nominal.ml:14:302>a(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>c</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>d</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>e</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>
     |}]
     ;;
 
@@ -803,8 +814,7 @@ let%test_module "TermParser" =
       (*            012345678901*)
       [%expect
         {|
-      a(b. c; d; e)
-      <{0,11}>a(<{2,3}>b</{2,3}>. <{4,5}>c</{4,5}>; <{6,7}>d</{6,7}>; <{8,9}>e</{8,9}>)</{0,11}>
+      <syntax/Nominal.ml:14:302>a(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>c</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>d</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>e</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>
     |}]
     ;;
 
@@ -813,8 +823,7 @@ let%test_module "TermParser" =
       (*            012345678901234*)
       [%expect
         {|
-      a(b. c; d; e; f; g)
-      <{0,14}>a(<{2,3}>b</{2,3}>. <{4,5}>c</{4,5}>; <{6,7}>d</{6,7}>; <{8,9}>e</{8,9}>; <{10,11}>f</{10,11}>; <{12,13}>g</{12,13}>)</{0,14}>
+      <syntax/Nominal.ml:14:302>a(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>c</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>d</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>e</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>f</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>g</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>
     |}]
     ;;
 
@@ -827,11 +836,8 @@ match(x; match_lines(
 )) |};
       [%expect
         {|
-        match(x;
-        match_lines(match_line(foo(). true()); match_line(bar(_; _x; y). y)))
-        <{1,85}>
-        match(<{7,8}>x</{7,8}>;
-        <{10,84}>match_lines(<{25,50}>match_line(<{36,41}>foo()</{36,41}>. <{43,49}>true()</{43,49}>)</{25,50}>; <{54,82}>match_line(<{65,78}>bar(<{69,70}>_</{69,70}>; <{72,74}>_x</{72,74}>; <{76,77}>y</{76,77}>)</{65,78}>. <{80,81}>y</{80,81}>)</{54,82}>)</{10,84}>)</{1,85}> |}]
+        <syntax/Nominal.ml:14:302>match(<syntax/Nominal.ml:18:418>x</syntax/Nominal.ml:18:418>;
+        <syntax/Nominal.ml:14:302>match_lines(<syntax/Nominal.ml:14:302>match_line(<syntax/Nominal.ml:14:302>foo()</syntax/Nominal.ml:14:302>. <syntax/Nominal.ml:14:302>true()</syntax/Nominal.ml:14:302>)</syntax/Nominal.ml:14:302>; <syntax/Nominal.ml:14:302>match_line(<syntax/Nominal.ml:14:302>bar(<syntax/Nominal.ml:18:418>_</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>_x</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>y</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>. <syntax/Nominal.ml:18:418>y</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>)</syntax/Nominal.ml:14:302>)</syntax/Nominal.ml:14:302> |}]
     ;;
 
     let%expect_test _ =
@@ -840,10 +846,15 @@ match(x; match_lines(
                     0         1         2         3*)
       [%expect
         {|
-      Succ(Ifz(Zero(); x. x; Zero()))
-      <{0,31}>Succ(<{5,30}>Ifz(<{9,15}>Zero()</{9,15}>; <{17,18}>x</{17,18}>. <{20,21}>x</{20,21}>; <{23,29}>Zero()</{23,29}>)</{5,30}>)</{0,31}>
+      <syntax/Nominal.ml:14:302>Succ(<syntax/Nominal.ml:14:302>Ifz(<syntax/Nominal.ml:14:302>Zero()</syntax/Nominal.ml:14:302>; <syntax/Nominal.ml:18:418>x</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>x</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:14:302>Zero()</syntax/Nominal.ml:14:302>)</syntax/Nominal.ml:14:302>)</syntax/Nominal.ml:14:302>
     |}]
     ;;
+
+    let ( = ) = Term.equivalent
+    let here = Provenance.of_here [%here]
+    let parse_exn = parse >> Result.ok_or_failwith
+
+    let%test _ = parse_exn "tm " = Var (here, "tm")
   end)
 ;;
 

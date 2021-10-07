@@ -19,8 +19,8 @@ let eval tm =
         eval' (DeBruijn.open_scope t2' body)
       | _ -> Error (Printf.sprintf "Unexpected term (1) %s" (tm_str tm)))
     | Operator (_, "lam", _) -> Ok tm
-    | BoundVar (_, _) -> Error "bound variable encountered"
-    | FreeVar _ -> Ok tm
+    | Bound_var (_, _) -> Error "bound variable encountered"
+    | Free_var _ -> Ok tm
     | _ -> Error (Printf.sprintf "Unexpected term (2) %s" (tm_str tm))
   in
   let%bind db_tm =
@@ -37,23 +37,26 @@ module Parse = struct
 
   let info = Nominal.Term.info
 
-  let t_var : Opt_range.t Nominal.Term.t Lvca_parsing.t =
-    Lvca_parsing.Ws.identifier >>~ fun range name -> Nominal.Term.Var (range, name)
+  let t_var : Nominal.Term.t Lvca_parsing.t =
+    Lvca_parsing.Ws.identifier
+    >>~ fun range name -> Nominal.Term.Var (Provenance.of_range range, name)
   ;;
 
-  let p_var : Opt_range.t Pattern.t Lvca_parsing.t =
-    Lvca_parsing.Ws.identifier >>~ fun range name -> Pattern.Var (range, name)
+  let p_var : Pattern.t Lvca_parsing.t =
+    Lvca_parsing.Ws.identifier
+    >>~ fun range name -> Pattern.Var (Provenance.of_range range, name)
   ;;
 
   (* Precedence 0: lam (right-associative) 1: app (left-associative) *)
 
-  let t : Opt_range.t Nominal.Term.t Lvca_parsing.t =
+  let t : Nominal.Term.t Lvca_parsing.t =
     fix (fun t ->
         let atom = t_var <|> Ws.parens t in
-        let lam : Opt_range.t Nominal.Term.t Lvca_parsing.t =
+        let lam : Nominal.Term.t Lvca_parsing.t =
           make4
             (fun ~info _lam var _arr body ->
-              Nominal.Term.Operator (info, "lam", [ Scope ([ var ], body) ]))
+              Nominal.Term.Operator
+                (Provenance.of_range info, "lam", [ Scope ([ var ], body) ]))
             (Ws.char '\\')
             p_var
             (Ws.string "->")
@@ -62,7 +65,8 @@ module Parse = struct
         let f (x, rng1) (y, rng2) =
           let range = Opt_range.union rng1 rng2 in
           let tm =
-            Nominal.Term.Operator (range, "app", [ Scope ([], x); Scope ([], y) ])
+            Nominal.Term.Operator
+              (Provenance.of_range range, "app", [ Scope ([], x); Scope ([], y) ])
           in
           tm, range
         in
@@ -72,12 +76,11 @@ module Parse = struct
   ;;
 end
 
-let pp_generic ~open_loc ~close_loc =
+let pp =
   let rec pp' prec ppf tm =
     let module Format = Caml.Format in
     Format.pp_open_stag ppf (Format.String_tag (Nominal.Term.hash tm));
-    (* Stdio.printf "opening stag %s\n" (Opt_range.to_string (Nominal.Term.info tm)); *)
-    open_loc ppf (Nominal.Term.info tm);
+    Provenance.open_stag ppf (Nominal.Term.info tm);
     (match tm with
     | Nominal.Term.Operator (_, "app", [ Scope ([], a); Scope ([], b) ]) ->
       if prec > 1
@@ -89,8 +92,7 @@ let pp_generic ~open_loc ~close_loc =
       then Fmt.pf ppf {|(\%s -> %a)|} name (pp' 0) body
       else Fmt.pf ppf {|\%s -> %a|} name (pp' 0) body
     | tm -> Fmt.failwith "Invalid Lambda term %a" Nominal.Term.pp tm);
-    (* Opt_range.close_stag ppf (Nominal.Term.info tm); *)
-    close_loc ppf (Nominal.Term.info tm);
+    Provenance.close_stag ppf (Nominal.Term.info tm);
     (* range tag *)
     Format.pp_close_stag ppf ()
     (* hash tag *)
@@ -98,28 +100,18 @@ let pp_generic ~open_loc ~close_loc =
   pp' 0
 ;;
 
-let pp_opt_range =
-  pp_generic ~open_loc:Opt_range.open_stag ~close_loc:Opt_range.close_stag
-;;
-
-let pp_source_ranges =
-  pp_generic
-    ~open_loc:(fun ppf loc -> Caml.Format.pp_open_stag ppf (Source_ranges.Stag loc))
-    ~close_loc:(fun ppf _loc -> Caml.Format.pp_close_stag ppf ())
-;;
-
 let%test_module "Lambda Calculus" =
   (module struct
     let () = Caml.Format.set_tags false
     let parse str = Lvca_parsing.(parse_string (whitespace *> Parse.t) str)
-    let pretty_parse str = parse str |> Result.ok_or_failwith |> Fmt.pr "%a" pp_opt_range
+    let pretty_parse str = parse str |> Result.ok_or_failwith |> Fmt.pr "%a" pp
 
     let pretty_eval_parse str =
       parse str
       |> Result.ok_or_failwith
       |> eval
       |> Result.ok_or_failwith
-      |> Fmt.pr "%a" pp_opt_range
+      |> Fmt.pr "%a" pp
     ;;
 
     let%expect_test _ =

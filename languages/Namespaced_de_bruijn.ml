@@ -5,16 +5,17 @@ open Lvca_syntax
 module Lang =
 [%lvca.abstract_syntax_module
 {|
-int32 : *  // module Primitive.Int32
-string : *  // module Primitive.String
+int32 : *
+string : *
 
 syntax :=
   | Variable(string; int32)
   | Lambda(string; syntax)
   | Apply(syntax; syntax)
-|}]
+|}
+, { int32 = "Primitive.Int32"; string = "Primitive.String" }]
 
-module Syntax = Lang.Syntax.Plain
+open Lang
 
 let ( + ), ( - ), ( <= ), one, zero = Int32.(( + ), ( - ), ( <= ), one, zero)
 
@@ -27,19 +28,19 @@ let rec shift
   =
  fun offset namespace min_index syntax ->
   match syntax with
-  | Variable (name, index) ->
+  | Variable (info, (name_info, name), (index_info, index)) ->
     let index =
       if String.(name = namespace) && min_index <= index then index + offset else index
     in
-    Variable (name, index)
-  | Lambda (name, body) ->
+    Variable (info, (name_info, name), (index_info, index))
+  | Lambda (info, (name_info, name), body) ->
     let min_index = if String.(name = namespace) then min_index + one else min_index in
     let body = shift offset namespace min_index body in
-    Lambda (name, body)
-  | Apply (f, argument) ->
+    Lambda (info, (name_info, name), body)
+  | Apply (info, f, argument) ->
     let f = shift offset namespace min_index f in
     let argument = shift offset namespace min_index argument in
-    Apply (f, argument)
+    Apply (info, f, argument)
 ;;
 
 (** Substitute the given variable name and index with an expression *)
@@ -52,15 +53,16 @@ let rec substitute
   =
  fun expression name index replacement ->
   match expression with
-  | Variable (name', index') ->
+  | Variable (_, (_, name'), (_, index')) ->
     if String.(name' = name) && Int32.(index' = index) then replacement else expression
-  | Lambda (name', body) ->
+  | Lambda (info, (name'_info, name'), body) ->
     let index' = if String.(name = name') then Int32.succ index else index in
     let shifted_body = shift one name' zero replacement in
     let body' = substitute body name index' shifted_body in
-    Lambda (name', body')
-  | Apply (f, arg) ->
-    Apply (substitute f name index replacement, substitute arg name index replacement)
+    Lambda (info, (name'_info, name'), body')
+  | Apply (info, f, arg) ->
+    Apply
+      (info, substitute f name index replacement, substitute arg name index replacement)
 ;;
 
 (** β-reduce an expression *)
@@ -68,15 +70,15 @@ let rec beta_reduce : Syntax.t -> Syntax.t =
  fun syntax ->
   match syntax with
   | Variable _ -> syntax
-  | Lambda (name, body) -> Lambda (name, beta_reduce body)
-  | Apply (f, arg) ->
+  | Lambda (info, name, body) -> Lambda (info, name, beta_reduce body)
+  | Apply (info, f, arg) ->
     (match beta_reduce f with
-    | Syntax.Lambda (name, body) ->
+    | Syntax.Lambda (_, (_, name), body) ->
       let shifted_arg = shift one name zero arg in
       let substituted_body = substitute body name zero shifted_arg in
       let unshifted_body = shift Int32.(-one) name zero substituted_body in
       beta_reduce unshifted_body
-    | f' -> Apply (f', beta_reduce arg))
+    | f' -> Apply (info, f', beta_reduce arg))
 ;;
 
 (** α-reduce an expression *)
@@ -84,16 +86,22 @@ let rec alpha_reduce : Syntax.t -> Syntax.t =
  fun syntax ->
   match syntax with
   | Variable _ -> syntax
-  | Lambda (name, body) ->
+  | Lambda (info, (_, name), body) ->
     let shifted_body = shift one "_" zero body in
-    let substituted_body = substitute shifted_body name zero (Variable ("_", zero)) in
+    let info = Provenance.calculated_here [%here] [ info ] in
+    let substituted_body =
+      substitute shifted_body name zero (Variable (info, (info, "_"), (info, zero)))
+    in
     let unshifted_body = shift Int32.(-one) name zero substituted_body in
     let body' = alpha_reduce unshifted_body in
-    Lambda ("_", body')
-  | Apply (f, arg) -> Apply (alpha_reduce f, alpha_reduce arg)
+    Lambda (info, (info, "_"), body')
+  | Apply (info, f, arg) -> Apply (info, alpha_reduce f, alpha_reduce arg)
 ;;
 
 (** Returns `True` if the two input expressions are α-equivalent *)
 let alpha_equivalent : Syntax.t -> Syntax.t -> bool =
- fun l r -> Syntax.(alpha_reduce l = alpha_reduce r)
+ fun l r ->
+  Nominal.Term.equivalent
+    (l |> alpha_reduce |> Syntax.to_nominal)
+    (r |> alpha_reduce |> Syntax.to_nominal)
 ;;

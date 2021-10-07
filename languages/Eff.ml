@@ -6,8 +6,8 @@ module Base_language = struct
   module Lang =
   [%lvca.abstract_syntax_module
   {|
-string : *  // module Primitive.String
-list : * -> *  // module Lvca_core.List_model.List
+string : *
+list : * -> *
 
 value :=
   | True()
@@ -35,7 +35,8 @@ v_type :=
   | Handler_ty(c_type; c_type)
 
 c_type := Computation(v_type; list string)
-|}]
+|}
+  , { string = "Primitive.String"; list = "Lvca_core.List_model.List" }]
 
   module Type_prec = struct
     type t =
@@ -117,9 +118,15 @@ c_type := Computation(v_type; list string)
   module Parse = struct
     open Lvca_parsing
 
+    let make0, make1, make2, make4, make6 = Provenance.(make0, make1, make2, make4, make6)
     let ident = make1 Single_var.mk Ws.identifier
-    let op_name = No_ws.char '#' *> attach_pos' Ws.identifier
-    let of_list xs = Lvca_core.List_model.of_list ~empty_info:None xs
+
+    let op_name =
+      No_ws.char '#' *> attach_pos' Ws.identifier
+      >>| fun (range, str) -> Provenance.of_range range, str
+    ;;
+
+    let of_list xs = Lvca_core.List_model.of_list xs
 
     let mk_handler_clause computation =
       let open Lang.Handler_clause in
@@ -242,9 +249,9 @@ c_type := Computation(v_type; list string)
               [ (prec_0_v_type
                 >>== fun { value; range } ->
                 choice
-                  [ make1
+                  [ Lvca_parsing.make1
                       (fun ~info c_type ->
-                        let info = Opt_range.union range info in
+                        let info = Opt_range.union range info |> Provenance.of_range in
                         mk_Fun_ty ~info value c_type)
                       (Ws.string "->" *> c_type)
                   ; return ~range value

@@ -26,8 +26,7 @@ module Exp : sig
   val list : loc:Ppxlib.location -> Ppxlib.expression list -> Ppxlib.expression
   val pattern : loc:Ppxlib.location -> Pattern.t -> Ppxlib.expression
   val nominal : loc:Ppxlib.location -> Nominal.Term.t -> Ppxlib.expression
-
-  (* val nonbinding : loc:Ppxlib.location -> Nonbinding.term -> Ppxlib.expression *)
+  val nonbinding : loc:Ppxlib.location -> Nonbinding.term -> Ppxlib.expression
   val language : loc:Ppxlib.location -> Abstract_syntax.t -> Ppxlib.expression
   val single_var : loc:Ppxlib.location -> Single_var.t -> Ppxlib.expression
 end

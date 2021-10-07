@@ -4,10 +4,10 @@ open Lvca_syntax
 module Lang =
 [%lvca.abstract_syntax_module
 {|
-list : * -> *  // module Lvca_core.List_model.List
-string : *  // module Primitive.String
-term : *  // module Nominal.Term
-binding_aware_pattern : *  // TODO module Binding_aware_pattern
+list : * -> *
+string : *
+term : *
+binding_aware_pattern : *
 
 lang := Rows(list row)
 
@@ -20,7 +20,12 @@ directive :=
   | Sep_by(directive; list directive)
   | Sep_by1(directive; list directive)
   | Term(term)
-  |}]
+  |}
+, { list = "Lvca_core.List_model.List"
+  ; string = "Primitive.String"
+  ; term = "Nominal.Term"
+  ; binding_aware_pattern = "Binding_aware_pattern"
+  }]
 
 let hutton_example =
   {|

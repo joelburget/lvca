@@ -5,20 +5,21 @@ open Base
 open Lvca_syntax
 module List_model = Lvca_core.List_model.List
 
+(* TODO?  | Literal(string) *)
 module Lang =
 [%lvca.abstract_syntax_module
 {|
-string : *  // module Primitive.String
-char : *  // module Primitive.Char
-list : * -> *  // module List_model
+string : *
+char : *
+list : * -> *
 
 tex :=
   | Control_seq(string)
   | Token(char)
-  // | Literal(string)
   | Grouped(list tex)
   | Space()
-|}]
+|}
+, { string = "Primitive.String"; char = "Primitive.Char"; list = "List_model" }]
 
 include Lang
 
@@ -1054,7 +1055,7 @@ let rec check tm =
 
 (* TODO: remove? *)
 let trim_spaces tex_list =
-  let go = List.drop_while ~f:(function Tex.Plain.Space -> true | _ -> false) in
+  let go = List.drop_while ~f:(function Tex.Space _ -> true | _ -> false) in
   List.(tex_list |> go |> rev |> go |> rev)
 ;;
 
@@ -1075,7 +1076,7 @@ let ends_with ~f str =
 ;;
 
 let is_ascii c = Char.to_int c < 128
-let rec to_list = function List_model.Plain.Nil -> [] | Cons (x, xs) -> x :: to_list xs
+let rec to_list = function List_model.Nil _ -> [] | Cons (_, x, xs) -> x :: to_list xs
 
 (* characters with special meaning: & % $ # _ { } ~ ^ \ *)
 let is_special_char c = String.mem {|&%$#_{}~^\|} c
@@ -1087,27 +1088,27 @@ let is_token_char c =
 
 let is_control_seq_single_char = String.mem {|@ \,;:!-=><+'`|()[]{}#$%&_|}
 
-let rec pp : Lang.Tex.Plain.t Fmt.t =
+let rec pp : Lang.Tex.t Fmt.t =
  fun ppf -> function
-  | Token c ->
+  | Token (_, (_, c)) ->
     Fmt.char ppf c
     (*
   | Literal str ->
     let str = if starts_with ~f:Char.is_alpha str then " " ^ str else str in
     Fmt.string ppf str
                     *)
-  | Control_seq str ->
+  | Control_seq (_, (_, str)) ->
     let f c = Char.is_alphanum c || not (is_ascii c) in
     let str = if starts_with ~f str then " " ^ str else str in
     Fmt.string ppf str
-  | Grouped texs ->
+  | Grouped (_, texs) ->
     (match texs with
-    | Cons (Grouped texs, Nil) -> pp ppf (Grouped texs)
+    | Cons (_, Grouped (info, texs), Nil _) -> pp ppf (Grouped (info, texs))
     | _ -> Fmt.pf ppf "{%a}" Fmt.(list pp) (to_list texs))
-  | Space -> Fmt.string ppf " "
+  | Space _ -> Fmt.string ppf " "
 ;;
 
-let parse : Lvca_provenance.Opt_range.t Lang.Tex.t list Lvca_parsing.t =
+let parse : Lang.Tex.t list Lvca_parsing.t =
   let open Lvca_parsing in
   let open Lang.Tex in
   let control_seq =
@@ -1117,28 +1118,37 @@ let parse : Lvca_provenance.Opt_range.t Lang.Tex.t list Lvca_parsing.t =
       ~failure_msg:"control sequence"
       [ (many1 (No_ws.satisfy Char.is_alpha)
         >>~ fun range value ->
-        Control_seq (range, (range, String.of_char_list ('\\' :: value))))
+        Control_seq
+          ( Provenance.of_range range
+          , (Provenance.of_range range, String.of_char_list ('\\' :: value)) ))
       ; (No_ws.satisfy is_control_seq_single_char
         >>~ fun range value ->
-        Control_seq (range, (range, String.of_char_list [ '\\'; value ])))
+        Control_seq
+          ( Provenance.of_range range
+          , (Provenance.of_range range, String.of_char_list [ '\\'; value ]) ))
       ]
   in
   let subsuptick =
     [ '_'; '^'; '\''; '~' ]
     |> List.map ~f:(fun c ->
-           No_ws.char c >>~ fun range c -> Control_seq (range, (range, String.of_char c)))
+           No_ws.char c
+           >>~ fun range c ->
+           Control_seq
+             (Provenance.of_range range, (Provenance.of_range range, String.of_char c)))
     |> choice ~failure_msg:"looking for `_`, `^`, `'`, or `~`"
   in
-  let space = whitespace1 >>~ fun range _ -> Space range in
+  let space = whitespace1 >>~ fun range _ -> Space (Provenance.of_range range) in
   let token =
-    No_ws.satisfy is_token_char >>~ fun range value -> Token (range, (range, value))
+    No_ws.satisfy is_token_char
+    >>~ fun range value ->
+    Token (Provenance.of_range range, (Provenance.of_range range, value))
   in
   let atom =
     fix (fun expr ->
         let grouped =
           No_ws.braces (many1 expr)
           >>~ fun range value ->
-          Grouped (range, Lvca_core.List_model.of_list ~empty_info:range value)
+          Grouped (Provenance.of_range range, Lvca_core.List_model.of_list value)
         in
         choice
           ~failure_msg:
@@ -1165,7 +1175,7 @@ let%test_module _ =
 
     let parse_print str =
       match Lvca_parsing.(parse_string parse) str with
-      | Ok tms -> Fmt.pr "%a\n" Fmt.(list ~sep:nop pp) (List.map tms ~f:Lang.Tex.to_plain)
+      | Ok tms -> Fmt.pr "%a\n" Fmt.(list ~sep:nop pp) tms
       | Error msg -> Fmt.pr "%s\n" msg
     ;;
 
@@ -1255,7 +1265,7 @@ let%test_module "control sequences" =
       let go str =
         match Lvca_parsing.(parse_string parse) str with
         | Ok [ tm ] ->
-          let str' = Fmt.str "%a" pp (Lang.Tex.to_plain tm) in
+          let str' = Fmt.str "%a" pp tm in
           if String.(str' = str) then () else Fmt.pr "%s -> %s\n" str str'
         | Ok _tms -> Fmt.pr "TODO: %S parsed to multiple control sequences\n" str
         | Error msg -> Fmt.pr "%s -> %s\n" str msg

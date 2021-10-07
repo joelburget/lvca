@@ -18,7 +18,7 @@ let mk_Name ?(provenance = Provenance.of_here [%here]) name = Name (provenance, 
 let mk_Nil ?(provenance = Provenance.of_here [%here]) () = Nil provenance
 let mk_Cons ?(provenance = Provenance.of_here [%here]) x xs = Cons (provenance, x, xs)
 
-let rec equivalent ~info_eq s1 s2 =
+let rec equivalent ?(info_eq = fun _ _ -> true) s1 s2 =
   match s1, s2 with
   | Ap (i1, name1, ts1), Ap (i2, name2, ts2) ->
     info_eq i1 i2 && String.(name1 = name2) && equal_list ~info_eq ts1 ts2
@@ -47,26 +47,24 @@ module Ap_list = struct
   let rec map ~f = function Nil i -> Nil i | Cons (i, x, xs) -> Cons (i, f x, map ~f xs)
 end
 
-let pp ppf sort =
-  let rec pp need_parens ppf = function
+let pp' ppf sort =
+  let rec pp' need_parens ppf = function
     | Ap (_, name, args) ->
       let args = Ap_list.to_list args in
       if need_parens
-      then Fmt.pf ppf "@[(%s %a)@]" name Fmt.(list (pp true) ~sep:sp) args
-      else Fmt.pf ppf "@[%s %a@]" name Fmt.(list (pp true) ~sep:sp) args
+      then Fmt.pf ppf "@[(%s %a)@]" name Fmt.(list (pp' true) ~sep:sp) args
+      else Fmt.pf ppf "@[%s %a@]" name Fmt.(list (pp' true) ~sep:sp) args
     | Name (_, name) -> Fmt.string ppf name
   in
-  pp false ppf sort
+  pp' false ppf sort
 ;;
 
-(* TODO
-let pp_generic ~open_loc ~close_loc ppf sort =
+let pp ppf sort =
   let info = info sort in
-  open_loc ppf info;
-  pp ppf sort;
-  close_loc ppf info
+  Provenance.open_stag ppf info;
+  pp' ppf sort;
+  Provenance.close_stag ppf info
 ;;
-*)
 
 let rec instantiate arg_mapping = function
   | Name (info, name) ->
@@ -102,17 +100,7 @@ let parse =
         choice
           ~failure_msg:"looking for parens or an identifier"
           [ Ws.parens sort
-          ; (Ws.identifier >>| fun value -> Name (`Empty, value))
-            (*
-          ; (Ws.identifier
-            >>== fun Parse_result.{ value; range } ->
-            option' comment
-            >>|| fun _ ->
-            let value = Name (failwith "TODO", value) in
-            { value (* Name (Lvca_provenance.Commented.{ range; comment }, value) *)
-            ; range
-            })
-                 *)
+          ; (Ws.identifier >>~ fun loc value -> Name (`Located (Parse_located loc), value))
           ]
       in
       many1 atomic_sort
@@ -145,6 +133,8 @@ let%test_module "Sort_Parser" =
         "a"
         (Ap_list.of_list [ mk_Ap "b" (Ap_list.of_list [ mk_Name "c" ]); mk_Name "d" ])
     ;;
+
+    let ( = ) = equivalent ~info_eq:(fun _ _ -> true)
 
     let%test_unit _ = assert (parse_with parse "a" = a)
     let%test_unit _ = assert (parse_with parse "(a)" = a)

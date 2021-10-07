@@ -23,6 +23,6 @@
 (test
  (name test)
  (modules test)
- (libraries lvca_syntax)
+ (libraries lvca_syntax lvca_core)
  (preprocess
   (pps ppx_lvca)))

@@ -13,12 +13,6 @@ module Typing_rule = struct
   ;;
 
   let ( = ) = equivalent ~info_eq:Provenance.( = )
-
-  (*
-  let erase { tm; ty } =
-    { tm = Binding_aware_pattern.erase tm; ty = Binding_aware_pattern.erase ty }
-  ;;
-     *)
 end
 
 module Typing_clause = struct
@@ -29,13 +23,6 @@ module Typing_clause = struct
     | Inference_rule of inference_rule
     | Checking_rule of checking_rule
 
-  (*
-  let erase = function
-    | Inference_rule rule -> Inference_rule (Typing_rule.erase rule)
-    | Checking_rule rule -> Checking_rule (Typing_rule.erase rule)
-  ;;
-     *)
-
   let equivalent ?(info_eq = fun _ _ -> true) a b =
     match a, b with
     | Inference_rule a, Inference_rule b -> Typing_rule.equivalent ~info_eq a b
@@ -44,6 +31,13 @@ module Typing_clause = struct
   ;;
 
   let ( = ) = equivalent ~info_eq:Provenance.( = )
+
+  let pp ppf = function
+    | Inference_rule { tm; ty } ->
+      Fmt.pf ppf "%a => %a" Binding_aware_pattern.pp tm Binding_aware_pattern.pp ty
+    | Checking_rule { tm; ty } ->
+      Fmt.pf ppf "%a <= %a" Binding_aware_pattern.pp tm Binding_aware_pattern.pp ty
+  ;;
 
   module Parse = struct
     open Lvca_parsing
@@ -73,11 +67,23 @@ module Typing_clause = struct
 
   let%test_module _ =
     (module struct
-      let ( = ) = Result.equal (equivalent ~info_eq:(fun _ _ -> true)) String.( = )
+      let ( = ) = equivalent
+      let here = Provenance.of_here [%here]
+
+      let parse_exn =
+        Lvca_parsing.(parse_string (whitespace *> parse)) >> Result.ok_or_failwith
+      ;;
+
+      let print_parse = parse_exn >> Fmt.pr "%a" pp
 
       let%test _ =
-        Lvca_parsing.parse_string parse "tm => ty"
-        = Ok (Inference_rule { tm = Var (`Empty, "tm"); ty = Var (`Empty, "ty") })
+        parse_exn "tm => ty"
+        = Inference_rule { tm = Var (here, "tm"); ty = Var (here, "ty") }
+      ;;
+
+      let%expect_test _ =
+        print_parse "tm => ty";
+        [%expect "tm => ty"]
       ;;
     end)
   ;;
@@ -95,11 +101,16 @@ module Hypothesis = struct
 
   let ( = ) = equivalent ~info_eq:Provenance.( = )
 
-  (*
-  let erase (env, clause) =
-    Map.map env ~f:Binding_aware_pattern.erase, Typing_clause.erase clause
+  let pp ppf (ctx, clause) =
+    let open Fmt in
+    let typed_term ppf (name, pat) =
+      Fmt.pf ppf "%s : %a" name Binding_aware_pattern.pp pat
+    in
+    match Map.to_alist ctx with
+    | [] -> pf ppf "ctx >> %a" Typing_clause.pp clause
+    | ctx ->
+      pf ppf "ctx, %a >> %a" (list ~sep:comma typed_term) ctx Typing_clause.pp clause
   ;;
-     *)
 
   module Parse = struct
     open Lvca_parsing
@@ -143,16 +154,31 @@ module Hypothesis = struct
 
   let%test_module "Parsing" =
     (module struct
+      let here = Provenance.of_here [%here]
+
+      let parse_exn =
+        Lvca_parsing.(parse_string (whitespace *> Parse.t)) >> Result.ok_or_failwith
+      ;;
+
+      let print_parse = parse_exn >> Fmt.pr "%a" pp
+
       let%test _ =
-        match Lvca_parsing.parse_string Parse.t "ctx >> t1 <= bool()" with
-        | Error _ -> false
-        | Ok (m, rule) ->
-          Map.is_empty m
-          && Typing_clause.(
-               equivalent
-                 rule
-                 (Checking_rule
-                    { tm = Var (`Empty, "t1"); ty = Operator (`Empty, "bool", []) }))
+        let m, rule = parse_exn "ctx >> t1 <= bool()" in
+        Map.is_empty m
+        && Typing_clause.(
+             equivalent
+               rule
+               (Checking_rule { tm = Var (here, "t1"); ty = Operator (here, "bool", []) }))
+      ;;
+
+      let%expect_test _ =
+        print_parse "ctx >> t1 <= bool()";
+        [%expect "ctx >> t1 <= bool()"]
+      ;;
+
+      let%expect_test _ =
+        print_parse "ctx, x : t >> t1 => bool()";
+        [%expect "ctx, x : t >> t1 => bool()"]
       ;;
     end)
   ;;
@@ -164,15 +190,6 @@ module Rule = struct
     ; name : string option
     ; conclusion : Hypothesis.t
     }
-
-  (*
-  let erase { hypotheses; name; conclusion } =
-    { hypotheses = List.map hypotheses ~f:Hypothesis.erase
-    ; name
-    ; conclusion = Hypothesis.erase conclusion
-    }
-  ;;
-     *)
 
   let equivalent ?(info_eq = fun _ _ -> true) a b =
     List.equal (Hypothesis.equivalent ~info_eq) a.hypotheses b.hypotheses
@@ -208,8 +225,6 @@ end
 module Typing = struct
   type t = Typing of Nominal.Term.t * Nominal.Term.t
 
-  (* let erase (Typing (t1, t2)) = Typing (Nominal.Term.erase t1, Nominal.Term.erase t2) *)
-
   let equivalent ?(info_eq = fun _ _ -> true) (Typing (t11, t12)) (Typing (t21, t22)) =
     Nominal.Term.equivalent ~info_eq t11 t21 && Nominal.Term.equivalent ~info_eq t12 t22
   ;;
@@ -219,19 +234,15 @@ end
 
 type t = Rule.t list
 
-(* let erase = List.map ~f:Rule.erase *)
 let parse = Lvca_parsing.many Rule.Parse.t
 
 let%test_module "Parsing" =
   (module struct
-    let print_parse desc =
-      let str =
-        Lvca_parsing.(parse_string (whitespace *> parse)) desc
-        |> Result.ok_or_failwith
-        |> Fn.const "parsed"
-      in
-      Stdio.print_string str
+    let parse_exn =
+      Lvca_parsing.(parse_string (whitespace *> parse)) >> Result.ok_or_failwith
     ;;
+
+    let print_parse = parse_exn >> Fn.const "parsed" >> Stdio.print_string
 
     let%expect_test _ =
       print_parse {|

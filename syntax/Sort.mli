@@ -23,7 +23,7 @@ module Ap_list : sig
   val map : f:(t -> t) -> ap_list -> ap_list
 end
 
-val equivalent : info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
+val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
 val ( = ) : t -> t -> bool
 val info : t -> Provenance.t
 val pp : t Fmt.t

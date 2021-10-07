@@ -8,8 +8,8 @@ open Lvca_syntax
 module Lang =
 [%lvca.abstract_syntax_module
 {|
-int32 : *  // module Primitive.Int32
-string : *  // module Primitive.String
+int32 : *
+string : *
 
 doc :=
   | Line()
@@ -20,32 +20,31 @@ doc :=
   | Nest(int32; doc)
   | Align(doc)
   | Alt(doc; doc)
-|}]
+|}
+, { int32 = "Primitive.Int32"; string = "Primitive.String" }]
 
 module Doc = Nominal.Convertible.Extend (Lang.Doc)
 
-let of_nonbinding tm =
-  tm |> Nonbinding.to_nominal |> Doc.of_nominal |> Result.map ~f:Doc.to_plain
-;;
+let of_nonbinding tm = tm |> Nonbinding.to_nominal |> Doc.of_nominal
 
 type semantics = int -> int -> (string * int) list
 
 let rec eval doc i (* current indentation *) c (* current column *) =
   match doc with
-  | Lang.Plain.Line -> [ String.(of_char '\n' ^ make i ' '), i ]
-  | Nil -> [ "", c ]
-  | Cat (d1, d2) ->
+  | Lang.Doc.Line _ -> [ String.(of_char '\n' ^ make i ' '), i ]
+  | Nil _ -> [ "", c ]
+  | Cat (_, d1, d2) ->
     eval d1 i c
     |> List.concat_map ~f:(fun (t1, c1) ->
            eval d2 i c1 |> List.map ~f:(fun (t2, c2) -> t1 ^ t2, c2))
-  | Text s | Spacing s -> [ s, c + String.length s ]
-  | Nest (j, d) -> eval d Int.(i + of_int32_exn j) c
-  | Align d -> eval d c c
-  | Alt (d1, d2) -> eval d1 i c @ eval d2 i c
+  | Text (_, (_, s)) | Spacing (_, (_, s)) -> [ s, c + String.length s ]
+  | Nest (_, (_, j), d) -> eval d Int.(i + of_int32_exn j) c
+  | Align (_, d) -> eval d c c
+  | Alt (_, d1, d2) -> eval d1 i c @ eval d2 i c
 ;;
 
 (* type docs = (int * doc) list *)
-type docs = (int * Doc.Plain.t) list
+type docs = (int * Doc.t) list
 
 type process =
   { cur_indent : int (** current indentation *)
@@ -60,7 +59,7 @@ let rec filtering : process list -> process list = function
   | xs -> xs
 ;;
 
-let render_fast : int -> Doc.Plain.t -> string option =
+let render_fast : int -> Doc.t -> string option =
  fun w doc ->
   let rec rall : int -> string list -> int -> docs -> (string list, process) Either.t list
     =
@@ -72,10 +71,10 @@ let render_fast : int -> Doc.Plain.t -> string option =
       | [] -> [ First ts ] (* done *)
       | (i, d) :: ds ->
         (match d with
-        | Lang.Plain.Nil -> rall p ts k ds
-        | Text s -> rall (p + 1) (s :: ts) (k + String.length s) ds
-        | Spacing s -> rall p (s :: ts) (k + String.length s) ds
-        | Line ->
+        | Lang.Doc.Nil _ -> rall p ts k ds
+        | Text (_, (_, s)) -> rall (p + 1) (s :: ts) (k + String.length s) ds
+        | Spacing (_, (_, s)) -> rall p (s :: ts) (k + String.length s) ds
+        | Line _ ->
           [ Either.Second
               { cur_indent = i
               ; progress = p
@@ -83,10 +82,10 @@ let render_fast : int -> Doc.Plain.t -> string option =
               ; rest = ds
               }
           ]
-        | Cat (x, y) -> rall p ts k ((i, x) :: (i, y) :: ds)
-        | Nest (j, x) -> rall p ts k ((i + Int.of_int32_exn j, x) :: ds)
-        | Alt (x, y) -> rall p ts k ((i, x) :: ds) @ rall p ts k ((i, y) :: ds)
-        | Align x -> rall p ts k ((k, x) :: ds)))
+        | Cat (_, x, y) -> rall p ts k ((i, x) :: (i, y) :: ds)
+        | Nest (_, (_, j), x) -> rall p ts k ((i + Int.of_int32_exn j, x) :: ds)
+        | Alt (_, x, y) -> rall p ts k ((i, x) :: ds) @ rall p ts k ((i, y) :: ds)
+        | Align (_, x) -> rall p ts k ((k, x) :: ds)))
   in
   let rec loop : process list -> string list option =
    fun processes ->
@@ -163,12 +162,12 @@ let%test_module _ =
   abcdefghi |}]
     ;;
 
-    let none = Lvca_provenance.Commented.none
+    let here = Provenance.of_here [%here]
     let space = [%lvca.nonbinding {|Spacing(" ")|}]
     let line = [%lvca.nonbinding {|Line()|}]
-    let text str = Nonbinding.Operator (none, "Text", [ Primitive (none, String str) ])
-    let cat l r = Nonbinding.Operator (none, "Cat", [ l; r ])
-    let alt l r = Nonbinding.Operator (none, "Alt", [ l; r ])
+    let text str = Nonbinding.Operator (here, "Text", [ Primitive (here, String str) ])
+    let cat l r = Nonbinding.Operator (here, "Cat", [ l; r ])
+    let alt l r = Nonbinding.Operator (here, "Alt", [ l; r ])
 
     let cats lst =
       let init = List.last_exn lst in
@@ -181,7 +180,7 @@ let%test_module _ =
     let vsep = sep_list ~sep:line
     let hsep = sep_list ~sep:space
     let counting_list n = List.init n ~f:(fun i -> i |> Int.to_string |> text)
-    let align docs = Nonbinding.Operator (none, "Align", [ docs ])
+    let align docs = Nonbinding.Operator (here, "Align", [ docs ])
 
     let%expect_test _ =
       let tm =

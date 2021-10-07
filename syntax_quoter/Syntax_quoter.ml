@@ -66,16 +66,19 @@ module Exp = struct
       }]
   ;;
 
-  let source_location ~loc (`Implementation pos) =
-    let pos = source_code_position ~loc pos in
-    [%expr `Implementation [%e pos]]
+  let located ~loc = function
+    | Provenance.Located.Source_located p ->
+      [%expr
+        Lvca_syntax.Provenance.Located.Source_located [%e source_code_position ~loc p]]
+    | Parse_located p ->
+      [%expr Lvca_syntax.Provenance.Located.Parse_located [%e opt_range ~loc p]]
   ;;
 
-  let provenance ~loc : Provenance.t -> expression = function
-    | `Empty -> [%expr `Empty]
-    | `Source_located Provenance.{ at } ->
-      [%expr `Source_located Lvca_syntax.Provenance.{ at = [%e source_location ~loc at] }]
-    | `Parse_located r -> [%expr `Parse_located [%e opt_range ~loc r]]
+  let rec provenance ~loc : Provenance.t -> expression = function
+    | `Located x -> [%expr `Located [%e located ~loc x]]
+    | `Calculated (x, ts) ->
+      let ts = List.map ts ~f:(provenance ~loc) in
+      [%expr `Calculated ([%e located ~loc x], [%e list ~loc ts])]
   ;;
 
   module Primitive = struct
@@ -129,7 +132,6 @@ module Exp = struct
     [%expr Lvca_syntax.Nominal.Scope.Scope ([%e pats], [%e tm])]
   ;;
 
-  (*
   let rec nonbinding ~loc = function
     | Nonbinding.Operator (pos, name, tms) ->
       let name_exp = str ~loc name in
@@ -138,7 +140,6 @@ module Exp = struct
         Lvca_syntax.Nonbinding.Operator ([%e provenance ~loc pos], [%e name_exp], [%e tms])]
     | Primitive p -> [%expr Lvca_syntax.Nonbinding.Primitive [%e Primitive.all ~loc p]]
   ;;
-     *)
 
   let rec sort ~loc = function
     | Sort.Ap (pos, name, sorts) ->

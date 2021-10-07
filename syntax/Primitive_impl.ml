@@ -32,12 +32,11 @@ end = struct
 
   let ( = ) = equivalent ~info_eq:Provenance.( = )
 
-  let pp ppf (_i, x) =
-    (* TODO open_loc ppf i; *)
-    Base_plain.pp ppf x
+  let pp ppf (i, x) =
+    Provenance.open_stag ppf i;
+    Base_plain.pp ppf x;
+    Provenance.close_stag ppf i
   ;;
-
-  (* close_loc ppf i *)
 
   let jsonify (_, plain) = Base_plain.jsonify plain
 
@@ -47,7 +46,7 @@ end = struct
 
   let parse =
     let open Lvca_parsing in
-    Base_plain.parse >>~ fun location value -> `Parse_located location, value
+    Base_plain.parse >>~ fun location value -> Provenance.of_range location, value
   ;;
 end
 

@@ -10,6 +10,9 @@ type t =
 
 and scope = Scope of (Provenance.t * string) list * t
 
+val to_nominal : t -> Nominal.Term.t
+val of_nominal : Nominal.Term.t -> (t, Nominal.Term.t) Result.t
+
 module Capture_type : sig
   type t =
     | Bound_var of Sort.t

@@ -3,41 +3,37 @@ open Lvca_provenance
 open Lvca_util
 open Result.Let_syntax
 
-type 'info term =
-  | Operator of 'info * string * 'info term list
-  | Primitive of 'info Primitive.All.t
+type term =
+  | Operator of Provenance.t * string * term list
+  | Primitive of Primitive.All.t
 
-let rec equal ~info_eq t1 t2 =
+let rec equivalent ?(info_eq = fun _ _ -> true) t1 t2 =
   match t1, t2 with
   | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
-    info_eq i1 i2 && String.(name1 = name2) && List.equal (equal ~info_eq) scopes1 scopes2
-  | Primitive i1, Primitive i2 -> Primitive.All.equal ~info_eq i1 i2
+    info_eq i1 i2
+    && String.(name1 = name2)
+    && List.equal (equivalent ~info_eq) scopes1 scopes2
+  | Primitive i1, Primitive i2 -> Primitive.All.equivalent ~info_eq i1 i2
   | _, _ -> false
 ;;
 
-let info = function Operator (i, _, _) -> i | Primitive p -> Primitive.All.info p
+let ( = ) = equivalent ~info_eq:Provenance.( = )
+(* let info = function Operator (i, _, _) -> i | Primitive p -> Primitive.All.info p *)
 
-let rec map_info ~f = function
-  | Operator (i, name, tms) -> Operator (f i, name, List.map tms ~f:(map_info ~f))
-  | Primitive prim -> Primitive (Primitive.All.map_info ~f prim)
-;;
-
-let erase tm = map_info ~f:(Fn.const ()) tm
-
-type 'info de_bruijn_conversion_error =
-  | ScopeEncountered of 'info DeBruijn.scope
-  | VarEncountered of 'info DeBruijn.term
+type de_bruijn_conversion_error =
+  | Scope_encountered of DeBruijn.scope
+  | Var_encountered of DeBruijn.term
 
 let rec of_de_bruijn tm =
   match tm with
   | DeBruijn.Operator (a, tag, scopes) ->
     let%map scopes' = scopes |> List.map ~f:of_de_bruijn_scope |> Result.all in
     Operator (a, tag, scopes')
-  | BoundVar _ | FreeVar _ -> Error (VarEncountered tm)
+  | Bound_var _ | Free_var _ -> Error (Var_encountered tm)
   | Primitive p -> Ok (Primitive p)
 
 and of_de_bruijn_scope = function
-  | First scope -> Error (ScopeEncountered scope)
+  | First scope -> Error (Scope_encountered scope)
   | Second tm -> of_de_bruijn tm
 ;;
 
@@ -49,21 +45,21 @@ let rec to_de_bruijn tm =
   | Primitive p -> Primitive p
 ;;
 
-type 'info nominal_conversion_error =
-  | ScopeEncountered of 'info Nominal.Scope.t
-  | VarEncountered of 'info Nominal.Term.t
+type nominal_conversion_error =
+  | Scope_encountered of Nominal.Scope.t
+  | Var_encountered of Nominal.Term.t
 
 let rec of_nominal tm =
   match tm with
   | Nominal.Term.Operator (a, tag, scopes) ->
     let%map scopes' = scopes |> List.map ~f:of_nominal_scope |> Result.all in
     Operator (a, tag, scopes')
-  | Var _ -> Error (VarEncountered tm)
+  | Var _ -> Error (Var_encountered tm)
   | Primitive p -> Ok (Primitive p)
 
 and of_nominal_scope = function
   | Nominal.Scope.Scope ([], tm) -> of_nominal tm
-  | scope -> Error (ScopeEncountered scope)
+  | scope -> Error (Scope_encountered scope)
 ;;
 
 let rec to_nominal tm =
@@ -75,7 +71,6 @@ let rec to_nominal tm =
 ;;
 
 let pp ppf tm = tm |> to_nominal |> Nominal.Term.pp ppf
-let pp_opt_range ppf tm = tm |> to_nominal |> Nominal.Term.pp_opt_range ppf
 let hash tm = tm |> to_nominal |> Nominal.Term.hash
 
 let rec select_path ~path tm =
@@ -95,22 +90,20 @@ let rec select_path ~path tm =
       | Some tm -> select_path ~path tm))
 ;;
 
-let parse ~comment =
+let parse =
   let open Lvca_parsing in
   fix (fun term ->
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
-        [ (Primitive.All.parse ~comment >>| fun prim -> Primitive prim)
+        [ (Primitive.All.parse >>| fun prim -> Primitive prim)
         ; (Ws.identifier
           >>== fun Parse_result.{ value = ident; range = start; _ } ->
           Ws.parens (sep_end_by (Ws.char ';') term)
-          >>== (fun { value = children; range = finish } ->
-                 option' comment
-                 >>|| fun { value = comment; _ } ->
-                 let pos = Opt_range.union start finish in
+          >>|| (fun { value = children; range = finish } ->
+                 let range = Opt_range.union start finish in
                  Parse_result.
-                   { value = Operator (Commented.{ range = pos; comment }, ident, children)
-                   ; range = pos
+                   { value = Operator (Provenance.of_range range, ident, children)
+                   ; range
                    })
           <?> "term body")
         ])
@@ -118,10 +111,10 @@ let parse ~comment =
 ;;
 
 module type Convertible_s = sig
-  include Language_object_intf.S with type 'info t = 'info term
+  include Language_object_intf.S with type t = term
 
-  val of_nonbinding : 'info term -> ('info t, 'info term) Result.t
-  val to_nonbinding : 'info t -> 'info term
+  val of_nonbinding : term -> (t, term) Result.t
+  val to_nonbinding : t -> term
 end
 
 module Json = struct
@@ -136,7 +129,7 @@ module Json = struct
   let rec unjsonify = function
     | Array [| String "o"; String tag; Array tms |] ->
       let%map tms = tms |> Array.to_list |> List.map ~f:unjsonify |> Option.all in
-      Operator ((), tag, tms)
+      Operator (Provenance.of_here [%here], tag, tms)
     | Array [| String "p"; prim |] ->
       let%map prim = Primitive.All.unjsonify prim in
       Primitive prim

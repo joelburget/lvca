@@ -20,19 +20,18 @@ module Kind = struct
   let ( = ) = equivalent ~info_eq:Provenance.( = )
   let info (Kind (i, _)) = i
 
-  let pp ppf (Kind (_info, k)) =
-    (* TODO open_loc ppf info; *)
-    Fmt.(list ~sep:(any " -> ") (any "*")) ppf (List.init k ~f:(Fn.const ()))
+  let pp ppf (Kind (info, k)) =
+    Provenance.open_stag ppf info;
+    Fmt.(list ~sep:(any " -> ") (any "*")) ppf (List.init k ~f:(Fn.const ()));
+    Provenance.close_stag ppf info
   ;;
-
-  (* close_loc ppf info *)
 
   module Parse = struct
     open Lvca_parsing
 
     let t =
       sep_by1 (Ws.string "->") (Ws.char '*')
-      >>~ (fun location stars -> Kind (`Parse_located location, List.length stars))
+      >>~ (fun location stars -> Kind (Provenance.of_range location, List.length stars))
       <?> "kind"
     ;;
 
@@ -225,12 +224,11 @@ module Arity = struct
 
   let mk ?(provenance = Provenance.of_here [%here]) valences = Arity (provenance, valences)
 
-  let pp ppf (Arity (_info, valences)) =
-    (* TODO open_loc ppf info; *)
-    Fmt.(parens (list ~sep:semi Valence.pp)) ppf valences
+  let pp ppf (Arity (info, valences)) =
+    Provenance.open_stag ppf info;
+    Fmt.(parens (list ~sep:semi Valence.pp)) ppf valences;
+    Provenance.close_stag ppf info
   ;;
-
-  (* close_loc ppf info *)
 
   let equivalent
       ?(info_eq = fun _ _ -> true)
@@ -255,11 +253,12 @@ module Arity = struct
 
   let%test_module "parsing" =
     (module struct
-      let none = `Empty
+      let none = Provenance.of_here [%here]
       let tm = Sort.Name (none, "tm")
       let tm_v = Valence.Valence ([], tm)
       let integer = Sort.Name (none, "integer")
       let integer_v = Valence.Valence ([], integer)
+      let ( = ) = equivalent
 
       let%test_unit _ =
         assert (test_parse_with parse "(integer)" = Arity (none, [ integer_v ]))
@@ -300,7 +299,7 @@ module Arity = struct
       let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)"
       let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)"
       let%test_unit _ = assert (test_parse_with parse "()" = Arity (none, []))
-      let%test_unit _ = assert (test_parse_with parse "()" = Arity (`Empty, []))
+      let%test_unit _ = assert (test_parse_with parse "()" = Arity (none, []))
     end)
   ;;
 end
@@ -328,27 +327,29 @@ module Operator_def = struct
     List.fold valences ~init:env ~f:Valence.kind_check
   ;;
 
-  let pp ppf (Operator_def (_info, name, arity)) =
-    (* TODO open_loc ppf info; *)
-    Fmt.pf ppf "%s%a" name Arity.pp arity
+  let pp ppf (Operator_def (info, name, arity)) =
+    Provenance.open_stag ppf info;
+    Fmt.pf ppf "%s%a" name Arity.pp arity;
+    Provenance.close_stag ppf info
   ;;
-
-  (* close_loc ppf info *)
 
   let parse =
     let open Lvca_parsing in
     Ws.identifier
     >>= (fun ident ->
           Arity.parse
-          >>~ fun location arity -> Operator_def (`Parse_located location, ident, arity))
+          >>~ fun location arity ->
+          Operator_def (Provenance.of_range location, ident, arity))
     <?> "operator definition"
   ;;
 
   let%test_module "parsing" =
     (module struct
+      let ( = ) = equivalent
+
       let%test_unit _ =
-        let info1 = `Parse_located (Opt_range.mk 0 5) in
-        let info2 = `Parse_located (Opt_range.mk 3 5) in
+        let info1 = Provenance.of_range (Opt_range.mk 0 5) in
+        let info2 = Provenance.of_range (Opt_range.mk 3 5) in
         let parsed = test_parse_with parse "foo()" in
         assert (parsed = Operator_def (info1, "foo", Arity (info2, [])))
       ;;
@@ -622,6 +623,8 @@ let%test_module _ =
             ] ) )
     ;;
 
+    let ( = ) = equivalent
+
     let%test_unit _ =
       let parsed =
         test_parse_with
@@ -698,6 +701,7 @@ let%test_module "Parser" =
     let ty_valence = Valence.Valence ([], ty_sort)
     let foo_sort = Sort.mk_Name "foo"
     let x_sort = Sort.mk_Name "x"
+    let ( = ) = equivalent
 
     let%test _ =
       parse "bool := true() | false()"
@@ -708,13 +712,13 @@ let%test_module "Parser" =
               , Sort_def
                   ( []
                   , [ Operator_def
-                        ( `Parse_located (Opt_range.mk 8 14)
+                        ( Provenance.of_range (Opt_range.mk 8 14)
                         , "true"
-                        , Arity (`Parse_located (Opt_range.mk 12 14), []) )
+                        , Arity (Provenance.of_range (Opt_range.mk 12 14), []) )
                     ; Operator_def
-                        ( `Parse_located (Opt_range.mk 17 24)
+                        ( Provenance.of_range (Opt_range.mk 17 24)
                         , "false"
-                        , Arity (`Parse_located (Opt_range.mk 22 24), []) )
+                        , Arity (Provenance.of_range (Opt_range.mk 22 24), []) )
                     ] ) )
             ]
         }
@@ -786,8 +790,8 @@ let%test_module "Parser" =
       |}
       in
       lang.externals
-      = [ "integer", Kind.Kind (`Parse_located (Opt_range.mk 17 18), 1)
-        ; "list", Kind (`Parse_located (Opt_range.mk 32 38), 2)
+      = [ "integer", Kind.Kind (Provenance.of_range (Opt_range.mk 17 18), 1)
+        ; "list", Kind (Provenance.of_range (Opt_range.mk 32 38), 2)
         ]
     ;;
 

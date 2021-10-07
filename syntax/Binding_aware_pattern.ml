@@ -46,14 +46,44 @@ type t =
 
 and scope = Scope of (Provenance.t * string) list * t
 
+let rec to_nominal = function
+  | Operator (p, name, scopes) ->
+    Nominal.Term.Operator
+      (Provenance.calculated_here [%here] [ p ], name, List.map ~f:scope_to_nominal scopes)
+  | Primitive p -> Primitive p
+  | Var (p, name) -> Var (Provenance.calculated_here [%here] [ p ], name)
+
+and scope_to_nominal (Scope (binders, body)) =
+  let binders = List.map binders ~f:(fun (p, name) -> Pattern.Var (p, name)) in
+  Nominal.Scope.Scope (binders, to_nominal body)
+;;
+
+let rec of_nominal tm =
+  match tm with
+  | Nominal.Term.Operator (p, name, scopes) ->
+    (match scopes |> List.map ~f:scope_of_nominal |> Result.all with
+    | Ok scopes -> Ok (Operator (Provenance.calculated_here [%here] [ p ], name, scopes))
+    | Error _scope -> Error tm)
+  | Primitive p -> Ok (Primitive p)
+  | Var (p, name) -> Ok (Var (Provenance.calculated_here [%here] [ p ], name))
+
+and scope_of_nominal (Nominal.Scope.Scope (binders, body) as scope) =
+  let open Result.Let_syntax in
+  let f = function Pattern.Var (p, name) -> Ok (p, name) | _ -> Error scope in
+  let%bind binders = binders |> List.map ~f |> Result.all in
+  match of_nominal body with
+  | Error _tm -> Error scope
+  | Ok body -> Ok (Scope (binders, body))
+;;
+
 let rec equivalent ?(info_eq = fun _ _ -> true) t1 t2 =
   match t1, t2 with
   | Operator (i1, name1, scopes1), Operator (i2, name2, scopes2) ->
-    Provenance.( = ) i1 i2
+    info_eq i1 i2
     && String.(name1 = name2)
     && List.equal (scope_equivalent ~info_eq) scopes1 scopes2
-  | Primitive p1, Primitive p2 -> Primitive.All.( = ) p1 p2
-  | Var (i1, name1), Var (i2, name2) -> Provenance.( = ) i1 i2 && String.(name1 = name2)
+  | Primitive p1, Primitive p2 -> Primitive.All.equivalent ~info_eq p1 p2
+  | Var (i1, name1), Var (i2, name2) -> info_eq i1 i2 && String.(name1 = name2)
   | _, _ -> false
 
 and scope_equivalent ~info_eq (Scope (names1, t1)) (Scope (names2, t2)) =
@@ -101,19 +131,22 @@ let info = function
 let any, list, string, semi, pf = Fmt.(any, list, string, semi, pf)
 
 let rec pp ppf tm =
-  (*  TODO open_loc ppf (info tm); *)
   match tm with
   | Operator (_, tag, subtms) ->
-    pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi pp_scope) subtms
-  | Var (_, v) -> string ppf v
+    Provenance.open_stag ppf (info tm);
+    pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi pp_scope) subtms;
+    Provenance.close_stag ppf (info tm)
+  | Var (_, v) ->
+    Provenance.open_stag ppf (info tm);
+    string ppf v;
+    Provenance.close_stag ppf (info tm)
   | Primitive p -> Primitive.All.pp ppf p
-(* close_loc ppf (info tm) *)
 
 and pp_scope ppf (Scope (bindings, body)) =
-  let pp_binding ppf (_info, name) =
-    (* open_loc ppf info; *)
-    string ppf name
-    (* close_loc ppf info *)
+  let pp_binding ppf (info, name) =
+    Provenance.open_stag ppf info;
+    string ppf name;
+    Provenance.close_stag ppf info
   in
   match bindings with
   | [] -> pp ppf body
@@ -305,12 +338,14 @@ let parse =
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive.All.parse >>| fun prim -> Primitive prim)
         ; (Ws.identifier
-          >>= fun ident ->
+          >>== fun { range; value = ident } ->
           choice
             [ Ws.(
                 parens (sep_end_by (char ';') slot)
-                >>| fun slots -> Operator (`Empty, ident, slots))
-            ; return (Var (`Empty, ident))
+                >>~ fun range' slots ->
+                let range = Opt_range.union range range' in
+                Operator (Provenance.of_range range, ident, slots))
+            ; return (Var (Provenance.of_range range, ident))
             ])
         ])
   <?> "binding-aware pattern"
@@ -349,10 +384,19 @@ end
 let%test_module "Parsing" =
   (module struct
     let () =
-      Format.set_formatter_stag_functions Range.stag_functions;
+      Format.set_formatter_stag_functions Provenance.stag_functions;
       Format.set_tags true;
       Format.set_mark_tags true
     ;;
+
+    let ( = ) = equivalent
+    let here = Provenance.of_here [%here]
+
+    let parse_exn =
+      Lvca_parsing.(parse_string (whitespace *> parse)) >> Result.ok_or_failwith
+    ;;
+
+    let%test _ = parse_exn "tm " = Var (here, "tm")
 
     let print_parse tm =
       match Lvca_parsing.parse_string parse tm with
@@ -363,7 +407,6 @@ let%test_module "Parsing" =
     let%expect_test _ =
       print_parse {|"str"|};
       [%expect {|
-      "str"
       <{0,5}>"str"</{0,5}>
     |}]
     ;;
@@ -371,7 +414,6 @@ let%test_module "Parsing" =
     let%expect_test _ =
       print_parse {|a()|};
       [%expect {|
-      a()
       <{0,3}>a()</{0,3}>
     |}]
     ;;
@@ -379,7 +421,6 @@ let%test_module "Parsing" =
     let%expect_test _ =
       print_parse {|a(b)|};
       [%expect {|
-      a(b)
       <{0,4}>a(<{2,3}>b</{2,3}>)</{0,4}>
     |}]
     ;;
@@ -387,9 +428,7 @@ let%test_module "Parsing" =
     let%expect_test _ =
       print_parse {|a(b;c)|};
       (*0123456*)
-      [%expect
-        {|
-      a(b; c)
+      [%expect {|
       <{0,6}>a(<{2,3}>b</{2,3}>; <{4,5}>c</{4,5}>)</{0,6}>
     |}]
     ;;
@@ -399,7 +438,6 @@ let%test_module "Parsing" =
       (*012345678901*)
       [%expect
         {|
-      a(b; c; d; e)
       <{0,11}>a(<{2,3}>b</{2,3}>; <{4,5}>c</{4,5}>; <{6,7}>d</{6,7}>; <{8,9}>e</{8,9}>)</{0,11}>
     |}]
     ;;
@@ -409,7 +447,6 @@ let%test_module "Parsing" =
       (*012345678901*)
       [%expect
         {|
-      a(b. c. d; e)
       <{0,11}>a(<{2,3}>b</{2,3}>. <{4,5}>c</{4,5}>. <{6,7}>d</{6,7}>; <{8,9}>e</{8,9}>)</{0,11}>
     |}]
     ;;
@@ -497,7 +534,7 @@ test := foo(term[term]. term)
 
     let%expect_test _ =
       print_check_pattern "term" {|value(list(cons(a; nil())))|};
-      [%expect {| a: value |}]
+      [%expect {| a: <{76,81}>value</{76,81}> |}]
     ;;
 
     let%expect_test _ =
@@ -513,17 +550,19 @@ test := foo(term[term]. term)
 
     let%expect_test _ =
       print_check_pattern "term" "lambda(x. body)";
-      [%expect {|
-      body: term
-      x: value
+      [%expect
+        {|
+      body: <{201,205}>term</{201,205}>
+      x: <{194,199}>value</{194,199}>
       |}]
     ;;
 
     let%expect_test _ =
       print_check_pattern "match_line" "match_line(Pattern. body)";
-      [%expect {|
-      Pattern: value[value]
-      body: term
+      [%expect
+        {|
+      Pattern: <{154,159}>value</{154,159}>[<{160,165}>value</{160,165}>]
+      body: <{168,172}>term</{168,172}>
       |}]
     ;;
 
@@ -619,16 +658,18 @@ let%test_module "check" =
 
     let%expect_test _ =
       print_match "lam(a. b)" "lam(x. y)";
-      [%expect {|
-        a -> x
-        b -> y |}]
+      [%expect
+        {|
+        a -> <syntax/Nominal.ml:18:418>x</syntax/Nominal.ml:18:418>
+        b -> <syntax/Nominal.ml:18:418>y</syntax/Nominal.ml:18:418> |}]
     ;;
 
     let%expect_test _ =
       print_match "match(a. b)" "match(foo(bar(); baz()). x)";
-      [%expect {|
-        a -> foo(bar(); baz())
-        b -> x |}]
+      [%expect
+        {|
+        a -> <syntax/Nominal.ml:14:302>foo(<syntax/Nominal.ml:14:302>bar()</syntax/Nominal.ml:14:302>; <syntax/Nominal.ml:14:302>baz()</syntax/Nominal.ml:14:302>)</syntax/Nominal.ml:14:302>
+        b -> <syntax/Nominal.ml:18:418>x</syntax/Nominal.ml:18:418> |}]
     ;;
   end)
 ;;
