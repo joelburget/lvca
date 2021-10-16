@@ -34,11 +34,15 @@ module Located : sig
   val pp : t Fmt.t
 end
 
-(* A term is either written directly or computed from others *)
+(** A term is:
+
+    - written directly
+    - computed from others
+    - or, indexed (a reference to some external data) *)
 type t =
-  [ `Located of Located.t
-  | `Calculated of Located.t * t list
-  ]
+  | Located of Located.t
+  | Calculated of Located.t * t list
+  | Indexed of int
 
 val calculated_here : Source_code_position.t -> t list -> t
 val of_here : Source_code_position.t -> t

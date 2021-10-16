@@ -464,7 +464,9 @@ let main () =
         (fun page _model ->
           let page_name =
             match
-              List.find Model.all_pages ~f:(fun page' -> Model.Page.(page' = page))
+              List.find
+                Model.all_pages
+                ~f:(Model.Page.equivalent ~info_eq:Provenance.( = ) page)
             with
             | None -> assert false
             | Some page -> Model.((page_info page).slug)

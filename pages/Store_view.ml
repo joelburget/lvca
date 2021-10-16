@@ -57,9 +57,8 @@ module View = struct
   let adapt_ranges matches =
     let ranges =
       matches
-      (* |> List.filter_map ~f:(fun Commented.{ range; _ } -> range) *)
       |> List.filter_map ~f:(function
-             | `Located (Provenance.Located.Parse_located { range; _ }) -> range
+             | Provenance.Located (Provenance.Located.Parse_located { range; _ }) -> range
              | _ -> None)
       |> Ranges.of_list
     in

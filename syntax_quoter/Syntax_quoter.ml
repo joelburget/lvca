@@ -89,10 +89,11 @@ module Exp = struct
   ;;
 
   let rec provenance ~loc : Provenance.t -> expression = function
-    | `Located x -> [%expr `Located [%e located ~loc x]]
-    | `Calculated (x, ts) ->
+    | Located x -> [%expr Lvca_syntax.Provenance.Located [%e located ~loc x]]
+    | Calculated (x, ts) ->
       let ts = List.map ts ~f:(provenance ~loc) in
-      [%expr `Calculated ([%e located ~loc x], [%e list ~loc ts])]
+      [%expr Lvca_syntax.Provenance.Calculated ([%e located ~loc x], [%e list ~loc ts])]
+    | Indexed i -> [%expr Lvca_syntax.Provenance.Indexed [%e int ~loc i]]
   ;;
 
   module Primitive = struct

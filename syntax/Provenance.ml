@@ -55,31 +55,33 @@ end
 
 (* A term is either written directly or computed from others *)
 type t =
-  [ `Located of Located.t
-  | `Calculated of Located.t * t list
-  ]
+  | Located of Located.t
+  | Calculated of Located.t * t list
+  | Indexed of int
 
 type Stdlib.Format.stag += Stag of t
 
 let open_stag ppf rng = Stdlib.Format.pp_open_stag ppf (Stag rng)
 let close_stag ppf _ = Stdlib.Format.pp_close_stag ppf ()
-let calculated_here here provs = `Calculated (Located.Source_located here, provs)
-let of_here here = `Located (Located.Source_located here)
+let calculated_here here provs = Calculated (Located.Source_located here, provs)
+let of_here here = Located (Located.Source_located here)
 
 let of_range ?(input = Parse_input.Input_unknown) range =
-  `Located (Located.Parse_located { input; range })
+  Located (Located.Parse_located { input; range })
 ;;
 
 let rec ( = ) a b =
   match a, b with
-  | `Located a, `Located b -> Located.(a = b)
-  | `Calculated (x, xs), `Calculated (y, ys) -> Located.(x = y) && List.equal ( = ) xs ys
+  | Located a, Located b -> Located.(a = b)
+  | Calculated (x, xs), Calculated (y, ys) -> Located.(x = y) && List.equal ( = ) xs ys
+  | Indexed a, Indexed b -> Int.(a = b)
   | _, _ -> false
 ;;
 
 let pp ppf = function
-  | `Located located -> Located.pp ppf located
-  | `Calculated (located, _) -> Located.pp ppf located
+  | Located located -> Located.pp ppf located
+  | Calculated (located, _) -> Located.pp ppf located
+  | Indexed a -> Fmt.pf ppf "%i" a
 ;;
 
 let stag_functions =

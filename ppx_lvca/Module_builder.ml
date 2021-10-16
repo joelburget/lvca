@@ -37,7 +37,7 @@ module type Builder_context = sig
 end
 
 let get_range = function
-  | `Located (Provenance.Located.Parse_located { range; _ }) -> range
+  | Provenance.Located (Provenance.Located.Parse_located { range; _ }) -> range
   | _ -> None
 ;;
 
