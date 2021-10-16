@@ -238,59 +238,67 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       print_parse {|"str"|};
-      [%expect {|
-      <{0,5}>"str"</{0,5}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,5} }>"str"</{ input = Input_unknown; range = {0,5} }>
     |}]
     ;;
 
     let%expect_test _ =
       print_parse {|a()|};
-      [%expect {|
-      <{0,3}>a()</{0,3}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,3} }>a()</{ input = Input_unknown; range = {0,3} }>
     |}]
     ;;
 
     let%expect_test _ =
       print_parse {|x|};
-      [%expect {|
-      <{0,1}>x</{0,1}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,1} }>x</{ input = Input_unknown; range = {0,1} }>
     |}]
     ;;
 
     let%expect_test _ =
       print_parse {|_|};
-      [%expect {|
-      <{0,1}>_</{0,1}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,1} }>_</{ input = Input_unknown; range = {0,1} }>
     |}]
     ;;
 
     let%expect_test _ =
       print_parse {|_x|};
-      [%expect {|
-      <{0,2}>_x</{0,2}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,2} }>_x</{ input = Input_unknown; range = {0,2} }>
     |}]
     ;;
 
     let%expect_test _ =
       print_parse {|a(b)|};
-      [%expect {|
-      <{0,4}>a(<{2,3}>b</{2,3}>)</{0,4}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,4} }>a(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>)</{ input = Input_unknown; range = {0,4} }>
     |}]
     ;;
 
     let%expect_test _ =
       print_parse {|a(b;c)|};
       (*0123456*)
-      [%expect {|
-      <{0,6}>a(<{2,3}>b</{2,3}>; <{4,5}>c</{4,5}>)</{0,6}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,6} }>a(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>; <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>)</{ input = Input_unknown; range = {0,6} }>
     |}]
     ;;
 
     let%expect_test _ =
       print_parse {|a(b;c;)|};
       (*01234567*)
-      [%expect {|
-      <{0,7}>a(<{2,3}>b</{2,3}>; <{4,5}>c</{4,5}>)</{0,7}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,7} }>a(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>; <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>)</{ input = Input_unknown; range = {0,7} }>
     |}]
     ;;
 
@@ -299,7 +307,7 @@ let%test_module "Parsing" =
       (*012345678901*)
       [%expect
         {|
-      <{0,11}>a(<{2,3}>b</{2,3}>; <{4,5}>c</{4,5}>; <{6,7}>d</{6,7}>; <{8,9}>e</{8,9}>)</{0,11}>
+      <{ input = Input_unknown; range = {0,11} }>a(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>; <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>; <{ input = Input_unknown; range = {6,7} }>d</{ input = Input_unknown; range = {6,7} }>; <{ input = Input_unknown; range = {8,9} }>e</{ input = Input_unknown; range = {8,9} }>)</{ input = Input_unknown; range = {0,11} }>
     |}]
     ;;
 

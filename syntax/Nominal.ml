@@ -697,7 +697,7 @@ let%test_module "Nominal" =
     let%expect_test _ =
       "foo(a; b; c; 1; 'c')" |> parse_exn |> Term.rename "a" "b" |> pp;
       [%expect
-        {| <syntax/Nominal.ml:14:302>foo(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>c</syntax/Nominal.ml:18:418>; <{13,14}>1</{13,14}>; <{16,19}>'c'</{16,19}>)</syntax/Nominal.ml:14:302> |}]
+        {| <syntax/Nominal.ml:14:302>foo(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>c</syntax/Nominal.ml:18:418>; <{ input = Input_unknown; range = {13,14} }>1</{ input = Input_unknown; range = {13,14} }>; <{ input = Input_unknown; range = {16,19} }>'c'</{ input = Input_unknown; range = {16,19} }>)</syntax/Nominal.ml:14:302> |}]
     ;;
 
     let%expect_test _ =
@@ -733,8 +733,9 @@ let%test_module "TermParser" =
     let%expect_test _ =
       print_parse {|123|};
       (*            0123*)
-      [%expect {|
-      <{0,3}>123</{0,3}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,3} }>123</{ input = Input_unknown; range = {0,3} }>
     |}]
     ;;
 
@@ -769,8 +770,9 @@ let%test_module "TermParser" =
     let%expect_test _ =
       print_parse {|"str"|};
       (*            012345*)
-      [%expect {|
-      <{0,5}>"str"</{0,5}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,5} }>"str"</{ input = Input_unknown; range = {0,5} }>
     |}]
     ;;
 

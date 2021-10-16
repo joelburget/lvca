@@ -406,30 +406,34 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       print_parse {|"str"|};
-      [%expect {|
-      <{0,5}>"str"</{0,5}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,5} }>"str"</{ input = Input_unknown; range = {0,5} }>
     |}]
     ;;
 
     let%expect_test _ =
       print_parse {|a()|};
-      [%expect {|
-      <{0,3}>a()</{0,3}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,3} }>a()</{ input = Input_unknown; range = {0,3} }>
     |}]
     ;;
 
     let%expect_test _ =
       print_parse {|a(b)|};
-      [%expect {|
-      <{0,4}>a(<{2,3}>b</{2,3}>)</{0,4}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,4} }>a(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>)</{ input = Input_unknown; range = {0,4} }>
     |}]
     ;;
 
     let%expect_test _ =
       print_parse {|a(b;c)|};
       (*0123456*)
-      [%expect {|
-      <{0,6}>a(<{2,3}>b</{2,3}>; <{4,5}>c</{4,5}>)</{0,6}>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,6} }>a(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>; <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>)</{ input = Input_unknown; range = {0,6} }>
     |}]
     ;;
 
@@ -438,7 +442,7 @@ let%test_module "Parsing" =
       (*012345678901*)
       [%expect
         {|
-      <{0,11}>a(<{2,3}>b</{2,3}>; <{4,5}>c</{4,5}>; <{6,7}>d</{6,7}>; <{8,9}>e</{8,9}>)</{0,11}>
+      <{ input = Input_unknown; range = {0,11} }>a(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>; <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>; <{ input = Input_unknown; range = {6,7} }>d</{ input = Input_unknown; range = {6,7} }>; <{ input = Input_unknown; range = {8,9} }>e</{ input = Input_unknown; range = {8,9} }>)</{ input = Input_unknown; range = {0,11} }>
     |}]
     ;;
 
@@ -447,7 +451,7 @@ let%test_module "Parsing" =
       (*012345678901*)
       [%expect
         {|
-      <{0,11}>a(<{2,3}>b</{2,3}>. <{4,5}>c</{4,5}>. <{6,7}>d</{6,7}>; <{8,9}>e</{8,9}>)</{0,11}>
+      <{ input = Input_unknown; range = {0,11} }>a(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>. <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>. <{ input = Input_unknown; range = {6,7} }>d</{ input = Input_unknown; range = {6,7} }>; <{ input = Input_unknown; range = {8,9} }>e</{ input = Input_unknown; range = {8,9} }>)</{ input = Input_unknown; range = {0,11} }>
     |}]
     ;;
 
@@ -534,7 +538,8 @@ test := foo(term[term]. term)
 
     let%expect_test _ =
       print_check_pattern "term" {|value(list(cons(a; nil())))|};
-      [%expect {| a: <{76,81}>value</{76,81}> |}]
+      [%expect
+        {| a: <{ input = Input_unknown; range = {76,81} }>value</{ input = Input_unknown; range = {76,81} }> |}]
     ;;
 
     let%expect_test _ =
@@ -552,8 +557,8 @@ test := foo(term[term]. term)
       print_check_pattern "term" "lambda(x. body)";
       [%expect
         {|
-      body: <{201,205}>term</{201,205}>
-      x: <{194,199}>value</{194,199}>
+      body: <{ input = Input_unknown; range = {201,205} }>term</{ input = Input_unknown; range = {201,205} }>
+      x: <{ input = Input_unknown; range = {194,199} }>value</{ input = Input_unknown; range = {194,199} }>
       |}]
     ;;
 
@@ -561,8 +566,8 @@ test := foo(term[term]. term)
       print_check_pattern "match_line" "match_line(Pattern. body)";
       [%expect
         {|
-      Pattern: <{154,159}>value</{154,159}>[<{160,165}>value</{160,165}>]
-      body: <{168,172}>term</{168,172}>
+      Pattern: <{ input = Input_unknown; range = {154,159} }>value</{ input = Input_unknown; range = {154,159} }>[<{ input = Input_unknown; range = {160,165} }>value</{ input = Input_unknown; range = {160,165} }>]
+      body: <{ input = Input_unknown; range = {168,172} }>term</{ input = Input_unknown; range = {168,172} }>
       |}]
     ;;
 
