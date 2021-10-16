@@ -7,7 +7,7 @@ open Document.Lang
 module List_model = Lvca_core.List_model
 module Option_model = Lvca_core.Option_model
 
-type term = unit Doc.t
+type term = Doc.t
 
 let parse = Lvca_languages.Document.parse
 
@@ -63,9 +63,7 @@ Second Term
   ;;
 
   let ( = ) m1 m2 =
-    let term_eq x y =
-      Nominal.Term.equal ~info_eq:Unit.( = ) (Doc.to_nominal x) (Doc.to_nominal y)
-    in
+    let term_eq x y = Nominal.Term.(Doc.to_nominal x = Doc.to_nominal y) in
     String.(m1.input = m2.input) && term_eq m1.result m2.result
   ;;
 end

@@ -100,7 +100,7 @@ let parse =
         choice
           ~failure_msg:"looking for parens or an identifier"
           [ Ws.parens sort
-          ; (Ws.identifier >>~ fun loc value -> Name (`Located (Parse_located loc), value))
+          ; (Ws.identifier >>~ fun loc value -> Name (Provenance.of_range loc, value))
           ]
       in
       many1 atomic_sort

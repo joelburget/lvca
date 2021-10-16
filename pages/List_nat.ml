@@ -1,9 +1,8 @@
-open Lvca_syntax
-
 module Language = struct
   let nat = [%lvca.abstract_syntax "nat := Z() | S(nat)"]
   let list = [%lvca.abstract_syntax "list a := Nil() | Cons(a; list a)"]
 
+  (*
   let rec nat_to_list = function
     | Nonbinding.Operator (_, "Z", []) -> Nonbinding.Operator ((), "Nil", [])
     | Operator (i, "S", [ nat ]) -> Operator ((), "Cons", [ i; nat_to_list nat ])
@@ -15,6 +14,7 @@ module Language = struct
     | Operator ((), "Cons", [ i; list ]) -> Operator (Some i, "S", [ list_to_nat list ])
     | Operator _ | Primitive _ -> failwith "invariant violation"
   ;;
+  *)
 
   (* From this defn, should be able to derive list concatenation *)
   let core_sum =

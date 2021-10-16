@@ -5,13 +5,11 @@ open Lvca_provenance
 open Lvca_syntax
 open Prelude
 
-type term = Opt_range.t Nominal.Term.t
+type term = Nominal.Term.t
 
 let parse_term =
   let open Lvca_parsing in
-  let open Nominal.Term in
-  parse_string
-    (whitespace *> parse' ~comment:c_comment >>| map_info ~f:Commented.get_range)
+  parse_string (whitespace *> Nominal.Term.parse')
 ;;
 
 type lang =
@@ -20,15 +18,12 @@ type lang =
 
 let parser_of = function
   | Lambda -> Lvca_languages.Lambda_calculus.Parse.t
-  | Term ->
-    Lvca_parsing.(
-      Nominal.Term.parse' ~comment:c_comment
-      >>| Nominal.Term.map_info ~f:Commented.get_range)
+  | Term -> Nominal.Term.parse'
 ;;
 
-let term_pretty = Nominal.Term.pp_opt_range
-let lambda_pretty = Lvca_languages.Lambda_calculus.pp_opt_range
-let lambda_ranges_pretty = Lvca_languages.Lambda_calculus.pp_source_ranges
+(* let term_pretty = Nominal.Term.pp *)
+(* let lambda_pretty = Lvca_languages.Lambda_calculus.pp *)
+(* let lambda_ranges_pretty = Lvca_languages.Lambda_calculus.pp *)
 let html_eq = Caml.( = )
 let htmls_eq = List.equal Caml.( = )
 

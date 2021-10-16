@@ -2,7 +2,6 @@ open Base
 open Brr
 open Brr_note
 open Lvca_provenance
-open Lvca_syntax
 open Note
 open Prelude
 
@@ -77,9 +76,6 @@ module View = struct
                match Common.parse_term str with
                | Error msg -> E.never, [ div [ txt' msg ] ]
                | Ok tm ->
-                 let tm =
-                   tm |> Nominal.Term.map_info ~f:(Source_ranges.of_opt_range ~buf)
-                 in
                  let tree_view, tree_selection_e =
                    Tree_view.view_tm ~source_column:false ~range_column:false tm
                  in

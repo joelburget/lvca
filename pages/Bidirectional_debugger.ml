@@ -2,7 +2,6 @@ open Base
 open Brr
 open Brr_note
 open Note
-open Lvca_provenance
 open Lvca_syntax
 open Lvca_bidirectional
 open Lvca_util
@@ -116,23 +115,20 @@ module Term_render_component = struct
   let name = "Term Render"
 
   module Input = struct
-    type t = Opt_range.t Nominal.Term.t -> (El.t, string) Result.t
+    type t = Nominal.Term.t -> (El.t, string) Result.t
   end
 
   module Model = struct
     module Debugger_state = struct
       type t =
-        { parsed : Opt_range.t Nominal.Term.t
-        ; steps : Opt_range.t Bidirectional.Trace_step.t list
+        { parsed : Nominal.Term.t
+        ; steps : Bidirectional.Trace_step.t list
         ; current_step : int
         }
 
       let ( = ) t1 t2 =
-        Nominal.Term.(equal ~info_eq:Opt_range.( = ) t1.parsed t2.parsed)
-        && List.equal
-             (Bidirectional.Trace_step.equal ~info_eq:Opt_range.( = ))
-             t1.steps
-             t2.steps
+        Nominal.Term.(t1.parsed = t2.parsed)
+        && List.equal Bidirectional.Trace_step.( = ) t1.steps t2.steps
         && Int.(t1.current_step = t2.current_step)
       ;;
     end
@@ -140,10 +136,10 @@ module Term_render_component = struct
     type t =
       { abstract_expanded : bool
       ; abstract_input : string
-      ; abstract_parsed : (Opt_range.t Abstract_syntax.t, string) Result.t option
+      ; abstract_parsed : (Abstract_syntax.t, string) Result.t option
       ; statics_expanded : bool
       ; statics_input : string
-      ; statics_parsed : (Opt_range.t Statics.Rule.t list, string) Result.t option
+      ; statics_parsed : (Statics.Rule.t list, string) Result.t option
       ; debugger_expanded : bool
       ; debugger_input : string
       ; debugger_state : (Debugger_state.t, string) Result.t option
@@ -161,15 +157,13 @@ module Term_render_component = struct
       Bool.(t1.abstract_expanded = t2.abstract_expanded)
       && String.(t1.abstract_input = t2.abstract_input)
       && Option.equal
-           (Result.equal (Abstract_syntax.equal Opt_range.( = )) String.( = ))
+           (Result.equal Abstract_syntax.( = ) String.( = ))
            t1.abstract_parsed
            t2.abstract_parsed
       && Bool.(t1.statics_expanded = t2.statics_expanded)
       && String.(t1.statics_input = t2.statics_input)
       && Option.equal
-           (Result.equal
-              (List.equal (Statics.Rule.equal ~info_eq:Opt_range.( = )))
-              String.( = ))
+           (Result.equal (List.equal Statics.Rule.( = )) String.( = ))
            t1.statics_parsed
            t2.statics_parsed
       && Bool.(t1.debugger_expanded = t2.debugger_expanded)
@@ -217,13 +211,7 @@ module Term_render_component = struct
       match action with
       | Action.Abstract_update abstract_input ->
         let abstract_result =
-          Lvca_parsing.(
-            parse_string
-              (whitespace *> Abstract_syntax.parse ~comment:c_comment)
-              abstract_input)
-        in
-        let abstract_result =
-          Result.map ~f:(Abstract_syntax.map_info ~f:Commented.get_range) abstract_result
+          Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse) abstract_input)
         in
         Model.
           { model with
@@ -271,21 +259,14 @@ module Term_render_component = struct
           let handle_trace = Queue.enqueue steps in
           let env = Bidirectional.Env.{ rules; var_types = String.Map.empty } in
           let debugger_state =
-            let parsed =
-              Lvca_parsing.(parse_string (Nominal.Term.parse' ~comment:no_comment) input)
-            in
+            let parsed = Lvca_parsing.(parse_string Nominal.Term.parse' input) in
             match parsed with
             | Error msg ->
               Fmt.pr "failed to parse: %s\n" msg;
               Some (Error msg)
             | Ok tm ->
               Fmt.pr "parsed: %a\n" Nominal.Term.pp tm;
-              let tm = Nominal.Term.map_info ~f:Commented.get_range tm in
-              let (_
-                    : ( Opt_range.t Nominal.Term.t
-                      , Opt_range.t Bidirectional.Check_error.t )
-                      Result.t)
-                =
+              let (_ : (Nominal.Term.t, Bidirectional.Check_error.t) Result.t) =
                 Bidirectional.infer_trace handle_trace env tm
               in
               Some

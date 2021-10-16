@@ -1,11 +1,10 @@
 open Base
 open Lvca_syntax
 open Lvca_util
-open Lvca_provenance
 
 module Content_store = struct
   (** Mapping from hash to content *)
-  type t = (string, string Commented.t Nominal.Term.t) Hashtbl.t
+  type t = (string, Nominal.Term.t) Hashtbl.t
 
   let singleton : t = Hashtbl.create (module String)
   let find = Hashtbl.find singleton
@@ -21,10 +20,7 @@ end
 
 let add_document ~slug ~blob =
   let doc =
-    blob
-    |> Lvca_languages.Document.parse
-    |> Lvca_languages.Document.Lang.Doc.to_nominal
-    |> Nominal.Term.map_info ~f:(fun _ -> Commented.none)
+    blob |> Lvca_languages.Document.parse |> Lvca_languages.Document.Lang.Doc.to_nominal
   in
   let hash = Nominal.Term.hash doc in
   Hashtbl.set Content_store.singleton ~key:hash ~data:doc;

@@ -40,7 +40,7 @@ expr :=
 |}
 , { integer = "Primitive.Integer"; float = "Primitive.Float" }]
 
-open Lang
+include Lang
 
 let rec to_tex expr =
   let open Tex_math.Tex in

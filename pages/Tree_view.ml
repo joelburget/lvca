@@ -323,7 +323,7 @@ and find_outermost_binding_scope ~var_name (Scope (pats, body)) =
 ;;
 
 let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
-    : _ Pattern.t -> unit
+    : Pattern.t -> unit
   =
   let { depth; queue; _ } = render_params in
   function
@@ -369,7 +369,7 @@ let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
   | _ -> failwith "invariant violation: wrong index"
 ;;
 
-let rec render_tm ~render_params ?(suffix = "") : _ Nominal.Term.t -> unit =
+let rec render_tm ~render_params ?(suffix = "") : Nominal.Term.t -> unit =
   let { depth; var_selected_events; queue; _ } = render_params in
   function
   | Nominal.Term.Primitive p ->
@@ -463,7 +463,6 @@ let view_tm
     ?(highlighted_ranges = Source_ranges.empty)
     tm
   =
-  let tm = Nominal.Term.map_info ~f:select_source_range tm in
   (* First, create a stream for all free variables. Actions on them will work
      like normal. *)
   let free_vars = Nominal.Term.free_vars tm in

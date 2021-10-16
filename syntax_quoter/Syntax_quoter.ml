@@ -66,12 +66,26 @@ module Exp = struct
       }]
   ;;
 
+  let parse_input ~loc = function
+    | Provenance.Parse_input.Input_unknown ->
+      [%expr Lvca_syntax.Provenance.Parse_input.Input_unknown]
+    | Buffer_name x ->
+      [%expr Lvca_syntax.Provenance.Parse_input.Buffer_name [%e str ~loc x]]
+    | String x -> [%expr Lvca_syntax.Provenance.Parse_input.String [%e str ~loc x]]
+  ;;
+
+  let parse_located ~loc Provenance.Parse_located.{ input; range } =
+    [%expr
+      Lvca_syntax.Provenance.Parse_located.
+        { input = [%e parse_input ~loc input]; range = [%e opt_range ~loc range] }]
+  ;;
+
   let located ~loc = function
     | Provenance.Located.Source_located p ->
       [%expr
         Lvca_syntax.Provenance.Located.Source_located [%e source_code_position ~loc p]]
     | Parse_located p ->
-      [%expr Lvca_syntax.Provenance.Located.Parse_located [%e opt_range ~loc p]]
+      [%expr Lvca_syntax.Provenance.Located.Parse_located [%e parse_located ~loc p]]
   ;;
 
   let rec provenance ~loc : Provenance.t -> expression = function

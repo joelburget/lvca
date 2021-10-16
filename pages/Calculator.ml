@@ -10,7 +10,7 @@ module Model = struct
   module Evaluation = struct
     type t =
       { input : string
-      ; parsed : Calculator.term
+      ; parsed : Calculator.Expr.t
       ; digits : int signal * int S.set
       }
 

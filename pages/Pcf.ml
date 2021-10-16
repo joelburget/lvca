@@ -1,28 +1,16 @@
 open Base
 open Brr
 open Lvca_provenance
-open Lvca_syntax
 open Note
 open Lvca_languages.Pfpl_pcf
-open Result.Let_syntax
 open Prelude
 
 let ( >> ) = Lvca_util.( >> )
 
-type term = Opt_range.t Provenance.t Exp.t
+type term = Exp.t
 
 let buf = "input"
-
-let parse str =
-  let%map parsed =
-    Lvca_parsing.(
-      parse_string
-        (whitespace *> Exp.parse ~comment:c_comment
-        >>| Exp.map_info ~f:Commented.get_range))
-      str
-  in
-  Exp.map_info ~f:(fun info -> Provenance.Root info) parsed
-;;
+let parse str = Lvca_parsing.(parse_string (whitespace *> Exp.parse)) str
 
 let parsed_to_result = function
   | Ok tm ->
@@ -65,9 +53,10 @@ module Model = struct
   ;;
 
   let ( = ) m1 m2 =
-    let exp_eq = Exp.equal ~info_eq:(Provenance.equal ~info_eq:Opt_range.( = )) in
     let result_eq =
-      Result.equal exp_eq (Lvca_util.Tuple2.equal String.( = ) (Option.equal exp_eq))
+      Result.equal
+        Exp.( = )
+        (Lvca_util.Tuple2.equal String.( = ) (Option.equal Exp.( = )))
     in
     String.(m1.input = m2.input)
     && result_eq m1.result m2.result
@@ -92,12 +81,7 @@ module Controller = struct
 end
 
 let mk_tree_view tm =
-  let nom_tm =
-    tm
-    |> Exp.to_nominal
-    |> Nominal.Term.map_info
-         ~f:(Provenance.get_root_info >> Source_ranges.of_opt_range ~buf)
-  in
+  let nom_tm = Exp.to_nominal tm in
   let tree_view, tree_selection_e =
     Tree_view.view_tm ~source_column:false ~range_column:false nom_tm
   in

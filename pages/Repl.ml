@@ -1,7 +1,6 @@
 open Base
 open Brr
 open Brr_note
-open Lvca_provenance
 open Lvca_syntax
 open Lvca_util
 open Note
@@ -22,23 +21,25 @@ evaluation := Evaluation(string; nominal)
   include Lang.Evaluation
 
   (* TODO: generate this *)
-  let equal ~info_eq (Evaluation (i1, s1, n1)) (Evaluation (i2, s2, n2)) =
+  let equivalent ~info_eq (Evaluation (i1, s1, n1)) (Evaluation (i2, s2, n2)) =
     info_eq i1 i2
-    && Primitive.String.equal ~info_eq s1 s2
-    && Nominal.Term.equal ~info_eq n1 n2
+    && Primitive.String.equivalent ~info_eq s1 s2
+    && Nominal.Term.equivalent ~info_eq n1 n2
   ;;
+
+  let ( = ) = equivalent ~info_eq:Provenance.( = )
 end
 
 module Model = struct
   type t =
-    { evaluations : Opt_range.t Evaluation.t list
+    { evaluations : Evaluation.t list
     ; error_msg : string option
     }
 
   let initial_model = { evaluations = []; error_msg = None }
 
   let ( = ) x y =
-    List.equal (Evaluation.equal ~info_eq:Opt_range.( = )) x.evaluations y.evaluations
+    List.equal Evaluation.( = ) x.evaluations y.evaluations
     && Option.equal String.( = ) x.error_msg y.error_msg
   ;;
 end
@@ -55,8 +56,9 @@ module Controller = struct
     | Evaluate str ->
       (match Common.parse_term str with
       | Ok tm ->
+        let info = Provenance.of_here [%here] in
         Model.
-          { evaluations = Evaluation (None, (None, str), tm) :: evaluations
+          { evaluations = Evaluation (info, (info, str), tm) :: evaluations
           ; error_msg = None
           }
       | Error msg -> { evaluations; error_msg = Some msg })
@@ -81,7 +83,7 @@ module View = struct
         ; th ~at:(classes "w-1/6") []
         ]
     in
-    let row' row_num input_str parsed =
+    let row' row_num input_str tm =
       let delete_button =
         button
           ~at:(classes "inline-block p-1 border-2 border-indigo-900 rounded")
@@ -90,7 +92,6 @@ module View = struct
       let evts =
         Evr.on_el Ev.click (fun _evt -> Action.DeleteRow row_num) delete_button
       in
-      let tm = Nominal.Term.map_info parsed ~f:(Source_ranges.of_opt_range ~buf) in
       let tree_view, _tree_selection_e =
         Tree_view.view_tm ~source_column:false ~range_column:false tm
       in

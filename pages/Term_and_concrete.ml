@@ -35,9 +35,7 @@ module Model = struct
   ;;
 
   let ( = ) m1 m2 =
-    let result_eq =
-      Result.equal (Nominal.Term.equal ~info_eq:Opt_range.( = )) String.( = )
-    in
+    let result_eq = Result.equal Nominal.Term.( = ) String.( = ) in
     String.(m1.input = m2.input)
     && result_eq m1.result m2.result
     && Opt_range.(m1.input_selected = m2.input_selected)
@@ -66,8 +64,8 @@ module Controller = struct
     | Switch_input_lang ->
       let input_lang, formatter =
         match input_lang with
-        | Lambda -> Term, term_pretty
-        | Term -> Lambda, lambda_pretty
+        | Lambda -> Term, Nominal.Term.pp
+        | Term -> Lambda, Lvca_languages.Lambda_calculus.pp
       in
       let input, result =
         match result with
@@ -95,8 +93,8 @@ module View = struct
              in
              let () =
                match result, input_lang with
-               | Ok tm, Lambda -> term_pretty formatter tm
-               | Ok tm, Term -> lambda_pretty formatter tm
+               | Ok tm, Lambda -> Nominal.Term.pp formatter tm
+               | Ok tm, Term -> Lvca_languages.Lambda_calculus.pp formatter tm
                | Error msg, Lambda | Error msg, Term -> Fmt.string formatter msg
              in
              Fmt.flush formatter ();

@@ -32,14 +32,16 @@ let (lazy json_gen) = json_gen
 
 (* primitive *)
 
-let prim_gen : unit Primitive.All.t Crowbar.gen =
+let prov = Provenance.of_here [%here]
+
+let prim_gen : Primitive.All.t Crowbar.gen =
   let open Crowbar in
   let options =
-    [ map [ int ] (fun i -> (), Primitive_impl.All_plain.Integer (Z.of_int i))
+    [ map [ int ] (fun i -> prov, Primitive_impl.All_plain.Integer (Z.of_int i))
       (* TODO: string and float parsing has a couple issues *)
-    ; map [ str_gen ] (fun str -> (), Primitive_impl.All_plain.String str)
+    ; map [ str_gen ] (fun str -> prov, Primitive_impl.All_plain.String str)
       (* ; map [float] (fun f -> PrimFloat f) *)
-    ; map [ char ] (fun c -> (), Primitive_impl.All_plain.Char c)
+    ; map [ char ] (fun c -> prov, Primitive_impl.All_plain.Char c)
     ]
   in
   choose options
@@ -57,16 +59,16 @@ let rec de_bruijn_gen = fun binding_var_count -> lazy Crowbar.(DeBruijn.(
   in
   let subtms = list (choose [subtm_scope; subtm_tms]) in
   let no_bound_var_options =
-    [ map [prim_gen] (fun p -> Primitive ((), p))
-    ; map [str_gen; subtms] (fun name scopes -> Operator ((), name, scopes))
-    ; map [str_gen] (fun name -> FreeVar ((), name))
+    [ map [prim_gen] (fun p -> Primitive (prov, p))
+    ; map [str_gen; subtms] (fun name scopes -> Operator (prov, name, scopes))
+    ; map [str_gen] (fun name -> FreeVar (prov, name))
     ]
   in
   let options = match binding_var_count with
     | 0 -> no_bound_var_options
     | _ ->
       let var_gen = map [range binding_var_count]
-        (fun var_ix -> BoundVar ((), var_ix))
+        (fun var_ix -> BoundVar (prov, var_ix))
       in
       var_gen :: no_bound_var_options
   in
@@ -74,7 +76,7 @@ let rec de_bruijn_gen = fun binding_var_count -> lazy Crowbar.(DeBruijn.(
 
 and de_bruijn_scope_gen = fun binding_var_count -> lazy Crowbar.(
   map [str_gen; list (unlazy (de_bruijn_gen (binding_var_count + 1)))]
-    (fun name tms -> DeBruijn.Scope ((), name, tms))
+    (fun name tms -> DeBruijn.Scope (prov, name, tms))
 )
 
 let lazy de_bruijn_gen = de_bruijn_gen 0 *)
@@ -88,8 +90,8 @@ let pattern_gen =
           choose
             [ map [ prim_gen ] (fun p -> Primitive p)
             ; map [ nonempty_str_gen; list pattern_gen ] (fun name subpats ->
-                  Operator ((), name, subpats))
-            ; map [ nonempty_str_gen ] (fun name -> Var ((), name))
+                  Operator (prov, name, subpats))
+            ; map [ nonempty_str_gen ] (fun name -> Var (prov, name))
             ])))
 ;;
 
@@ -103,8 +105,8 @@ let rec nominal_gen =
          [ map [ prim_gen ] (fun p -> Primitive p)
          ; map
              [ nonempty_str_gen; list (unlazy nominal_scope_gen) ]
-             (fun name scopes -> Operator ((), name, scopes))
-         ; map [ nonempty_str_gen ] (fun name -> Var ((), name))
+             (fun name scopes -> Operator (prov, name, scopes))
+         ; map [ nonempty_str_gen ] (fun name -> Var (prov, name))
          ])
 
 and nominal_scope_gen =
@@ -129,7 +131,7 @@ let term_str_conf tm_str =
 
 (* Limited core generator: only generates nominal terms. *)
 let core_gen =
-  Crowbar.map [ nominal_gen ] (fun tm -> Lvca_core.Lang.Term.Embedded ((), tm))
+  Crowbar.map [ nominal_gen ] (fun tm -> Lvca_core.Lang.Term.Embedded (prov, tm))
 ;;
 
 (* Limitations of parser generator:
@@ -137,7 +139,7 @@ let core_gen =
    - Doesn't generate well-typed or well-bound parsers
  *)
 let parser_gen =
-  let mk_var name = Single_var.{ name; info = () } in
+  let mk_var name = Single_var.{ name; info = prov } in
   Crowbar.(
     Lvca_languages.Parser.Term.(
       Lvca_languages.Parser.Sequence.(
@@ -150,30 +152,31 @@ let parser_gen =
             in
             let rec mk_sequence binders core =
               match binders with
-              | [] -> Empty_sequence ((), core)
+              | [] -> Empty_sequence (prov, core)
               | (Some name, p) :: binders ->
-                Binding ((), p, (mk_var name, mk_sequence binders core))
-              | (None, p) :: binders -> Non_binding ((), p, mk_sequence binders core)
+                Binding (prov, p, (mk_var name, mk_sequence binders core))
+              | (None, p) :: binders -> Non_binding (prov, p, mk_sequence binders core)
             in
             let sequence_gen = map [ list binder_gen; core_gen ] mk_sequence in
             choose
-              [ const (AnyChar ())
-              ; map [ char ] (fun c -> Char ((), ((), c)))
-              ; map [ str_gen ] (fun s -> String ((), ((), s)))
+              [ const (AnyChar prov)
+              ; map [ char ] (fun c -> Char (prov, (prov, c)))
+              ; map [ str_gen ] (fun s -> String (prov, (prov, s)))
               ; map [ ident_gen; core_gen ] (fun ident tm ->
-                    Satisfy ((), ((), ident), tm))
-              ; map [ core_gen ] (mk_Fail ~info:())
+                    Satisfy (prov, (prov, ident), tm))
+              ; map [ core_gen ] (mk_Fail ~info:prov)
               ; map [ ident_gen; parser_gen; parser_gen ] (fun ident p1 p2 ->
-                    mk_Let ~info:() p1 (mk_var ident, p2))
-              ; map [ parser_gen ] (mk_Option ~info:())
-              ; map [ parser_gen; core_gen ] (mk_Count ~info:())
-              ; map [ parser_gen ] (mk_Many ~info:())
-              ; map [ parser_gen ] (mk_Many1 ~info:())
-              ; map [ ident_gen; parser_gen ] (fun ident p -> Fix ((), (mk_var ident, p)))
+                    mk_Let ~info:prov p1 (mk_var ident, p2))
+              ; map [ parser_gen ] (mk_Option ~info:prov)
+              ; map [ parser_gen; core_gen ] (mk_Count ~info:prov)
+              ; map [ parser_gen ] (mk_Many ~info:prov)
+              ; map [ parser_gen ] (mk_Many1 ~info:prov)
+              ; map [ ident_gen; parser_gen ] (fun ident p ->
+                    Fix (prov, (mk_var ident, p)))
               ; map [ parser_gen; parser_gen ] (fun p1 p2 ->
-                    Choice ((), Lvca_core.List_model.of_list ~empty_info:() [ p1; p2 ]))
-              ; map [ sequence_gen ] (mk_Sequence ~info:())
-              ; map [ ident_gen ] (mk_Term_var ~info:())
+                    Choice (prov, Lvca_core.List_model.of_list [ p1; p2 ]))
+              ; map [ sequence_gen ] (mk_Sequence ~info:prov)
+              ; map [ ident_gen ] (mk_Term_var ~info:prov)
               ]))))
 ;;
 

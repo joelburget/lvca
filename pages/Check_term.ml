@@ -1,44 +1,31 @@
 open Base
 open Note
 open Prelude
-open Lvca_provenance
 open Lvca_syntax
 
 let parse_lang lang_str =
-  let parse, map_info = Abstract_syntax.(parse, map_info) in
-  Lvca_parsing.(
-    parse_string
-      (whitespace *> parse ~comment:c_comment >>| map_info ~f:Commented.get_range)
-      lang_str)
+  Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse) lang_str)
 ;;
 
-let parse_term term_str =
-  let parse', map_info = Nominal.Term.(parse', map_info) in
-  Lvca_parsing.(
-    parse_string (parse' ~comment:c_comment >>| map_info ~f:Commented.get_range) term_str)
-;;
+let parse_term term_str = Lvca_parsing.parse_string Nominal.Term.parse' term_str
 
 module Model = struct
   type t =
     { language_str : string
-    ; language_parsed : (Opt_range.t Abstract_syntax.t, string) Result.t
+    ; language_parsed : (Abstract_syntax.t, string) Result.t
     ; term_str : string
-    ; term_parsed : (Opt_range.t Nominal.Term.t, string) Result.t
+    ; term_parsed : (Nominal.Term.t, string) Result.t
     }
 
   let ( = ) t1 t2 =
     String.(t1.language_str = t2.language_str)
     && Result.equal
-         (Abstract_syntax.equal Opt_range.( = ))
+         Abstract_syntax.( = )
          String.( = )
          t1.language_parsed
          t2.language_parsed
     && String.(t1.term_str = t2.term_str)
-    && Result.equal
-         (Nominal.Term.equal ~info_eq:Opt_range.( = ))
-         String.( = )
-         t1.term_parsed
-         t2.term_parsed
+    && Result.equal Nominal.Term.( = ) String.( = ) t1.term_parsed t2.term_parsed
   ;;
 
   let language_str =
@@ -120,10 +107,7 @@ module View = struct
   and ap_list = function Sort.Nil _ -> [] | Cons (_, s, ss) -> sort s :: ap_list ss
 
   let view_check_frame
-      :  ( Opt_range.t
-         , ('info Pattern.t, 'info Nominal.Term.t) Base.Either.t )
-         Check_failure.Frame.t
-      -> El.t
+      : (Pattern.t, Nominal.Term.t) Base.Either.t Check_failure.Frame.t -> El.t
     =
    fun { term; sort = s } ->
     tr
@@ -137,10 +121,7 @@ module View = struct
  ;;
 
   let view_check_failure
-      :  ( Opt_range.t
-         , ('info Pattern.t, 'info Nominal.Term.t) Base.Either.t )
-         Check_failure.t
-      -> El.t
+      : (Pattern.t, Nominal.Term.t) Base.Either.t Check_failure.t -> El.t
     =
    fun { message; stack } ->
     let table_header = thead [ td [ txt' "term" ]; td [ txt' "sort" ] ] in
@@ -169,7 +150,8 @@ module View = struct
              | Common.Evaluate_input str -> Some (Action.Update_term str)
              | _ -> None)
     in
-    let todo_sort = Sort.Ap (None, "term", Nil None) in
+    let info = Provenance.of_here [%here] in
+    let todo_sort = Sort.Ap (info, "term", Nil info) in
     let check_result_s =
       model_s
       |> S.map (fun Model.{ language_parsed; term_parsed; _ } ->

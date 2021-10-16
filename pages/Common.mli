@@ -3,7 +3,7 @@
 open Lvca_provenance
 open Lvca_syntax
 
-type term = Opt_range.t Nominal.Term.t
+type term = Nominal.Term.t
 
 val parse_term : string -> (term, string) Result.t
 
@@ -12,9 +12,10 @@ type lang =
   | Term
 
 val parser_of : lang -> term Lvca_parsing.t
-val term_pretty : Opt_range.t Nominal.Term.t Fmt.t
-val lambda_pretty : Opt_range.t Nominal.Term.t Fmt.t
-val lambda_ranges_pretty : Source_ranges.t Nominal.Term.t Fmt.t
+
+(* val term_pretty : Nominal.Term.t Fmt.t *)
+(* val lambda_pretty : Nominal.Term.t Fmt.t *)
+(* val lambda_ranges_pretty : Nominal.Term.t Fmt.t *)
 val html_eq : Brr.El.t -> Brr.El.t -> bool
 val htmls_eq : Brr.El.t list -> Brr.El.t list -> bool
 

@@ -1,10 +1,12 @@
 open Base
 open Common
+open Lvca_provenance
 open Lvca_syntax
 open Note
 module Tuple2 = Lvca_util.Tuple2
+module Lambda_calculus = Lvca_languages.Lambda_calculus
 
-let eval = Lvca_languages.Lambda_calculus.eval
+let eval = Lambda_calculus.eval
 
 module Model = struct
   module Internal =
@@ -55,9 +57,7 @@ model := Model(string; result term string; lang; result term string)
   ;;
 
   let ( = ) m1 m2 =
-    let result_eq =
-      Result.equal (Nominal.Term.equal ~info_eq:Opt_range.( = )) String.( = )
-    in
+    let result_eq = Result.equal Nominal.Term.( = ) String.( = ) in
     String.(m1.input = m2.input)
     && result_eq m1.parsed_input m2.parsed_input
     && result_eq m1.result m2.result
@@ -67,9 +67,7 @@ model := Model(string; result term string; lang; result term string)
 
   let initial_model =
     let input = {|(\x -> \y -> x) z w|} in
-    let parsed_input =
-      Lvca_parsing.parse_string Lvca_languages.Lambda_calculus.Parse.t input
-    in
+    let parsed_input = Lvca_parsing.parse_string Lambda_calculus.Parse.t input in
     let result = Result.bind parsed_input ~f:eval in
     { input
     ; parsed_input
@@ -87,9 +85,7 @@ module Controller = struct
     let { input; parsed_input; input_lang; _ } = model in
     match action with
     | Evaluate str ->
-      let parsed_input =
-        Lvca_parsing.parse_string Lvca_languages.Lambda_calculus.Parse.t str
-      in
+      let parsed_input = Lvca_parsing.parse_string Lambda_calculus.Parse.t str in
       let result = Result.bind parsed_input ~f:eval in
       { model with parsed_input; result; input_selected = None; output_selected = None }
     | Input_select output_selected ->
@@ -107,8 +103,8 @@ module Controller = struct
     | Switch_input_lang ->
       let input_lang, formatter =
         match input_lang with
-        | Lambda -> Term, term_pretty
-        | Term -> Lambda, lambda_pretty
+        | Lambda -> Term, Nominal.Term.pp
+        | Term -> Lambda, Lambda_calculus.pp
       in
       let input =
         match parsed_input with
@@ -136,13 +132,7 @@ module View = struct
              in
              let () =
                match result with
-               | Ok tm ->
-                 Brr.Console.log
-                   [ Jstr.v
-                       ("tm loc: " ^ Fmt.to_to_string Opt_range.pp (Nominal.Term.info tm))
-                   ];
-                 let tm = Nominal.Term.map_info tm ~f:cvt_loc in
-                 lambda_ranges_pretty formatter tm
+               | Ok tm -> Lambda_calculus.pp formatter tm
                | Error msg -> Fmt.string formatter msg
              in
              Fmt.flush formatter ();

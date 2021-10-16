@@ -24,7 +24,7 @@ module Model = struct
       { success : bool
       ; pre_pos : int
       ; post_pos : int
-      ; parser : Source_ranges.t P.Term.t
+      ; parser : P.Term.t
       ; snapshots : t list
       }
 
@@ -33,7 +33,7 @@ module Model = struct
       && Int.(t1.pre_pos = t2.pre_pos)
       && Int.(t1.post_pos = t2.post_pos)
       && List.equal ( = ) t1.snapshots t2.snapshots
-      && P.Term.equal ~info_eq:Source_ranges.( = ) t1.parser t2.parser
+      && P.Term.(t1.parser = t2.parser)
     ;;
 
     let rec restrict_snapshot : P.Evaluate.trace_snapshot -> t =
@@ -111,11 +111,7 @@ module DebuggerAction = struct
     | ChopStack of int list (** Click on a stack member *)
 end
 
-let parser =
-  let c_comment, ( >>| ) = Lvca_parsing.(c_comment, ( >>| )) in
-  P.Parse.t Lvca_core.Term.(parse ~comment:c_comment >>| map_info ~f:Commented.get_range)
-;;
-
+let parser = P.Parse.t Lvca_core.Term.parse
 let parse_parser = Lvca_parsing.parse_string parser
 
 module Examples = struct
@@ -181,7 +177,6 @@ module Prelude = struct
   let ctx : P.Evaluate.parser_ctx =
     String.Map.of_alist_exn
       [ "alpha", alpha; "digit", digit; "name", name; "literal", literal ]
-    |> Map.map ~f:(P.Term.map_info ~f:(Source_ranges.of_opt_range ~buf:"prelude"))
   ;;
 end
 
@@ -239,7 +234,7 @@ let pp_view ~highlight_s tm fmt =
 ;;
 
 let view_term ~highlight_s tm =
-  let pp_view, tm_selection_e = pp_view ~highlight_s tm Nominal.Term.pp_source_ranges in
+  let pp_view, tm_selection_e = pp_view ~highlight_s tm Nominal.Term.pp in
   let tree_view, tree_selection_e = Tree_view.view_tm tm in
   let view =
     div
@@ -260,7 +255,7 @@ let view_core ~highlight_s core =
 let view_parser ~highlight_s ~success parser =
   let elt, tm_selection_e =
     pp_view ~highlight_s parser (fun ppf tm ->
-        tm |> P.Term.to_nominal |> Nominal.Term.pp_source_ranges ppf)
+        tm |> P.Term.to_nominal |> Nominal.Term.pp ppf)
   in
   El.div ~at:[ class' (if success then "success" else "error") ] [ elt ], tm_selection_e
 ;;
@@ -526,7 +521,6 @@ module View = struct
       let trace = El.div [ txt' "not available: parser failed to parse" ] in
       result, trace, E.never
     | Ok parser ->
-      let parser = P.Term.map_info ~f:(Source_ranges.of_opt_range ~buf:"parser") parser in
       let toplevel_result = Evaluate.parse_direct ~term_ctx ~parser_ctx parser test_str in
       let P.Evaluate.{ didnt_consume_msg; result; snapshot } = toplevel_result in
       let result, select_e =
@@ -563,7 +557,7 @@ module View = struct
       E.log trace_e (fun _ -> show_trace_s |> S.value |> not |> set_show_trace)
     in
     let parser_s =
-      let eq = Result.equal (P.Term.equal ~info_eq:Opt_range.( = )) String.( = ) in
+      let eq = Result.equal P.Term.( = ) String.( = ) in
       parser_str_s |> S.map ~eq parse_parser
     in
     let input_hl_s, set_input_hl = S.create ~eq:Source_ranges.( = ) Source_ranges.empty in
@@ -598,10 +592,7 @@ module View = struct
         parser_s
         |> S.map ~eq:html_eq (function
                | Ok parser ->
-                 parser
-                 |> P.Term.map_info ~f:(Source_ranges.of_opt_range ~buf:"parser")
-                 |> view_parser ~highlight_s:parser_hl_s ~success:true
-                 |> fst
+                 parser |> view_parser ~highlight_s:parser_hl_s ~success:true |> fst
                | Error _ -> pre [ mk_reactive' code (parser_str_s |> S.map txt') ])
         |> mk_reactive' div
     in

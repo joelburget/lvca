@@ -47,7 +47,7 @@ module Sequence = Lang.Sequence
 module Term = struct
   include Lang.Term
 
-  let equivalent ~info_eq a b =
+  let equivalent ?(info_eq = fun _ _ -> true) a b =
     Nominal.Term.equivalent ~info_eq (to_nominal a) (to_nominal b)
   ;;
 
@@ -204,6 +204,7 @@ module Parse = struct
   let arrow = Ws.string "->"
   let attach_pos' p = attach_pos' p >>| fun (range, a) -> Provenance.of_range range, a
   let make0, make1, make2 = Provenance.(make0, make1, make2)
+  let input = Provenance.Parse_input.Buffer_name "input"
 
   let t c_term =
     fix (fun parser ->
@@ -259,7 +260,7 @@ module Parse = struct
                    (lift3
                       (fun name _arr tm -> name, tm)
                       (Ws.identifier
-                      >>~ fun range ident -> Provenance.of_range range, ident)
+                      >>~ fun range ident -> Provenance.of_range ~input range, ident)
                       arrow
                       (Ws.braces c_term)))
             ; make2
@@ -374,9 +375,14 @@ module Evaluate = struct
     }
   ;;
 
+  let input = Provenance.Parse_input.Buffer_name "input"
   let mk_Some tm = Nominal.Term.Operator (Nominal.Term.info tm, "Some", [ Scope ([], tm) ])
   let mk_None range = Nominal.Term.Operator (range, "None", [])
-  let mk_Char pos c = Nominal.Term.Primitive (`Input (pos, pos + 1), Char c)
+
+  let mk_Char pos c =
+    Nominal.Term.Primitive (Provenance.of_range (Opt_range.mk pos (pos + 1)), Char c)
+  ;;
+
   let mk_Error msg = Error (msg, None)
 
   let context_free go =
@@ -408,8 +414,8 @@ module Evaluate = struct
         | None -> Error (Printf.sprintf {|expected: string "%s"|} prefix)
         | Some _str' ->
           let pos' = pos + String.length prefix in
-          let rng = Source_ranges.mk "input" pos pos' in
-          Ok (pos', Nominal.Term.Primitive (rng, String prefix)))
+          let rng = Opt_range.mk pos pos' in
+          Ok (pos', Nominal.Term.Primitive (Provenance.of_range ~input rng, String prefix)))
   ;;
 
   let satisfy name core_term =
@@ -427,14 +433,14 @@ module Evaluate = struct
           then pos, [], err_msg
           else (
             let c = str.[pos] in
-            let rng = Source_ranges.mk "input" pos (pos + 1) in
+            let info = Provenance.of_range ~input (Opt_range.mk pos (pos + 1)) in
             let tm =
               Lvca_core.Lang.Term.Let
-                ( rng
-                , Lvca_core.Lang.Is_rec.No_rec rng
-                , Embedded (rng, Primitive (rng, Char c))
-                , Lvca_core.Option_model.Option.None rng
-                , (Single_var.{ name; info = rng }, core_term) )
+                ( info
+                , Lvca_core.Lang.Is_rec.No_rec info
+                , Embedded (info, Primitive (info, Char c))
+                , Lvca_core.Option_model.Option.None info
+                , (Single_var.{ name; info }, core_term) )
             in
             match Lvca_core.eval_in_ctx term_ctx tm with
             | Ok (Operator (_, "true", [])) -> pos + 1, [], Ok (mk_Char pos c)
@@ -481,16 +487,17 @@ module Evaluate = struct
           let result =
             match result with
             | Ok tm -> mk_Some tm
-            | Error _ -> mk_None Source_ranges.empty
+            | Error _ -> mk_None (Provenance.of_range ~input None)
           in
           pos1, [ snapshot ], Ok result)
     }
   ;;
 
   let mk_list lst =
-    let rng = lst |> List.map ~f:Nominal.Term.info |> Source_ranges.unions in
+    let provs = List.map lst ~f:Nominal.Term.info in
+    let info = Provenance.calculated_here [%here] provs in
     let lst = lst |> List.map ~f:(fun tm -> Nominal.Scope.Scope ([], tm)) in
-    Nominal.Term.Operator (rng, "list", lst)
+    Nominal.Term.Operator (info, "list", lst)
   ;;
 
   let count n_tm parser =
@@ -808,13 +815,7 @@ fix (expr -> choice (
   ;;
 end
 
-let parse_core =
-  let open Lvca_parsing in
-  Lvca_core.Parse.term ~comment:c_comment
-  >>| Lvca_core.Term.map_info ~f:Commented.get_range
-;;
-
-let parse_parser = Lvca_parsing.parse_string (Parse.t parse_core)
+let parse_parser = Lvca_parsing.parse_string (Parse.t Lvca_core.Parse.term)
 
 let%test_module "Parsing" =
   (module struct
@@ -825,7 +826,10 @@ let%test_module "Parsing" =
 
     let parse_print_parser : ?width:int -> string -> unit =
      fun ?width parser_str ->
-      match Lvca_parsing.(parse_string (whitespace *> Parse.t parse_core) parser_str) with
+      match
+        Lvca_parsing.(
+          parse_string (whitespace *> Parse.t Lvca_core.Parse.term) parser_str)
+      with
       | Error msg -> Stdio.print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
         let pre_geom =
@@ -834,7 +838,7 @@ let%test_module "Parsing" =
               Format.set_margin n;
               geom)
         in
-        Fmt.pr "%a\n" pp parser;
+        Fmt.pr "%a\n" Term.pp parser;
         (match pre_geom with
         | None -> ()
         | Some { max_indent; margin } -> Format.set_geometry ~max_indent ~margin)
@@ -1033,15 +1037,18 @@ fix (expr -> (
 module Properties = struct
   open Property_result
 
-  let parse parser_str = Lvca_parsing.parse_string (Parse.t parse_core) parser_str
-  let pp_str p = Fmt.to_to_string pp p
+  let parse parser_str =
+    Lvca_parsing.parse_string (Parse.t Lvca_core.Parse.term) parser_str
+  ;;
+
+  let pp_str p = Fmt.to_to_string Term.pp p
 
   let string_round_trip1 t =
     match t |> pp_str |> parse with
     | Ok t' ->
       Property_result.check
-        Lang.Term.Plain.(Lang.Term.to_plain t' = Lang.Term.to_plain t)
-        (Fmt.str "%a <> %a" pp t' pp t)
+        (Term.equivalent t t')
+        (Fmt.str "%a <> %a" Term.pp t' Term.pp t)
     | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (pp_str t) msg)
   ;;
 

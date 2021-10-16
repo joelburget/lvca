@@ -12,5 +12,5 @@ val view_tm
        (** How many levels of the term to expand and display initially. Fully expanded by
            default. *)
   -> ?highlighted_ranges:Lvca_provenance.Source_ranges.t
-  -> Lvca_provenance.Source_ranges.t Lvca_syntax.Nominal.Term.t
+  -> Lvca_syntax.Nominal.Term.t
   -> Brr.El.t * Lvca_provenance.Source_ranges.t Note.event

@@ -1,3 +1,5 @@
 (executables
  (names main)
+ (preprocess
+  (pps ppx_jane))
  (libraries lvca_syntax lvca_languages crowbar))

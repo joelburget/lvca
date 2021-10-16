@@ -20,9 +20,11 @@ t :=
     |}
   , { string = "Lvca_syntax.Primitive.String" }]
 
-  include Internal.T.Plain
+  open Internal
+  include T
 
-  let initial_model = No_selection
+  let initial_model = No_selection (Provenance.of_here [%here])
+  let ( = ) a b = Nominal.Term.(T.to_nominal a = T.to_nominal b)
 end
 
 module Action = struct
@@ -34,10 +36,11 @@ end
 
 module Controller = struct
   let update (action : Action.t) _model =
+    let here = Provenance.of_here [%here] in
     match action with
-    | Select_tag str -> Model.Selected_tag str
-    | Select_hash str -> Selected_hash str
-    | Select_filter str -> Selected_filter str
+    | Select_tag str -> Model.Selected_tag (here, (here, str))
+    | Select_hash str -> Selected_hash (here, (here, str))
+    | Select_filter str -> Selected_filter (here, (here, str))
   ;;
 end
 
@@ -45,13 +48,8 @@ module View = struct
   let div, h2, h3, li, span, txt', ul = El.(div, h2, h3, li, span, txt', ul)
   let buf = "store"
 
-  let convert_info commented =
-    commented |> Commented.get_range |> Source_ranges.of_opt_range ~buf
-  ;;
-
   let view_tm ?highlighted_ranges tm =
     tm
-    |> Nominal.Term.map_info ~f:convert_info
     |> Tree_view.view_tm ?highlighted_ranges ~source_column:false ~range_column:false
     |> fst
   ;;
@@ -59,7 +57,10 @@ module View = struct
   let adapt_ranges matches =
     let ranges =
       matches
-      |> List.filter_map ~f:(fun Commented.{ range; _ } -> range)
+      (* |> List.filter_map ~f:(fun Commented.{ range; _ } -> range) *)
+      |> List.filter_map ~f:(function
+             | `Located (Provenance.Located.Parse_located { range; _ }) -> range
+             | _ -> None)
       |> Ranges.of_list
     in
     Lvca_util.String.Map.singleton buf ranges
@@ -67,10 +68,7 @@ module View = struct
 
   let find_matches filter_str =
     match
-      Lvca_parsing.(
-        parse_string
-          (whitespace *> Binding_aware_pattern.parse ~comment:no_comment)
-          filter_str)
+      Lvca_parsing.(parse_string (whitespace *> Binding_aware_pattern.parse) filter_str)
     with
     | Error msg ->
       Fmt.pr "failed to parse binding-aware-pattern: %s\n" msg;
@@ -122,12 +120,12 @@ module View = struct
               [ it ]
             in
             function
-            | Model.Selected_tag tag -> go Store.find "tag" tag
-            | Selected_hash hash -> go Store.Content_store.find "hash" hash
-            | Selected_filter str ->
+            | Model.Selected_tag (_, (_, tag)) -> go Store.find "tag" tag
+            | Selected_hash (_, (_, hash)) -> go Store.Content_store.find "hash" hash
+            | Selected_filter (_, (_, str)) ->
               let matches = find_matches str in
               txt' (Fmt.str "filtered results: (%d)" (List.length matches)) :: matches
-            | No_selection -> [ txt' "no selection" ])
+            | No_selection _ -> [ txt' "no selection" ])
       |> mk_reactive div
     in
     let evt : Action.t event = E.select ((input_event :: tag_evts) @ hash_evts) in

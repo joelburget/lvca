@@ -50,7 +50,7 @@ let rec mk_link demo_env label dest (title : _ Option_model.Option.t) attrs =
   in
   Brr.El.a ~at (of_inline demo_env label)
 
-and of_inline : demo_env -> _ Inline.t -> Brr.El.t list =
+and of_inline : demo_env -> Inline.t -> Brr.El.t list =
  fun demo_env inline ->
   Brr.El.(
     let at = mk_attrs (Document.Attrs.inline inline) in
@@ -77,7 +77,7 @@ and of_inline : demo_env -> _ Inline.t -> Brr.El.t list =
       | None -> [ span ~at:err_at [ txt' ("Can't parse inline html: " ^ str) ] ]))
 ;;
 
-let rec of_block : demo_env -> _ Block.t -> Brr.El.t =
+let rec of_block : demo_env -> Block.t -> Brr.El.t =
  fun demo_env block ->
   Brr.El.(
     let at = mk_attrs (Document.Attrs.block block) in
@@ -144,7 +144,7 @@ let rec of_block : demo_env -> _ Block.t -> Brr.El.t =
       | None -> span ~at:err_at [ txt' ("Can't parse html block: " ^ str) ]))
 ;;
 
-let of_doc : ?demo_env:demo_env -> _ Doc.t -> Brr.El.t =
+let of_doc : ?demo_env:demo_env -> Doc.t -> Brr.El.t =
  fun ?(demo_env = Lvca_util.String.Map.empty) -> function
   | Doc (_, blocks) ->
     blocks |> List_model.to_list |> List.map ~f:(of_block demo_env) |> Brr.El.div
