@@ -14,6 +14,17 @@ module Test4 =
             let list =
               function | Types.Nil x0 -> x0 | Types.Cons (x0, _, _) -> x0
           end
+        module Equivalent =
+          struct
+            let rec list ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Nil x0, Types.Nil y0) -> info_eq x0 y0
+              | (Types.Cons (x0, x1, x2), Types.Cons (y0, y1, y2)) ->
+                  (info_eq x0 y0) &&
+                    ((Nominal.Term.equivalent ~info_eq x1 y1) &&
+                       (list ~info_eq x2 y2))
+              | (_, _) -> false
+          end
         module To_nominal =
           struct
             let rec list =
@@ -152,6 +163,7 @@ module Test4 =
           | Cons of Lvca_syntax.Provenance.t * Nominal.Term.t *
           Wrapper.Types.list 
         let info = Wrapper.Info.list
+        let equivalent = Wrapper.Equivalent.list
         let to_nominal = Wrapper.To_nominal.list
         let of_nominal = Wrapper.Of_nominal.list
         let mk_Nil ~info  = Nil info
@@ -255,7 +267,15 @@ module List_model :
           ->
           Lvca_syntax.Nominal.Term.t ->
             ('a_ t, Lvca_syntax.Nominal.Term.t) Result.t
-      val info : _ -> 'a__ t -> Lvca_syntax.Provenance.t
+      val info : _ -> 'a_ t -> Lvca_syntax.Provenance.t
+      val equivalent :
+        (?info_eq:(Lvca_syntax.Provenance.t ->
+                     Lvca_syntax.Provenance.t -> bool)
+           -> 'a_ -> 'a_ -> bool)
+          ->
+          ?info_eq:(Lvca_syntax.Provenance.t ->
+                      Lvca_syntax.Provenance.t -> bool)
+            -> 'a_ t -> 'a_ t -> bool
       val mk_Nil : info:Lvca_syntax.Provenance.t -> 'a t
       val mk_Cons :
         info:Lvca_syntax.Provenance.t -> 'a -> 'a Wrapper.Types.list -> 'a t
@@ -274,6 +294,21 @@ module List_model :
           struct
             let list _a =
               function | Types.Nil x0 -> x0 | Types.Cons (x0, _, _) -> x0
+          end
+        module Equivalent =
+          struct
+            let rec list
+              (a :
+                ?info_eq:(Lvca_syntax.Provenance.t ->
+                            Lvca_syntax.Provenance.t -> bool)
+                  -> _ -> _ -> bool)
+              ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Nil x0, Types.Nil y0) -> info_eq x0 y0
+              | (Types.Cons (x0, x1, x2), Types.Cons (y0, y1, y2)) ->
+                  (info_eq x0 y0) &&
+                    ((a ~info_eq x1 y1) && (list a ~info_eq x2 y2))
+              | (_, _) -> false
           end
         module To_nominal =
           struct
@@ -435,6 +470,7 @@ module List_model :
           | Nil of Lvca_syntax.Provenance.t 
           | Cons of Lvca_syntax.Provenance.t * 'a * 'a Wrapper.Types.list 
         let info = Wrapper.Info.list
+        let equivalent = Wrapper.Equivalent.list
         let to_nominal = Wrapper.To_nominal.list
         let of_nominal = Wrapper.Of_nominal.list
         let mk_Nil ~info  = Nil info
@@ -446,6 +482,7 @@ module List =
     type 'a t
     let to_nominal _ _ = Nominal.Term.Var ((failwith "no provenance"), "")
     let of_nominal _ tm = Error tm
+    let equivalent _a ~info_eq:_  _ _ = true
   end
 module Maybe = List
 module Lang =
@@ -491,6 +528,78 @@ module Lang =
             let mut_a = function | Types.Mut_a (x0, _) -> x0
             and mut_b = function | Types.Mut_b (x0, _) -> x0
             let nat = function | Types.Z x0 -> x0 | Types.S (x0, _) -> x0
+          end
+        module Equivalent =
+          struct
+            let nonempty ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Nonempty (x0, x1, x2), Types.Nonempty (y0, y1, y2)) ->
+                  (info_eq x0 y0) &&
+                    ((Primitive.String.equivalent ~info_eq x1 y1) &&
+                       (List.equivalent Primitive.String.equivalent ~info_eq
+                          x2 y2))
+            let pair
+              (a :
+                ?info_eq:(Lvca_syntax.Provenance.t ->
+                            Lvca_syntax.Provenance.t -> bool)
+                  -> _ -> _ -> bool)
+              (b :
+                ?info_eq:(Lvca_syntax.Provenance.t ->
+                            Lvca_syntax.Provenance.t -> bool)
+                  -> _ -> _ -> bool)
+              ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Pair (x0, x1, x2), Types.Pair (y0, y1, y2)) ->
+                  (info_eq x0 y0) &&
+                    ((a ~info_eq x1 y1) && (b ~info_eq x2 y2))
+            let rec foo ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Foo (x0, x1), Types.Foo (y0, y1)) ->
+                  (info_eq x0 y0) &&
+                    (Primitive.Integer.equivalent ~info_eq x1 y1)
+              | (Types.Bar (x0, (x1, x2, x3)), Types.Bar (y0, (y1, y2, y3)))
+                  ->
+                  (info_eq x0 y0) &&
+                    ((Lvca_syntax.Pattern.equivalent ~info_eq x1 y1) &&
+                       ((Lvca_syntax.Single_var.equivalent ~info_eq x2 y2) &&
+                          (foo ~info_eq x3 y3)))
+              | (Types.Foo_var (i1, n1), Types.Foo_var (i2, n2)) ->
+                  (info_eq i1 i2) && (let open Base.String in n1 = n2)
+              | (_, _) -> false
+            let pair_plus
+              (a :
+                ?info_eq:(Lvca_syntax.Provenance.t ->
+                            Lvca_syntax.Provenance.t -> bool)
+                  -> _ -> _ -> bool)
+              (b :
+                ?info_eq:(Lvca_syntax.Provenance.t ->
+                            Lvca_syntax.Provenance.t -> bool)
+                  -> _ -> _ -> bool)
+              ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.PairPlus (x0, x1, x2, x3), Types.PairPlus
+                 (y0, y1, y2, y3)) ->
+                  (info_eq x0 y0) &&
+                    ((a ~info_eq x1 y1) &&
+                       ((b ~info_eq x2 y2) && (foo ~info_eq x3 y3)))
+            let rec term ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Operator (x0, x1), Types.Operator (y0, y1)) ->
+                  (info_eq x0 y0) && (List.equivalent term ~info_eq x1 y1)
+            let rec mut_a ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Mut_a (x0, x1), Types.Mut_a (y0, y1)) ->
+                  (info_eq x0 y0) && (mut_b ~info_eq x1 y1)
+            and mut_b ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Mut_b (x0, x1), Types.Mut_b (y0, y1)) ->
+                  (info_eq x0 y0) && (mut_a ~info_eq x1 y1)
+            let rec nat ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Z x0, Types.Z y0) -> info_eq x0 y0
+              | (Types.S (x0, x1), Types.S (y0, y1)) ->
+                  (info_eq x0 y0) && (nat ~info_eq x1 y1)
+              | (_, _) -> false
           end
         module To_nominal =
           struct
@@ -1321,6 +1430,7 @@ module Lang =
           Lvca_syntax.Single_var.t * Wrapper.Types.foo) 
           | Foo_var of Lvca_syntax.Provenance.t * string 
         let info = Wrapper.Info.foo
+        let equivalent = Wrapper.Equivalent.foo
         let to_nominal = Wrapper.To_nominal.foo
         let of_nominal = Wrapper.Of_nominal.foo
         let mk_Foo ~info  x_0 = Foo (info, x_0)
@@ -1333,6 +1443,7 @@ module Lang =
           | Z of Lvca_syntax.Provenance.t 
           | S of Lvca_syntax.Provenance.t * Wrapper.Types.nat 
         let info = Wrapper.Info.nat
+        let equivalent = Wrapper.Equivalent.nat
         let to_nominal = Wrapper.To_nominal.nat
         let of_nominal = Wrapper.Of_nominal.nat
         let mk_Z ~info  = Z info
@@ -1343,6 +1454,7 @@ module Lang =
         type ('a, 'b) t = ('a, 'b) Wrapper.Types.pair =
           | Pair of Lvca_syntax.Provenance.t * 'a * 'b 
         let info = Wrapper.Info.pair
+        let equivalent = Wrapper.Equivalent.pair
         let to_nominal = Wrapper.To_nominal.pair
         let of_nominal = Wrapper.Of_nominal.pair
         let mk_Pair ~info  x_0 x_1 = Pair (info, x_0, x_1)
@@ -1353,6 +1465,7 @@ module Lang =
           | PairPlus of Lvca_syntax.Provenance.t * 'a * 'b *
           Wrapper.Types.foo 
         let info = Wrapper.Info.pair_plus
+        let equivalent = Wrapper.Equivalent.pair_plus
         let to_nominal = Wrapper.To_nominal.pair_plus
         let of_nominal = Wrapper.Of_nominal.pair_plus
         let mk_PairPlus ~info  x_0 x_1 x_2 = PairPlus (info, x_0, x_1, x_2)
@@ -1363,6 +1476,7 @@ module Lang =
           | Nonempty of Lvca_syntax.Provenance.t * Primitive.String.t *
           Primitive.String.t List.t 
         let info = Wrapper.Info.nonempty
+        let equivalent = Wrapper.Equivalent.nonempty
         let to_nominal = Wrapper.To_nominal.nonempty
         let of_nominal = Wrapper.Of_nominal.nonempty
         let mk_Nonempty ~info  x_0 x_1 = Nonempty (info, x_0, x_1)
@@ -1372,6 +1486,7 @@ module Lang =
         type t = Wrapper.Types.term =
           | Operator of Lvca_syntax.Provenance.t * Wrapper.Types.term List.t 
         let info = Wrapper.Info.term
+        let equivalent = Wrapper.Equivalent.term
         let to_nominal = Wrapper.To_nominal.term
         let of_nominal = Wrapper.Of_nominal.term
         let mk_Operator ~info  x_0 = Operator (info, x_0)
@@ -1381,6 +1496,7 @@ module Lang =
         type t = Wrapper.Types.mut_a =
           | Mut_a of Lvca_syntax.Provenance.t * Wrapper.Types.mut_b 
         let info = Wrapper.Info.mut_a
+        let equivalent = Wrapper.Equivalent.mut_a
         let to_nominal = Wrapper.To_nominal.mut_a
         let of_nominal = Wrapper.Of_nominal.mut_a
         let mk_Mut_a ~info  x_0 = Mut_a (info, x_0)
@@ -1390,6 +1506,7 @@ module Lang =
         type t = Wrapper.Types.mut_b =
           | Mut_b of Lvca_syntax.Provenance.t * Wrapper.Types.mut_a 
         let info = Wrapper.Info.mut_b
+        let equivalent = Wrapper.Equivalent.mut_b
         let to_nominal = Wrapper.To_nominal.mut_b
         let of_nominal = Wrapper.Of_nominal.mut_b
         let mk_Mut_b ~info  x_0 = Mut_b (info, x_0)
@@ -1419,6 +1536,10 @@ module Ifz_lang :
         Lvca_syntax.Nominal.Term.t ->
           (t, Lvca_syntax.Nominal.Term.t) Result.t
       val info : t -> Lvca_syntax.Provenance.t
+      val equivalent :
+        ?info_eq:(Lvca_syntax.Provenance.t ->
+                    Lvca_syntax.Provenance.t -> bool)
+          -> t -> t -> bool
       val mk_Ifz :
         info:Lvca_syntax.Provenance.t ->
           Wrapper.Types.ifz ->
@@ -1443,6 +1564,20 @@ module Ifz_lang :
               function
               | Types.Ifz (x0, _, (_, _), _) -> x0
               | Types.Ifz_var (info, _) -> info
+          end
+        module Equivalent =
+          struct
+            let rec ifz ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Ifz (x0, x1, (x2, x3), x4), Types.Ifz
+                 (y0, y1, (y2, y3), y4)) ->
+                  (info_eq x0 y0) &&
+                    ((ifz ~info_eq x1 y1) &&
+                       ((Lvca_syntax.Single_var.equivalent ~info_eq x2 y2) &&
+                          ((ifz ~info_eq x3 y3) && (ifz ~info_eq x4 y4))))
+              | (Types.Ifz_var (i1, n1), Types.Ifz_var (i2, n2)) ->
+                  (info_eq i1 i2) && (let open Base.String in n1 = n2)
+              | (_, _) -> false
           end
         module To_nominal =
           struct
@@ -1594,6 +1729,7 @@ module Ifz_lang :
           
           | Ifz_var of Lvca_syntax.Provenance.t * string 
         let info = Wrapper.Info.ifz
+        let equivalent = Wrapper.Equivalent.ifz
         let to_nominal = Wrapper.To_nominal.ifz
         let of_nominal = Wrapper.Of_nominal.ifz
         let mk_Ifz ~info  x_0 x_1 x_2 = Ifz (info, x_0, x_1, x_2)
@@ -1648,6 +1784,70 @@ module List_lang =
             let list_predefined =
               function | Types.List_predefined (x0, _) -> x0
             let list_external = function | Types.List_external (x0, _) -> x0
+          end
+        module Equivalent =
+          struct
+            let rec list
+              (a :
+                ?info_eq:(Lvca_syntax.Provenance.t ->
+                            Lvca_syntax.Provenance.t -> bool)
+                  -> _ -> _ -> bool)
+              ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Nil x0, Types.Nil y0) -> info_eq x0 y0
+              | (Types.Cons (x0, x1, x2), Types.Cons (y0, y1, y2)) ->
+                  (info_eq x0 y0) &&
+                    ((a ~info_eq x1 y1) && (list a ~info_eq x2 y2))
+              | (_, _) -> false
+            let predefined ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Predefined x0, Types.Predefined y0) -> info_eq x0 y0
+            let list_list_predefined_1 ?(info_eq= fun _ -> fun _ -> true)  t1
+              t2 =
+              match (t1, t2) with
+              | (Types.List_list_predefined_1 (x0, x1),
+                 Types.List_list_predefined_1 (y0, y1)) ->
+                  (info_eq x0 y0) && (list (list predefined) ~info_eq x1 y1)
+            let list_list_a
+              (a :
+                ?info_eq:(Lvca_syntax.Provenance.t ->
+                            Lvca_syntax.Provenance.t -> bool)
+                  -> _ -> _ -> bool)
+              ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.List_list_a (x0, x1), Types.List_list_a (y0, y1)) ->
+                  (info_eq x0 y0) && (list (list a) ~info_eq x1 y1)
+            let list_list_predefined_2 ?(info_eq= fun _ -> fun _ -> true)  t1
+              t2 =
+              match (t1, t2) with
+              | (Types.List_list_predefined_2 (x0, x1),
+                 Types.List_list_predefined_2 (y0, y1)) ->
+                  (info_eq x0 y0) && (list_list_a predefined ~info_eq x1 y1)
+            let list_list_string_1 ?(info_eq= fun _ -> fun _ -> true)  t1 t2
+              =
+              match (t1, t2) with
+              | (Types.List_list_string_1 (x0, x1), Types.List_list_string_1
+                 (y0, y1)) ->
+                  (info_eq x0 y0) &&
+                    (list (list Nominal.Term.equivalent) ~info_eq x1 y1)
+            let list_list_string_2 ?(info_eq= fun _ -> fun _ -> true)  t1 t2
+              =
+              match (t1, t2) with
+              | (Types.List_list_string_2 (x0, x1), Types.List_list_string_2
+                 (y0, y1)) ->
+                  (info_eq x0 y0) &&
+                    (list_list_a Nominal.Term.equivalent ~info_eq x1 y1)
+            let list_predefined ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.List_predefined (x0, x1), Types.List_predefined
+                 (y0, y1)) ->
+                  (info_eq x0 y0) && (list predefined ~info_eq x1 y1)
+            let list_external ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.List_external (x0, x1), Types.List_external (y0, y1))
+                  ->
+                  (info_eq x0 y0) &&
+                    (list Nominal.Term.equivalent ~info_eq x1 y1)
           end
         module To_nominal =
           struct
@@ -2643,6 +2843,7 @@ module List_lang =
         type t = Wrapper.Types.predefined =
           | Predefined of Lvca_syntax.Provenance.t 
         let info = Wrapper.Info.predefined
+        let equivalent = Wrapper.Equivalent.predefined
         let to_nominal = Wrapper.To_nominal.predefined
         let of_nominal = Wrapper.Of_nominal.predefined
         let mk_Predefined ~info  = Predefined info
@@ -2653,6 +2854,7 @@ module List_lang =
           | Nil of Lvca_syntax.Provenance.t 
           | Cons of Lvca_syntax.Provenance.t * 'a * 'a Wrapper.Types.list 
         let info = Wrapper.Info.list
+        let equivalent = Wrapper.Equivalent.list
         let to_nominal = Wrapper.To_nominal.list
         let of_nominal = Wrapper.Of_nominal.list
         let mk_Nil ~info  = Nil info
@@ -2664,6 +2866,7 @@ module List_lang =
           | List_external of Lvca_syntax.Provenance.t * Nominal.Term.t
           Wrapper.Types.list 
         let info = Wrapper.Info.list_external
+        let equivalent = Wrapper.Equivalent.list_external
         let to_nominal = Wrapper.To_nominal.list_external
         let of_nominal = Wrapper.Of_nominal.list_external
         let mk_List_external ~info  x_0 = List_external (info, x_0)
@@ -2674,6 +2877,7 @@ module List_lang =
           | List_predefined of Lvca_syntax.Provenance.t *
           Wrapper.Types.predefined Wrapper.Types.list 
         let info = Wrapper.Info.list_predefined
+        let equivalent = Wrapper.Equivalent.list_predefined
         let to_nominal = Wrapper.To_nominal.list_predefined
         let of_nominal = Wrapper.Of_nominal.list_predefined
         let mk_List_predefined ~info  x_0 = List_predefined (info, x_0)
@@ -2684,6 +2888,7 @@ module List_lang =
           | List_list_a of Lvca_syntax.Provenance.t * 'a Wrapper.Types.list
           Wrapper.Types.list 
         let info = Wrapper.Info.list_list_a
+        let equivalent = Wrapper.Equivalent.list_list_a
         let to_nominal = Wrapper.To_nominal.list_list_a
         let of_nominal = Wrapper.Of_nominal.list_list_a
         let mk_List_list_a ~info  x_0 = List_list_a (info, x_0)
@@ -2694,6 +2899,7 @@ module List_lang =
           | List_list_string_1 of Lvca_syntax.Provenance.t * Nominal.Term.t
           Wrapper.Types.list Wrapper.Types.list 
         let info = Wrapper.Info.list_list_string_1
+        let equivalent = Wrapper.Equivalent.list_list_string_1
         let to_nominal = Wrapper.To_nominal.list_list_string_1
         let of_nominal = Wrapper.Of_nominal.list_list_string_1
         let mk_List_list_string_1 ~info  x_0 = List_list_string_1 (info, x_0)
@@ -2704,6 +2910,7 @@ module List_lang =
           | List_list_string_2 of Lvca_syntax.Provenance.t * Nominal.Term.t
           Wrapper.Types.list_list_a 
         let info = Wrapper.Info.list_list_string_2
+        let equivalent = Wrapper.Equivalent.list_list_string_2
         let to_nominal = Wrapper.To_nominal.list_list_string_2
         let of_nominal = Wrapper.Of_nominal.list_list_string_2
         let mk_List_list_string_2 ~info  x_0 = List_list_string_2 (info, x_0)
@@ -2714,6 +2921,7 @@ module List_lang =
           | List_list_predefined_1 of Lvca_syntax.Provenance.t *
           Wrapper.Types.predefined Wrapper.Types.list Wrapper.Types.list 
         let info = Wrapper.Info.list_list_predefined_1
+        let equivalent = Wrapper.Equivalent.list_list_predefined_1
         let to_nominal = Wrapper.To_nominal.list_list_predefined_1
         let of_nominal = Wrapper.Of_nominal.list_list_predefined_1
         let mk_List_list_predefined_1 ~info  x_0 =
@@ -2725,6 +2933,7 @@ module List_lang =
           | List_list_predefined_2 of Lvca_syntax.Provenance.t *
           Wrapper.Types.predefined Wrapper.Types.list_list_a 
         let info = Wrapper.Info.list_list_predefined_2
+        let equivalent = Wrapper.Equivalent.list_list_predefined_2
         let to_nominal = Wrapper.To_nominal.list_list_predefined_2
         let of_nominal = Wrapper.Of_nominal.list_list_predefined_2
         let mk_List_list_predefined_2 ~info  x_0 =
@@ -2760,6 +2969,10 @@ module type Is_rec_sig  =
         Lvca_syntax.Nominal.Term.t ->
           (t, Lvca_syntax.Nominal.Term.t) Result.t
       val info : t -> Lvca_syntax.Provenance.t
+      val equivalent :
+        ?info_eq:(Lvca_syntax.Provenance.t ->
+                    Lvca_syntax.Provenance.t -> bool)
+          -> t -> t -> bool
       val mk_Rec : info:Lvca_syntax.Provenance.t -> t
       val mk_No_rec : info:Lvca_syntax.Provenance.t -> t
     end
@@ -2774,6 +2987,10 @@ module type Is_rec_sig  =
         Lvca_syntax.Nominal.Term.t ->
           (t, Lvca_syntax.Nominal.Term.t) Result.t
       val info : t -> Lvca_syntax.Provenance.t
+      val equivalent :
+        ?info_eq:(Lvca_syntax.Provenance.t ->
+                    Lvca_syntax.Provenance.t -> bool)
+          -> t -> t -> bool
       val mk_Sort : info:Lvca_syntax.Provenance.t -> Sort.t -> t
       val mk_Arrow :
         info:Lvca_syntax.Provenance.t ->
@@ -2788,6 +3005,10 @@ module type Is_rec_sig  =
         Lvca_syntax.Nominal.Term.t ->
           (t, Lvca_syntax.Nominal.Term.t) Result.t
       val info : t -> Lvca_syntax.Provenance.t
+      val equivalent :
+        ?info_eq:(Lvca_syntax.Provenance.t ->
+                    Lvca_syntax.Provenance.t -> bool)
+          -> t -> t -> bool
       val mk_Mut_a :
         info:Lvca_syntax.Provenance.t -> Wrapper.Types.mut_b -> t
     end
@@ -2800,6 +3021,10 @@ module type Is_rec_sig  =
         Lvca_syntax.Nominal.Term.t ->
           (t, Lvca_syntax.Nominal.Term.t) Result.t
       val info : t -> Lvca_syntax.Provenance.t
+      val equivalent :
+        ?info_eq:(Lvca_syntax.Provenance.t ->
+                    Lvca_syntax.Provenance.t -> bool)
+          -> t -> t -> bool
       val mk_Mut_b :
         info:Lvca_syntax.Provenance.t -> Wrapper.Types.mut_a -> t
     end
@@ -2830,7 +3055,15 @@ module Option_model :
           ->
           Lvca_syntax.Nominal.Term.t ->
             ('a_ t, Lvca_syntax.Nominal.Term.t) Result.t
-      val info : _ -> 'a__ t -> Lvca_syntax.Provenance.t
+      val info : _ -> 'a_ t -> Lvca_syntax.Provenance.t
+      val equivalent :
+        (?info_eq:(Lvca_syntax.Provenance.t ->
+                     Lvca_syntax.Provenance.t -> bool)
+           -> 'a_ -> 'a_ -> bool)
+          ->
+          ?info_eq:(Lvca_syntax.Provenance.t ->
+                      Lvca_syntax.Provenance.t -> bool)
+            -> 'a_ t -> 'a_ t -> bool
       val mk_None : info:Lvca_syntax.Provenance.t -> 'a t
       val mk_Some : info:Lvca_syntax.Provenance.t -> 'a -> 'a t
     end
@@ -2848,6 +3081,20 @@ module Option_model :
           struct
             let option _a =
               function | Types.None x0 -> x0 | Types.Some (x0, _) -> x0
+          end
+        module Equivalent =
+          struct
+            let option
+              (a :
+                ?info_eq:(Lvca_syntax.Provenance.t ->
+                            Lvca_syntax.Provenance.t -> bool)
+                  -> _ -> _ -> bool)
+              ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.None x0, Types.None y0) -> info_eq x0 y0
+              | (Types.Some (x0, x1), Types.Some (y0, y1)) ->
+                  (info_eq x0 y0) && (a ~info_eq x1 y1)
+              | (_, _) -> false
           end
         module To_nominal =
           struct
@@ -2951,6 +3198,7 @@ module Option_model :
           | None of Lvca_syntax.Provenance.t 
           | Some of Lvca_syntax.Provenance.t * 'a 
         let info = Wrapper.Info.option
+        let equivalent = Wrapper.Equivalent.option
         let to_nominal = Wrapper.To_nominal.option
         let of_nominal = Wrapper.Of_nominal.option
         let mk_None ~info  = None info
