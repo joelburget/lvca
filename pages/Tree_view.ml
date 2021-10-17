@@ -23,7 +23,7 @@ let div, tbody, table, pre, span, td, tr, thead, txt' =
   El.(div, tbody, table, pre, span, td, tr, thead, txt')
 ;;
 
-module VarStatus = struct
+module Var_status = struct
   type t =
     | Unselected
     | Selected
@@ -72,9 +72,9 @@ let create_e () =
 ;;
 
 type definition_streams =
-  { trigger_upstream_shadow : VarStatus.t -> unit
+  { trigger_upstream_shadow : Var_status.t -> unit
         (** Alert upstream (in an enclosing scope, a var that we're shadowing) to light up *)
-  ; trigger_downstream_shadow : VarStatus.t -> unit
+  ; trigger_downstream_shadow : Var_status.t -> unit
         (** Alert downstream (in an enclosed scope, a var that shadows us) to light up *)
   }
 
@@ -85,7 +85,7 @@ type render_params =
   ; depth : int
         (** How many times we've recursed to a child. Used both when deciding if we should
             render at this depth and for indentation. *)
-  ; var_selected_events : VarStatus.t event' String.Map.t
+  ; var_selected_events : Var_status.t event' String.Map.t
         (** Variables that are in scope. Used to light them up (see [render_var]). *)
   ; queue : (El.t * Source_ranges.t event) Queue.t
         (** Queue of rows that have been rendered. *)
@@ -99,7 +99,7 @@ type expanded = bool
 
 type term_index =
   | Operator_ix of Source_range.t option * expanded signal'
-  | Var_def_ix of Source_range.t option * VarStatus.t event'
+  | Var_def_ix of Source_range.t option * Var_status.t event'
   | Loc_ix of Source_range.t option
 
 let select_source_range = function
@@ -129,7 +129,7 @@ let grid_tmpl ~render_params left loc : El.t * Source_ranges.t event =
     |> Map.to_alist
     (* Highlight background if any variable defined in this scope is selected *)
     |> List.map ~f:(fun (_k, { event; _ }) ->
-           event |> E.map (function VarStatus.Selected -> true | _ -> false))
+           event |> E.map (function Var_status.Selected -> true | _ -> false))
     |> E.select
     |> S.hold ~eq:Bool.( = ) false
   in
@@ -216,10 +216,10 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
   let { event = selected_event; trigger = trigger_selected } = selected_event in
   let classes_s =
     selected_event
-    |> S.hold ~eq:VarStatus.( = ) Unselected
+    |> S.hold ~eq:Var_status.( = ) Unselected
     |> S.map ~eq:Tuple4.Bool.( = ) (fun evt ->
            match evt, var_pos with
-           | VarStatus.Selected, Reference -> true, false, false, false (* reference *)
+           | Var_status.Selected, Reference -> true, false, false, false (* reference *)
            | Selected, Definition _ -> false, true, false, false (* definition *)
            | Shadowed, Definition _ -> false, false, true, false (* upstream shadow *)
            | Shadowing, Definition _ -> false, false, false, true (* downstream shadow *)
@@ -260,7 +260,22 @@ let render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name : unit
 
 let get_suffix ~last_slot = match last_slot with true -> "" | false -> ";"
 
-module Index = struct
+module type Index_s = sig
+  val lookup : Provenance.t -> term_index
+  val pat : Pattern.t -> Pattern.t
+
+  val term
+    :  expanded_depth:default_expanded_depth
+    -> Nominal.Term.t
+    -> Nominal.Term.t * unit event
+
+  val find_outermost_binding
+    :  var_name:string
+    -> Nominal.Term.t
+    -> Var_status.t event' option
+end
+
+module Mk_index () : Index_s = struct
   let hashtbl = Hashtbl.create (module Int)
   let current_ix = ref 0
 
@@ -346,149 +361,158 @@ module Index = struct
   ;;
 end
 
-let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
-    : Pattern.t -> unit
-  =
-  let { depth; queue; _ } = render_params in
-  function
-  | Pattern.Primitive p ->
-    let loc =
-      match p |> Primitive.All.info |> Index.lookup with
-      | Loc_ix loc -> loc
-      | _ -> invariant_violation ~here:[%here] "Expected Loc_ix"
-    in
-    let str = Fmt.str "%a%s" Primitive.All.pp p suffix in
-    Queue.enqueue queue (grid_tmpl ~render_params [ padded_text depth str ] loc)
-  | Var (info, name) ->
-    (match Index.lookup info with
-    | Var_def_ix (loc, selected_event) ->
-      let trigger_upstream_shadow =
-        match Map.find shadowed_var_streams name with
-        | None -> Fn.const ()
-        | Some event_stream -> event_stream.trigger
+module Mk_render (Index : Index_s) = struct
+  let rec render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream
+      : Pattern.t -> unit
+    =
+    let { depth; queue; _ } = render_params in
+    function
+    | Pattern.Primitive p ->
+      let loc =
+        match p |> Primitive.All.info |> Index.lookup with
+        | Loc_ix loc -> loc
+        | _ -> invariant_violation ~here:[%here] "Expected Loc_ix"
       in
-      let trigger_downstream_shadow =
-        match Index.find_outermost_binding downstream ~var_name:name with
-        | None -> Fn.const ()
-        | Some event_stream -> event_stream.trigger
+      let str = Fmt.str "%a%s" Primitive.All.pp p suffix in
+      Queue.enqueue queue (grid_tmpl ~render_params [ padded_text depth str ] loc)
+    | Var (info, name) ->
+      (match Index.lookup info with
+      | Var_def_ix (loc, selected_event) ->
+        let trigger_upstream_shadow =
+          match Map.find shadowed_var_streams name with
+          | None -> Fn.const ()
+          | Some event_stream -> event_stream.trigger
+        in
+        let trigger_downstream_shadow =
+          match Index.find_outermost_binding downstream ~var_name:name with
+          | None -> Fn.const ()
+          | Some event_stream -> event_stream.trigger
+        in
+        let var_pos = Definition { trigger_upstream_shadow; trigger_downstream_shadow } in
+        render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name
+      | _ -> failwith "Expected Var_def_ix")
+    | Operator (info, name, slots) ->
+      (match Index.lookup info with
+      | Loc_ix loc ->
+        (match slots with
+        | [] ->
+          Queue.enqueue
+            queue
+            (grid_tmpl ~render_params [ padded_text depth (name ^ "()" ^ suffix) ] loc)
+        | _ ->
+          let open_elem =
+            grid_tmpl ~render_params [ padded_text depth (name ^ "(") ] loc
+          in
+          Queue.enqueue queue open_elem;
+          let num_slots = List.length slots in
+          List.iteri slots ~f:(fun i pat ->
+              let suffix = get_suffix ~last_slot:(i = num_slots - 1) in
+              let render_params = { render_params with depth = Int.succ depth } in
+              render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream pat);
+          let close_elem =
+            grid_tmpl ~render_params [ padded_text depth (")" ^ suffix) ] loc
+          in
+          Queue.enqueue queue close_elem)
+      | _ -> failwith "Expected Loc_ix")
+  ;;
+
+  let rec term ~render_params ?(suffix = "") : Nominal.Term.t -> unit =
+    let { depth; var_selected_events; queue; _ } = render_params in
+    function
+    | Nominal.Term.Primitive p ->
+      let str = Fmt.str "%a%s" Primitive.All.pp p suffix in
+      let loc =
+        match p |> Primitive.All.info |> Index.lookup with
+        | Loc_ix loc -> loc
+        | _ -> invariant_violation ~here:[%here] "Expected Loc_ix"
       in
-      let var_pos = Definition { trigger_upstream_shadow; trigger_downstream_shadow } in
-      render_var ~render_params ~var_pos ~suffix ~selected_event ~loc ~name
-    | _ -> failwith "Expected Var_def_ix")
-  | Operator (info, name, slots) ->
-    (match Index.lookup info with
-    | Loc_ix loc ->
-      (match slots with
-      | [] ->
-        Queue.enqueue
-          queue
-          (grid_tmpl ~render_params [ padded_text depth (name ^ "()" ^ suffix) ] loc)
-      | _ ->
-        let open_elem = grid_tmpl ~render_params [ padded_text depth (name ^ "(") ] loc in
-        Queue.enqueue queue open_elem;
-        let num_slots = List.length slots in
-        List.iteri slots ~f:(fun i pat ->
-            let suffix = get_suffix ~last_slot:(i = num_slots - 1) in
-            let render_params = { render_params with depth = Int.succ depth } in
-            render_pattern ~render_params ~shadowed_var_streams ~suffix ~downstream pat);
-        let close_elem =
-          grid_tmpl ~render_params [ padded_text depth (")" ^ suffix) ] loc
-        in
-        Queue.enqueue queue close_elem)
-    | _ -> failwith "Expected Loc_ix")
-;;
+      Queue.enqueue queue (grid_tmpl ~render_params [ padded_text depth str ] loc)
+    | Var (info, name) ->
+      (match Index.lookup info with
+      | Loc_ix loc ->
+        let selected_event = Map.find_exn var_selected_events name in
+        render_var ~render_params ~var_pos:Reference ~suffix ~selected_event ~loc ~name
+      | _ -> failwith "expected Loc_ix")
+    | Operator (info, name, scopes) ->
+      (match Index.lookup info with
+      | Operator_ix (loc, expanded_signal) ->
+        let { signal = expanded_s; set_s = set_expanded } = expanded_signal in
+        let button_event, button = Components.chevron_toggle expanded_s in
+        let _sink : Logr.t option = E.log button_event set_expanded in
+        (match scopes, S.value expanded_s with
+        | [], _ ->
+          Queue.enqueue
+            queue
+            (grid_tmpl ~render_params [ padded_text depth (name ^ "()" ^ suffix) ] loc)
+        | _, false ->
+          Queue.enqueue
+            queue
+            (grid_tmpl
+               ~render_params
+               [ padded_text depth (name ^ "("); button; txt' (")" ^ suffix) ]
+               loc)
+        | _, true ->
+          let open_elem =
+            grid_tmpl ~render_params [ padded_text depth (name ^ "("); button ] loc
+          in
+          Queue.enqueue queue open_elem;
+          List.iteri scopes ~f:(fun i ->
+              render_scope ~render_params ~last:(i = List.length scopes - 1));
+          let close_elem =
+            grid_tmpl ~render_params [ padded_text depth (")" ^ suffix) ] loc
+          in
+          Queue.enqueue queue close_elem)
+      | _ -> failwith "Expected Operator_ix")
 
-let rec render_tm ~render_params ?(suffix = "") : Nominal.Term.t -> unit =
-  let { depth; var_selected_events; queue; _ } = render_params in
-  function
-  | Nominal.Term.Primitive p ->
-    let str = Fmt.str "%a%s" Primitive.All.pp p suffix in
-    let loc =
-      match p |> Primitive.All.info |> Index.lookup with
-      | Loc_ix loc -> loc
-      | _ -> invariant_violation ~here:[%here] "Expected Loc_ix"
+  and render_scope ~render_params ~last:last_slot (Nominal.Scope.Scope (pats, tm)) =
+    let { depth; var_selected_events; _ } = render_params in
+    let pattern_var_events =
+      List.map pats ~f:(fun pat ->
+          let newly_defined_vars = Pattern.list_vars_of_pattern pat in
+          let newly_defined_var_events =
+            newly_defined_vars
+            |> List.map ~f:(fun (info, name) ->
+                   match Index.lookup info with
+                   | Var_def_ix (_loc, event) -> name, event
+                   | _ -> failwith "invariant violation: wrong index")
+            |> String.Map.of_alist_exn
+          in
+          let shadowed_var_streams =
+            newly_defined_vars
+            |> List.filter_map ~f:(fun (_loc, k) ->
+                   Map.find var_selected_events k |> Option.map ~f:(fun evt -> k, evt))
+            |> String.Map.of_alist_exn
+          in
+          let var_selected_events =
+            Map.merge_skewed
+              ~combine:(fun ~key:_ _l r -> r)
+              var_selected_events
+              newly_defined_var_events
+          in
+          let render_params =
+            { render_params with depth = Int.succ depth; var_selected_events }
+          in
+          render_pattern
+            ~render_params
+            ~shadowed_var_streams
+            ~suffix:"."
+            ~downstream:tm
+            pat;
+          newly_defined_var_events)
     in
-    Queue.enqueue queue (grid_tmpl ~render_params [ padded_text depth str ] loc)
-  | Var (info, name) ->
-    (match Index.lookup info with
-    | Loc_ix loc ->
-      let selected_event = Map.find_exn var_selected_events name in
-      render_var ~render_params ~var_pos:Reference ~suffix ~selected_event ~loc ~name
-    | _ -> failwith "expected Loc_ix")
-  | Operator (info, name, scopes) ->
-    (match Index.lookup info with
-    | Operator_ix (loc, expanded_signal) ->
-      let { signal = expanded_s; set_s = set_expanded } = expanded_signal in
-      let button_event, button = Components.chevron_toggle expanded_s in
-      let _sink : Logr.t option = E.log button_event set_expanded in
-      (match scopes, S.value expanded_s with
-      | [], _ ->
-        Queue.enqueue
-          queue
-          (grid_tmpl ~render_params [ padded_text depth (name ^ "()" ^ suffix) ] loc)
-      | _, false ->
-        Queue.enqueue
-          queue
-          (grid_tmpl
-             ~render_params
-             [ padded_text depth (name ^ "("); button; txt' (")" ^ suffix) ]
-             loc)
-      | _, true ->
-        let open_elem =
-          grid_tmpl ~render_params [ padded_text depth (name ^ "("); button ] loc
-        in
-        Queue.enqueue queue open_elem;
-        List.iteri scopes ~f:(fun i ->
-            render_scope ~render_params ~last:(i = List.length scopes - 1));
-        let close_elem =
-          grid_tmpl ~render_params [ padded_text depth (")" ^ suffix) ] loc
-        in
-        Queue.enqueue queue close_elem)
-    | _ -> failwith "Expected Operator_ix")
-
-and render_scope ~render_params ~last:last_slot (Nominal.Scope.Scope (pats, tm)) =
-  let { depth; var_selected_events; _ } = render_params in
-  let pattern_var_events =
-    List.map pats ~f:(fun pat ->
-        let newly_defined_vars = Pattern.list_vars_of_pattern pat in
-        let newly_defined_var_events =
-          newly_defined_vars
-          |> List.map ~f:(fun (info, name) ->
-                 match Index.lookup info with
-                 | Var_def_ix (_loc, event) -> name, event
-                 | _ -> failwith "invariant violation: wrong index")
-          |> String.Map.of_alist_exn
-        in
-        let shadowed_var_streams =
-          newly_defined_vars
-          |> List.filter_map ~f:(fun (_loc, k) ->
-                 Map.find var_selected_events k |> Option.map ~f:(fun evt -> k, evt))
-          |> String.Map.of_alist_exn
-        in
-        let var_selected_events =
-          Map.merge_skewed
-            ~combine:(fun ~key:_ _l r -> r)
-            var_selected_events
-            newly_defined_var_events
-        in
-        let render_params =
-          { render_params with depth = Int.succ depth; var_selected_events }
-        in
-        render_pattern ~render_params ~shadowed_var_streams ~suffix:"." ~downstream:tm pat;
-        newly_defined_var_events)
-  in
-  (* Events for variables bound in this scope *)
-  let pattern_var_events = String.Map.unions_right_biased pattern_var_events in
-  let combine ~key:_ _l r = r in
-  (* Select events for variables visible in this scope *)
-  let var_selected_events =
-    Map.merge_skewed ~combine var_selected_events pattern_var_events
-  in
-  let render_params =
-    { render_params with depth = Int.succ depth; var_selected_events }
-  in
-  render_tm ~render_params ~suffix:(get_suffix ~last_slot) tm
-;;
+    (* Events for variables bound in this scope *)
+    let pattern_var_events = String.Map.unions_right_biased pattern_var_events in
+    let combine ~key:_ _l r = r in
+    (* Select events for variables visible in this scope *)
+    let var_selected_events =
+      Map.merge_skewed ~combine var_selected_events pattern_var_events
+    in
+    let render_params =
+      { render_params with depth = Int.succ depth; var_selected_events }
+    in
+    term ~render_params ~suffix:(get_suffix ~last_slot) tm
+  ;;
+end
 
 let view_tm
     ?(source_column = true)
@@ -499,6 +523,8 @@ let view_tm
   =
   (* First, create a stream for all free variables. Actions on them will work
      like normal. *)
+  let module Index = Mk_index () in
+  let module Render = Mk_render (Index) in
   let free_vars = Nominal.Term.free_vars tm in
   let var_selected_events =
     free_vars
@@ -519,7 +545,7 @@ let view_tm
       ; highlighted_ranges
       }
     in
-    render_tm ~render_params tm;
+    Render.term ~render_params tm;
     let rows, evts = queue |> Queue.to_list |> List.unzip in
     let tbody = tbody rows in
     let _sink : Logr.t option = E.log (E.select evts) set_selection in
