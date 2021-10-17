@@ -7,14 +7,15 @@ open Lvca_core
 module Binding_aware_pattern = struct
   let rec t ~loc = function
     | Lvca_syntax.Binding_aware_pattern.Operator (pos, name, scopes) ->
-      let name_exp = str ~loc name in
+      let name_exp = string ~loc name in
       let scopes = scopes |> List.map ~f:(scope ~loc) |> list ~loc in
       [%expr
         Lvca_syntax.Binding_aware_pattern.Operator
           ([%e provenance ~loc pos], [%e name_exp], [%e scopes])]
-    | Var (pos, s) ->
+    | Var (pos, str) ->
       [%expr
-        Lvca_syntax.Binding_aware_pattern.Var ([%e provenance ~loc pos], [%e str ~loc s])]
+        Lvca_syntax.Binding_aware_pattern.Var
+          ([%e provenance ~loc pos], [%e string ~loc str])]
     | Primitive p ->
       [%expr Lvca_syntax.Binding_aware_pattern.Primitive [%e Primitive.all ~loc p]]
 
@@ -22,7 +23,8 @@ module Binding_aware_pattern = struct
     let body = t ~loc body in
     let vars =
       vars
-      |> List.map ~f:(fun (i, name) -> [%expr [%e provenance ~loc i], [%e str ~loc name]])
+      |> List.map ~f:(fun (i, name) ->
+             [%expr [%e provenance ~loc i], [%e string ~loc name]])
       |> list ~loc
     in
     [%expr Lvca_syntax.Binding_aware_pattern.Scope ([%e vars], [%e body])]
@@ -53,10 +55,10 @@ module Core = struct
         [%expr
           Lvca_core.Binding_aware_pattern_model.Pattern.Operator
             ([%e provenance ~loc info], [%e name_exp], [%e scopes])]
-      | Var (info, s) ->
+      | Var (info, str) ->
         [%expr
           Lvca_core.Binding_aware_pattern_model.Pattern.Var
-            ([%e provenance ~loc info], [%e Primitive.string ~loc s])]
+            ([%e provenance ~loc info], [%e Primitive.string ~loc str])]
       | Primitive (info, p) ->
         [%expr
           Lvca_core.Binding_aware_pattern_model.Pattern.Primitive
@@ -142,7 +144,7 @@ module Core = struct
       let body = term ~loc body in
       [%expr Lvca_core.Lang.Term.Subst ([%e info], ([%e var], [%e body]), [%e arg])]
     | Term_var (i, name) ->
-      [%expr Lvca_core.Lang.Term.Term_var ([%e provenance ~loc i], [%e str ~loc name])]
+      [%expr Lvca_core.Lang.Term.Term_var ([%e provenance ~loc i], [%e string ~loc name])]
 
   and case_scope ~loc (Lang.Case_scope.Case_scope (info, pat, tm)) =
     [%expr
