@@ -40,17 +40,10 @@ c_type := Computation(v_type; list string)
 
   module Type_prec = struct
     type t =
-      | Bool
-      | Fun_ty
-      | Handler_ty
+      | Atomic (** Only atomic types shown without parens *)
+      | Arrow (** Arrows shown without parens *)
 
-    let ( <= ) x y =
-      match x, y with
-      | Bool, _ -> true
-      | Fun_ty, (Fun_ty | Handler_ty) -> true
-      | Handler_ty, Handler_ty -> true
-      | _, _ -> false
-    ;;
+    let ( <= ) x y = match x, y with Arrow, Atomic -> false | _ -> true
   end
 
   module Pp = struct
@@ -95,23 +88,29 @@ c_type := Computation(v_type; list string)
       | Fun_ty (_, v, c) ->
         Fmt.pf
           ppf
-          (if Type_prec.(prec <= Fun_ty) then "(%a -> %a)" else "%a -> %a")
-          (v_type ~prec:Type_prec.Bool)
+          (if Type_prec.(prec <= Atomic) then "(%a -> %a)" else "%a -> %a")
+          (v_type ~prec:Type_prec.Atomic)
           v
-          (c_type ~prec:Type_prec.Bool)
+          c_type
           c
       | Handler_ty (_, c, d) ->
         Fmt.pf
           ppf
-          (if Type_prec.(prec <= Handler_ty) then "(%a => %a)" else "%a => %a")
-          (c_type ~prec:Type_prec.Bool)
+          (if Type_prec.(prec <= Atomic) then "(%a => %a)" else "%a => %a")
+          c_type
           c
-          (c_type ~prec:Type_prec.Bool)
+          c_type
           d
 
-    and c_type ~prec ppf (C_type.Computation (_, v, ops)) =
+    and c_type ppf (C_type.Computation (_, v, ops)) =
       let ops = ops |> Lvca_core.List_model.to_list |> List.map ~f:snd in
-      Fmt.pf ppf "%a!@[<hv>{%a}@]" (v_type ~prec) v Fmt.(list op_name ~sep:comma) ops
+      Fmt.pf
+        ppf
+        "%a!@[<hv>{%a}@]"
+        (v_type ~prec:Atomic)
+        v
+        Fmt.(list op_name ~sep:comma)
+        ops
     ;;
   end
 
@@ -229,41 +228,44 @@ c_type := Computation(v_type; list string)
     let handler = mk_handler handler_clause
     let value = mk_value handler computation
 
-    let mk_c_type v_type =
-      make2
-        Lang.C_type.mk_Computation
-        v_type
-        (Ws.char '!' *> Ws.braces (sep_by (Ws.char ',') op_name) >>| of_list)
-      <?> "c_type"
+    let mk_c_type atomic_v_type =
+      let go =
+        make2
+          Lang.C_type.mk_Computation
+          atomic_v_type
+          (Ws.char '!' *> Ws.braces (sep_by (Ws.char ',') op_name) >>| of_list)
+      in
+      choice [ Ws.parens go; go ] <?> "computation type"
+    ;;
+
+    let mk_atomic_v_type v_type =
+      choice [ Ws.parens v_type; make0 Lang.V_type.mk_Bool (Ws.string "bool") ]
+      <?> "atomic value type"
     ;;
 
     let v_type =
       let open Lang.V_type in
       fix (fun v_type ->
-          let c_type = mk_c_type v_type in
-          let prec_0_v_type =
-            choice [ Ws.parens v_type; make0 mk_Bool (Ws.string "bool") ]
-          in
-          let prec_1_v_type =
-            choice
-              [ (prec_0_v_type
-                >>== fun { value; range } ->
-                choice
-                  [ Lvca_parsing.make1
-                      (fun ~info c_type ->
-                        let info = Opt_range.union range info |> Provenance.of_range in
-                        mk_Fun_ty ~info value c_type)
-                      (Ws.string "->" *> c_type)
-                  ; return ~range value
-                  ])
-              ; make2 mk_Handler_ty (c_type <* Ws.string "=>") c_type
-              ]
-          in
-          prec_1_v_type)
-      <?> "v_type"
+          let atomic_v_type = mk_atomic_v_type v_type in
+          let c_type = mk_c_type atomic_v_type in
+          choice
+            [ make2 mk_Handler_ty (c_type <* Ws.string "=>") c_type
+            ; (atomic_v_type
+              >>== fun { value; range } ->
+              choice
+                [ Lvca_parsing.make1
+                    (fun ~info c_type ->
+                      let info = Opt_range.union range info |> Provenance.of_range in
+                      mk_Fun_ty ~info value c_type)
+                    (Ws.string "->" *> c_type)
+                ; return ~range value
+                ])
+            ])
+      <?> "value type"
     ;;
 
-    let c_type = mk_c_type v_type
+    let atomic_v_type = mk_atomic_v_type v_type
+    let c_type = mk_c_type atomic_v_type
   end
 
   let%test_module "Parsing / Printing" =
@@ -294,14 +296,8 @@ c_type := Computation(v_type; list string)
       let parse_print_value = parse_print Parse.value Pp.value
       let parse_print_handler = parse_print Parse.handler Pp.handler
       let parse_print_handler_clause = parse_print Parse.handler_clause Pp.handler_clause
-
-      let parse_print_v_type =
-        parse_print Parse.v_type (Pp.v_type ~prec:Type_prec.Handler_ty)
-      ;;
-
-      let parse_print_c_type =
-        parse_print Parse.c_type (Pp.c_type ~prec:Type_prec.Handler_ty)
-      ;;
+      let parse_print_v_type = parse_print Parse.v_type (Pp.v_type ~prec:Type_prec.Arrow)
+      let parse_print_c_type = parse_print Parse.c_type Pp.c_type
 
       let%expect_test _ =
         parse_print_value "true";
@@ -384,6 +380,11 @@ c_type := Computation(v_type; list string)
       ;;
 
       let%expect_test _ =
+        parse_print_v_type "(bool)";
+        [%expect {| bool |}]
+      ;;
+
+      let%expect_test _ =
         parse_print_c_type "bool!{}";
         [%expect {| bool!{} |}]
       ;;
@@ -393,12 +394,31 @@ c_type := Computation(v_type; list string)
         [%expect {| bool!{#bar, #baz} |}]
       ;;
 
-      (* TODO
+      let%expect_test _ =
+        parse_print_v_type "bool!{} => bool!{}";
+        [%expect {| bool!{} => bool!{} |}]
+      ;;
+
       let%expect_test _ =
         parse_print_v_type "bool!{#bar, #baz} => bool!{}";
         [%expect {| bool!{#bar, #baz} => bool!{} |}]
       ;;
-      *)
+
+      let%expect_test _ =
+        parse_print_c_type "(bool!{} => bool!{})!{#bar, #baz}";
+        [%expect {| (bool!{} => bool!{})!{#bar, #baz} |}]
+      ;;
+
+      let%expect_test _ =
+        parse_print_v_type "(bool!{} => bool!{#bar, #baz}) -> bool!{}";
+        [%expect {| (bool!{} => bool!{#bar, #baz}) -> bool!{} |}]
+      ;;
+
+      (* We don't currently parse arrows associatively *)
+      let%expect_test _ =
+        parse_print_v_type "bool!{} => bool!{#bar, #baz} -> bool!{}";
+        [%expect {| failed to parse: : end_of_input |}]
+      ;;
 
       let%expect_test _ =
         parse_print_v_type "bool -> bool!{}";
@@ -406,9 +426,14 @@ c_type := Computation(v_type; list string)
       ;;
 
       let%expect_test _ =
-        (* XXX parse_print_v_type "(bool -> bool) -> bool!{}"; *)
         parse_print_v_type "(bool -> bool!{}) -> bool!{}";
         [%expect {| (bool -> bool!{}) -> bool!{} |}]
+      ;;
+
+      (* We don't currently parse arrows associatively *)
+      let%expect_test _ =
+        parse_print_v_type "bool -> bool!{} -> bool!{}";
+        [%expect {| failed to parse: : end_of_input |}]
       ;;
 
       let () = Format.(pp_set_margin std_formatter margin)
