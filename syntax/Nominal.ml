@@ -467,6 +467,9 @@ module Convertible = struct
 
     (* TODO: to_pattern, of_pattern *)
 
+    val subst_all : t String.Map.t -> t -> (t, Term.t) Result.t
+    val subst : name:string -> value:t -> t -> (t, Term.t) Result.t
+    val rename : string -> string -> t -> (t, Term.t) Result.t
     val select_path : path:int list -> t -> (t, (string, Term.t) Base.Either.t) Result.t
 
     (** {1 Serialization} *)
@@ -491,6 +494,18 @@ module Convertible = struct
     let ( = ) = equivalent ~info_eq:Provenance.( = )
     let pp ppf tm = Term.pp ppf (to_nominal tm)
     let to_string tm = Fmt.to_to_string pp tm
+
+    let subst_all ctx t =
+      let ctx = Map.map ctx ~f:to_nominal in
+      t |> to_nominal |> Term.subst_all ctx |> of_nominal
+    ;;
+
+    let subst ~name ~value t =
+      let value = to_nominal value in
+      t |> to_nominal |> Term.subst ~name ~value |> of_nominal
+    ;;
+
+    let rename x y t = t |> to_nominal |> Term.rename x y |> of_nominal
 
     let select_path ~path tm =
       match tm |> Object.to_nominal |> Term.select_path ~path with

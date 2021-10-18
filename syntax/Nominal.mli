@@ -149,6 +149,15 @@ module Convertible : sig
 
     (* TODO: to_pattern, of_pattern *)
 
+    (** Substitute all the variables in the context.
+
+        Leaves variables not found in the context free. *)
+    val subst_all : t String.Map.t -> t -> (t, Term.t) Result.t
+
+    (** Substitute a single variable *)
+    val subst : name:string -> value:t -> t -> (t, Term.t) Result.t
+
+    val rename : string -> string -> t -> (t, Term.t) Result.t
     val select_path : path:int list -> t -> (t, (string, Term.t) Base.Either.t) Result.t
 
     (** {1 Serialization} *)
