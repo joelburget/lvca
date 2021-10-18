@@ -56,6 +56,9 @@ module Term : sig
       Leaves variables not found in the context free. *)
   val subst_all : t String.Map.t -> t -> t
 
+  (** Substitute a single variable *)
+  val subst : name:string -> value:Types.term -> t -> t
+
   val rename : string -> string -> t -> t
   val select_path : path:int list -> t -> (t, string) Result.t
   val match_pattern : Pattern.t -> t -> t String.Map.t option
@@ -112,6 +115,9 @@ val of_pattern : (, 'prim) Pattern.t -> (, 'prim) t
 
       Leaves variables not found in the context free. *)
   val subst_all : Types.term String.Map.t -> t -> t
+
+  (** Substitute a single variable *)
+  val subst : name:string -> value:Types.term -> t -> t
 
   val rename : string -> string -> t -> t
 

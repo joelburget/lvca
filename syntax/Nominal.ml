@@ -101,7 +101,11 @@ module Unjsonify = struct
   ;;
 end
 
-module SubstAll = struct
+let bound_vars binders =
+  binders |> List.map ~f:Pattern.vars_of_pattern |> String.Set.union_list
+;;
+
+module Subst_all = struct
   let rec term ctx tm =
     match tm with
     | Types.Primitive _ -> tm
@@ -109,12 +113,26 @@ module SubstAll = struct
     | Operator (info, name, scopes) ->
       Operator (info, name, List.map scopes ~f:(scope ctx))
 
-  and scope ctx (Scope (pats, tm)) = Scope (pats, term ctx tm)
+  and scope ctx (Scope (pats, tm) as scope) =
+    let bound_vars = pats |> bound_vars |> Set.to_list in
+    let ctx = List.fold bound_vars ~init:ctx ~f:Map.remove in
+    if Map.is_empty ctx then scope else Scope (pats, term ctx tm)
+  ;;
 end
 
-let bound_vars binders =
-  binders |> List.map ~f:Pattern.vars_of_pattern |> String.Set.union_list
-;;
+module Subst = struct
+  let rec term ~name ~value tm =
+    match tm with
+    | Types.Primitive _ -> tm
+    | Var (_loc, name') -> if String.(name' = name) then value else tm
+    | Operator (info, name, scopes) ->
+      Operator (info, name, List.map scopes ~f:(scope ~name ~value))
+
+  and scope ~name ~value (Scope (pats, tm) as scope) =
+    let bound_vars = bound_vars pats in
+    if Set.mem bound_vars name then scope else Scope (pats, term ~name ~value tm)
+  ;;
+end
 
 module Rename = struct
   let rec term x y tm =
@@ -140,7 +158,8 @@ module Term = struct
   let of_nominal x = Ok x
   let equivalent = Equivalent.term
   let ( = ) = equivalent ~info_eq:Provenance.( = )
-  let subst_all = SubstAll.term
+  let subst_all = Subst_all.term
+  let subst = Subst.term
   let rename = Rename.term
   let jsonify = Jsonify.term
   let unjsonify = Unjsonify.term
@@ -424,7 +443,8 @@ module Scope = struct
   let equivalent = Equivalent.scope
   let ( = ) = equivalent ~info_eq:Provenance.( = )
   let pp = Pp.scope
-  let subst_all = SubstAll.scope
+  let subst_all = Subst_all.scope
+  let subst = Subst.scope
   let rename = Rename.scope
   let jsonify = Jsonify.scope
   let unjsonify = Unjsonify.scope
