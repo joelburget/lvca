@@ -1,3 +1,7 @@
+let mk_error tm =
+  Error (Nominal.Conversion_error.mk_Term ~provenance:(Provenance.of_here [%here]) tm)
+;;
+
 module Integer_kernel = struct
   include Primitive_impl.Integer
 
@@ -6,7 +10,7 @@ module Integer_kernel = struct
   let of_nominal tm =
     match tm with
     | Nominal.Term.Primitive (info, Integer z) -> Ok (info, z)
-    | _ -> Error tm
+    | _ -> mk_error tm
   ;;
 end
 
@@ -18,7 +22,9 @@ module Int32_kernel = struct
   let to_nominal (info, z) = Nominal.Term.Primitive (info, Int32 z)
 
   let of_nominal tm =
-    match tm with Nominal.Term.Primitive (info, Int32 z) -> Ok (info, z) | _ -> Error tm
+    match tm with
+    | Nominal.Term.Primitive (info, Int32 z) -> Ok (info, z)
+    | _ -> mk_error tm
   ;;
 end
 
@@ -30,7 +36,9 @@ module Float_kernel = struct
   let to_nominal (info, f) = Nominal.Term.Primitive (info, Float f)
 
   let of_nominal tm =
-    match tm with Nominal.Term.Primitive (info, Float f) -> Ok (info, f) | _ -> Error tm
+    match tm with
+    | Nominal.Term.Primitive (info, Float f) -> Ok (info, f)
+    | _ -> mk_error tm
   ;;
 end
 
@@ -42,7 +50,9 @@ module Char_kernel = struct
   let to_nominal (info, x) = Nominal.Term.Primitive (info, Char x)
 
   let of_nominal tm =
-    match tm with Nominal.Term.Primitive (info, Char x) -> Ok (info, x) | _ -> Error tm
+    match tm with
+    | Nominal.Term.Primitive (info, Char x) -> Ok (info, x)
+    | _ -> mk_error tm
   ;;
 end
 
@@ -56,7 +66,7 @@ module String_kernel = struct
   let of_nominal tm =
     match tm with
     | Nominal.Term.Primitive (info, String x) -> Ok (info, x)
-    | _ -> Error tm
+    | _ -> mk_error tm
   ;;
 end
 
@@ -68,7 +78,7 @@ module All_kernel = struct
   let to_nominal (info, x) = Nominal.Term.Primitive (info, x)
 
   let of_nominal tm =
-    match tm with Nominal.Term.Primitive (info, x) -> Ok (info, x) | _ -> Error tm
+    match tm with Nominal.Term.Primitive (info, x) -> Ok (info, x) | _ -> mk_error tm
   ;;
 end
 

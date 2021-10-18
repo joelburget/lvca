@@ -59,21 +59,25 @@ and scope_to_nominal (Scope (binders, body)) =
 ;;
 
 let rec of_nominal tm =
+  let open Result.Let_syntax in
   match tm with
   | Nominal.Term.Operator (p, name, scopes) ->
-    (match scopes |> List.map ~f:scope_of_nominal |> Result.all with
-    | Ok scopes -> Ok (Operator (Provenance.calculated_here [%here] [ p ], name, scopes))
-    | Error _scope -> Error tm)
+    let%map scopes = scopes |> List.map ~f:scope_of_nominal |> Result.all in
+    Operator (Provenance.calculated_here [%here] [ p ], name, scopes)
   | Primitive p -> Ok (Primitive p)
   | Var (p, name) -> Ok (Var (Provenance.calculated_here [%here] [ p ], name))
 
 and scope_of_nominal (Nominal.Scope.Scope (binders, body) as scope) =
   let open Result.Let_syntax in
-  let f = function Pattern.Var (p, name) -> Ok (p, name) | _ -> Error scope in
+  let f = function
+    | Pattern.Var (p, name) -> Ok (p, name)
+    | _ ->
+      Error
+        (Nominal.Conversion_error.mk_Scope ~provenance:(Provenance.of_here [%here]) scope)
+  in
   let%bind binders = binders |> List.map ~f |> Result.all in
-  match of_nominal body with
-  | Error _tm -> Error scope
-  | Ok body -> Ok (Scope (binders, body))
+  let%map body = of_nominal body in
+  Scope (binders, body)
 ;;
 
 let rec equivalent ?(info_eq = fun _ _ -> true) t1 t2 =

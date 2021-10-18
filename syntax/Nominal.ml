@@ -450,12 +450,33 @@ module Scope = struct
   let unjsonify = Unjsonify.scope
 end
 
+module Conversion_error = struct
+  type t =
+    | Scope of Provenance.t * Scope.t * string option
+    | Term of Provenance.t * Term.t * string option
+
+  let mk_Scope ?(provenance = Provenance.of_here [%here]) ?message scope =
+    Scope (provenance, scope, message)
+  ;;
+
+  let mk_Term ?(provenance = Provenance.of_here [%here]) ?message term =
+    Term (provenance, term, message)
+  ;;
+
+  let pp ppf = function
+    | Scope (_, _, None) -> Fmt.pf ppf "Scope conversion error"
+    | Scope (_, _, Some msg) -> Fmt.pf ppf "Scope conversion error (%s)" msg
+    | Term (_, _, None) -> Fmt.pf ppf "Term conversion error"
+    | Term (_, _, Some msg) -> Fmt.pf ppf "Term conversion error (%s)" msg
+  ;;
+end
+
 module Convertible = struct
   module type S = sig
     include Language_object_intf.S
 
     val to_nominal : t -> Term.t
-    val of_nominal : Term.t -> (t, Term.t) Result.t
+    val of_nominal : Term.t -> (t, Conversion_error.t) Result.t
   end
 
   module type Extended_s = sig
@@ -467,10 +488,14 @@ module Convertible = struct
 
     (* TODO: to_pattern, of_pattern *)
 
-    val subst_all : t String.Map.t -> t -> (t, Term.t) Result.t
-    val subst : name:string -> value:t -> t -> (t, Term.t) Result.t
-    val rename : string -> string -> t -> (t, Term.t) Result.t
-    val select_path : path:int list -> t -> (t, (string, Term.t) Base.Either.t) Result.t
+    val subst_all : t String.Map.t -> t -> (t, Conversion_error.t) Result.t
+    val subst : name:string -> value:t -> t -> (t, Conversion_error.t) Result.t
+    val rename : string -> string -> t -> (t, Conversion_error.t) Result.t
+
+    val select_path
+      :  path:int list
+      -> t
+      -> (t, (string, Conversion_error.t) Base.Either.t) Result.t
 
     (** {1 Serialization} *)
     include Language_object_intf.Json_convertible with type t := t
@@ -533,8 +558,9 @@ module Convertible = struct
       Term.parse'
       >>= fun nom ->
       match of_nominal nom with
-      | Error nom ->
-        fail Fmt.(str "Extend.parse: failed to convert %a from nominal" Term.pp nom)
+      | Error err ->
+        fail
+          Fmt.(str "Extend.parse: Nominal conversion error: %a" Conversion_error.pp err)
       | Ok tm -> return tm
     ;;
   end

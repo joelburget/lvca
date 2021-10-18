@@ -17,7 +17,12 @@ let to_nominal { info; name } =
 let of_nominal = function
   | Nominal.Term.Primitive (info, Primitive_impl.All_plain.String name) ->
     Ok { info; name }
-  | tm -> Error tm
+  | tm ->
+    Error
+      (Nominal.Conversion_error.mk_Term
+         ~provenance:(Provenance.of_here [%here])
+         ~message:"Single_var can only be converted from a string literal"
+         tm)
 ;;
 
 let mk ~info name = { info; name }

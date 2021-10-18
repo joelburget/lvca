@@ -24,7 +24,7 @@ module List = struct
   type 'a t
 
   let to_nominal _ _ = Nominal.Term.Var (failwith "no provenance", "")
-  let of_nominal _ tm = Error tm
+  let of_nominal _ tm = Error (Nominal.Conversion_error.mk_Term tm)
   let equivalent _a ~info_eq:_ _ _ = true
 end
 

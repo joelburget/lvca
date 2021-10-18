@@ -23,11 +23,7 @@ val to_de_bruijn : t -> DeBruijn.term
 
 (** {1 Nominal conversion} *)
 
-type nominal_conversion_error =
-  | Scope_encountered of Nominal.Scope.t
-  | Var_encountered of Nominal.Term.t
-
-val of_nominal : Nominal.Term.t -> (t, nominal_conversion_error) Result.t
+val of_nominal : Nominal.Term.t -> (t, Nominal.Conversion_error.t) Result.t
 val to_nominal : t -> Nominal.Term.t
 
 (** {1 Printing} *)

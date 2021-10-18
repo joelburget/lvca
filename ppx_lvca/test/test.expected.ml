@@ -49,12 +49,24 @@ module Test4 =
                    ([], x1))::(Lvca_syntax.Nominal.Scope.Scope ([], x2))::[])
                   ->
                   (match Nominal.Term.of_nominal x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 ->
                        (match list x2 with
-                        | Error msg -> Error msg
+                        | Error err -> Error err
                         | Ok x2 -> Ok (Types.Cons (x0, x1, x2))))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
           end
       end
     module Types = Wrapper.Types
@@ -263,10 +275,10 @@ module List_model :
           'a_ t -> Lvca_syntax.Nominal.Term.t
       val of_nominal :
         (Lvca_syntax.Nominal.Term.t ->
-           ('a_, Lvca_syntax.Nominal.Term.t) Result.t)
+           ('a_, Lvca_syntax.Nominal.Conversion_error.t) Result.t)
           ->
           Lvca_syntax.Nominal.Term.t ->
-            ('a_ t, Lvca_syntax.Nominal.Term.t) Result.t
+            ('a_ t, Lvca_syntax.Nominal.Conversion_error.t) Result.t
       val info : _ -> 'a_ t -> Lvca_syntax.Provenance.t
       val equivalent :
         (?info_eq:(Lvca_syntax.Provenance.t ->
@@ -333,12 +345,24 @@ module List_model :
                    ([], x1))::(Lvca_syntax.Nominal.Scope.Scope ([], x2))::[])
                   ->
                   (match a x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 ->
                        (match list a x2 with
-                        | Error msg -> Error msg
+                        | Error err -> Error err
                         | Ok x2 -> Ok (Types.Cons (x0, x1, x2))))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
           end
       end
     module Types = Wrapper.Types
@@ -481,7 +505,7 @@ module List =
   struct
     type 'a t
     let to_nominal _ _ = Nominal.Term.Var ((failwith "no provenance"), "")
-    let of_nominal _ tm = Error tm
+    let of_nominal _ tm = Error (Nominal.Conversion_error.mk_Term tm)
     let equivalent _a ~info_eq:_  _ _ = true
   end
 module Maybe = List
@@ -680,13 +704,25 @@ module Lang =
                    ([], x1))::(Lvca_syntax.Nominal.Scope.Scope ([], x2))::[])
                   ->
                   (match Primitive.String.of_nominal x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 ->
                        (match List.of_nominal Primitive.String.of_nominal x2
                         with
-                        | Error msg -> Error msg
+                        | Error err -> Error err
                         | Ok x2 -> Ok (Types.Nonempty (x0, x1, x2))))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let pair a b =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -694,26 +730,38 @@ module Lang =
                    ([], x1))::(Lvca_syntax.Nominal.Scope.Scope ([], x2))::[])
                   ->
                   (match a x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 ->
                        (match b x2 with
-                        | Error msg -> Error msg
+                        | Error err -> Error err
                         | Ok x2 -> Ok (Types.Pair (x0, x1, x2))))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let rec foo =
               function
               | Lvca_syntax.Nominal.Term.Operator
                   (x0, "Foo", (Lvca_syntax.Nominal.Scope.Scope ([], x1))::[])
                   ->
                   (match Primitive.Integer.of_nominal x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 -> Ok (Types.Foo (x0, x1)))
               | Lvca_syntax.Nominal.Term.Operator
                   (x0, "Bar", (Lvca_syntax.Nominal.Scope.Scope
                    (x1::(Lvca_syntax.Pattern.Var (x2, x3))::[], x4))::[])
                   ->
                   (match foo x4 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x4 ->
                        Ok
                          (Types.Bar
@@ -723,7 +771,19 @@ module Lang =
                                    { info = x2; name = x3 }), x4))))
               | Lvca_syntax.Nominal.Term.Var (info, name) ->
                   Ok (Foo_var (info, name))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let pair_plus a b =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -732,15 +792,27 @@ module Lang =
                    ([], x2))::(Lvca_syntax.Nominal.Scope.Scope ([], x3))::[])
                   ->
                   (match a x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 ->
                        (match b x2 with
-                        | Error msg -> Error msg
+                        | Error err -> Error err
                         | Ok x2 ->
                             (match foo x3 with
-                             | Error msg -> Error msg
+                             | Error err -> Error err
                              | Ok x3 -> Ok (Types.PairPlus (x0, x1, x2, x3)))))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let rec term =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -748,9 +820,21 @@ module Lang =
                    ([], x1))::[])
                   ->
                   (match List.of_nominal term x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 -> Ok (Types.Operator (x0, x1)))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let rec mut_a =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -758,9 +842,21 @@ module Lang =
                    ([], x1))::[])
                   ->
                   (match mut_b x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 -> Ok (Types.Mut_a (x0, x1)))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             and mut_b =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -768,9 +864,21 @@ module Lang =
                    ([], x1))::[])
                   ->
                   (match mut_a x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 -> Ok (Types.Mut_b (x0, x1)))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let rec nat =
               function
               | Lvca_syntax.Nominal.Term.Operator (x0, "Z", []) ->
@@ -779,9 +887,21 @@ module Lang =
                   (x0, "S", (Lvca_syntax.Nominal.Scope.Scope ([], x1))::[])
                   ->
                   (match nat x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 -> Ok (Types.S (x0, x1)))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
           end
       end
     module Types = Wrapper.Types
@@ -1534,7 +1654,7 @@ module Ifz_lang :
       val to_nominal : t -> Lvca_syntax.Nominal.Term.t
       val of_nominal :
         Lvca_syntax.Nominal.Term.t ->
-          (t, Lvca_syntax.Nominal.Term.t) Result.t
+          (t, Lvca_syntax.Nominal.Conversion_error.t) Result.t
       val info : t -> Lvca_syntax.Provenance.t
       val equivalent :
         ?info_eq:(Lvca_syntax.Provenance.t ->
@@ -1605,13 +1725,13 @@ module Ifz_lang :
                    ([], x5))::[])
                   ->
                   (match ifz x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 ->
                        (match ifz x4 with
-                        | Error msg -> Error msg
+                        | Error err -> Error err
                         | Ok x4 ->
                             (match ifz x5 with
-                             | Error msg -> Error msg
+                             | Error err -> Error err
                              | Ok x5 ->
                                  Ok
                                    (Types.Ifz
@@ -1621,7 +1741,19 @@ module Ifz_lang :
                                         x5)))))
               | Lvca_syntax.Nominal.Term.Var (info, name) ->
                   Ok (Ifz_var (info, name))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
           end
       end
     module Types = Wrapper.Types
@@ -1925,17 +2057,41 @@ module List_lang =
                    ([], x1))::(Lvca_syntax.Nominal.Scope.Scope ([], x2))::[])
                   ->
                   (match a x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 ->
                        (match list a x2 with
-                        | Error msg -> Error msg
+                        | Error err -> Error err
                         | Ok x2 -> Ok (Types.Cons (x0, x1, x2))))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let predefined =
               function
               | Lvca_syntax.Nominal.Term.Operator (x0, "Predefined", []) ->
                   Ok (Types.Predefined x0)
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let list_list_predefined_1 =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -1943,9 +2099,21 @@ module List_lang =
                    (Lvca_syntax.Nominal.Scope.Scope ([], x1))::[])
                   ->
                   (match list (list predefined) x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 -> Ok (Types.List_list_predefined_1 (x0, x1)))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let list_list_a a =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -1953,9 +2121,21 @@ module List_lang =
                    ([], x1))::[])
                   ->
                   (match list (list a) x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 -> Ok (Types.List_list_a (x0, x1)))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let list_list_predefined_2 =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -1963,9 +2143,21 @@ module List_lang =
                    (Lvca_syntax.Nominal.Scope.Scope ([], x1))::[])
                   ->
                   (match list_list_a predefined x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 -> Ok (Types.List_list_predefined_2 (x0, x1)))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let list_list_string_1 =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -1973,9 +2165,21 @@ module List_lang =
                    ([], x1))::[])
                   ->
                   (match list (list Nominal.Term.of_nominal) x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 -> Ok (Types.List_list_string_1 (x0, x1)))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let list_list_string_2 =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -1983,9 +2187,21 @@ module List_lang =
                    ([], x1))::[])
                   ->
                   (match list_list_a Nominal.Term.of_nominal x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 -> Ok (Types.List_list_string_2 (x0, x1)))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let list_predefined =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -1993,9 +2209,21 @@ module List_lang =
                    ([], x1))::[])
                   ->
                   (match list predefined x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 -> Ok (Types.List_predefined (x0, x1)))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
             let list_external =
               function
               | Lvca_syntax.Nominal.Term.Operator
@@ -2003,9 +2231,21 @@ module List_lang =
                    ([], x1))::[])
                   ->
                   (match list Nominal.Term.of_nominal x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 -> Ok (Types.List_external (x0, x1)))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
           end
       end
     module Types = Wrapper.Types
@@ -2967,7 +3207,7 @@ module type Is_rec_sig  =
       val to_nominal : t -> Lvca_syntax.Nominal.Term.t
       val of_nominal :
         Lvca_syntax.Nominal.Term.t ->
-          (t, Lvca_syntax.Nominal.Term.t) Result.t
+          (t, Lvca_syntax.Nominal.Conversion_error.t) Result.t
       val info : t -> Lvca_syntax.Provenance.t
       val equivalent :
         ?info_eq:(Lvca_syntax.Provenance.t ->
@@ -2985,7 +3225,7 @@ module type Is_rec_sig  =
       val to_nominal : t -> Lvca_syntax.Nominal.Term.t
       val of_nominal :
         Lvca_syntax.Nominal.Term.t ->
-          (t, Lvca_syntax.Nominal.Term.t) Result.t
+          (t, Lvca_syntax.Nominal.Conversion_error.t) Result.t
       val info : t -> Lvca_syntax.Provenance.t
       val equivalent :
         ?info_eq:(Lvca_syntax.Provenance.t ->
@@ -3003,7 +3243,7 @@ module type Is_rec_sig  =
       val to_nominal : t -> Lvca_syntax.Nominal.Term.t
       val of_nominal :
         Lvca_syntax.Nominal.Term.t ->
-          (t, Lvca_syntax.Nominal.Term.t) Result.t
+          (t, Lvca_syntax.Nominal.Conversion_error.t) Result.t
       val info : t -> Lvca_syntax.Provenance.t
       val equivalent :
         ?info_eq:(Lvca_syntax.Provenance.t ->
@@ -3019,7 +3259,7 @@ module type Is_rec_sig  =
       val to_nominal : t -> Lvca_syntax.Nominal.Term.t
       val of_nominal :
         Lvca_syntax.Nominal.Term.t ->
-          (t, Lvca_syntax.Nominal.Term.t) Result.t
+          (t, Lvca_syntax.Nominal.Conversion_error.t) Result.t
       val info : t -> Lvca_syntax.Provenance.t
       val equivalent :
         ?info_eq:(Lvca_syntax.Provenance.t ->
@@ -3051,10 +3291,10 @@ module Option_model :
           'a_ t -> Lvca_syntax.Nominal.Term.t
       val of_nominal :
         (Lvca_syntax.Nominal.Term.t ->
-           ('a_, Lvca_syntax.Nominal.Term.t) Result.t)
+           ('a_, Lvca_syntax.Nominal.Conversion_error.t) Result.t)
           ->
           Lvca_syntax.Nominal.Term.t ->
-            ('a_ t, Lvca_syntax.Nominal.Term.t) Result.t
+            ('a_ t, Lvca_syntax.Nominal.Conversion_error.t) Result.t
       val info : _ -> 'a_ t -> Lvca_syntax.Provenance.t
       val equivalent :
         (?info_eq:(Lvca_syntax.Provenance.t ->
@@ -3118,9 +3358,21 @@ module Option_model :
                    ([], x1))::[])
                   ->
                   (match a x1 with
-                   | Error msg -> Error msg
+                   | Error err -> Error err
                    | Ok x1 -> Ok (Types.Some (x0, x1)))
-              | tm -> Error tm
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 874;
+                                          pos_bol = 27189;
+                                          pos_cnum = 27223
+                                        })) tm in
+                  Error err
           end
       end
     module Types = Wrapper.Types

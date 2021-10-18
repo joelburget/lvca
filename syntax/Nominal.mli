@@ -15,6 +15,16 @@ val mk_Primitive : Primitive_impl.All.t -> Types.term
 val mk_Var : ?provenance:Provenance.t -> string -> Types.term
 val mk_Scope : Pattern.t list -> Types.term -> Types.scope
 
+module Conversion_error : sig
+  type t =
+    | Scope of Provenance.t * Types.scope * string option
+    | Term of Provenance.t * Types.term * string option
+
+  val mk_Scope : ?provenance:Provenance.t -> ?message:string -> Types.scope -> t
+  val mk_Term : ?provenance:Provenance.t -> ?message:string -> Types.term -> t
+  val pp : t Fmt.t
+end
+
 module Term : sig
   type t = Types.term =
     | Operator of Provenance.t * string * Types.scope list
@@ -22,7 +32,7 @@ module Term : sig
     | Primitive of Primitive_impl.All.t
 
   val to_nominal : t -> t
-  val of_nominal : t -> (t, t) Result.t
+  val of_nominal : t -> (t, Conversion_error.t) Result.t
   val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
   val info : t -> Provenance.t
@@ -136,7 +146,7 @@ module Convertible : sig
     include Language_object_intf.S
 
     val to_nominal : t -> Term.t
-    val of_nominal : Term.t -> (t, Term.t) Result.t
+    val of_nominal : Term.t -> (t, Conversion_error.t) Result.t
   end
 
   (** Helpers derivable from [S] *)
@@ -152,13 +162,17 @@ module Convertible : sig
     (** Substitute all the variables in the context.
 
         Leaves variables not found in the context free. *)
-    val subst_all : t String.Map.t -> t -> (t, Term.t) Result.t
+    val subst_all : t String.Map.t -> t -> (t, Conversion_error.t) Result.t
 
     (** Substitute a single variable *)
-    val subst : name:string -> value:t -> t -> (t, Term.t) Result.t
+    val subst : name:string -> value:t -> t -> (t, Conversion_error.t) Result.t
 
-    val rename : string -> string -> t -> (t, Term.t) Result.t
-    val select_path : path:int list -> t -> (t, (string, Term.t) Base.Either.t) Result.t
+    val rename : string -> string -> t -> (t, Conversion_error.t) Result.t
+
+    val select_path
+      :  path:int list
+      -> t
+      -> (t, (string, Conversion_error.t) Base.Either.t) Result.t
 
     (** {1 Serialization} *)
     include Language_object_intf.Json_convertible with type t := t

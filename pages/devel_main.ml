@@ -109,8 +109,9 @@ module Model = struct
     | Some tm ->
       (match Md_viewer.of_nominal tm with
       | Ok doc -> doc
-      | Error msg ->
-        failwith (Fmt.str "failed of_nominal conversion: %a" Nominal.Term.pp msg))
+      | Error err ->
+        failwith
+          (Fmt.str "failed of_nominal conversion: %a" Nominal.Conversion_error.pp err))
     | None -> failwith (Fmt.str "tag %s not found" tag)
   ;;
 

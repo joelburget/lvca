@@ -852,7 +852,7 @@ module Of_nominal (Context : Builder_context) = struct
         let conversions_needed, init = mk_exp ~var_names ~prims sort_defs op_def in
         let f (v, conversion) accum =
           [%expr
-            match [%e conversion] with Error msg -> Error msg | Ok [%p v] -> [%e accum]]
+            match [%e conversion] with Error err -> Error err | Ok [%p v] -> [%e accum]]
         in
         conversions_needed |> Queue.to_list |> List.fold_right ~f ~init
       in
@@ -871,7 +871,20 @@ module Of_nominal (Context : Builder_context) = struct
                   { txt = Lident (var_ctor_name sort_name); loc }
                   (Some [%expr info, name])]]
     in
-    let fallthrough = case ~lhs:(pvar "tm") ~guard ~rhs:[%expr Error tm] in
+    let here = Provenance.of_here [%here] in
+    let fallthrough =
+      case
+        ~lhs:(pvar "tm")
+        ~guard
+        ~rhs:
+          [%expr
+            let err =
+              Lvca_syntax.Nominal.Conversion_error.mk_Term
+                ~provenance:[%e Syntax_quoter.Exp.provenance ~loc here]
+                tm
+            in
+            Error err]
+    in
     let matching_cases =
       match Hashtbl.find sort_binding_status sort_name with
       | Some Bound -> matching_cases @ [ var_case ]
@@ -1370,9 +1383,10 @@ module Sig (Context : Builder_context) = struct
                 sort_def
             ; (let template dom = [%type: [%t dom] -> Lvca_syntax.Nominal.Term.t] in
                declare "to_nominal" ~init:(template (t unique_vars)) ~f:template)
-            ; (let term = [%type: Lvca_syntax.Nominal.Term.t] in
-               let template codom =
-                 [%type: [%t term] -> ([%t codom], [%t term]) Result.t]
+            ; (let template codom =
+                 [%type:
+                   Lvca_syntax.Nominal.Term.t
+                   -> ([%t codom], Lvca_syntax.Nominal.Conversion_error.t) Result.t]
                in
                declare "of_nominal" ~init:(template (t unique_vars)) ~f:template)
             ; declare

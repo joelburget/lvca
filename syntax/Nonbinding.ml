@@ -45,21 +45,27 @@ let rec to_de_bruijn tm =
   | Primitive p -> Primitive p
 ;;
 
-type nominal_conversion_error =
-  | Scope_encountered of Nominal.Scope.t
-  | Var_encountered of Nominal.Term.t
-
 let rec of_nominal tm =
   match tm with
   | Nominal.Term.Operator (a, tag, scopes) ->
     let%map scopes' = scopes |> List.map ~f:of_nominal_scope |> Result.all in
     Operator (a, tag, scopes')
-  | Var _ -> Error (Var_encountered tm)
+  | Var _ ->
+    Error
+      (Nominal.Conversion_error.mk_Term
+         ~provenance:(Provenance.of_here [%here])
+         ~message:"Nonbinding terms can't be variables"
+         tm)
   | Primitive p -> Ok (Primitive p)
 
 and of_nominal_scope = function
   | Nominal.Scope.Scope ([], tm) -> of_nominal tm
-  | scope -> Error (Scope_encountered scope)
+  | scope ->
+    Error
+      (Nominal.Conversion_error.mk_Scope
+         ~provenance:(Provenance.of_here [%here])
+         ~message:"Nonbinding terms can't bind variables"
+         scope)
 ;;
 
 let rec to_nominal tm =
