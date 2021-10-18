@@ -3,8 +3,8 @@ open Lvca_provenance
 open Lvca_util
 open Result.Let_syntax
 
-type term =
-  | Operator of Provenance.t * string * term list
+type t =
+  | Operator of Provenance.t * string * t list
   | Primitive of Primitive.All.t
 
 let rec equivalent ?(info_eq = fun _ _ -> true) t1 t2 =
@@ -110,11 +110,13 @@ let parse =
   <?> "term"
 ;;
 
-module type Convertible_s = sig
-  include Language_object_intf.S with type t = term
+type nonbinding = t
 
-  val of_nonbinding : term -> (t, term) Result.t
-  val to_nonbinding : t -> term
+module type Convertible_s = sig
+  include Language_object_intf.S with type t = t
+
+  val of_nonbinding : nonbinding -> (t, nonbinding) Result.t
+  val to_nonbinding : t -> nonbinding
 end
 
 module Json = struct
