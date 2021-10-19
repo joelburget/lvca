@@ -96,12 +96,12 @@ module Core = struct
 
   module Type = struct
     let rec t ~loc = function
-      | Lang.Ty.Sort (info, s) ->
+      | Type.Ty.Sort (info, s) ->
         [%expr
-          Lvca_core.Lang.Ty.Sort ([%e provenance ~loc info], [%e Sort_model.sort ~loc s])]
+          Lvca_core.Type.Ty.Sort ([%e provenance ~loc info], [%e Sort_model.sort ~loc s])]
       | Arrow (info, t1, t2) ->
         [%expr
-          Lvca_core.Lang.Ty.Arrow
+          Lvca_core.Type.Ty.Arrow
             ([%e provenance ~loc info], [%e t ~loc t1], [%e t ~loc t2])]
     ;;
   end

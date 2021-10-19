@@ -121,62 +121,17 @@ module Sort = struct
   ;;
 end
 
-module Lang = struct
+module Type = struct
   include
     [%lvca.abstract_syntax_module
     {|
 sort : *
-nominal : *
-list : * -> *
-option : * -> *
-binding_aware_pattern : * -> *
-string : *
-
-is_rec := Rec() | No_rec()
 
 ty := Sort(sort) | Arrow(ty; ty)
+      |}, { sort = "Sort_model.Sort" }]
 
-term :=
-  | Embedded(nominal)
-  | Ap(term; list term)
-  | Case(term; list case_scope)
-  | Lambda(ty; term. term)
-  | Let(is_rec; term; option ty; term. term)
-  | Subst(term. term; term)
-
-case_scope := Case_scope(binding_aware_pattern; term)
-|}
-    , { sort = "Sort_model.Sort"
-      ; nominal = "Nominal.Term"
-      ; list = "List_model.List"
-      ; option = "Option_model.Option"
-      ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
-      ; string = "Primitive.String"
-      }]
-
-  module Is_rec = struct
-    include Nominal.Convertible.Extend (Is_rec)
-    include Is_rec
-  end
-
-  module Ty = struct
-    include Nominal.Convertible.Extend (Ty)
-    include Ty
-  end
-
-  module Term = struct
-    include Nominal.Convertible.Extend (Term)
-    include Term
-  end
-
-  module Case_scope = struct
-    include Nominal.Convertible.Extend (Case_scope)
-    include Case_scope
-  end
-end
-
-module Type = struct
-  include Lang.Ty
+  include Nominal.Convertible.Extend (Ty)
+  include Ty
 
   let pp ppf =
     let rec go need_parens ppf = function
@@ -274,6 +229,55 @@ module Type = struct
         ;;
       end)
     ;;
+  end
+
+  let parse = Parse.t
+end
+
+module Lang = struct
+  include
+    [%lvca.abstract_syntax_module
+    {|
+ty : *
+nominal : *
+list : * -> *
+option : * -> *
+binding_aware_pattern : * -> *
+string : *
+
+is_rec := Rec() | No_rec()
+
+term :=
+  | Embedded(nominal)
+  | Ap(term; list term)
+  | Case(term; list case_scope)
+  | Lambda(ty; term. term)
+  | Let(is_rec; term; option ty; term. term)
+  | Subst(term. term; term)
+
+case_scope := Case_scope(binding_aware_pattern; term)
+|}
+    , { ty = "Type"
+      ; nominal = "Nominal.Term"
+      ; list = "List_model.List"
+      ; option = "Option_model.Option"
+      ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
+      ; string = "Primitive.String"
+      }]
+
+  module Is_rec = struct
+    include Nominal.Convertible.Extend (Is_rec)
+    include Is_rec
+  end
+
+  module Term = struct
+    include Nominal.Convertible.Extend (Term)
+    include Term
+  end
+
+  module Case_scope = struct
+    include Nominal.Convertible.Extend (Case_scope)
+    include Case_scope
   end
 end
 
@@ -873,9 +877,7 @@ let%test_module "Parsing" =
     let%test _ =
       parse_exn {|\(x : bool) -> x|}
       = Lambda
-          ( here
-          , Lang.Ty.Sort (here, Name (here, (here, "bool")))
-          , (single_var "x", var "x") )
+          (here, Type.Sort (here, Name (here, (here, "bool"))), (single_var "x", var "x"))
     ;;
 
     let%test _ =
@@ -988,7 +990,7 @@ let%test_module "Core parsing" =
     let c_var name = Term.Term_var (here, name)
     let t_operator tag children = Nominal.Term.Operator (here, tag, children)
     let meaning x = ap (c_var "meaning") [ x ]
-    let ty = Lang.Ty.Sort (here, Name (here, (here, "ty")))
+    let ty = Type.Sort (here, Name (here, (here, "ty")))
 
     let dynamics =
       Term.Lambda
@@ -1404,7 +1406,7 @@ let%test_module "Evaluation / inference" =
 
     let type_env =
       String.Map.of_alist_exn
-        [ "x", Lang.Ty.Sort (here, Sort_model.Sort.Name (here, (here, "a"))) ]
+        [ "x", Type.Sort (here, Sort_model.Sort.Name (here, (here, "a"))) ]
     ;;
 
     let%expect_test _ =

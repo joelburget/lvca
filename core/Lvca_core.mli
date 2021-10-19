@@ -64,9 +64,23 @@ module Sort : sig
   val out : Sort_model.Sort.t -> Lvca_syntax.Sort.t
 end
 
+module Type : sig
+  include
+    [%lvca.abstract_syntax_module_sig
+  {|
+sort : *
+
+ty := Sort(sort) | Arrow(ty; ty)
+  |}, { sort = "Sort_model.Sort" }]
+
+  type t = Ty.t
+
+  val pp : t Fmt.t
+  val parse : t Lvca_parsing.t
+end
+
 module Lang : [%lvca.abstract_syntax_module_sig
 {|
-sort : *
 nominal : *
 list : * -> *
 option : * -> *
@@ -74,8 +88,6 @@ binding_aware_pattern : * -> *
 string : *
 
 is_rec := Rec() | No_rec()
-
-ty := Sort(sort) | Arrow(ty; ty)
 
 term :=
   | Embedded(nominal)
@@ -87,7 +99,7 @@ term :=
 
 case_scope := Case_scope(binding_aware_pattern; term)
 |}
-, { sort = "Sort_model.Sort"
+, { ty = "Type"
   ; nominal = "Nominal.Term"
   ; list = "List_model.List"
   ; option = "Option_model.Option"
@@ -100,12 +112,6 @@ module Term : sig
 
   val parse_concrete : t Lvca_parsing.t
   val pp_concrete : t Fmt.t
-end
-
-module Type : sig
-  type t = Lang.Ty.t
-
-  val parse : t Lvca_parsing.t
 end
 
 module Parse : sig
