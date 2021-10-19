@@ -443,9 +443,110 @@ end
 
 module Extended_language = struct
   (* As in the paper:
-   * - extend with integers, primitive arithmetic functions, strings, recursive
-   *   functions, unit, and pairs.
+   * - extend with ~integers,~ primitive arithmetic functions, ~strings,~ recursive
+   *   functions, ~unit, and pairs~.
    * - allow patterns in binding constructs (functions, handler clauses,
    *   operation calls, sequencing)
    *)
+  include
+    [%lvca.abstract_syntax_module
+    {|
+list : * -> *
+nonbinding : *
+string : *
+
+value :=
+  | Adt(nonbinding)
+  | Fun(value. computation)
+  | Handler_val(handler)
+
+handler_clause :=
+  | Return_clause(value. computation)
+  | Op_clause(string; value. value. computation)
+
+handler := Handler(list handler_clause)
+
+computation :=
+  | Return(value)
+  | Op(string; value; value. computation)
+  | Do(computation; value. computation)
+  | If(value; computation; computation)
+  | App(value; value)
+  | With_handle(value; computation)
+
+v_type :=
+  | Bool()
+  | Fun_ty(v_type; c_type)
+  | Handler_ty(c_type; c_type)
+
+c_type := Computation(v_type; list string)
+|}
+    , { string = "Primitive.String"
+      ; list = "Lvca_core.List_model.List"
+      ; nonbinding = "Lvca_syntax.Nonbinding"
+      }]
+
+  (* Lower from Extended_language to Base_language *)
+  module Lower = struct
+    let info i = Provenance.calculated_here [%here] [ i ]
+
+    exception Lower_failure of Value.t
+
+    let rec value v =
+      match v with
+      | Value.Adt (i, Operator (_, "True", [])) -> Base_language.Value.True (info i)
+      | Adt (i, Operator (_, "False", [])) -> False (info i)
+      | Adt _ -> raise (Lower_failure v)
+      | Fun (i, (x, c)) -> Fun (info i, (x, computation c))
+      | Handler_val (i, h) -> Handler_val (info i, handler h)
+      | Value_var (i, x) -> Value_var (info i, x)
+
+    and handler_clause = function
+      | Handler_clause.Return_clause (i, (x, c)) ->
+        Base_language.Handler_clause.Return_clause (info i, (x, computation c))
+      | Op_clause (i, name, (x, y, c)) -> Op_clause (info i, name, (x, y, computation c))
+
+    and handler (Handler.Handler (i, clauses)) =
+      let clauses = Lvca_core.List_model.map ~f:handler_clause clauses in
+      Base_language.Handler.Handler (info i, clauses)
+
+    and computation = function
+      | Computation.Return (i, v) -> Base_language.Computation.Return (info i, value v)
+      | Op (i, name, v, (x, c)) -> Op (info i, name, value v, (x, computation c))
+      | Do (i, c1, (x, c2)) -> Do (info i, computation c1, (x, computation c2))
+      | If (i, v, c1, c2) -> If (info i, value v, computation c1, computation c2)
+      | App (i, v1, v2) -> App (info i, value v1, value v2)
+      | With_handle (i, v, c) -> With_handle (info i, value v, computation c)
+    ;;
+  end
+
+  (* Lift from Base_language to Extended_language *)
+  module Lift = struct
+    let info i = Provenance.calculated_here [%here] [ i ]
+
+    let rec value = function
+      | Base_language.Value.True i -> Value.Adt (info i, Operator (info i, "True", []))
+      | False i -> Adt (info i, Operator (info i, "False", []))
+      | Fun (i, (x, c)) -> Fun (info i, (x, computation c))
+      | Handler_val (i, h) -> Handler_val (info i, handler h)
+      | Value_var (i, x) -> Value_var (info i, x)
+
+    and handler_clause = function
+      | Base_language.Handler_clause.Return_clause (i, (x, c)) ->
+        Handler_clause.Return_clause (info i, (x, computation c))
+      | Op_clause (i, name, (x, y, c)) -> Op_clause (info i, name, (x, y, computation c))
+
+    and handler (Base_language.Handler.Handler (i, clauses)) =
+      let clauses = Lvca_core.List_model.map ~f:handler_clause clauses in
+      Handler.Handler (info i, clauses)
+
+    and computation = function
+      | Base_language.Computation.Return (i, v) -> Computation.Return (info i, value v)
+      | Op (i, name, v, (x, c)) -> Op (info i, name, value v, (x, computation c))
+      | Do (i, c1, (x, c2)) -> Do (info i, computation c1, (x, computation c2))
+      | If (i, v, c1, c2) -> If (info i, value v, computation c1, computation c2)
+      | App (i, v1, v2) -> App (info i, value v1, value v2)
+      | With_handle (i, v, c) -> With_handle (info i, value v, computation c)
+    ;;
+  end
 end
