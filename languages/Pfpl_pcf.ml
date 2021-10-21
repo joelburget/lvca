@@ -111,7 +111,7 @@ let rec to_pretty = function
 let to_core =
   [%lvca.core
     {|
-let rec eval = \(tm : exp) -> match tm with {
+\(tm : exp) -> match tm with {
   | Zero() -> {Zero()}
   | Succ(exp) -> let exp = eval exp in Succ(exp)
   | Ifz(_ty; e0; x. e1; e) ->
@@ -124,7 +124,6 @@ let rec eval = \(tm : exp) -> match tm with {
   | Ap(e1; e2) -> eval {Ap({eval e1}; {e2})}
   | Fix(_typ; x. e) -> e[x := tm]
 }
-in eval
   |}]
 ;;
 
