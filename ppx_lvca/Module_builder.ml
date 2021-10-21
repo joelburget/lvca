@@ -1035,7 +1035,7 @@ module Info (Context : Builder_context) = struct
       ~sort_binding_status
       _sort_defs
       sort_name
-      (Syn.Sort_def.Sort_def (vars, op_defs))
+      (Syn.Sort_def.Sort_def (_vars, op_defs))
     =
     let mk_case op_def =
       let lhs = Operator_pat.mk ~match_info:true ~match_non_info:false op_def in
@@ -1057,10 +1057,7 @@ module Info (Context : Builder_context) = struct
         | Some Bound -> op_defs @ [ var_case ]
         | _ -> op_defs
       in
-      List.fold_right
-        (List.map ~f:fst vars)
-        ~init:(pexp_function op_defs)
-        ~f:(f_fun ~used:false)
+      pexp_function op_defs
     in
     value_binding ~pat:(pvar sort_name) ~expr
   ;;
@@ -1389,10 +1386,11 @@ module Sig (Context : Builder_context) = struct
                    -> ([%t codom], Lvca_syntax.Nominal.Conversion_error.t) Result.t]
                in
                declare "of_nominal" ~init:(template (t unique_vars)) ~f:template)
-            ; declare
-                "info"
-                ~init:[%type: [%t t unique_vars] -> Lvca_syntax.Provenance.t]
-                ~f:(fun _ -> ptyp_any)
+            ; psig_value
+                (value_description
+                   ~name:{ txt = "info"; loc }
+                   ~type_:[%type: [%t t unique_vars] -> Lvca_syntax.Provenance.t]
+                   ~prim:[])
             ; (let template v =
                  [%type:
                    ?info_eq:(Lvca_syntax.Provenance.t -> Lvca_syntax.Provenance.t -> bool)

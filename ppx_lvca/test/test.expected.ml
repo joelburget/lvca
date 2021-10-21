@@ -279,7 +279,7 @@ module List_model :
           ->
           Lvca_syntax.Nominal.Term.t ->
             ('a_ t, Lvca_syntax.Nominal.Conversion_error.t) Result.t
-      val info : _ -> 'a_ t -> Lvca_syntax.Provenance.t
+      val info : 'a_ t -> Lvca_syntax.Provenance.t
       val equivalent :
         (?info_eq:(Lvca_syntax.Provenance.t ->
                      Lvca_syntax.Provenance.t -> bool)
@@ -304,7 +304,7 @@ module List_model :
           end
         module Info =
           struct
-            let list _a =
+            let list =
               function | Types.Nil x0 -> x0 | Types.Cons (x0, _, _) -> x0
           end
         module Equivalent =
@@ -540,14 +540,13 @@ module Lang =
         module Info =
           struct
             let nonempty = function | Types.Nonempty (x0, _, _) -> x0
-            let pair _a _b = function | Types.Pair (x0, _, _) -> x0
+            let pair = function | Types.Pair (x0, _, _) -> x0
             let foo =
               function
               | Types.Foo (x0, _) -> x0
               | Types.Bar (x0, (_, _, _)) -> x0
               | Types.Foo_var (info, _) -> info
-            let pair_plus _a _b =
-              function | Types.PairPlus (x0, _, _, _) -> x0
+            let pair_plus = function | Types.PairPlus (x0, _, _, _) -> x0
             let term = function | Types.Operator (x0, _) -> x0
             let mut_a = function | Types.Mut_a (x0, _) -> x0
             and mut_b = function | Types.Mut_b (x0, _) -> x0
@@ -1901,12 +1900,12 @@ module List_lang =
           end
         module Info =
           struct
-            let list _a =
+            let list =
               function | Types.Nil x0 -> x0 | Types.Cons (x0, _, _) -> x0
             let predefined = function | Types.Predefined x0 -> x0
             let list_list_predefined_1 =
               function | Types.List_list_predefined_1 (x0, _) -> x0
-            let list_list_a _a = function | Types.List_list_a (x0, _) -> x0
+            let list_list_a = function | Types.List_list_a (x0, _) -> x0
             let list_list_predefined_2 =
               function | Types.List_list_predefined_2 (x0, _) -> x0
             let list_list_string_1 =
@@ -3295,7 +3294,7 @@ module Option_model :
           ->
           Lvca_syntax.Nominal.Term.t ->
             ('a_ t, Lvca_syntax.Nominal.Conversion_error.t) Result.t
-      val info : _ -> 'a_ t -> Lvca_syntax.Provenance.t
+      val info : 'a_ t -> Lvca_syntax.Provenance.t
       val equivalent :
         (?info_eq:(Lvca_syntax.Provenance.t ->
                      Lvca_syntax.Provenance.t -> bool)
@@ -3319,7 +3318,7 @@ module Option_model :
           end
         module Info =
           struct
-            let option _a =
+            let option =
               function | Types.None x0 -> x0 | Types.Some (x0, _) -> x0
           end
         module Equivalent =
