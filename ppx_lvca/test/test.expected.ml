@@ -62,9 +62,9 @@ module Test4 =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
           end
@@ -358,9 +358,9 @@ module List_model :
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
           end
@@ -657,7 +657,7 @@ module Lang =
                          ([x1;
                           Lvca_syntax.Pattern.Var ((x2.info), (x2.name))],
                            (foo x3))])
-              | Foo_var (info, name) ->
+              | Types.Foo_var (info, name) ->
                   Lvca_syntax.Nominal.Term.Var (info, name)
             let pair_plus a b =
               function
@@ -717,9 +717,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let pair a b =
@@ -742,9 +742,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let rec foo =
@@ -769,7 +769,7 @@ module Lang =
                                 (let open Lvca_syntax.Single_var in
                                    { info = x2; name = x3 }), x4))))
               | Lvca_syntax.Nominal.Term.Var (info, name) ->
-                  Ok (Foo_var (info, name))
+                  Ok (Types.Foo_var (info, name))
               | tm ->
                   let err =
                     Lvca_syntax.Nominal.Conversion_error.mk_Term
@@ -778,9 +778,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let pair_plus a b =
@@ -807,9 +807,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let rec term =
@@ -829,9 +829,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let rec mut_a =
@@ -851,9 +851,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             and mut_b =
@@ -873,9 +873,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let rec nat =
@@ -896,9 +896,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
           end
@@ -1710,7 +1710,7 @@ module Ifz_lang :
                         ([Lvca_syntax.Pattern.Var ((x2.info), (x2.name))],
                           (ifz x3));
                       Lvca_syntax.Nominal.Scope.Scope ([], (ifz x4))])
-              | Ifz_var (info, name) ->
+              | Types.Ifz_var (info, name) ->
                   Lvca_syntax.Nominal.Term.Var (info, name)
           end
         module Of_nominal =
@@ -1739,7 +1739,7 @@ module Ifz_lang :
                                             { info = x2; name = x3 }), x4),
                                         x5)))))
               | Lvca_syntax.Nominal.Term.Var (info, name) ->
-                  Ok (Ifz_var (info, name))
+                  Ok (Types.Ifz_var (info, name))
               | tm ->
                   let err =
                     Lvca_syntax.Nominal.Conversion_error.mk_Term
@@ -1748,9 +1748,9 @@ module Ifz_lang :
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
           end
@@ -2069,9 +2069,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let predefined =
@@ -2086,9 +2086,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let list_list_predefined_1 =
@@ -2108,9 +2108,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let list_list_a a =
@@ -2130,9 +2130,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let list_list_predefined_2 =
@@ -2152,9 +2152,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let list_list_string_1 =
@@ -2174,9 +2174,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let list_list_string_2 =
@@ -2196,9 +2196,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let list_predefined =
@@ -2218,9 +2218,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
             let list_external =
@@ -2240,9 +2240,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
           end
@@ -3367,9 +3367,9 @@ module Option_model :
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 874;
-                                          pos_bol = 27189;
-                                          pos_cnum = 27223
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
                                         })) tm in
                   Error err
           end
@@ -3456,3 +3456,231 @@ module Option_model :
         let mk_Some ~info  x_0 = Some (info, x_0)
       end
   end 
+module Empty =
+  struct
+    module Wrapper =
+      struct
+        module Types = struct type empty = | end
+        module Info =
+          struct let empty = function | (_ : Types.empty) -> . end
+        module Equivalent =
+          struct let empty = function | (_ : Types.empty) -> . end
+        module To_nominal =
+          struct let empty = function | (_ : Types.empty) -> . end
+        module Of_nominal =
+          struct
+            let empty =
+              function
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
+                                        })) tm in
+                  Error err
+          end
+      end
+    module Types = Wrapper.Types
+    let language =
+      let open Lvca_syntax.Abstract_syntax in
+        {
+          externals = [];
+          sort_defs =
+            [("empty",
+               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def ([], [])))]
+        }
+    module Empty =
+      struct
+        type t = Wrapper.Types.empty = |
+        let info = Wrapper.Info.empty
+        let equivalent = Wrapper.Equivalent.empty
+        let to_nominal = Wrapper.To_nominal.empty
+        let of_nominal = Wrapper.Of_nominal.empty
+      end
+  end
+module Empty_as_var =
+  struct
+    module Wrapper =
+      struct
+        module Types =
+          struct
+            type foo =
+              | Foo of Lvca_syntax.Provenance.t * (Lvca_syntax.Single_var.t *
+              empty) 
+            and empty =
+              | Empty_var of Lvca_syntax.Provenance.t * string 
+          end
+        module Info =
+          struct
+            let empty = function | Types.Empty_var (info, _) -> info
+            let foo = function | Types.Foo (x0, (_, _)) -> x0
+          end
+        module Equivalent =
+          struct
+            let empty ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Empty_var (i1, n1), Types.Empty_var (i2, n2)) ->
+                  (info_eq i1 i2) && (let open Base.String in n1 = n2)
+            let foo ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Foo (x0, (x1, x2)), Types.Foo (y0, (y1, y2))) ->
+                  (info_eq x0 y0) &&
+                    ((Lvca_syntax.Single_var.equivalent ~info_eq x1 y1) &&
+                       (empty ~info_eq x2 y2))
+          end
+        module To_nominal =
+          struct
+            let empty =
+              function
+              | Types.Empty_var (info, name) ->
+                  Lvca_syntax.Nominal.Term.Var (info, name)
+            let foo =
+              function
+              | Types.Foo (x0, (x1, x2)) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Foo",
+                      [Lvca_syntax.Nominal.Scope.Scope
+                         ([Lvca_syntax.Pattern.Var ((x1.info), (x1.name))],
+                           (empty x2))])
+          end
+        module Of_nominal =
+          struct
+            let empty =
+              function
+              | Lvca_syntax.Nominal.Term.Var (info, name) ->
+                  Ok (Types.Empty_var (info, name))
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
+                                        })) tm in
+                  Error err
+            let foo =
+              function
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "Foo", (Lvca_syntax.Nominal.Scope.Scope
+                   ((Lvca_syntax.Pattern.Var (x1, x2))::[], x3))::[])
+                  ->
+                  (match empty x3 with
+                   | Error err -> Error err
+                   | Ok x3 ->
+                       Ok
+                         (Types.Foo
+                            (x0,
+                              ((let open Lvca_syntax.Single_var in
+                                  { info = x1; name = x2 }), x3))))
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
+                                        })) tm in
+                  Error err
+          end
+      end
+    module Types = Wrapper.Types
+    let language =
+      let open Lvca_syntax.Abstract_syntax in
+        {
+          externals = [];
+          sort_defs =
+            [("empty",
+               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def ([], [])));
+            ("foo",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                 ([],
+                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ((Lvca_syntax.Provenance.Located
+                          (Lvca_syntax.Provenance.Located.Parse_located
+                             ((let open Lvca_syntax.Provenance.Parse_located in
+                                 {
+                                   input =
+                                     Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                   range =
+                                     (Some
+                                        (let open Lvca_provenance.Range in
+                                           { start = 20; finish = 34 }))
+                                 })))), "Foo",
+                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                           ((Lvca_syntax.Provenance.Located
+                               (Lvca_syntax.Provenance.Located.Source_located
+                                  {
+                                    pos_fname = "syntax/Abstract_syntax.ml";
+                                    pos_lnum = 250;
+                                    pos_bol = 6489;
+                                    pos_cnum = 6540
+                                  })),
+                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                                ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_binding
+                                    (Lvca_syntax.Sort.Name
+                                       ((Lvca_syntax.Provenance.Located
+                                           (Lvca_syntax.Provenance.Located.Parse_located
+                                              ((let open Lvca_syntax.Provenance.Parse_located in
+                                                  {
+                                                    input =
+                                                      Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                    range =
+                                                      (Some
+                                                         (let open Lvca_provenance.Range in
+                                                            {
+                                                              start = 21;
+                                                              finish = 26
+                                                            }))
+                                                  })))), "empty"))],
+                                  (Lvca_syntax.Sort.Name
+                                     ((Lvca_syntax.Provenance.Located
+                                         (Lvca_syntax.Provenance.Located.Parse_located
+                                            ((let open Lvca_syntax.Provenance.Parse_located in
+                                                {
+                                                  input =
+                                                    Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                  range =
+                                                    (Some
+                                                       (let open Lvca_provenance.Range in
+                                                          {
+                                                            start = 28;
+                                                            finish = 33
+                                                          }))
+                                                })))), "empty")))])))])))]
+        }
+    module Empty =
+      struct
+        type t = Wrapper.Types.empty =
+          | Empty_var of Lvca_syntax.Provenance.t * string 
+        let info = Wrapper.Info.empty
+        let equivalent = Wrapper.Equivalent.empty
+        let to_nominal = Wrapper.To_nominal.empty
+        let of_nominal = Wrapper.Of_nominal.empty
+        let mk_Empty_var ~info  name = Empty_var (info, name)
+      end
+    module Foo =
+      struct
+        type t = Wrapper.Types.foo =
+          | Foo of Lvca_syntax.Provenance.t * (Lvca_syntax.Single_var.t *
+          Wrapper.Types.empty) 
+        let info = Wrapper.Info.foo
+        let equivalent = Wrapper.Equivalent.foo
+        let to_nominal = Wrapper.To_nominal.foo
+        let of_nominal = Wrapper.Of_nominal.foo
+        let mk_Foo ~info  x_0 = Foo (info, x_0)
+      end
+  end

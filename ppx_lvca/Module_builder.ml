@@ -376,7 +376,7 @@ module Helpers (Context : Builder_context) = struct
 
       {[
         nonempty = Nonempty of Provenance.t * Nominal.t * list
-                                             ^^^^^^^^^^   ^^^^
+                                              ^^^^^^^^^   ^^^^
       ]}
 
       If [list] is an external:
@@ -689,11 +689,12 @@ module To_nominal (Context : Builder_context) = struct
     in
     let mk_scope (Syn.Valence.Valence (slots, body_sort)) =
       let args =
-        List.map slots ~f:(function
-            | Syn.Sort_slot.Sort_binding _ ->
-              let v = v () in
-              [%expr Lvca_syntax.Pattern.Var ([%e v].info, [%e v].name)]
-            | Sort_pattern _ -> v ())
+        slots
+        |> List.map ~f:(function
+               | Syn.Sort_slot.Sort_binding _ ->
+                 let v = v () in
+                 [%expr Lvca_syntax.Pattern.Var ([%e v].info, [%e v].name)]
+               | Sort_pattern _ -> v ())
         |> Syntax_quoter.Exp.list ~loc
       in
       [%expr Lvca_syntax.Nominal.Scope.Scope ([%e args], [%e body_arg body_sort])]
@@ -710,7 +711,8 @@ module To_nominal (Context : Builder_context) = struct
       sort_name
       (Syn.Sort_def.Sort_def (vars, op_defs))
     =
-    let var_names = vars |> List.map ~f:fst |> SSet.of_list in
+    let type_vars = List.map vars ~f:fst in
+    let var_names = SSet.of_list type_vars in
     let f op_def =
       let lhs = Operator_pat.mk ~match_info:true op_def in
       let rhs = mk_nominal_exp ~var_names ~prims sort_defs op_def in
@@ -720,7 +722,7 @@ module To_nominal (Context : Builder_context) = struct
       case
         ~lhs:
           (ppat_construct
-             { txt = Lident (var_ctor_name sort_name); loc }
+             { txt = unflatten [ "Types"; var_ctor_name sort_name ]; loc }
              (Some [%pat? info, name]))
         ~guard
         ~rhs:[%expr Lvca_syntax.Nominal.Term.Var (info, name)]
@@ -732,7 +734,15 @@ module To_nominal (Context : Builder_context) = struct
       | _ -> op_defs
     in
     let expr =
-      List.fold_right (List.map ~f:fst vars) ~init:(pexp_function op_defs) ~f:f_fun
+      match op_defs with
+      | [] ->
+        let ty =
+          ptyp_constr
+            { txt = unflatten [ "Types"; sort_name ]; loc }
+            (List.map ~f:ptyp_var type_vars)
+        in
+        [%expr function (_ : [%t ty]) -> .]
+      | _ -> List.fold_right type_vars ~init:(pexp_function op_defs) ~f:f_fun
     in
     value_binding ~pat:(pvar sort_name) ~expr
   ;;
@@ -868,7 +878,7 @@ module Of_nominal (Context : Builder_context) = struct
             Ok
               [%e
                 pexp_construct
-                  { txt = Lident (var_ctor_name sort_name); loc }
+                  { txt = unflatten [ "Types"; var_ctor_name sort_name ]; loc }
                   (Some [%expr info, name])]]
     in
     let here = Provenance.of_here [%here] in
@@ -902,6 +912,14 @@ module Equivalent (Context : Builder_context) = struct
   open Helpers (Context)
   module Operator_pat = Operator_pat (Context)
 
+  let info_eq_ty =
+    [%type:
+      ?info_eq:(Lvca_syntax.Provenance.t -> Lvca_syntax.Provenance.t -> bool)
+      -> _
+      -> _
+      -> bool]
+  ;;
+
   let mk_rhs ~classify_sort ~args sort =
     let rec go sort =
       let loc = sort |> Sort.info |> get_range |> update_loc in
@@ -930,7 +948,8 @@ module Equivalent (Context : Builder_context) = struct
       sort_name
       (Syn.Sort_def.Sort_def (vars, op_defs))
     =
-    let var_names = vars |> List.map ~f:fst |> SSet.of_list in
+    let type_vars = List.map vars ~f:fst in
+    let var_names = SSet.of_list type_vars in
     let classify_sort = classify_sort { var_names; mutual_sorts = sort_defs; prims } in
     let f (Syn.Operator_def.Operator_def (_info, _op_name, Arity (_, arity)) as op_def) =
       let lhs =
@@ -1005,20 +1024,23 @@ module Equivalent (Context : Builder_context) = struct
         let last_branch = case ~lhs:[%pat? _, _] ~guard ~rhs:[%expr false] in
         branches @ [ last_branch ]
     in
-    let init =
-      [%expr
-        fun ?(info_eq = fun _ _ -> true) t1 t2 -> [%e pexp_match [%expr t1, t2] branches]]
-    in
-    let info_eq_ty =
-      [%type:
-        ?info_eq:(Lvca_syntax.Provenance.t -> Lvca_syntax.Provenance.t -> bool)
-        -> _
-        -> _
-        -> bool]
-    in
     let expr =
-      List.fold_right (List.map ~f:fst vars) ~init ~f:(fun var_name ->
-          pexp_fun Nolabel None (ppat_constraint (pvar var_name) info_eq_ty))
+      match branches with
+      | [] ->
+        let ty =
+          ptyp_constr
+            { txt = unflatten [ "Types"; sort_name ]; loc }
+            (List.map ~f:ptyp_var type_vars)
+        in
+        [%expr function (_ : [%t ty]) -> .]
+      | _ ->
+        let init =
+          [%expr
+            fun ?(info_eq = fun _ _ -> true) t1 t2 ->
+              [%e pexp_match [%expr t1, t2] branches]]
+        in
+        List.fold_right type_vars ~init ~f:(fun var_name ->
+            pexp_fun Nolabel None (ppat_constraint (pvar var_name) info_eq_ty))
     in
     value_binding ~pat:(pvar sort_name) ~expr
   ;;
@@ -1035,8 +1057,9 @@ module Info (Context : Builder_context) = struct
       ~sort_binding_status
       _sort_defs
       sort_name
-      (Syn.Sort_def.Sort_def (_vars, op_defs))
+      (Syn.Sort_def.Sort_def (vars, op_defs))
     =
+    let type_vars = List.map vars ~f:fst in
     let mk_case op_def =
       let lhs = Operator_pat.mk ~match_info:true ~match_non_info:false op_def in
       case ~lhs ~guard ~rhs:[%expr x0]
@@ -1057,7 +1080,15 @@ module Info (Context : Builder_context) = struct
         | Some Bound -> op_defs @ [ var_case ]
         | _ -> op_defs
       in
-      pexp_function op_defs
+      match op_defs with
+      | [] ->
+        let ty =
+          ptyp_constr
+            { txt = unflatten [ "Types"; sort_name ]; loc }
+            (List.map ~f:ptyp_var type_vars)
+        in
+        [%expr function (_ : [%t ty]) -> .]
+      | _ -> pexp_function op_defs
     in
     value_binding ~pat:(pvar sort_name) ~expr
   ;;
