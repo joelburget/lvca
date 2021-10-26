@@ -101,6 +101,9 @@ module Empty = [%lvca.abstract_syntax_module "empty :="]
 module Empty_as_var =
 [%lvca.abstract_syntax_module
 {|
+list a := Nil() | Cons(a; list a)
 empty :=
-foo := Foo(empty. empty)
+foo :=
+  | Foo(empty. empty)
+  | Bar((list empty)[foo]. foo)
 |}]

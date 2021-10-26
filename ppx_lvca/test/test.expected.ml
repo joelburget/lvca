@@ -3510,16 +3510,27 @@ module Empty_as_var =
       struct
         module Types =
           struct
-            type foo =
+            type 'a list =
+              | Nil of Lvca_syntax.Provenance.t 
+              | Cons of Lvca_syntax.Provenance.t * 'a * 'a list 
+            and foo =
               | Foo of Lvca_syntax.Provenance.t * (Lvca_syntax.Single_var.t *
               empty) 
+              | Bar of Lvca_syntax.Provenance.t * (Pattern.t * foo) 
+              | Foo_var of Lvca_syntax.Provenance.t * string 
             and empty =
               | Empty_var of Lvca_syntax.Provenance.t * string 
           end
         module Info =
           struct
             let empty = function | Types.Empty_var (info, _) -> info
-            let foo = function | Types.Foo (x0, (_, _)) -> x0
+            let foo =
+              function
+              | Types.Foo (x0, (_, _)) -> x0
+              | Types.Bar (x0, (_, _)) -> x0
+              | Types.Foo_var (info, _) -> info
+            let list =
+              function | Types.Nil x0 -> x0 | Types.Cons (x0, _, _) -> x0
           end
         module Equivalent =
           struct
@@ -3527,12 +3538,31 @@ module Empty_as_var =
               match (t1, t2) with
               | (Types.Empty_var (i1, n1), Types.Empty_var (i2, n2)) ->
                   (info_eq i1 i2) && (let open Base.String in n1 = n2)
-            let foo ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+            let rec foo ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
               match (t1, t2) with
               | (Types.Foo (x0, (x1, x2)), Types.Foo (y0, (y1, y2))) ->
                   (info_eq x0 y0) &&
                     ((Lvca_syntax.Single_var.equivalent ~info_eq x1 y1) &&
                        (empty ~info_eq x2 y2))
+              | (Types.Bar (x0, (x1, x2)), Types.Bar (y0, (y1, y2))) ->
+                  (info_eq x0 y0) &&
+                    ((Lvca_syntax.Pattern.equivalent ~info_eq x1 y1) &&
+                       (foo ~info_eq x2 y2))
+              | (Types.Foo_var (i1, n1), Types.Foo_var (i2, n2)) ->
+                  (info_eq i1 i2) && (let open Base.String in n1 = n2)
+              | (_, _) -> false
+            let rec list
+              (a :
+                ?info_eq:(Lvca_syntax.Provenance.t ->
+                            Lvca_syntax.Provenance.t -> bool)
+                  -> _ -> _ -> bool)
+              ?(info_eq= fun _ -> fun _ -> true)  t1 t2 =
+              match (t1, t2) with
+              | (Types.Nil x0, Types.Nil y0) -> info_eq x0 y0
+              | (Types.Cons (x0, x1, x2), Types.Cons (y0, y1, y2)) ->
+                  (info_eq x0 y0) &&
+                    ((a ~info_eq x1 y1) && (list a ~info_eq x2 y2))
+              | (_, _) -> false
           end
         module To_nominal =
           struct
@@ -3540,7 +3570,7 @@ module Empty_as_var =
               function
               | Types.Empty_var (info, name) ->
                   Lvca_syntax.Nominal.Term.Var (info, name)
-            let foo =
+            let rec foo =
               function
               | Types.Foo (x0, (x1, x2)) ->
                   Lvca_syntax.Nominal.Term.Operator
@@ -3548,6 +3578,21 @@ module Empty_as_var =
                       [Lvca_syntax.Nominal.Scope.Scope
                          ([Lvca_syntax.Pattern.Var ((x1.info), (x1.name))],
                            (empty x2))])
+              | Types.Bar (x0, (x1, x2)) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Bar",
+                      [Lvca_syntax.Nominal.Scope.Scope ([x1], (foo x2))])
+              | Types.Foo_var (info, name) ->
+                  Lvca_syntax.Nominal.Term.Var (info, name)
+            let rec list a =
+              function
+              | Types.Nil x0 ->
+                  Lvca_syntax.Nominal.Term.Operator (x0, "Nil", [])
+              | Types.Cons (x0, x1, x2) ->
+                  Lvca_syntax.Nominal.Term.Operator
+                    (x0, "Cons",
+                      [Lvca_syntax.Nominal.Scope.Scope ([], (a x1));
+                      Lvca_syntax.Nominal.Scope.Scope ([], (list a x2))])
           end
         module Of_nominal =
           struct
@@ -3568,7 +3613,7 @@ module Empty_as_var =
                                           pos_cnum = 27533
                                         })) tm in
                   Error err
-            let foo =
+            let rec foo =
               function
               | Lvca_syntax.Nominal.Term.Operator
                   (x0, "Foo", (Lvca_syntax.Nominal.Scope.Scope
@@ -3582,6 +3627,42 @@ module Empty_as_var =
                             (x0,
                               ((let open Lvca_syntax.Single_var in
                                   { info = x1; name = x2 }), x3))))
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "Bar", (Lvca_syntax.Nominal.Scope.Scope
+                   (x1::[], x2))::[])
+                  ->
+                  (match foo x2 with
+                   | Error err -> Error err
+                   | Ok x2 -> Ok (Types.Bar (x0, (x1, x2))))
+              | Lvca_syntax.Nominal.Term.Var (info, name) ->
+                  Ok (Types.Foo_var (info, name))
+              | tm ->
+                  let err =
+                    Lvca_syntax.Nominal.Conversion_error.mk_Term
+                      ~provenance:(Lvca_syntax.Provenance.Located
+                                     (Lvca_syntax.Provenance.Located.Source_located
+                                        {
+                                          pos_fname =
+                                            "ppx_lvca/Module_builder.ml";
+                                          pos_lnum = 884;
+                                          pos_bol = 27499;
+                                          pos_cnum = 27533
+                                        })) tm in
+                  Error err
+            let rec list a =
+              function
+              | Lvca_syntax.Nominal.Term.Operator (x0, "Nil", []) ->
+                  Ok (Types.Nil x0)
+              | Lvca_syntax.Nominal.Term.Operator
+                  (x0, "Cons", (Lvca_syntax.Nominal.Scope.Scope
+                   ([], x1))::(Lvca_syntax.Nominal.Scope.Scope ([], x2))::[])
+                  ->
+                  (match a x1 with
+                   | Error err -> Error err
+                   | Ok x1 ->
+                       (match list a x2 with
+                        | Error err -> Error err
+                        | Ok x2 -> Ok (Types.Cons (x0, x1, x2))))
               | tm ->
                   let err =
                     Lvca_syntax.Nominal.Conversion_error.mk_Term
@@ -3603,8 +3684,124 @@ module Empty_as_var =
         {
           externals = [];
           sort_defs =
-            [("empty",
-               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def ([], [])));
+            [("list",
+               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+                  ([("a", None)],
+                    [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                       ((Lvca_syntax.Provenance.Located
+                           (Lvca_syntax.Provenance.Located.Parse_located
+                              ((let open Lvca_syntax.Provenance.Parse_located in
+                                  {
+                                    input =
+                                      Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                    range =
+                                      (Some
+                                         (let open Lvca_provenance.Range in
+                                            { start = 14; finish = 16 }))
+                                  })))), "Nil",
+                         (Lvca_syntax.Abstract_syntax.Arity.Arity
+                            ((Lvca_syntax.Provenance.Located
+                                (Lvca_syntax.Provenance.Located.Source_located
+                                   {
+                                     pos_fname = "syntax/Abstract_syntax.ml";
+                                     pos_lnum = 250;
+                                     pos_bol = 6489;
+                                     pos_cnum = 6540
+                                   })), [])));
+                    Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                      ((Lvca_syntax.Provenance.Located
+                          (Lvca_syntax.Provenance.Located.Parse_located
+                             ((let open Lvca_syntax.Provenance.Parse_located in
+                                 {
+                                   input =
+                                     Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                   range =
+                                     (Some
+                                        (let open Lvca_provenance.Range in
+                                           { start = 23; finish = 34 }))
+                                 })))), "Cons",
+                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                           ((Lvca_syntax.Provenance.Located
+                               (Lvca_syntax.Provenance.Located.Source_located
+                                  {
+                                    pos_fname = "syntax/Abstract_syntax.ml";
+                                    pos_lnum = 250;
+                                    pos_bol = 6489;
+                                    pos_cnum = 6540
+                                  })),
+                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                                ([],
+                                  (Lvca_syntax.Sort.Name
+                                     ((Lvca_syntax.Provenance.Located
+                                         (Lvca_syntax.Provenance.Located.Parse_located
+                                            ((let open Lvca_syntax.Provenance.Parse_located in
+                                                {
+                                                  input =
+                                                    Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                  range =
+                                                    (Some
+                                                       (let open Lvca_provenance.Range in
+                                                          {
+                                                            start = 24;
+                                                            finish = 25
+                                                          }))
+                                                })))), "a")));
+                             Lvca_syntax.Abstract_syntax.Valence.Valence
+                               ([],
+                                 (Lvca_syntax.Sort.Ap
+                                    ((Lvca_syntax.Provenance.Located
+                                        (Lvca_syntax.Provenance.Located.Parse_located
+                                           ((let open Lvca_syntax.Provenance.Parse_located in
+                                               {
+                                                 input =
+                                                   Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                 range =
+                                                   (Some
+                                                      (let open Lvca_provenance.Range in
+                                                         {
+                                                           start = 27;
+                                                           finish = 31
+                                                         }))
+                                               })))), "list",
+                                      (Lvca_syntax.Sort.Cons
+                                         ((Lvca_syntax.Provenance.Located
+                                             (Lvca_syntax.Provenance.Located.Source_located
+                                                {
+                                                  pos_fname =
+                                                    "syntax/Sort.ml";
+                                                  pos_lnum = 44;
+                                                  pos_bol = 1417;
+                                                  pos_cnum = 1459
+                                                })),
+                                           (Lvca_syntax.Sort.Name
+                                              ((Lvca_syntax.Provenance.Located
+                                                  (Lvca_syntax.Provenance.Located.Parse_located
+                                                     ((let open Lvca_syntax.Provenance.Parse_located in
+                                                         {
+                                                           input =
+                                                             Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                           range =
+                                                             (Some
+                                                                (let open Lvca_provenance.Range in
+                                                                   {
+                                                                    start =
+                                                                    32;
+                                                                    finish =
+                                                                    33
+                                                                   }))
+                                                         })))), "a")),
+                                           (Lvca_syntax.Sort.Nil
+                                              (Lvca_syntax.Provenance.Located
+                                                 (Lvca_syntax.Provenance.Located.Source_located
+                                                    {
+                                                      pos_fname =
+                                                        "syntax/Sort.ml";
+                                                      pos_lnum = 43;
+                                                      pos_bol = 1372;
+                                                      pos_cnum = 1408
+                                                    }))))))))])))])));
+            ("empty",
+              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def ([], [])));
             ("foo",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
                  ([],
@@ -3618,7 +3815,7 @@ module Empty_as_var =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 20; finish = 34 }))
+                                           { start = 58; finish = 72 }))
                                  })))), "Foo",
                         (Lvca_syntax.Abstract_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
@@ -3642,8 +3839,8 @@ module Empty_as_var =
                                                       (Some
                                                          (let open Lvca_provenance.Range in
                                                             {
-                                                              start = 21;
-                                                              finish = 26
+                                                              start = 59;
+                                                              finish = 64
                                                             }))
                                                   })))), "empty"))],
                                   (Lvca_syntax.Sort.Name
@@ -3657,11 +3854,133 @@ module Empty_as_var =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 28;
-                                                            finish = 33
+                                                            start = 66;
+                                                            finish = 71
                                                           }))
-                                                })))), "empty")))])))])))]
+                                                })))), "empty")))])));
+                   Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                     ((Lvca_syntax.Provenance.Located
+                         (Lvca_syntax.Provenance.Located.Parse_located
+                            ((let open Lvca_syntax.Provenance.Parse_located in
+                                {
+                                  input =
+                                    Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                  range =
+                                    (Some
+                                       (let open Lvca_provenance.Range in
+                                          { start = 80; finish = 104 }))
+                                })))), "Bar",
+                       (Lvca_syntax.Abstract_syntax.Arity.Arity
+                          ((Lvca_syntax.Provenance.Located
+                              (Lvca_syntax.Provenance.Located.Source_located
+                                 {
+                                   pos_fname = "syntax/Abstract_syntax.ml";
+                                   pos_lnum = 250;
+                                   pos_bol = 6489;
+                                   pos_cnum = 6540
+                                 })),
+                            [Lvca_syntax.Abstract_syntax.Valence.Valence
+                               ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_pattern
+                                   {
+                                     pattern_sort =
+                                       (Lvca_syntax.Sort.Ap
+                                          ((Lvca_syntax.Provenance.Located
+                                              (Lvca_syntax.Provenance.Located.Parse_located
+                                                 ((let open Lvca_syntax.Provenance.Parse_located in
+                                                     {
+                                                       input =
+                                                         Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                       range =
+                                                         (Some
+                                                            (let open Lvca_provenance.Range in
+                                                               {
+                                                                 start = 82;
+                                                                 finish = 86
+                                                               }))
+                                                     })))), "list",
+                                            (Lvca_syntax.Sort.Cons
+                                               ((Lvca_syntax.Provenance.Located
+                                                   (Lvca_syntax.Provenance.Located.Source_located
+                                                      {
+                                                        pos_fname =
+                                                          "syntax/Sort.ml";
+                                                        pos_lnum = 44;
+                                                        pos_bol = 1417;
+                                                        pos_cnum = 1459
+                                                      })),
+                                                 (Lvca_syntax.Sort.Name
+                                                    ((Lvca_syntax.Provenance.Located
+                                                        (Lvca_syntax.Provenance.Located.Parse_located
+                                                           ((let open Lvca_syntax.Provenance.Parse_located in
+                                                               {
+                                                                 input =
+                                                                   Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                                 range =
+                                                                   (Some
+                                                                    (let open Lvca_provenance.Range in
+                                                                    {
+                                                                    start =
+                                                                    87;
+                                                                    finish =
+                                                                    92
+                                                                    }))
+                                                               })))),
+                                                      "empty")),
+                                                 (Lvca_syntax.Sort.Nil
+                                                    (Lvca_syntax.Provenance.Located
+                                                       (Lvca_syntax.Provenance.Located.Source_located
+                                                          {
+                                                            pos_fname =
+                                                              "syntax/Sort.ml";
+                                                            pos_lnum = 43;
+                                                            pos_bol = 1372;
+                                                            pos_cnum = 1408
+                                                          })))))));
+                                     var_sort =
+                                       (Lvca_syntax.Sort.Name
+                                          ((Lvca_syntax.Provenance.Located
+                                              (Lvca_syntax.Provenance.Located.Parse_located
+                                                 ((let open Lvca_syntax.Provenance.Parse_located in
+                                                     {
+                                                       input =
+                                                         Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                       range =
+                                                         (Some
+                                                            (let open Lvca_provenance.Range in
+                                                               {
+                                                                 start = 94;
+                                                                 finish = 97
+                                                               }))
+                                                     })))), "foo"))
+                                   }],
+                                 (Lvca_syntax.Sort.Name
+                                    ((Lvca_syntax.Provenance.Located
+                                        (Lvca_syntax.Provenance.Located.Parse_located
+                                           ((let open Lvca_syntax.Provenance.Parse_located in
+                                               {
+                                                 input =
+                                                   Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                 range =
+                                                   (Some
+                                                      (let open Lvca_provenance.Range in
+                                                         {
+                                                           start = 100;
+                                                           finish = 103
+                                                         }))
+                                               })))), "foo")))])))])))]
         }
+    module List =
+      struct
+        type 'a t = 'a Wrapper.Types.list =
+          | Nil of Lvca_syntax.Provenance.t 
+          | Cons of Lvca_syntax.Provenance.t * 'a * 'a Wrapper.Types.list 
+        let info = Wrapper.Info.list
+        let equivalent = Wrapper.Equivalent.list
+        let to_nominal = Wrapper.To_nominal.list
+        let of_nominal = Wrapper.Of_nominal.list
+        let mk_Nil ~info  = Nil info
+        let mk_Cons ~info  x_0 x_1 = Cons (info, x_0, x_1)
+      end
     module Empty =
       struct
         type t = Wrapper.Types.empty =
@@ -3677,10 +3996,15 @@ module Empty_as_var =
         type t = Wrapper.Types.foo =
           | Foo of Lvca_syntax.Provenance.t * (Lvca_syntax.Single_var.t *
           Wrapper.Types.empty) 
+          | Bar of Lvca_syntax.Provenance.t * (Pattern.t * Wrapper.Types.foo)
+          
+          | Foo_var of Lvca_syntax.Provenance.t * string 
         let info = Wrapper.Info.foo
         let equivalent = Wrapper.Equivalent.foo
         let to_nominal = Wrapper.To_nominal.foo
         let of_nominal = Wrapper.Of_nominal.foo
         let mk_Foo ~info  x_0 = Foo (info, x_0)
+        let mk_Bar ~info  x_0 = Bar (info, x_0)
+        let mk_Foo_var ~info  name = Foo_var (info, name)
       end
   end
