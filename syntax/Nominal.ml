@@ -363,6 +363,7 @@ module Term = struct
 
   let parse ~parse_prim =
     let open Lvca_parsing in
+    let module Ws = C_comment_parser in
     fix (fun term ->
         let slot =
           sep_by1 (Ws.char '.') term

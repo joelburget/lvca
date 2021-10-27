@@ -34,17 +34,16 @@ let eval tm =
 
 module Parse = struct
   open Lvca_parsing
+  module Ws = C_comment_parser
 
   let info = Nominal.Term.info
 
   let t_var : Nominal.Term.t Lvca_parsing.t =
-    Lvca_parsing.Ws.identifier
-    >>~ fun range name -> Nominal.Term.Var (Provenance.of_range range, name)
+    Ws.identifier >>~ fun range name -> Nominal.Term.Var (Provenance.of_range range, name)
   ;;
 
   let p_var : Pattern.t Lvca_parsing.t =
-    Lvca_parsing.Ws.identifier
-    >>~ fun range name -> Pattern.Var (Provenance.of_range range, name)
+    Ws.identifier >>~ fun range name -> Pattern.Var (Provenance.of_range range, name)
   ;;
 
   (* Precedence 0: lam (right-associative) 1: app (left-associative) *)

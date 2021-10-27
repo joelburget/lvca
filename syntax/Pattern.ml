@@ -203,6 +203,7 @@ let check lang ~pattern_sort ~var_sort =
 
 let parse =
   let open Lvca_parsing in
+  let module Ws = C_comment_parser in
   fix (fun pat ->
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"

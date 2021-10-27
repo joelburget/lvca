@@ -55,9 +55,8 @@ module Typing_clause = struct
         Binding_aware_pattern.parse
         (choice
            ~failure_msg:"looking for <= or =>"
-           [ (Ws.string "<=" >>| fun _ -> LeftArr)
-           ; (Ws.string "=>" >>| fun _ -> RightArr)
-           ])
+           C_comment_parser.
+             [ (string "<=" >>| fun _ -> LeftArr); (string "=>" >>| fun _ -> RightArr) ])
         Binding_aware_pattern.parse
       <?> "typing clause"
     ;;
@@ -114,6 +113,7 @@ module Hypothesis = struct
 
   module Parse = struct
     open Lvca_parsing
+    module Ws = C_comment_parser
 
     let typed_term =
       lift3
@@ -201,6 +201,7 @@ module Rule = struct
 
   module Parse = struct
     open Lvca_parsing
+    module Ws = C_comment_parser
 
     let line : string option Lvca_parsing.t =
       lift3

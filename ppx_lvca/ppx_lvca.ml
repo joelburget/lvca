@@ -11,7 +11,7 @@ let parse_module_name =
     (No_ws.char '.')
     (No_ws.satisfy Char.is_uppercase
     >>= fun c0 ->
-    many (Ws.satisfy Char.(fun c -> is_alphanum c || c = '_' || c = '\''))
+    many (C_comment_parser.satisfy Char.(fun c -> is_alphanum c || c = '_' || c = '\''))
     >>| fun cs -> String.of_char_list (c0 :: cs))
 ;;
 

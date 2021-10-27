@@ -55,6 +55,7 @@ end
 (* Write by hand first, later assert the generated parser is equivalent *)
 module Parse = struct
   open Lvca_parsing
+  module Ws = C_comment_parser
 
   let lit : Nonbinding.t Lvca_parsing.t =
     Ws.integer_lit

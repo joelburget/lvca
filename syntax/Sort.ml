@@ -99,8 +99,9 @@ let parse =
       let atomic_sort =
         choice
           ~failure_msg:"looking for parens or an identifier"
-          [ Ws.parens sort
-          ; (Ws.identifier >>~ fun loc value -> Name (Provenance.of_range loc, value))
+          [ C_comment_parser.parens sort
+          ; (C_comment_parser.identifier
+            >>~ fun loc value -> Name (Provenance.of_range loc, value))
           ]
       in
       many1 atomic_sort

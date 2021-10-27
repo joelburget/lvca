@@ -156,6 +156,7 @@ end
 
 module Parse = struct
   open Lvca_parsing
+  module Ws = C_comment_parser
   open Lang.Term
 
   module Parse_helpers =

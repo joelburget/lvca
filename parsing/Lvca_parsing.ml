@@ -495,7 +495,32 @@ let sep_end_by s p =
       choice [ seb1; return [] ])
 ;;
 
-module No_ws = struct
+module type Junk_parser = sig
+  val junk : unit t
+end
+
+module type Character_parser = sig
+  val char_lit : char t
+
+  val identifier'
+    :  ?initial_char_p:(char -> bool)
+    -> ?char_p:(char -> bool)
+    -> unit
+    -> string t
+
+  val identifier : string t
+  val integer_lit : string t
+  val integer_or_float_lit : (string, float) Base.Either.t t
+  val string_lit : string t
+  val satisfy : (char -> bool) -> char t
+  val char : char -> char t
+  val string : string -> string t
+  val parens : 'a t -> 'a t
+  val braces : 'a t -> 'a t
+  val brackets : 'a t -> 'a t
+end
+
+module No_ws : Character_parser = struct
   let char_lit = adapt Basic.char_lit
 
   let identifier' ?initial_char_p ?char_p () =
@@ -519,23 +544,23 @@ module No_ws = struct
   let brackets p = mk_bracket_parser '[' ']' p
 end
 
-module Ws = struct
-  let char_lit = No_ws.char_lit <* whitespace
+module Mk_character_parser (Junk : Junk_parser) : Character_parser = struct
+  let char_lit = No_ws.char_lit <* Junk.junk
 
   let identifier' ?initial_char_p ?char_p () =
-    No_ws.identifier' ?initial_char_p ?char_p () <* whitespace
+    No_ws.identifier' ?initial_char_p ?char_p () <* Junk.junk
   ;;
 
-  let identifier = No_ws.identifier <* whitespace
-  let integer_lit = No_ws.integer_lit <* whitespace
-  let integer_or_float_lit = No_ws.integer_or_float_lit <* whitespace
-  let string_lit = No_ws.string_lit <* whitespace
-  let char c = No_ws.char c <* whitespace
-  let satisfy f = No_ws.satisfy f <* whitespace
-  let string str = No_ws.string str <* whitespace
-  let parens p = No_ws.parens p <* whitespace
-  let braces p = No_ws.braces p <* whitespace
-  let brackets p = No_ws.brackets p <* whitespace
+  let identifier = No_ws.identifier <* Junk.junk
+  let integer_lit = No_ws.integer_lit <* Junk.junk
+  let integer_or_float_lit = No_ws.integer_or_float_lit <* Junk.junk
+  let string_lit = No_ws.string_lit <* Junk.junk
+  let char c = No_ws.char c <* Junk.junk
+  let satisfy f = No_ws.satisfy f <* Junk.junk
+  let string str = No_ws.string str <* Junk.junk
+  let parens p = No_ws.parens p <* Junk.junk
+  let braces p = No_ws.braces p <* Junk.junk
+  let brackets p = No_ws.brackets p <* Junk.junk
 end
 
 let no_comment = fail "no comment"
@@ -545,8 +570,20 @@ let c_comment =
   No_ws.string "//" *> comment <* whitespace
 ;;
 
+module Whitespace_parser : Character_parser = Mk_character_parser (struct
+  let junk = whitespace
+end)
+
+module C_comment_parser : Character_parser = Mk_character_parser (struct
+  let junk = whitespace <|> (c_comment >>| fun _ -> ())
+end)
+
 let%test_module "Parsing" =
   (module struct
+    module Ws = Mk_character_parser (struct
+      let junk = whitespace
+    end)
+
     let parse_print p pp str =
       match parse_string_pos p str with
       | Error msg -> Stdio.print_string msg

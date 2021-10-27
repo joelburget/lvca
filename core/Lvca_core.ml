@@ -150,6 +150,7 @@ ty := Sort(sort) | Arrow(ty; ty)
 
   module Parse = struct
     open Lvca_parsing
+    module Ws = C_comment_parser
 
     let arrow s1 s2 = Arrow (Provenance.of_here [%here], s1, s2)
 
@@ -354,6 +355,7 @@ let pp_term ppf tm = Pp.term ppf tm
 
 module Parse = struct
   open Lvca_parsing
+  module Ws = C_comment_parser
   open Lang
 
   let reserved = Lvca_util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
@@ -522,6 +524,7 @@ module Module = struct
 
   let parse =
     let open Lvca_parsing in
+    let module Ws = C_comment_parser in
     let external_decl =
       lift4
         (fun ident _ ty _ -> ident, ty)

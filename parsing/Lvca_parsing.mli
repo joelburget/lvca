@@ -84,7 +84,11 @@ val whitespace1 : unit t
 val no_comment : string t
 val c_comment : string t
 
-module Ws : sig
+module type Junk_parser = sig
+  val junk : unit t
+end
+
+module type Character_parser = sig
   val char_lit : char t
 
   val identifier'
@@ -105,26 +109,10 @@ module Ws : sig
   val brackets : 'a t -> 'a t
 end
 
-module No_ws : sig
-  val char_lit : char t
-
-  val identifier'
-    :  ?initial_char_p:(char -> bool)
-    -> ?char_p:(char -> bool)
-    -> unit
-    -> string t
-
-  val identifier : string t
-  val integer_lit : string t
-  val integer_or_float_lit : (string, float) Base.Either.t t
-  val string_lit : string t
-  val satisfy : (char -> bool) -> char t
-  val char : char -> char t
-  val string : string -> string t
-  val parens : 'a t -> 'a t
-  val braces : 'a t -> 'a t
-  val brackets : 'a t -> 'a t
-end
+module Mk_character_parser (Junk : Junk_parser) : Character_parser
+module No_ws : Character_parser
+module C_comment_parser : Character_parser
+module Whitespace_parser : Character_parser
 
 val parse_string_pos : 'a t -> string -> ('a Parse_result.t, string) Base.Result.t
 val parse_string : 'a t -> string -> ('a, string) Base.Result.t

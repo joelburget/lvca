@@ -44,6 +44,7 @@ let rec pp : 'lang Fmt.t -> 'lang t Fmt.t =
 
 let parse lang_p =
   let open Lvca_parsing in
+  let module Ws = C_comment_parser in
   fix (fun t ->
       choice
         ~failure_msg:
@@ -66,7 +67,9 @@ let%test_module "Parsing" =
   (module struct
     let parse (str : string) : (core t, string) Result.t =
       Lvca_parsing.(
-        parse_string (whitespace *> parse (Ws.braces Lvca_core.Parse.term)) str)
+        parse_string
+          (whitespace *> parse (C_comment_parser.braces Lvca_core.Parse.term))
+          str)
     ;;
 
     let parse_and_print : string -> unit =

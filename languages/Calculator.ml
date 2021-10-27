@@ -109,6 +109,7 @@ let constants = [ "pi"; "e" ]
 
 module Parse = struct
   open Lvca_parsing
+  module Ws = C_comment_parser
 
   let lit : Expr.t Lvca_parsing.t =
     (* TODO: this fails on too-large float lits *)

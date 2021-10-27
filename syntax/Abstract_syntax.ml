@@ -28,6 +28,7 @@ module Kind = struct
 
   module Parse = struct
     open Lvca_parsing
+    module Ws = C_comment_parser
 
     let t =
       sep_by1 (Ws.string "->") (Ws.char '*')
@@ -159,7 +160,7 @@ module Sort_slot = struct
     Sort.parse
     >>= fun sort ->
     choice
-      [ (Ws.brackets Sort.parse
+      [ (C_comment_parser.brackets Sort.parse
         >>| fun var_sort -> Sort_pattern { pattern_sort = sort; var_sort })
       ; return (Sort_binding sort)
       ]
@@ -203,7 +204,7 @@ module Valence = struct
   let parse =
     let open Lvca_parsing in
     let t =
-      sep_by1 (Ws.char '.') Sort_slot.parse
+      sep_by1 (C_comment_parser.char '.') Sort_slot.parse
       >>= fun slots ->
       let binders, body_slot = List.unsnoc slots in
       match body_slot with
@@ -246,7 +247,8 @@ module Arity = struct
 
   let parse =
     let open Lvca_parsing in
-    Ws.parens (sep_by (Ws.char ';') Valence.parse)
+    let open C_comment_parser in
+    parens (sep_by (char ';') Valence.parse)
     >>| (fun valences -> Arity (Provenance.of_here [%here], valences))
     <?> "arity"
   ;;
@@ -335,7 +337,7 @@ module Operator_def = struct
 
   let parse =
     let open Lvca_parsing in
-    Ws.identifier
+    C_comment_parser.identifier
     >>= (fun ident ->
           Arity.parse
           >>~ fun location arity ->
@@ -411,6 +413,7 @@ module Sort_def = struct
 
   let parse =
     let open Lvca_parsing in
+    let module Ws = C_comment_parser in
     let bar = Ws.char '|' in
     let sort_var_decl =
       choice

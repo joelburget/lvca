@@ -325,6 +325,7 @@ let check check_prim lang sort =
 
 let parse =
   let open Lvca_parsing in
+  let module Ws = C_comment_parser in
   let pat_to_ident = function Var (info, name) -> Some (info, name) | _ -> None in
   fix (fun pat ->
       let slot =

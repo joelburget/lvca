@@ -295,6 +295,7 @@ c_type := Computation(v_type; list string)
 
   module Parse = struct
     open Lvca_parsing
+    module Ws = C_comment_parser
 
     let make0, make1, make2, make4, make6 = Provenance.(make0, make1, make2, make4, make6)
     let ident = make1 Single_var.mk Ws.identifier
