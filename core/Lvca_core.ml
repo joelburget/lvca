@@ -37,6 +37,15 @@ module Option_model = struct
   let map ~f = function Option.None i -> Option.None i | Some (i, a) -> Some (i, f a)
 end
 
+module Empty = struct
+  include [%lvca.abstract_syntax_module "empty :="]
+
+  type t = Empty.t
+
+  let pp _ppf = function (_ : t) -> .
+  let parse = Lvca_parsing.fail "(empty type)"
+end
+
 module Binding_aware_pattern_model = struct
   include
     [%lvca.abstract_syntax_module
@@ -246,14 +255,15 @@ option : * -> *
 binding_aware_pattern : * -> *
 string : *
 
-is_rec := Rec() | No_rec()
+letrec_row := Letrec_row(option ty; term)
 
 term :=
   | Embedded(nominal)
   | Ap(term; list term)
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
-  | Let(is_rec; term; option ty; term. term)
+  | Let(term; option ty; term. term)
+  | Let_rec(list letrec_row; (list empty)[term]. term)
   | Subst(term. term; term)
 
 case_scope := Case_scope(binding_aware_pattern; term)
@@ -264,12 +274,8 @@ case_scope := Case_scope(binding_aware_pattern; term)
       ; option = "Option_model.Option"
       ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
       ; string = "Primitive.String"
+      ; empty = "Empty"
       }]
-
-  module Is_rec = struct
-    include Nominal.Convertible.Extend (Is_rec)
-    include Is_rec
-  end
 
   module Term = struct
     include Nominal.Convertible.Extend (Term)
@@ -308,8 +314,8 @@ module Pp = struct
         (Format.pp_print_custom_break ~fits:("", 1, "") ~breaks:("", 2, "| "))
         cases
         cases'
-    | Let (_, is_rec, tm, ty, (Single_var.{ name; info = _ }, body)) ->
-      let_ ppf is_rec tm ty name body
+    | Let (_, tm, ty, (Single_var.{ name; info = _ }, body)) -> let_ ppf tm ty name body
+    | Let_rec (_, _rows, _rhs) -> failwith "TODO"
     | Subst (_, (Single_var.{ name; info = _ }, body), arg) ->
       let formatter =
         match body with
@@ -319,22 +325,12 @@ module Pp = struct
       formatter term body name term arg;
       Provenance.close_stag ppf (Lang.Term.info tm)
 
-  and let_ ppf is_rec tm ty name body =
+  and let_ ppf tm ty name body =
     let pp_ty ppf = function
       | Option_model.Option.Some (_, ty) -> pf ppf ": %a" Type.pp ty
       | None _ -> ()
     in
-    pf
-      ppf
-      "@[let %s%s%a =@ %a in@ @[%a@]@]"
-      (match is_rec with Rec _ -> "rec " | No_rec _ -> "")
-      name
-      pp_ty
-      ty
-      term
-      tm
-      term
-      body
+    pf ppf "@[let %s%a =@ %a in@ @[%a@]@]" name pp_ty ty term tm term body
 
   and cases ppf x = list ~sep:(any "@;<1 2>| ") case_scope ppf (List_model.to_list x)
 
@@ -449,34 +445,31 @@ module Parse = struct
             <?> "lambda"
           ; Ws.string "let"
             >>== (fun { range = let_pos; _ } ->
-                   lift4
-                     (fun is_rec (name, name_pos) ty _eq tm _in (body, body_pos) ->
-                       let info =
-                         Provenance.of_range (Opt_range.union let_pos body_pos)
-                       in
-                       Term.Let
-                         ( info
-                         , is_rec
-                         , tm
-                         , ty
-                         , (Single_var.{ name; info = Provenance.of_range name_pos }, body)
-                         ))
-                     Lang.Is_rec.(
-                       option
-                         (No_rec (Provenance.of_here [%here]))
-                         (Ws.string "rec"
-                         >>|| fun { range; _ } ->
-                         { range; value = Rec (Provenance.of_range range) }))
-                     (attach_pos identifier)
-                     (option
-                        (Option_model.Option.None (Provenance.of_here [%here]))
-                        (Ws.char ':' *> Type.Parse.t
-                        >>| fun tm ->
-                        Option_model.Option.Some (Provenance.of_here [%here], tm)))
-                     (Ws.string "=")
-                   <*> term
-                   <*> Ws.string "in"
-                   <*> attach_pos term)
+                   option' (No_ws.string "rec" <* whitespace1)
+                   >>= function
+                   | Some _ -> failwith "TODO"
+                   | None ->
+                     lift4
+                       (fun (name, name_pos) ty _eq tm _in (body, body_pos) ->
+                         let info =
+                           Provenance.of_range (Opt_range.union let_pos body_pos)
+                         in
+                         Term.Let
+                           ( info
+                           , tm
+                           , ty
+                           , ( Single_var.{ name; info = Provenance.of_range name_pos }
+                             , body ) ))
+                       (attach_pos identifier)
+                       (option
+                          (Option_model.Option.None (Provenance.of_here [%here]))
+                          (Ws.char ':' *> Type.Parse.t
+                          >>| fun tm ->
+                          Option_model.Option.Some (Provenance.of_here [%here], tm)))
+                       (Ws.string "=")
+                       term
+                     <*> Ws.string "in"
+                     <*> attach_pos term)
             <?> "let"
           ; Ws.string "match"
             >>== (fun { range = match_pos; _ } ->
@@ -619,7 +612,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
   | Lambda (_, ty', (Single_var.{ name; info = _ }, body)) ->
     let type_env = Map.set type_env ~key:name ~data:ty' in
     check { type_env; syntax } body ty
-  | Let (_, _, tm, ty', (Single_var.{ name; info = _ }, body)) ->
+  | Let (_, tm, ty', (Single_var.{ name; info = _ }, body)) ->
     let inferred_tm_ty =
       match ty' with None _ -> infer env tm | Some (_, tm_ty) -> Ok tm_ty
     in
@@ -628,9 +621,10 @@ let rec check ({ type_env; syntax } as env) tm ty =
       let type_env = Map.set type_env ~key:name ~data:tm_ty in
       check { env with type_env } body ty
     | Error Infer_error.{ env; tm; error } -> Some Check_error.{ env; tm; ty; error })
+  | Let_rec _ -> failwith "TODO"
   | Subst (_, binding, arg) ->
     let info = Provenance.of_here [%here] in
-    check env (Let (info, No_rec info, arg, None info, binding)) ty
+    check env (Let (info, arg, None info, binding)) ty
   | Term_var _ ->
     (match infer env tm with
     | Error { env; tm; error } -> Some { env; tm; ty; error }
@@ -645,13 +639,14 @@ and infer ({ type_env; syntax = _ } as env) tm =
     infer env f
   | Case _ -> Error { env; tm; error = Cant_infer_case }
   | Lambda _ -> Error { env; tm; error = Cant_infer_lambda }
-  | Let (_, _, tm, ty, (Single_var.{ name; info = _ }, body)) ->
+  | Let (_, tm, ty, (Single_var.{ name; info = _ }, body)) ->
     let%bind tm_ty = match ty with None _ -> infer env tm | Some (_, ty) -> Ok ty in
     let type_env = Map.set type_env ~key:name ~data:tm_ty in
     infer { env with type_env } body
+  | Let_rec _ -> failwith "TODO"
   | Subst (_, binding, arg) ->
     let info = Provenance.of_here [%here] in
-    infer env (Let (info, No_rec info, arg, None info, binding))
+    infer env (Let (info, arg, None info, binding))
   | Term_var (_, name) ->
     (match Map.find type_env name with
     | None -> Error { env; tm; error = Var_not_found }
@@ -713,43 +708,48 @@ let find_match v branches =
 
 type eval_error = string * Lang.Term.t
 
-let true_tm info = Nominal.Term.Operator (info, "true", [])
-let false_tm info = Nominal.Term.Operator (info, "false", [])
-
 let eval_char_bool_fn eval_nominal_in_ctx name f ctx tm c =
+  let true_tm info = Nominal.Term.Operator (info, "true", []) in
+  let false_tm info = Nominal.Term.Operator (info, "false", []) in
   let%bind c = eval_nominal_in_ctx ctx c in
   match c with
   | Nominal.Term.Primitive (info, Char c) ->
+    let info = Provenance.calculated_here [%here] [ info ] in
     Ok (if f c then true_tm info else false_tm info)
   | _ -> Error (Printf.sprintf "Invalid argument to %s" name, tm)
 ;;
 
 let rec eval_in_ctx ctx tm =
-  let go = eval_in_ctx in
   match tm with
   | Lang.Term.Term_var (_, v) ->
     (match Map.find ctx v with
     | Some result -> Ok result
     | None -> Error ("Unbound variable " ^ v, tm))
-  | Case (_, tm, branches) ->
-    let%bind tm_val = go ctx tm in
+  | Case (info, tm, branches) ->
+    let%bind tm_val = eval_in_ctx ctx tm in
     (match find_match tm_val (List_model.to_list branches) with
     | None ->
-      Error ("no match found in case", Embedded (Provenance.of_here [%here], tm_val))
-    | Some (branch, bindings) -> go (Lvca_util.Map.union_right_biased ctx bindings) branch)
+      let info =
+        Provenance.calculated_here
+          [%here]
+          [ info; Term.info tm; List_model.List.info branches ]
+      in
+      Error ("no match found in case", Embedded (info, tm_val))
+    | Some (branch, bindings) ->
+      eval_in_ctx (Lvca_util.Map.union_right_biased ctx bindings) branch)
   | Ap (_, Lambda (_, _ty, (Single_var.{ name; info = _ }, body)), Cons (_, arg, Nil _))
     ->
-    let%bind arg_val = go ctx arg in
-    go (Map.set ctx ~key:name ~data:arg_val) body
+    let%bind arg_val = eval_in_ctx ctx arg in
+    eval_in_ctx (Map.set ctx ~key:name ~data:arg_val) body
   | Ap (_, Term_var (_, name), args) ->
     if Map.mem ctx name
     then failwith "TODO"
-    else eval_primitive go eval_nominal_in_ctx ctx tm name args
+    else eval_primitive eval_in_ctx eval_nominal_in_ctx ctx tm name args
   | Embedded (_, tm) -> Ok (Nominal.Term.subst_all ctx tm)
-  | Let (_, _, tm, _, (Single_var.{ name; info = _ }, body))
+  | Let (_, tm, _, (Single_var.{ name; info = _ }, body))
   | Subst (_, (Single_var.{ name; _ }, body), tm) ->
-    let%bind tm_val = go ctx tm in
-    go (Map.set ctx ~key:name ~data:tm_val) body
+    let%bind tm_val = eval_in_ctx ctx tm in
+    eval_in_ctx (Map.set ctx ~key:name ~data:tm_val) body
   | _ -> Error ("Found a term we can't evaluate", tm)
 
 and eval_nominal_in_ctx ctx tm =
@@ -820,12 +820,13 @@ and eval_primitive eval_in_ctx eval_nominal_in_ctx ctx tm name args =
   | "is_whitespace", [ c ] ->
     eval_char_bool_fn eval_nominal_in_ctx "is_whitespace" Char.is_whitespace ctx tm c
   | _ ->
-    failwith
-      (Fmt.str
-         "Unknown function (%s), or wrong number of arguments (got [%a])"
-         name
-         Fmt.(list Nominal.Term.pp)
-         args)
+    Error
+      ( Fmt.str
+          "Unknown function (%s), or wrong number of arguments (got [%a])"
+          name
+          Fmt.(list Nominal.Term.pp)
+          args
+      , tm )
 ;;
 
 let eval core = eval_in_ctx String.Map.empty core
@@ -837,7 +838,11 @@ let parse_exn =
 let none = Option_model.Option.None here
 let list xs = List_model.of_list xs
 let pat_var name = Binding_aware_pattern_model.Pattern.Var (here, (here, name))
-let pat_var' name = Binding_aware_pattern_model.Scope.Scope (here, list [], pat_var name)
+
+let no_bind_pat_var name =
+  Binding_aware_pattern_model.Scope.Scope (here, list [], pat_var name)
+;;
+
 let ignored = pat_var "_"
 
 let bpat_operator tag children =
@@ -859,6 +864,7 @@ let%test_module "Parsing" =
 
     let ( = ) = Term.equivalent
     let one = Nominal.Term.Primitive (here, Integer (Z.of_int 1))
+    let scope : Nominal.Term.t -> Nominal.Scope.t = fun body -> Scope ([], body)
 
     let%test _ = parse_exn "{1}" = Term.Embedded (here, one)
     let%test _ = parse_exn "{true()}" = Embedded (here, operator "true" [])
@@ -868,12 +874,10 @@ let%test_module "Parsing" =
       parse_exn "let str = string_of_chars chars in {var(str)}"
       = Term.Let
           ( here
-          , No_rec here
           , ap (var "string_of_chars") [ var "chars" ]
           , none
           , ( single_var "str"
-            , Embedded
-                (here, operator "var" Nominal.[ Scope.Scope ([], Term.Var (here, "str")) ])
+            , Embedded (here, operator "var" [ scope (Nominal.Term.Var (here, "str")) ])
             ) )
     ;;
 
@@ -908,7 +912,6 @@ let%test_module "Parsing" =
       parse_exn "let x = {true()} in not x"
       = Let
           ( here
-          , No_rec here
           , Embedded (here, operator "true" [])
           , none
           , (single_var "x", ap (var "not") [ var "x" ]) )
@@ -967,14 +970,6 @@ let%test_module "Parsing" =
       let (_ : Term.t) = parse_exn tm in
       true
     ;;
-  end)
-;;
-
-let%test_module "Core parsing" =
-  (module struct
-    module Term = Lang.Term
-
-    let scope : Nominal.Term.t -> Nominal.Scope.t = fun body -> Scope ([], body)
 
     let dynamics_str =
       {|\(tm : ty) -> match tm with {
@@ -1009,17 +1004,20 @@ let%test_module "Core parsing" =
                   ; case_scope
                       (bpat_operator
                          "ite"
-                         [ pat_var' "t1"; pat_var' "t2"; pat_var' "t3" ])
+                         [ no_bind_pat_var "t1"
+                         ; no_bind_pat_var "t2"
+                         ; no_bind_pat_var "t3"
+                         ])
                       (case
                          (meaning (c_var "t1"))
                          [ case_scope (bpat_operator "true" []) (meaning (c_var "t2"))
                          ; case_scope (bpat_operator "false" []) (meaning (c_var "t3"))
                          ])
                   ; case_scope
-                      (bpat_operator "ap" [ pat_var' "f"; pat_var' "arg" ])
+                      (bpat_operator "ap" [ no_bind_pat_var "f"; no_bind_pat_var "arg" ])
                       (ap (meaning @@ c_var "f") [ meaning (c_var "arg") ])
                   ; case_scope
-                      (bpat_operator "fun" [ pat_var' "scope" ])
+                      (bpat_operator "fun" [ no_bind_pat_var "scope" ])
                       (term
                          (t_operator
                             "lambda"

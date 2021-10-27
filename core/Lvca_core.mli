@@ -25,6 +25,15 @@ module Option_model : sig
   val map : f:('a -> 'b) -> 'a Option.t -> 'b Option.t
 end
 
+module Empty : sig
+  include [%lvca.abstract_syntax_module_sig "empty :="]
+
+  type t = Empty.t
+
+  val pp : t Fmt.t
+  val parse : t Lvca_parsing.t
+end
+
 module Binding_aware_pattern_model : [%lvca.abstract_syntax_module_sig
 {|
 string : *
@@ -87,14 +96,15 @@ option : * -> *
 binding_aware_pattern : * -> *
 string : *
 
-is_rec := Rec() | No_rec()
+letrec_row := Letrec_row(option ty; term)
 
 term :=
   | Embedded(nominal)
   | Ap(term; list term)
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
-  | Let(is_rec; term; option ty; term. term)
+  | Let(term; option ty; term. term)
+  | Let_rec(list letrec_row; (list empty)[term]. term)
   | Subst(term. term; term)
 
 case_scope := Case_scope(binding_aware_pattern; term)
@@ -105,6 +115,7 @@ case_scope := Case_scope(binding_aware_pattern; term)
   ; option = "Option_model.Option"
   ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
   ; string = "Primitive.String"
+  ; empty = "Empty"
   }]
 
 module Term : sig

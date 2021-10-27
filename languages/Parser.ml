@@ -438,7 +438,6 @@ module Evaluate = struct
             let tm =
               Lvca_core.Lang.Term.Let
                 ( info
-                , Lvca_core.Lang.Is_rec.No_rec info
                 , Embedded (info, Primitive (info, Char c))
                 , Lvca_core.Option_model.Option.None info
                 , (Single_var.{ name; info }, core_term) )

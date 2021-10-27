@@ -106,11 +106,6 @@ module Core = struct
     ;;
   end
 
-  let is_rec ~loc = function
-    | Lang.Is_rec.Rec i -> [%expr Lvca_core.Lang.Is_rec.Rec [%e provenance ~loc i]]
-    | No_rec i -> [%expr Lvca_core.Lang.Is_rec.No_rec [%e provenance ~loc i]]
-  ;;
-
   let rec term ~loc = function
     | Lang.Term.Embedded (i, tm) ->
       [%expr Lvca_core.Lang.Term.Embedded ([%e provenance ~loc i], [%e nominal ~loc tm])]
@@ -127,16 +122,19 @@ module Core = struct
           ( [%e provenance ~loc i]
           , [%e Type.t ~loc ty]
           , ([%e single_var ~loc var], [%e term ~loc body]) )]
-    | Let (i, is_rec', tm, ty, (var, body)) ->
+    | Let (i, tm, ty, (var, body)) ->
       let info = provenance ~loc i in
-      let is_rec = is_rec ~loc is_rec' in
       let tm = term ~loc tm in
       let ty = ty |> Option_model.map ~f:(Type.t ~loc) |> option ~loc in
       let var = single_var ~loc var in
       let body = term ~loc body in
-      [%expr
-        Lvca_core.Lang.Term.Let
-          ([%e info], [%e is_rec], [%e tm], [%e ty], ([%e var], [%e body]))]
+      [%expr Lvca_core.Lang.Term.Let ([%e info], [%e tm], [%e ty], ([%e var], [%e body]))]
+    | Let_rec (i, rows, (binders, body)) ->
+      let info = provenance ~loc i in
+      let rows = rows |> List_model.map ~f:(letrec_row ~loc) |> list ~loc in
+      let binders = pattern ~loc binders in
+      let body = term ~loc body in
+      [%expr Lvca_core.Lang.Term.Let ([%e info], [%e rows], ([%e binders], [%e body]))]
     | Subst (i, (var, body), arg) ->
       let info = provenance ~loc i in
       let arg = term ~loc arg in
@@ -151,6 +149,13 @@ module Core = struct
       Lvca_core.Lang.Case_scope.Case_scope
         ( [%e provenance ~loc info]
         , [%e Binding_aware_pattern_model.pattern ~loc pat]
+        , [%e term ~loc tm] )]
+
+  and letrec_row ~loc (Lang.Letrec_row.Letrec_row (info, ty_opt, tm)) =
+    [%expr
+      Lvca_core.Lang.Letrec_row.Letrec_row
+        ( [%e provenance ~loc info]
+        , [%e ty_opt |> Option_model.map ~f:(Type.t ~loc) |> option ~loc]
         , [%e term ~loc tm] )]
   ;;
 end
