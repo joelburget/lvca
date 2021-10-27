@@ -1026,13 +1026,14 @@ module Equivalent (Context : Builder_context) = struct
     in
     let expr =
       match branches with
+      (* hardcode the value for empty types *)
       | [] ->
         let ty =
           ptyp_constr
             { txt = unflatten [ "Types"; sort_name ]; loc }
             (List.map ~f:ptyp_var type_vars)
         in
-        [%expr function (_ : [%t ty]) -> .]
+        [%expr fun ?info_eq:_ -> function (_ : [%t ty]) -> .]
       | _ ->
         let init =
           [%expr

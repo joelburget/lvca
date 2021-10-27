@@ -108,9 +108,9 @@ module Test4 =
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 250;
-                                     pos_bol = 6489;
-                                     pos_cnum = 6540
+                                     pos_lnum = 252;
+                                     pos_bol = 6577;
+                                     pos_cnum = 6628
                                    })), [])));
                     Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
@@ -129,9 +129,9 @@ module Test4 =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -231,9 +231,9 @@ let test_language =
                             (Lvca_syntax.Provenance.Located.Source_located
                                {
                                  pos_fname = "syntax/Abstract_syntax.ml";
-                                 pos_lnum = 250;
-                                 pos_bol = 6489;
-                                 pos_cnum = 6540
+                                 pos_lnum = 252;
+                                 pos_bol = 6577;
+                                 pos_cnum = 6628
                                })),
                           [Lvca_syntax.Abstract_syntax.Valence.Valence
                              ([],
@@ -391,9 +391,9 @@ module List_model :
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 250;
-                                     pos_bol = 6489;
-                                     pos_cnum = 6540
+                                     pos_lnum = 252;
+                                     pos_bol = 6577;
+                                     pos_cnum = 6628
                                    })), [])));
                     Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
@@ -412,9 +412,9 @@ module List_model :
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -981,9 +981,9 @@ module Lang =
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 250;
-                                     pos_bol = 6489;
-                                     pos_cnum = 6540
+                                     pos_lnum = 252;
+                                     pos_bol = 6577;
+                                     pos_cnum = 6628
                                    })),
                               [Lvca_syntax.Abstract_syntax.Valence.Valence
                                  ([],
@@ -1019,9 +1019,9 @@ module Lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_pattern
@@ -1110,9 +1110,9 @@ module Lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })), [])));
                    Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
                      ((Lvca_syntax.Provenance.Located
@@ -1131,9 +1131,9 @@ module Lang =
                               (Lvca_syntax.Provenance.Located.Source_located
                                  {
                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                   pos_lnum = 250;
-                                   pos_bol = 6489;
-                                   pos_cnum = 6540
+                                   pos_lnum = 252;
+                                   pos_bol = 6577;
+                                   pos_cnum = 6628
                                  })),
                             [Lvca_syntax.Abstract_syntax.Valence.Valence
                                ([],
@@ -1172,9 +1172,9 @@ module Lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -1230,9 +1230,9 @@ module Lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -1305,9 +1305,9 @@ module Lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -1400,9 +1400,9 @@ module Lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -1478,9 +1478,9 @@ module Lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -1519,9 +1519,9 @@ module Lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -1781,9 +1781,9 @@ module Ifz_lang :
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 250;
-                                     pos_bol = 6489;
-                                     pos_cnum = 6540
+                                     pos_lnum = 252;
+                                     pos_bol = 6577;
+                                     pos_cnum = 6628
                                    })),
                               [Lvca_syntax.Abstract_syntax.Valence.Valence
                                  ([],
@@ -2286,9 +2286,9 @@ module List_lang =
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 250;
-                                     pos_bol = 6489;
-                                     pos_cnum = 6540
+                                     pos_lnum = 252;
+                                     pos_bol = 6577;
+                                     pos_cnum = 6628
                                    })), [])))])));
             ("list",
               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
@@ -2310,9 +2310,9 @@ module List_lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })), [])));
                    Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
                      ((Lvca_syntax.Provenance.Located
@@ -2331,9 +2331,9 @@ module List_lang =
                               (Lvca_syntax.Provenance.Located.Source_located
                                  {
                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                   pos_lnum = 250;
-                                   pos_bol = 6489;
-                                   pos_cnum = 6540
+                                   pos_lnum = 252;
+                                   pos_bol = 6577;
+                                   pos_cnum = 6628
                                  })),
                             [Lvca_syntax.Abstract_syntax.Valence.Valence
                                ([],
@@ -2425,9 +2425,9 @@ module List_lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -2503,9 +2503,9 @@ module List_lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -2582,9 +2582,9 @@ module List_lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -2701,9 +2701,9 @@ module List_lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -2820,9 +2820,9 @@ module List_lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -2898,9 +2898,9 @@ module List_lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -3017,9 +3017,9 @@ module List_lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -3400,9 +3400,9 @@ module Option_model :
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 250;
-                                     pos_bol = 6489;
-                                     pos_cnum = 6540
+                                     pos_lnum = 252;
+                                     pos_bol = 6577;
+                                     pos_cnum = 6628
                                    })), [])));
                     Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
@@ -3421,9 +3421,9 @@ module Option_model :
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -3456,7 +3456,24 @@ module Option_model :
         let mk_Some ~info  x_0 = Some (info, x_0)
       end
   end 
-module Empty =
+module Empty :
+  sig
+    val language : Lvca_syntax.Abstract_syntax.t
+    module Wrapper : sig module Types : sig type empty = | end end
+    module Empty :
+    sig
+      type t = Wrapper.Types.empty = |
+      val to_nominal : t -> Lvca_syntax.Nominal.Term.t
+      val of_nominal :
+        Lvca_syntax.Nominal.Term.t ->
+          (t, Lvca_syntax.Nominal.Conversion_error.t) Result.t
+      val info : t -> Lvca_syntax.Provenance.t
+      val equivalent :
+        ?info_eq:(Lvca_syntax.Provenance.t ->
+                    Lvca_syntax.Provenance.t -> bool)
+          -> t -> t -> bool
+    end
+  end =
   struct
     module Wrapper =
       struct
@@ -3464,7 +3481,9 @@ module Empty =
         module Info =
           struct let empty = function | (_ : Types.empty) -> . end
         module Equivalent =
-          struct let empty = function | (_ : Types.empty) -> . end
+          struct
+            let empty ?info_eq:_  = function | (_ : Types.empty) -> .
+          end
         module To_nominal =
           struct let empty = function | (_ : Types.empty) -> . end
         module Of_nominal =
@@ -3503,7 +3522,7 @@ module Empty =
         let to_nominal = Wrapper.To_nominal.empty
         let of_nominal = Wrapper.Of_nominal.empty
       end
-  end
+  end 
 module Empty_as_var =
   struct
     module Wrapper =
@@ -3704,9 +3723,9 @@ module Empty_as_var =
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 250;
-                                     pos_bol = 6489;
-                                     pos_cnum = 6540
+                                     pos_lnum = 252;
+                                     pos_bol = 6577;
+                                     pos_cnum = 6628
                                    })), [])));
                     Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
@@ -3725,9 +3744,9 @@ module Empty_as_var =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([],
@@ -3822,9 +3841,9 @@ module Empty_as_var =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 250;
-                                    pos_bol = 6489;
-                                    pos_cnum = 6540
+                                    pos_lnum = 252;
+                                    pos_bol = 6577;
+                                    pos_cnum = 6628
                                   })),
                              [Lvca_syntax.Abstract_syntax.Valence.Valence
                                 ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_binding
@@ -3875,9 +3894,9 @@ module Empty_as_var =
                               (Lvca_syntax.Provenance.Located.Source_located
                                  {
                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                   pos_lnum = 250;
-                                   pos_bol = 6489;
-                                   pos_cnum = 6540
+                                   pos_lnum = 252;
+                                   pos_bol = 6577;
+                                   pos_cnum = 6628
                                  })),
                             [Lvca_syntax.Abstract_syntax.Valence.Valence
                                ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_pattern
