@@ -111,7 +111,7 @@ module type Character_parser = sig
 end
 
 module Mk_character_parser (Junk : Junk_parser) : Character_parser
-module No_ws : Character_parser
+module No_junk : Character_parser
 module C_comment_parser : Character_parser
 module Whitespace_parser : Character_parser
 

@@ -521,7 +521,7 @@ module type Character_parser = sig
   val brackets : 'a t -> 'a t
 end
 
-module No_ws : Character_parser = struct
+module No_junk : Character_parser = struct
   let junk = fail "no junk"
   let char_lit = adapt Basic.char_lit
 
@@ -549,29 +549,31 @@ end
 module Mk_character_parser (Junk : Junk_parser) : Character_parser = struct
   include Junk
 
-  let char_lit = No_ws.char_lit <* Junk.junk
+  let char_lit = No_junk.char_lit <* Junk.junk
 
   let identifier' ?initial_char_p ?char_p () =
-    No_ws.identifier' ?initial_char_p ?char_p () <* Junk.junk
+    No_junk.identifier' ?initial_char_p ?char_p () <* Junk.junk
   ;;
 
-  let identifier = No_ws.identifier <* Junk.junk
-  let integer_lit = No_ws.integer_lit <* Junk.junk
-  let integer_or_float_lit = No_ws.integer_or_float_lit <* Junk.junk
-  let string_lit = No_ws.string_lit <* Junk.junk
-  let char c = No_ws.char c <* Junk.junk
-  let satisfy f = No_ws.satisfy f <* Junk.junk
-  let string str = No_ws.string str <* Junk.junk
-  let parens p = No_ws.parens p <* Junk.junk
-  let braces p = No_ws.braces p <* Junk.junk
-  let brackets p = No_ws.brackets p <* Junk.junk
+  let identifier = No_junk.identifier <* Junk.junk
+  let integer_lit = No_junk.integer_lit <* Junk.junk
+  let integer_or_float_lit = No_junk.integer_or_float_lit <* Junk.junk
+  let string_lit = No_junk.string_lit <* Junk.junk
+  let char c = No_junk.char c <* Junk.junk
+  let satisfy f = No_junk.satisfy f <* Junk.junk
+  let string str = No_junk.string str <* Junk.junk
+  let parens p = No_junk.parens p <* Junk.junk
+  let braces p = No_junk.braces p <* Junk.junk
+  let brackets p = No_junk.brackets p <* Junk.junk
 end
 
 let no_comment = fail "no comment"
 
 let c_comment =
-  let comment = many (No_ws.satisfy Char.(fun c -> c <> '\n')) >>| String.of_char_list in
-  No_ws.string "//" *> comment <* whitespace
+  let comment =
+    many (No_junk.satisfy Char.(fun c -> c <> '\n')) >>| String.of_char_list
+  in
+  No_junk.string "//" *> comment <* whitespace
 ;;
 
 module Whitespace_parser : Character_parser = Mk_character_parser (struct

@@ -301,7 +301,7 @@ c_type := Computation(v_type; list string)
     let ident = make1 Single_var.mk Ws.identifier
 
     let op_name =
-      No_ws.char '#' *> attach_pos' Ws.identifier
+      No_junk.char '#' *> attach_pos' Ws.identifier
       >>| fun (range, str) -> Provenance.of_range range, str
     ;;
 

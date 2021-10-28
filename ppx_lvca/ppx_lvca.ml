@@ -8,8 +8,8 @@ let parse p = Lvca_parsing.(parse_string (whitespace *> p))
 let parse_module_name =
   let open Lvca_parsing in
   sep_by1
-    (No_ws.char '.')
-    (No_ws.satisfy Char.is_uppercase
+    (No_junk.char '.')
+    (No_junk.satisfy Char.is_uppercase
     >>= fun c0 ->
     many (C_comment_parser.satisfy Char.(fun c -> is_alphanum c || c = '_' || c = '\''))
     >>| fun cs -> String.of_char_list (c0 :: cs))

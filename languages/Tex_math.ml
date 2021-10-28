@@ -1112,16 +1112,16 @@ let parse : Lang.Tex.t list Lvca_parsing.t =
   let open Lvca_parsing in
   let open Lang.Tex in
   let control_seq =
-    No_ws.char '\\'
+    No_junk.char '\\'
     >>= fun _ ->
     choice
       ~failure_msg:"control sequence"
-      [ (many1 (No_ws.satisfy Char.is_alpha)
+      [ (many1 (No_junk.satisfy Char.is_alpha)
         >>~ fun range value ->
         Control_seq
           ( Provenance.of_range range
           , (Provenance.of_range range, String.of_char_list ('\\' :: value)) ))
-      ; (No_ws.satisfy is_control_seq_single_char
+      ; (No_junk.satisfy is_control_seq_single_char
         >>~ fun range value ->
         Control_seq
           ( Provenance.of_range range
@@ -1131,7 +1131,7 @@ let parse : Lang.Tex.t list Lvca_parsing.t =
   let subsuptick =
     [ '_'; '^'; '\''; '~' ]
     |> List.map ~f:(fun c ->
-           No_ws.char c
+           No_junk.char c
            >>~ fun range c ->
            Control_seq
              (Provenance.of_range range, (Provenance.of_range range, String.of_char c)))
@@ -1139,14 +1139,14 @@ let parse : Lang.Tex.t list Lvca_parsing.t =
   in
   let space = whitespace1 >>~ fun range _ -> Space (Provenance.of_range range) in
   let token =
-    No_ws.satisfy is_token_char
+    No_junk.satisfy is_token_char
     >>~ fun range value ->
     Token (Provenance.of_range range, (Provenance.of_range range, value))
   in
   let atom =
     fix (fun expr ->
         let grouped =
-          No_ws.braces (many1 expr)
+          No_junk.braces (many1 expr)
           >>~ fun range value ->
           Grouped (Provenance.of_range range, Lvca_core.List_model.of_list value)
         in

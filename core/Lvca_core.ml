@@ -445,7 +445,7 @@ module Parse = struct
             <?> "lambda"
           ; Ws.string "let"
             >>== (fun { range = let_pos; _ } ->
-                   option' (No_ws.string "rec" <* whitespace1)
+                   option' (No_junk.string "rec" <* many1 Ws.junk)
                    >>= function
                    | Some _ -> failwith "TODO"
                    | None ->
