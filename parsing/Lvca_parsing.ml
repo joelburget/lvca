@@ -575,19 +575,17 @@ module Whitespace_parser : Character_parser = Mk_character_parser (struct
 end)
 
 module C_comment_parser : Character_parser = Mk_character_parser (struct
-  let junk = whitespace <|> (c_comment >>| fun _ -> ())
+  let junk = whitespace <* option "" c_comment
 end)
 
 let%test_module "Parsing" =
   (module struct
-    module Ws = Mk_character_parser (struct
-      let junk = whitespace
-    end)
+    module Ws = Whitespace_parser
 
     let parse_print p pp str =
       match parse_string_pos p str with
-      | Error msg -> Stdio.print_string msg
-      | Ok value -> Parse_result.pp pp Fmt.stdout value
+      | Error msg -> Fmt.pr "%s" msg
+      | Ok value -> Fmt.pr "%a\n" (Parse_result.pp pp) value
     ;;
 
     let%expect_test _ =
@@ -598,10 +596,15 @@ let%test_module "Parsing" =
 
     let pp_char ppf str = Fmt.pf ppf "%C" str
     let go = parse_print Ws.char_lit pp_char
+    let go' = parse_print C_comment_parser.char_lit pp_char
 
     let%expect_test _ =
       go {|'x'|};
-      [%expect {|{ value = 'x'; range = {0,3} }|}]
+      go' {|'x' // comment|};
+      [%expect
+        {|
+        { value = 'x'; range = {0,3} }
+        { value = 'x'; range = {0,3} }|}]
     ;;
 
     let%expect_test _ =
@@ -677,24 +680,33 @@ let%test_module "Parsing" =
 
     let pp ppf = Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") pp_str))
     let go = parse_print Ws.(parens (sep_by whitespace string_lit)) pp
+    let go' = parse_print C_comment_parser.(parens (sep_by whitespace string_lit)) pp
 
     let%expect_test _ =
       go {|("a" "b")|};
       (*   0123456789 *)
-      [%expect {|{ value = ["a"; "b"]; range = {0,9} }|}]
+      go' {|("a" "b")  // comment|};
+      [%expect
+        {|
+        { value = ["a"; "b"]; range = {0,9} }
+        { value = ["a"; "b"]; range = {0,9} }|}]
     ;;
 
-    let go =
-      let pp ppf = function
-        | Either.First str -> Fmt.pf ppf {|First %S|} str
-        | Second fl -> Fmt.pf ppf {|Second %a|} Float.pp fl
-      in
-      parse_print Ws.integer_or_float_lit pp
+    let pp ppf = function
+      | Either.First str -> Fmt.pf ppf {|First %S|} str
+      | Second fl -> Fmt.pf ppf {|Second %a|} Float.pp fl
     ;;
+
+    let go = parse_print Ws.integer_or_float_lit pp
+    let go' = parse_print C_comment_parser.integer_or_float_lit pp
 
     let%expect_test _ =
       go "123";
-      [%expect {|{ value = First "123"; range = {0,3} }|}]
+      go' "123";
+      [%expect
+        {|
+        { value = First "123"; range = {0,3} }
+        { value = First "123"; range = {0,3} }|}]
     ;;
 
     let%expect_test _ =
@@ -727,9 +739,11 @@ let%test_module "Parsing" =
       [%expect {|{ value = Second 1.; range = {0,2} }|}]
     ;;
 
-    let go =
-      let pp ppf = Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") pp_str)) in
-      parse_print Ws.(sep_end_by (char ';') string_lit) pp
+    let pp ppf = Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") pp_str))
+    let go = parse_print Ws.(whitespace *> sep_end_by (char ';') string_lit) pp
+
+    let go' =
+      parse_print C_comment_parser.(whitespace *> sep_end_by (char ';') string_lit) pp
     ;;
 
     let%expect_test _ =
@@ -744,23 +758,44 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       go {|"abc"; "def";|};
-      [%expect {|{ value = ["abc"; "def"]; range = {0,13} }|}]
+      go' {|
+      "abc";  // this is abc
+      "def";  // this one is def
+      |};
+      [%expect
+        {|
+        { value = ["abc"; "def"]; range = {0,13} }
+        { value = ["abc"; "def"]; range = {7,42} }|}]
     ;;
 
+    let pp ppf = Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") (list ~sep:(any ". ") pp_str)))
+
     let go =
-      let pp ppf =
-        Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") (list ~sep:(any ". ") pp_str)))
-      in
-      parse_print Ws.(sep_end_by (char ';') (sep_end_by (char '.') string_lit)) pp
+      parse_print
+        Ws.(whitespace *> sep_end_by (char ';') (sep_end_by (char '.') string_lit))
+        pp
+    ;;
+
+    let go'' =
+      parse_print
+        C_comment_parser.(
+          whitespace *> sep_end_by (char ';') (sep_end_by (char '.') string_lit))
+        pp
     ;;
 
     let%expect_test _ =
       go {|"a". "b"; "c". "d"|};
-      [%expect {|{ value = ["a". "b"; "c". "d"]; range = {0,18} }|}]
+      go'' {|
+        "a".  // a
+        "b";  // b
+        "c". "d"|};
+      [%expect {|
+        { value = ["a". "b"; "c". "d"]; range = {0,18} }
+        { value = ["a". "b"; "c". "d"]; range = {9,55} }|}]
     ;;
 
     let go str =
-      let open Ws in
+      let open C_comment_parser in
       let parse =
         parse_string_pos
           (sep_by1 (whitespace *> string "->") (whitespace *> char '*')
@@ -773,13 +808,13 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      go "* -> *\nfoo";
+      go "* -> *\nfoo // comment";
       (*  0123456 7890 *)
       [%expect {|{0,6}|}]
     ;;
 
     let%expect_test _ =
-      go "* -> * foo";
+      go "* -> * foo // comment";
       (*  01234567890 *)
       [%expect {|{0,6}|}]
     ;;
