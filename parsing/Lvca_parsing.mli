@@ -89,6 +89,7 @@ module type Junk_parser = sig
 end
 
 module type Character_parser = sig
+  val junk : unit t
   val char_lit : char t
 
   val identifier'

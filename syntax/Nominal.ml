@@ -793,7 +793,7 @@ let%test_module "TermParser" =
        *)
 
     let%expect_test _ =
-      print_parse {|123|};
+      print_parse {|123  // comment|};
       (*            0123*)
       [%expect
         {|
@@ -819,7 +819,8 @@ let%test_module "TermParser" =
     ;;
 
     let%test _ =
-      parse {| match(true(); true()) |}
+      parse {| match(true(); // comment
+      true()) |}
       = Ok (mk_Operator "match" [ Scope ([], t); Scope ([], t) ])
     ;;
 

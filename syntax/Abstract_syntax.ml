@@ -4,9 +4,7 @@ open Base
 open Lvca_provenance
 open Lvca_util
 
-let test_parse_with p str =
-  Lvca_parsing.(parse_string (whitespace *> p) str) |> Result.ok_or_failwith
-;;
+let test_parse_with p str = Lvca_parsing.(parse_string p str) |> Result.ok_or_failwith
 
 module Kind = struct
   type t = Kind of Provenance.t * int
@@ -46,45 +44,17 @@ module Kind = struct
         let pp_decl ppf (name, decl) = Fmt.pf ppf "%s: %a" name pp decl
 
         let%expect_test _ =
-          let x = test_parse_with decl "foo: * -> *" in
+          let x = test_parse_with (Ws.junk *> decl) "foo: * -> *" in
           Fmt.pr "%a" pp_decl x;
           [%expect {|foo: * -> *|}]
         ;;
 
-        (* TODO
         let%expect_test _ =
           let x =
             test_parse_with
-              (many t)
+              (Ws.junk *> many decl)
               {|
-              * -> *
-              *
-              |}
-          in
-          let pp ppf kind =
-            Fmt.pf
-              ppf
-              "%a"
-              pp
-              kind
-              Fmt.(option string)
-              (kind |> info |> Commented.get_comment)
-          in
-          Fmt.(pr "%a" (list ~sep:cut pp) x);
-          [%expect
-            {|
-            * -> *
-            *
-            |}]
-        ;;
-           *)
-
-        let%expect_test _ =
-          let x =
-            test_parse_with
-              (many decl)
-              {|
-            foo: * -> *
+            foo: * -> *  // comment
             bar: * -> *
             |}
           in
@@ -261,28 +231,22 @@ module Arity = struct
       let integer = Sort.Name (none, "integer")
       let integer_v = Valence.Valence ([], integer)
       let ( = ) = equivalent
+      let go = test_parse_with Lvca_parsing.(C_comment_parser.junk *> parse)
 
-      let%test_unit _ =
-        assert (test_parse_with parse "(integer)" = Arity (none, [ integer_v ]))
-      ;;
-
-      let%test_unit _ =
-        assert (test_parse_with parse "(tm; tm)" = Arity (none, [ tm_v; tm_v ]))
-      ;;
+      let%test_unit _ = assert (go "(integer)" = Arity (none, [ integer_v ]))
+      let%test_unit _ = assert (go "(tm; tm)" = Arity (none, [ tm_v; tm_v ]))
 
       let%test_unit _ =
         assert (
-          test_parse_with parse "(tm. tm)"
+          go "(tm. tm)  // comment"
           = Arity (none, [ Valence.Valence ([ Sort_binding tm ], tm) ]))
       ;;
 
-      let%test_unit _ =
-        assert (test_parse_with parse "(tm)" = Arity (none, [ Valence.Valence ([], tm) ]))
-      ;;
+      let%test_unit _ = assert (go "(tm)" = Arity (none, [ Valence.Valence ([], tm) ]))
 
       let%test_unit _ =
         assert (
-          test_parse_with parse "(tm[tm]. tm)"
+          go "(tm[tm]. tm)"
           = Arity
               ( none
               , [ Valence.Valence
@@ -299,9 +263,9 @@ module Arity = struct
       let%expect_test _ = expect_okay "(tm[tm]. tm[tm]. tm)"
       let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)"
       let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)"
-      let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)"
-      let%test_unit _ = assert (test_parse_with parse "()" = Arity (none, []))
-      let%test_unit _ = assert (test_parse_with parse "()" = Arity (none, []))
+      let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)  // comment"
+      let%test_unit _ = assert (go "()" = Arity (none, []))
+      let%test_unit _ = assert (go "()" = Arity (none, []))
     end)
   ;;
 end
@@ -352,7 +316,11 @@ module Operator_def = struct
       let%test_unit _ =
         let info1 = Provenance.of_range (Opt_range.mk 0 5) in
         let info2 = Provenance.of_range (Opt_range.mk 3 5) in
-        let parsed = test_parse_with parse "foo()" in
+        let parsed =
+          test_parse_with
+            Lvca_parsing.(C_comment_parser.junk *> parse)
+            "foo()  // comment"
+        in
         assert (parsed = Operator_def (info1, "foo", Arity (info2, [])))
       ;;
     end)
@@ -434,7 +402,7 @@ module Sort_def = struct
 
   let%test_module _ =
     (module struct
-      let test_parse = test_parse_with parse
+      let test_parse = test_parse_with Lvca_parsing.(C_comment_parser.junk *> parse)
 
       let parse_print str =
         let pp ppf (name, sort_def) = pp ppf ~name sort_def in
@@ -442,7 +410,7 @@ module Sort_def = struct
       ;;
 
       let%expect_test _ =
-        parse_print {|foo := foo()|};
+        parse_print {|foo := foo() // comment|};
         [%expect "foo := foo()"]
       ;;
 
@@ -452,9 +420,12 @@ module Sort_def = struct
       ;;
 
       let%expect_test _ =
-        parse_print {|tm :=
-  | add(tm; tm)
-  | lit(integer)
+        parse_print
+          {|
+// comment
+tm :=  // comment
+  | add(tm; tm)  // comment
+  | lit(integer)  // comment
     |};
         [%expect {|
     tm :=
@@ -631,15 +602,20 @@ let%test_module _ =
     let%test_unit _ =
       let parsed =
         test_parse_with
-          parse
+          Lvca_parsing.(C_comment_parser.junk *> parse)
           {|
+// comment
 integer : *
 
+// comment
 tm :=
-  | add(tm; tm)
+  | add(tm; // comment
+  tm)
   | lit(integer)
 
+// comment
 empty :=
+// comment
       |}
       in
       let expected =
@@ -651,7 +627,7 @@ empty :=
     ;;
 
     let kind_check str =
-      let lang = test_parse_with parse str in
+      let lang = test_parse_with Lvca_parsing.(C_comment_parser.junk *> parse) str in
       match kind_check lang with
       | Ok map ->
         Stdio.printf "okay\n";
@@ -697,7 +673,7 @@ let%test_module "Parser" =
   (module struct
     open Lvca_provenance
 
-    let parse = test_parse_with parse
+    let parse = test_parse_with Lvca_parsing.(C_comment_parser.junk *> parse)
     let tm_sort = Sort.mk_Name "tm"
     let tm_valence = Valence.Valence ([], tm_sort)
     let ty_sort = Sort.mk_Name "ty"

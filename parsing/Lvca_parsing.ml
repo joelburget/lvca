@@ -500,6 +500,7 @@ module type Junk_parser = sig
 end
 
 module type Character_parser = sig
+  val junk : unit t
   val char_lit : char t
 
   val identifier'
@@ -521,6 +522,7 @@ module type Character_parser = sig
 end
 
 module No_ws : Character_parser = struct
+  let junk = fail "no junk"
   let char_lit = adapt Basic.char_lit
 
   let identifier' ?initial_char_p ?char_p () =
@@ -545,6 +547,8 @@ module No_ws : Character_parser = struct
 end
 
 module Mk_character_parser (Junk : Junk_parser) : Character_parser = struct
+  include Junk
+
   let char_lit = No_ws.char_lit <* Junk.junk
 
   let identifier' ?initial_char_p ?char_p () =
@@ -789,7 +793,8 @@ let%test_module "Parsing" =
         "a".  // a
         "b";  // b
         "c". "d"|};
-      [%expect {|
+      [%expect
+        {|
         { value = ["a". "b"; "c". "d"]; range = {0,18} }
         { value = ["a". "b"; "c". "d"]; range = {9,55} }|}]
     ;;
