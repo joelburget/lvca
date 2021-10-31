@@ -45,6 +45,7 @@ module Ap_list = struct
   ;;
 
   let rec map ~f = function Nil i -> Nil i | Cons (i, x, xs) -> Cons (i, f x, map ~f xs)
+  let info = function Nil info | Cons (info, _, _) -> info
 end
 
 let pp' ppf sort =

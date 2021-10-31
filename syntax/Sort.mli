@@ -21,6 +21,7 @@ module Ap_list : sig
   val to_list : ap_list -> t list
   val of_list : t list -> ap_list
   val map : f:(t -> t) -> ap_list -> ap_list
+  val info : ap_list -> Provenance.t
 end
 
 val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
