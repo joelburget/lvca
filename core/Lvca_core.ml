@@ -66,25 +66,27 @@ scope := Scope(list string; pattern)
       ; list = "List_model.List"
       }]
 
-  let rec into =
-    let here = Provenance.of_here [%here] in
-    function
-    | Binding_aware_pattern.Operator (info, str, scopes) ->
+  let rec into tm =
+    let info = Provenance.calculated_here [%here] [ Binding_aware_pattern.info tm ] in
+    match tm with
+    | Binding_aware_pattern.Operator (_, str, scopes) ->
       let scopes = scopes |> List.map ~f:scope |> List_model.of_list in
-      Pattern.Operator (info, (here, str), scopes)
-    | Primitive (info, prim) -> Primitive (info, (here, prim))
-    | Var (info, str) -> Var (info, (here, str))
+      Pattern.Operator (info, (info, str), scopes)
+    | Primitive (_, prim) -> Primitive (info, (info, prim))
+    | Var (_, str) -> Var (info, (info, str))
 
   and scope (Binding_aware_pattern.Scope (names, pat)) =
     Scope.Scope (Provenance.of_here [%here], List_model.of_list names, into pat)
   ;;
 
-  let rec out = function
-    | Pattern.Operator (info, (_, str), scopes) ->
+  let rec out tm =
+    let info = Provenance.calculated_here [%here] [ Pattern.info tm ] in
+    match tm with
+    | Pattern.Operator (_, (_, str), scopes) ->
       let scopes = scopes |> List_model.to_list |> List.map ~f:scope in
       Binding_aware_pattern.Operator (info, str, scopes)
-    | Primitive (info, (_, prim)) -> Primitive (info, prim)
-    | Var (info, (_, str)) -> Var (info, str)
+    | Primitive (_, (_, prim)) -> Primitive (info, prim)
+    | Var (_, (_, str)) -> Var (info, str)
 
   and scope (Scope.Scope (_, names, pat)) =
     Binding_aware_pattern.Scope (List_model.to_list names, out pat)
@@ -109,24 +111,32 @@ ap_list :=
 module Sort = struct
   include Nominal.Convertible.Extend (Sort_model.Sort)
 
-  let rec into = function
-    | Lvca_syntax.Sort.Ap (info, name, ap_list) ->
+  let rec into tm =
+    let info = Provenance.calculated_here [%here] [ Lvca_syntax.Sort.info tm ] in
+    match tm with
+    | Lvca_syntax.Sort.Ap (_, name, ap_list) ->
       Sort_model.Sort.Ap (info, (info, name), into_ap_list ap_list)
-    | Name (info, name) -> Name (info, (info, name))
+    | Name (_, name) -> Name (info, (info, name))
 
-  and into_ap_list = function
-    | Lvca_syntax.Sort.Nil info -> Sort_model.Ap_list.Nil info
-    | Cons (info, sort, ap_list) -> Cons (info, into sort, into_ap_list ap_list)
+  and into_ap_list tm =
+    let info = Provenance.calculated_here [%here] [ Lvca_syntax.Sort.Ap_list.info tm ] in
+    match tm with
+    | Lvca_syntax.Sort.Nil _ -> Sort_model.Ap_list.Nil info
+    | Cons (_, sort, ap_list) -> Cons (info, into sort, into_ap_list ap_list)
   ;;
 
-  let rec out = function
-    | Sort_model.Sort.Ap (info, (_, name), ap_list) ->
+  let rec out tm =
+    let info = Provenance.calculated_here [%here] [ Sort_model.Sort.info tm ] in
+    match tm with
+    | Sort_model.Sort.Ap (_, (_, name), ap_list) ->
       Lvca_syntax.Sort.Ap (info, name, out_ap_list ap_list)
-    | Name (info, (_, name)) -> Name (info, name)
+    | Name (_, (_, name)) -> Name (info, name)
 
-  and out_ap_list = function
-    | Sort_model.Ap_list.Nil info -> Lvca_syntax.Sort.Nil info
-    | Cons (info, sort, ap_list) -> Cons (info, out sort, out_ap_list ap_list)
+  and out_ap_list tm =
+    let info = Provenance.calculated_here [%here] [ Sort_model.Ap_list.info tm ] in
+    match tm with
+    | Sort_model.Ap_list.Nil _ -> Lvca_syntax.Sort.Nil info
+    | Cons (_, sort, ap_list) -> Cons (info, out sort, out_ap_list ap_list)
   ;;
 end
 
@@ -717,7 +727,7 @@ and infer ({ type_env; syntax = _ } as env) tm =
     infer { env with type_env } body
   | Let_rec _ -> failwith "TODO"
   | Subst (_, binding, arg) ->
-    let info = Provenance.of_here [%here] in
+    let info = Provenance.calculated_here [%here] [ info ] in
     infer env (Let (info, arg, None info, binding))
   | Term_var (_, name) ->
     (match Map.find type_env name with
@@ -826,11 +836,13 @@ let rec eval_in_ctx ctx tm =
 
 and eval_nominal_in_ctx ctx tm =
   match tm with
-  | Nominal.Term.Var (_, v) ->
+  | Nominal.Term.Var (info, v) ->
     (match Map.find ctx v with
     | Some result -> Ok result
     | None ->
-      Error ("Unbound variable " ^ v, Lang.Term.Embedded (Provenance.of_here [%here], tm)))
+      Error
+        ( "Unbound variable " ^ v
+        , Lang.Term.Embedded (Provenance.calculated_here [%here] [ info ], tm) ))
   | _ -> Ok tm
 
 and eval_primitive eval_in_ctx eval_nominal_in_ctx ctx tm name args =
