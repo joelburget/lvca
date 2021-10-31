@@ -303,7 +303,7 @@ let extract_vars_from_empty_list_pattern pat =
   let rec go = function
     | Pattern.Operator (_, "Nil", []) -> []
     | Operator (_, "Cons", [ Var (_, name); pats ]) -> name :: go pats
-    | _ -> failwith "Invalid empty list pattern"
+    | _ -> Lvca_util.invariant_violation ~here:[%here] "Invalid empty list pattern"
   in
   go pat
 ;;
@@ -343,7 +343,9 @@ module Pp = struct
       in
       (match List.zip binders rows with
       | Unequal_lengths ->
-        failwith "invalid set of letrec binders (must be the same number of terms)"
+        Lvca_util.invariant_violation
+          ~here:[%here]
+          "invalid set of letrec binders (must be the same number of terms)"
       | Ok bound_rows ->
         pf
           ppf
