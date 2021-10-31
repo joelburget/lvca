@@ -497,10 +497,12 @@ let sep_end_by s p =
 
 module type Junk_parser = sig
   val junk : unit t
+  val junk1 : unit t
 end
 
 module type Character_parser = sig
   val junk : unit t
+  val junk1 : unit t
   val char_lit : char t
 
   val identifier'
@@ -523,6 +525,7 @@ end
 
 module No_junk : Character_parser = struct
   let junk = fail "no junk"
+  let junk1 = fail "no junk"
   let char_lit = adapt Basic.char_lit
 
   let identifier' ?initial_char_p ?char_p () =
@@ -578,10 +581,12 @@ let c_comment =
 
 module Whitespace_parser : Character_parser = Mk_character_parser (struct
   let junk = whitespace
+  let junk1 = whitespace1
 end)
 
 module C_comment_parser : Character_parser = Mk_character_parser (struct
   let junk = whitespace <* option "" c_comment
+  let junk1 = choice [ whitespace1 <* option "" c_comment; (c_comment >>| fun _ -> ()) ]
 end)
 
 let%test_module "Parsing" =

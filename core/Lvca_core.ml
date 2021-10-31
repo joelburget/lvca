@@ -263,6 +263,7 @@ term :=
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
   | Let(term; option ty; term. term)
+  // let rec defines a group (represented as a list but unordered) of definitions at once
   | Let_rec(list letrec_row; (list empty)[term]. term)
   | Subst(term. term; term)
 
@@ -293,6 +294,15 @@ module Pp = struct
 
   (* TODO: add parse <-> pretty tests *)
 
+  let extract_vars_from_empty_list_pattern pat =
+    let rec go = function
+      | Pattern.Operator (_, "Nil", []) -> []
+      | Operator (_, "Cons", [ Var (_, name); pats ]) -> name :: go pats
+      | _ -> failwith "Invalid empty list pattern"
+    in
+    go pat
+  ;;
+
   let rec term : Lang.Term.t Fmt.t =
    fun ppf tm ->
     Provenance.open_stag ppf (Lang.Term.info tm);
@@ -315,7 +325,25 @@ module Pp = struct
         cases
         cases'
     | Let (_, tm, ty, (Single_var.{ name; info = _ }, body)) -> let_ ppf tm ty name body
-    | Let_rec (_, _rows, _rhs) -> failwith "TODO"
+    | Let_rec (_, rows, (binders, rhs)) ->
+      let binders = extract_vars_from_empty_list_pattern binders in
+      let rows = List_model.to_list rows in
+      let pp_bound_row ppf (var_name, Lang.Letrec_row.Letrec_row (_, ty_opt, body)) =
+        match ty_opt with
+        | None _ -> pf ppf "%s@ =@ %a" var_name term body
+        | Some (_, ty) -> pf ppf "%s@ :@ %a@ =@ %a" var_name Type.pp ty term body
+      in
+      (match List.zip binders rows with
+      | Unequal_lengths ->
+        failwith "invalid set of letrec binders (must be the same number of terms)"
+      | Ok bound_rows ->
+        pf
+          ppf
+          "@[let rec@ %a@ in@ %a]"
+          (list pp_bound_row ~sep:(any "@ and@ "))
+          bound_rows
+          term
+          rhs)
     | Subst (_, (Single_var.{ name; info = _ }, body), arg) ->
       let formatter =
         match body with
@@ -354,7 +382,10 @@ module Parse = struct
   module Ws = C_comment_parser
   open Lang
 
-  let reserved = Lvca_util.String.Set.of_list [ "let"; "rec"; "in"; "match"; "with" ]
+  let reserved =
+    Lvca_util.String.Set.of_list [ "let"; "rec"; "and"; "in"; "match"; "with" ]
+  ;;
+
   let char_p = Char.(fun c -> is_alpha c || is_digit c || c = '_' || c = '\'' || c = '.')
 
   let identifier =
@@ -369,6 +400,16 @@ module Parse = struct
     | [] -> Lvca_util.invariant_violation ~here:[%here] "must be a nonempty list"
     | [ x ] -> x
     | f :: args -> Ap (Provenance.of_here [%here], f, List_model.of_list args)
+  ;;
+
+  let rec make_empty_list_pattern vars =
+    match vars with
+    | [] -> Pattern.Operator (Provenance.of_here [%here], "Nil", [])
+    | (v, pos) :: vars ->
+      Operator
+        ( Provenance.of_here [%here]
+        , "Cons"
+        , [ Var (v, pos); make_empty_list_pattern vars ] )
   ;;
 
   let term =
@@ -420,6 +461,24 @@ module Parse = struct
             term
           <?> "case line"
         in
+        let letrec_row =
+          attach_pos identifier
+          >>= fun (var, var_pos) ->
+          option' (Ws.char ':' *> Type.parse)
+          >>= fun opt_ty ->
+          Ws.char '='
+          >>= fun _ ->
+          term
+          >>~ fun rhs_pos rhs ->
+          let opt_ty =
+            match opt_ty with
+            | None -> Option_model.Option.None (Provenance.of_here [%here])
+            | Some ty -> Some (Type.info ty, ty)
+          in
+          let range = Opt_range.union var_pos rhs_pos in
+          ( (Provenance.of_range var_pos, var)
+          , Letrec_row.Letrec_row (Provenance.of_range range, opt_ty, rhs) )
+        in
         choice
           ~failure_msg:"looking for a lambda, let, match, or application"
           [ Ws.char '\\'
@@ -443,11 +502,24 @@ module Parse = struct
                      (Ws.string "->")
                      term)
             <?> "lambda"
-          ; Ws.string "let"
+          ; No_junk.string "let"
+            <* Ws.junk1
             >>== (fun { range = let_pos; _ } ->
-                   option' (No_junk.string "rec" <* many1 Ws.junk)
+                   option' (No_junk.string "rec" <* Ws.junk1)
                    >>= function
-                   | Some _ -> failwith "TODO"
+                   | Some _rec ->
+                     lift3
+                       (fun (rows, rows_pos) _ (rhs, rhs_pos) ->
+                         let info =
+                           Provenance.of_range (Opt_range.union rows_pos rhs_pos)
+                         in
+                         let binders, rows = List.unzip rows in
+                         let rows = List_model.of_list rows in
+                         let binders = make_empty_list_pattern binders in
+                         Term.Let_rec (info, rows, (binders, rhs)))
+                       (attach_pos (sep_by1 (Ws.string "and") letrec_row))
+                       (Ws.string "in")
+                       (attach_pos term)
                    | None ->
                      lift4
                        (fun (name, name_pos) ty _eq tm _in (body, body_pos) ->
@@ -1232,6 +1304,16 @@ let%test_module "Core pretty" =
     let%expect_test _ =
       term "(sub x {2})[x := {1}]";
       [%expect {| (sub x {2})[x := {1}] |}]
+    ;;
+
+    let%expect_test _ =
+      term "let rec x = y in x";
+      [%expect {| let rec x = y in x] |}]
+    ;;
+
+    let%expect_test _ =
+      term "let rec x = y and y = x in x";
+      [%expect {| let rec x = y and y = x in x] |}]
     ;;
 
     let%expect_test _ =

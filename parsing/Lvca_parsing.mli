@@ -86,10 +86,12 @@ val c_comment : string t
 
 module type Junk_parser = sig
   val junk : unit t
+  val junk1 : unit t
 end
 
 module type Character_parser = sig
   val junk : unit t
+  val junk1 : unit t
   val char_lit : char t
 
   val identifier'
