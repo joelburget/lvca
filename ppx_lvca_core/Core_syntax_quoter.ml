@@ -151,11 +151,9 @@ module Core = struct
         , [%e Binding_aware_pattern_model.pattern ~loc pat]
         , [%e term ~loc tm] )]
 
-  and letrec_row ~loc (Lang.Letrec_row.Letrec_row (info, ty_opt, tm)) =
+  and letrec_row ~loc (Lang.Letrec_row.Letrec_row (info, ty, tm)) =
     [%expr
       Lvca_core.Lang.Letrec_row.Letrec_row
-        ( [%e provenance ~loc info]
-        , [%e ty_opt |> Option_model.map ~f:(Type.t ~loc) |> option ~loc]
-        , [%e term ~loc tm] )]
+        ([%e provenance ~loc info], [%e Type.t ~loc ty], [%e term ~loc tm])]
   ;;
 end

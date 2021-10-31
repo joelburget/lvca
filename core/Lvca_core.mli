@@ -96,7 +96,7 @@ option : * -> *
 binding_aware_pattern : * -> *
 string : *
 
-letrec_row := Letrec_row(option ty; term)
+letrec_row := Letrec_row(ty; term)
 
 term :=
   | Embedded(nominal)

@@ -265,7 +265,7 @@ option : * -> *
 binding_aware_pattern : * -> *
 string : *
 
-letrec_row := Letrec_row(option ty; term)
+letrec_row := Letrec_row(ty; term)
 
 term :=
   | Embedded(nominal)
@@ -299,19 +299,19 @@ case_scope := Case_scope(binding_aware_pattern; term)
   end
 end
 
+let extract_vars_from_empty_list_pattern pat =
+  let rec go = function
+    | Pattern.Operator (_, "Nil", []) -> []
+    | Operator (_, "Cons", [ Var (_, name); pats ]) -> name :: go pats
+    | _ -> failwith "Invalid empty list pattern"
+  in
+  go pat
+;;
+
 module Pp = struct
   let braces, list, any, pf, sp = Fmt.(braces, list, any, pf, sp)
 
   (* TODO: add parse <-> pretty tests *)
-
-  let extract_vars_from_empty_list_pattern pat =
-    let rec go = function
-      | Pattern.Operator (_, "Nil", []) -> []
-      | Operator (_, "Cons", [ Var (_, name); pats ]) -> name :: go pats
-      | _ -> failwith "Invalid empty list pattern"
-    in
-    go pat
-  ;;
 
   let rec term : Lang.Term.t Fmt.t =
    fun ppf tm ->
@@ -338,10 +338,8 @@ module Pp = struct
     | Let_rec (_, rows, (binders, rhs)) ->
       let binders = extract_vars_from_empty_list_pattern binders in
       let rows = List_model.to_list rows in
-      let pp_bound_row ppf (var_name, Lang.Letrec_row.Letrec_row (_, ty_opt, body)) =
-        match ty_opt with
-        | None _ -> pf ppf "%s@ =@ %a" var_name term body
-        | Some (_, ty) -> pf ppf "%s@ :@ %a@ =@ %a" var_name Type.pp ty term body
+      let pp_bound_row ppf (var_name, Lang.Letrec_row.Letrec_row (_, ty, body)) =
+        pf ppf "%s@ :@ %a@ =@ %a" var_name Type.pp ty term body
       in
       (match List.zip binders rows with
       | Unequal_lengths ->
@@ -384,8 +382,6 @@ module Pp = struct
     Provenance.close_stag ppf info
   ;;
 end
-
-let pp_term ppf tm = Pp.term ppf tm
 
 module Parse = struct
   open Lvca_parsing
@@ -472,22 +468,15 @@ module Parse = struct
           <?> "case line"
         in
         let letrec_row =
-          attach_pos identifier
-          >>= fun (var, var_pos) ->
-          option' (Ws.char ':' *> Type.parse)
-          >>= fun opt_ty ->
-          Ws.char '='
-          >>= fun _ ->
-          term
-          >>~ fun rhs_pos rhs ->
-          let opt_ty =
-            match opt_ty with
-            | None -> Option_model.Option.None (Provenance.of_here [%here])
-            | Some ty -> Some (Type.info ty, ty)
-          in
-          let range = Opt_range.union var_pos rhs_pos in
-          ( (Provenance.of_range var_pos, var)
-          , Letrec_row.Letrec_row (Provenance.of_range range, opt_ty, rhs) )
+          lift4
+            (fun (var, var_pos) ty _ (rhs, rhs_pos) ->
+              let range = Opt_range.union var_pos rhs_pos in
+              ( (Provenance.of_range var_pos, var)
+              , Letrec_row.Letrec_row (Provenance.of_range range, ty, rhs) ))
+            (attach_pos identifier)
+            (Ws.char ':' *> Type.parse)
+            (Ws.char '=')
+            (attach_pos term)
         in
         choice
           ~failure_msg:"looking for a lambda, let, match, or application"
@@ -640,7 +629,10 @@ module Check_error' = struct
       (match tm with
       | Lang.Term.Embedded (_, Nominal.Term.Var (_, name)) ->
         Fmt.pf ppf "variable %s not found" name
-      | _ -> Lvca_util.invariant_violation ~here:[%here] "expected Var")
+      | _ ->
+        Lvca_util.invariant_violation
+          ~here:[%here]
+          Fmt.(str "expected Var (got %a)" Pp.term tm))
     | Operator_not_found -> Fmt.pf ppf "operator not found"
     | Mismatch ty ->
       (match ty_opt with
@@ -703,9 +695,12 @@ let rec check ({ type_env; syntax } as env) tm ty =
       let type_env = Map.set type_env ~key:name ~data:tm_ty in
       check { env with type_env } body ty
     | Error Infer_error.{ env; tm; error } -> Some Check_error.{ env; tm; ty; error })
-  | Let_rec _ -> failwith "TODO"
-  | Subst (_, binding, arg) ->
-    let info = Provenance.of_here [%here] in
+  | Let_rec (_, rows, (binders, body)) ->
+    (match check_binders env rows binders with
+    | Error err -> Some err
+    | Ok type_env -> check { env with type_env } body ty)
+  | Subst (info, binding, arg) ->
+    let info = Provenance.calculated_here [%here] [ info ] in
     check env (Let (info, arg, None info, binding)) ty
   | Term_var _ ->
     (match infer env tm with
@@ -725,14 +720,39 @@ and infer ({ type_env; syntax = _ } as env) tm =
     let%bind tm_ty = match ty with None _ -> infer env tm | Some (_, ty) -> Ok ty in
     let type_env = Map.set type_env ~key:name ~data:tm_ty in
     infer { env with type_env } body
-  | Let_rec _ -> failwith "TODO"
-  | Subst (_, binding, arg) ->
+  | Let_rec (_, rows, (binders, body)) ->
+    (match check_binders env rows binders with
+    | Error { env; tm; ty = _; error } -> Error { env; tm; error }
+    | Ok type_env -> infer { env with type_env } body)
+  | Subst (info, binding, arg) ->
     let info = Provenance.calculated_here [%here] [ info ] in
     infer env (Let (info, arg, None info, binding))
   | Term_var (_, name) ->
     (match Map.find type_env name with
     | None -> Error { env; tm; error = Var_not_found }
     | Some ty' -> Ok ty')
+
+and check_binders ({ type_env; syntax = _ } as env) rows binders =
+  let binders = extract_vars_from_empty_list_pattern binders in
+  let rows = List_model.to_list rows in
+  let defns =
+    match List.zip binders rows with
+    | Unequal_lengths ->
+      Lvca_util.invariant_violation ~here:[%here] "Binder / row mismatch"
+    | Ok defns -> defns
+  in
+  let type_env =
+    List.fold
+      defns
+      ~init:type_env
+      ~f:(fun type_env (name, Lang.Letrec_row.Letrec_row (_, ty, _)) ->
+        Map.set type_env ~key:name ~data:ty)
+  in
+  let defn_check_error =
+    List.find_map defns ~f:(fun (_name, Letrec_row (_, ty, tm)) ->
+        check { env with type_env } tm ty)
+  in
+  match defn_check_error with None -> Ok type_env | Some err -> Error err
 ;;
 
 let merge_pattern_context
@@ -1246,7 +1266,7 @@ let%test_module "Core pretty" =
       Stdio.print_string str
     ;;
 
-    let term = mk_test Parse.term pp_term
+    let term = mk_test Parse.term Pp.term
     let ty = mk_test Type.Parse.t Type.pp
     let module' = mk_test Module.parse Module.pp
 
@@ -1319,13 +1339,13 @@ let%test_module "Core pretty" =
     ;;
 
     let%expect_test _ =
-      term "let rec x = y in x";
-      [%expect {| let rec x = y in x] |}]
+      term "let rec x : foo = y in x";
+      [%expect {| let rec x : foo = y in x] |}]
     ;;
 
     let%expect_test _ =
-      term "let rec x = y and y = x in x";
-      [%expect {| let rec x = y and y = x in x] |}]
+      term "let rec x : foo = y and y : foo = x in x";
+      [%expect {| let rec x : foo = y and y : foo = x in x] |}]
     ;;
 
     let%expect_test _ =
@@ -1407,7 +1427,7 @@ let%test_module "Core eval in dynamics" =
   end)
 ;;
 
-let%test_module "Evaluation / inference" =
+let%test_module "Checking / inference" =
   (module struct
     open Abstract_syntax
     module Term = Lang.Term
@@ -1497,6 +1517,11 @@ let%test_module "Evaluation / inference" =
     let%expect_test _ =
       check "list integer" "{cons(1; nil())}";
       [%expect {| nominal != list integer |}]
+    ;;
+
+    let%expect_test _ =
+      check "bool" "let rec x : bool = y and y : bool = x in x";
+      [%expect {| checked |}]
     ;;
 
     let type_env =
