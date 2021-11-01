@@ -606,7 +606,7 @@ module Module = struct
   ;;
 end
 
-type env = Nominal.Term.t String.Map.t
+type eval_env = Term.t String.Map.t
 
 let preimage _ = failwith "TODO"
 let reverse _tm _cases = failwith "TODO"
@@ -801,18 +801,22 @@ and match_pattern_scope
   match_pattern body pat
 ;;
 
-let find_match v branches =
-  branches
-  |> List.find_map ~f:(fun (Lang.Case_scope.Case_scope (_, pat, rhs)) ->
-         let pat = Binding_aware_pattern_model.out pat in
-         match match_pattern v pat with
-         | None -> None
-         | Some bindings -> Some (rhs, bindings))
+let find_match (v : Nominal.Term.t)
+    : Lang.Case_scope.t list -> (Term.t * Term.t String.Map.t) option
+  =
+  List.find_map ~f:(fun (Lang.Case_scope.Case_scope (_, pat, rhs)) ->
+      let pat = Binding_aware_pattern_model.out pat in
+      match match_pattern v pat with
+      | None -> None
+      | Some bindings ->
+        let here = Provenance.of_here [%here] in
+        let bindings = Map.map bindings ~f:(fun v -> Lang.Term.Embedded (here, v)) in
+        Some (rhs, bindings))
 ;;
 
 type eval_error = string * Lang.Term.t
 
-let eval_char_bool_fn eval_nominal_in_ctx name f ctx tm c =
+let eval_char_bool_fn eval_nominal_in_ctx name f (ctx : eval_env) tm c =
   let true_tm info = Nominal.Term.Operator (info, "true", []) in
   let false_tm info = Nominal.Term.Operator (info, "false", []) in
   let%bind c = eval_nominal_in_ctx ctx c in
@@ -823,11 +827,14 @@ let eval_char_bool_fn eval_nominal_in_ctx name f ctx tm c =
   | _ -> Error (Printf.sprintf "Invalid argument to %s" name, tm)
 ;;
 
-let rec eval_in_ctx ctx tm =
+type eval_result = (Nominal.Term.t, string * Term.t) Result.t
+
+let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
   match tm with
   | Lang.Term.Term_var (_, v) ->
     (match Map.find ctx v with
-    | Some result -> Ok result
+    | Some (Embedded (_, v)) -> Ok v
+    | Some tm -> Error ("TODO", tm)
     | None -> Error ("Unbound variable " ^ v, tm))
   | Case (info, tm, branches) ->
     let%bind tm_val = eval_in_ctx ctx tm in
@@ -844,30 +851,57 @@ let rec eval_in_ctx ctx tm =
   | Ap (_, Lambda (_, _ty, (Single_var.{ name; info = _ }, body)), Cons (_, arg, Nil _))
     ->
     let%bind arg_val = eval_in_ctx ctx arg in
-    eval_in_ctx (Map.set ctx ~key:name ~data:arg_val) body
+    let here = Provenance.of_here [%here] in
+    let data = Lang.Term.Embedded (here, arg_val) in
+    eval_in_ctx (Map.set ctx ~key:name ~data) body
   | Ap (_, Term_var (_, name), args) ->
     if Map.mem ctx name
     then failwith "TODO"
     else eval_primitive eval_in_ctx eval_nominal_in_ctx ctx tm name args
-  | Embedded (_, tm) -> Ok (Nominal.Term.subst_all ctx tm)
+  | Embedded (_, tm) ->
+    let free_vars = Nominal.Term.free_vars tm in
+    let restricted_ctx = Map.filter_keys ctx ~f:(fun key -> Set.mem free_vars key) in
+    let ctx =
+      Map.map restricted_ctx ~f:(function
+          | Embedded (_, v) -> v
+          | _ -> Lvca_util.invariant_violation ~here:[%here] "TODO")
+    in
+    Ok (Nominal.Term.subst_all ctx tm)
+  | Let_rec (_, rows, (binders, body)) ->
+    let binders = extract_vars_from_empty_list_pattern binders in
+    let rows = List_model.to_list rows in
+    (match List.zip binders rows with
+    | Unequal_lengths ->
+      Lvca_util.invariant_violation
+        ~here:[%here]
+        "invalid set of letrec binders (must be the same number of terms)"
+    | Ok bound_rows ->
+      let ctx =
+        List.fold bound_rows ~init:ctx ~f:(fun ctx (name, Letrec_row (_, _ty, body)) ->
+            Map.set ctx ~key:name ~data:body)
+      in
+      eval_in_ctx ctx body)
   | Let (_, tm, _, (Single_var.{ name; info = _ }, body))
   | Subst (_, (Single_var.{ name; _ }, body), tm) ->
     let%bind tm_val = eval_in_ctx ctx tm in
-    eval_in_ctx (Map.set ctx ~key:name ~data:tm_val) body
+    let here = Provenance.of_here [%here] in
+    let data = Lang.Term.Embedded (here, tm_val) in
+    eval_in_ctx (Map.set ctx ~key:name ~data) body
   | _ -> Error ("Found a term we can't evaluate", tm)
 
-and eval_nominal_in_ctx ctx tm =
+and eval_nominal_in_ctx (ctx : eval_env) tm : eval_result =
   match tm with
   | Nominal.Term.Var (info, v) ->
     (match Map.find ctx v with
-    | Some result -> Ok result
+    | Some (Embedded (_, v)) -> Ok v
+    | Some _ -> Lvca_util.invariant_violation ~here:[%here] "TODO"
     | None ->
       Error
         ( "Unbound variable " ^ v
         , Lang.Term.Embedded (Provenance.calculated_here [%here] [ info ], tm) ))
   | _ -> Ok tm
 
-and eval_primitive eval_in_ctx eval_nominal_in_ctx ctx tm name args =
+and eval_primitive eval_in_ctx eval_nominal_in_ctx (ctx : eval_env) tm name args =
   let open Nominal.Term in
   let%bind args =
     args |> List_model.to_list |> List.map ~f:(eval_in_ctx ctx) |> Result.all

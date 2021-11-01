@@ -180,17 +180,23 @@ val check : check_env -> Lang.Term.t -> Type.t -> Check_error.t option
 
 (** {1 Evaluation} *)
 
-type env = Nominal.Term.t String.Map.t
+type eval_env = Lang.Term.t String.Map.t
 type eval_error = string * Lang.Term.t
 
-val eval_in_ctx : env -> Lang.Term.t -> (Nominal.Term.t, eval_error) Base.Result.t
+val eval_in_ctx : eval_env -> Lang.Term.t -> (Nominal.Term.t, eval_error) Base.Result.t
 val eval : Lang.Term.t -> (Nominal.Term.t, eval_error) Base.Result.t
 
 (** {1 Patterns} *)
-val match_pattern : Nominal.Term.t -> Binding_aware_pattern.t -> env option
+val match_pattern
+  :  Nominal.Term.t
+  -> Binding_aware_pattern.t
+  -> Nominal.Term.t String.Map.t option
 
-val find_match : Nominal.Term.t -> Lang.Case_scope.t list -> (Lang.Term.t * env) option
+val find_match
+  :  Nominal.Term.t
+  -> Lang.Case_scope.t list
+  -> (Lang.Term.t * eval_env) option
 
 (* val coverage_check :  Cases.t -> *)
 val preimage : Lang.Case_scope.t list -> Binding_aware_pattern.t list
-val reverse : Nominal.Term.t -> Lang.Case_scope.t list -> env option
+val reverse : Nominal.Term.t -> Lang.Case_scope.t list -> eval_env option
