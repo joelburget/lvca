@@ -142,8 +142,10 @@ end
 
 (** {1 Checking} *)
 
+type type_env = Type.t String.Map.t
+
 type check_env =
-  { type_env : Type.t String.Map.t
+  { type_env : type_env
   ; syntax : Abstract_syntax.t
   }
 
@@ -153,7 +155,9 @@ module Check_error' : sig
     | Cant_infer_lambda
     | Var_not_found
     | Operator_not_found
-    | Mismatch of Type.t
+    | Mismatch of Type.t * Type.t
+    | Binding_pattern_check of string
+    | Overapplication
 end
 
 module Check_error : sig
