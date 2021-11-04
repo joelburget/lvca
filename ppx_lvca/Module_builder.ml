@@ -200,9 +200,26 @@ let unflatten names =
   | nm0 :: nms -> List.fold nms ~init:(Lident nm0) ~f:(fun accum m -> Ldot (accum, m))
 ;;
 
-(* TODO: more sophisticated naming rules? *)
-let ctor_name = String.capitalize
-let module_name = String.capitalize
+let is_valid_ident_char c = Char.(is_alphanum c || c = '\'' || c = '_')
+
+let is_valid_ident ~init_f str =
+  match String.to_list str with
+  | [] -> false
+  | c :: cs -> init_f c && List.for_all cs ~f:is_valid_ident_char
+;;
+
+let is_valid_capital_name str = is_valid_ident ~init_f:Char.is_uppercase str
+
+let is_valid_lower_name str =
+  is_valid_ident ~init_f:Char.(fun c -> is_lowercase c || c = '_') str
+;;
+
+let module_name ~loc str =
+  if is_valid_lower_name str
+  then Some (String.capitalize str)
+  else Location.raise_errorf ~loc "Invalid OCaml module name: %s" str
+;;
+
 let var_ctor_name sort_name = String.capitalize sort_name ^ "_var"
 let guard = None
 
@@ -359,7 +376,7 @@ module Helpers (Context : Builder_context) = struct
             ~loc
             "Unknown sort: %s (known: {%s})"
             sort_name
-            Fmt.(str "%a" (list string) (Map.keys prims))))
+            Fmt.(str "%a" (list string ~sep:comma) (Map.keys prims))))
   ;;
 
   let nominal_term = [ "Lvca_syntax"; "Nominal"; "Term" ]
@@ -533,10 +550,12 @@ module Ctor_decl (Context : Builder_context) = struct
       (Syn.Operator_def.Operator_def (_info, op_name, arity))
     =
     let args = args_of_arity ~type_decl_context ~var_names ~mutual_sorts ~prims arity in
-    constructor_declaration
-      ~name:{ txt = ctor_name op_name; loc }
-      ~args:(Pcstr_tuple args)
-      ~res:None
+    let txt =
+      if is_valid_capital_name op_name
+      then op_name
+      else Location.raise_errorf ~loc "Invalid OCaml operator name: %s" op_name
+    in
+    constructor_declaration ~name:{ txt; loc } ~args:(Pcstr_tuple args) ~res:None
   ;;
 end
 
@@ -606,17 +625,13 @@ module Operator_pat (Context : Builder_context) = struct
   open Ast
   open Helpers (Context)
 
-  let is_valid_ocaml_constr_name str =
-    (not (String.is_empty str)) && Char.is_uppercase str.[0]
-  ;;
-
   let mk
       ?(match_info = false)
       ?(match_non_info = true)
       ?(name_base = "x")
       (Syn.Operator_def.Operator_def (_info, op_name, Arity (_, arity)))
     =
-    if not (is_valid_ocaml_constr_name op_name)
+    if not (is_valid_capital_name op_name)
     then Location.raise_errorf ~loc "Invalid OCaml operator name: %s" op_name;
     let var_ix = ref 0 in
     let v ix = pvar (Printf.sprintf "%s%d" name_base ix) in
@@ -626,13 +641,12 @@ module Operator_pat (Context : Builder_context) = struct
              let slots =
                ( (* Always one binder for the body *) ) :: List.map slots ~f:(Fn.const ())
              in
-             slots
-             |> List.map ~f:(fun () ->
-                    if match_non_info
-                    then (
-                      Int.incr var_ix;
-                      v !var_ix)
-                    else ppat_any))
+             List.map slots ~f:(fun () ->
+                 if match_non_info
+                 then (
+                   Int.incr var_ix;
+                   v !var_ix)
+                 else ppat_any))
     in
     let contents = [ (if match_info then v 0 else ppat_any) ] :: contents in
     let body =
@@ -1311,7 +1325,7 @@ module Individual_type_module (Context : Builder_context) = struct
     in
        *)
     let expr = pmod_structure ((info_type_decl :: fun_defs) @ ctor_funs) in
-    module_binding ~name:{ txt = Some (module_name sort_name); loc } ~expr |> pstr_module
+    module_binding ~name:{ txt = module_name ~loc sort_name; loc } ~expr |> pstr_module
   ;;
 end
 
@@ -1475,7 +1489,7 @@ module Sig (Context : Builder_context) = struct
           let signature_items = signature_items @ ctor_funs in
           let type_ = pmty_signature signature_items in
           psig_module
-            (module_declaration ~name:{ txt = Some (module_name sort_name); loc } ~type_))
+            (module_declaration ~name:{ txt = module_name ~loc sort_name; loc } ~type_))
     in
     let language = [%sigi: val language : Lvca_syntax.Abstract_syntax.t] in
     pmty_signature
