@@ -97,27 +97,25 @@ ty :=
       <?> "core type"
     ;;
 
-    let%test_module "parsing" =
+    let%test_module "parsing / printing" =
       (module struct
         let parse = parse_string t >> Result.ok_or_failwith
-        let here = Provenance.of_here [%here]
-        let bool = Sort_model.Sort.mk_Name ~info:here (here, "bool")
-        let bind_a = to_pattern_exn [%lvca.nominal "Cons(a; Nil())"]
-        let bind_a_b = to_pattern_exn [%lvca.nominal "Cons(a; Cons(b; Nil()))"]
-        let a = Ty_var (here, "a")
-        let ( = ) = equivalent
+        let go = parse >> Fmt.pr "%a\n" pp
 
-        let list_bool =
-          Sort_model.Sort.mk_Ap
-            ~info:here
-            (here, "list")
-            Sort_model.Ap_list.(mk_Cons ~info:here bool (mk_Nil ~info:here))
+        let%expect_test _ =
+          go "bool";
+          go "list bool";
+          [%expect {|
+            bool
+            list bool
+          |}]
         ;;
 
-        let%test _ = parse "bool" = Sort (here, bool)
-        let%test _ = parse "list bool" = Sort (here, list_bool)
-        let%test _ = parse "forall a. a" = Forall (here, (bind_a, a))
-        let%test _ = parse "forall a b. a" = Forall (here, (bind_a_b, a))
+        let%expect_test _ =
+          go "forall a. a";
+          go "forall a b. a";
+          [%expect]
+        ;;
       end)
     ;;
 
