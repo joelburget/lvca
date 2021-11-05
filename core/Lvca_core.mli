@@ -79,8 +79,12 @@ module Type : sig
   {|
 sort : *
 
-ty := Sort(sort) | Arrow(ty; ty)
-  |}, { sort = "Sort_model.Sort" }]
+ty :=
+  | Sort(sort)
+  | Arrow(ty; ty)
+  | Forall((list empty)[ty]. ty)
+  |}
+  , { sort = "Sort_model.Sort"; empty = "Empty" }]
 
   type t = Ty.t
 
@@ -99,7 +103,9 @@ string : *
 letrec_row := Letrec_row(ty; term)
 
 term :=
-  | Embedded(nominal)
+  | Quoted(nominal)
+  | Primitive(primitive)
+  | Constructor(string; list term)
   | Ap(term; list term)
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
@@ -114,6 +120,7 @@ case_scope := Case_scope(binding_aware_pattern; term)
   ; list = "List_model.List"
   ; option = "Option_model.Option"
   ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
+  ; primitive = "Primitive.All"
   ; string = "Primitive.String"
   ; empty = "Empty"
   }]
