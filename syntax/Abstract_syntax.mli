@@ -9,23 +9,6 @@ type kind_map = int String.Map.t
     to have. *)
 type kind_mismap = Int.Set.t String.Map.t
 
-(** The kind of a sort is the number of arguments it takes. Invariant: must be a natural
-    number. *)
-module Kind : sig
-  type t = Kind of Provenance.t * int
-
-  val mk : ?provenance:Provenance.t -> int -> t
-  val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
-  val ( = ) : t -> t -> bool
-  val info : t -> Provenance.t
-  val pp : t Fmt.t
-
-  module Parse : sig
-    val t : t Lvca_parsing.t
-    val decl : (string * t) Lvca_parsing.t
-  end
-end
-
 (** A pattern sort represents the sort of a pattern with variables of some sort. This is
     written as [pattern_sort\[var_sort\]]. *)
 module Pattern_sort : sig

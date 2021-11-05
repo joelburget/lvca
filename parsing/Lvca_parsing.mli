@@ -119,3 +119,4 @@ module Whitespace_parser : Character_parser
 
 val parse_string_pos : 'a t -> string -> ('a Parse_result.t, string) Base.Result.t
 val parse_string : 'a t -> string -> ('a, string) Base.Result.t
+val parse_string_or_failwith : 'a t -> string -> 'a

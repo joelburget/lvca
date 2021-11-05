@@ -206,6 +206,8 @@ let parse_string p str =
   parse_string_pos p str |> Result.map ~f:(fun { value; range = _ } -> value)
 ;;
 
+let parse_string_or_failwith p str = parse_string p str |> Result.ok_or_failwith
+
 (** Helpers that may call pos. *)
 module Basic = struct
   open Angstrom

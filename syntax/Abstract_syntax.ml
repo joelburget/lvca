@@ -4,71 +4,6 @@ open Base
 open Lvca_provenance
 open Lvca_util
 
-let test_parse_with p str = Lvca_parsing.(parse_string p str) |> Result.ok_or_failwith
-
-module Kind = struct
-  type t = Kind of Provenance.t * int
-
-  let mk ?(provenance = Provenance.of_here [%here]) n = Kind (provenance, n)
-
-  let equivalent ?(info_eq = fun _ _ -> true) (Kind (i1, k1)) (Kind (i2, k2)) =
-    info_eq i1 i2 && Int.(k1 = k2)
-  ;;
-
-  let ( = ) = equivalent ~info_eq:Provenance.( = )
-  let info (Kind (i, _)) = i
-
-  let pp ppf (Kind (info, k)) =
-    Provenance.open_stag ppf info;
-    Fmt.(list ~sep:(any " -> ") (any "*")) ppf (List.init k ~f:(Fn.const ()));
-    Provenance.close_stag ppf info
-  ;;
-
-  module Parse = struct
-    open Lvca_parsing
-    module Ws = C_comment_parser
-
-    let t =
-      sep_by1 (Ws.string "->") (Ws.char '*')
-      >>~ (fun location stars -> Kind (Provenance.of_range location, List.length stars))
-      <?> "kind"
-    ;;
-
-    let decl =
-      lift3 (fun ident _colon kind -> ident, kind) Ws.identifier (Ws.char ':') t
-      <?> "kind declaration"
-    ;;
-
-    let%test_module "parsing" =
-      (module struct
-        let pp_decl ppf (name, decl) = Fmt.pf ppf "%s: %a" name pp decl
-
-        let%expect_test _ =
-          let x = test_parse_with (Ws.junk *> decl) "foo: * -> *" in
-          Fmt.pr "%a" pp_decl x;
-          [%expect {|foo: * -> *|}]
-        ;;
-
-        let%expect_test _ =
-          let x =
-            test_parse_with
-              (Ws.junk *> many decl)
-              {|
-            foo: * -> *  // comment
-            bar: * -> *
-            |}
-          in
-          Fmt.(pr "%a" (list pp_decl) x);
-          [%expect {|
-          foo: * -> *
-          bar: * -> *
-          |}]
-        ;;
-      end)
-    ;;
-  end
-end
-
 module Pattern_sort = struct
   type t =
     { pattern_sort : Sort.t
@@ -231,7 +166,7 @@ module Arity = struct
       let integer = Sort.Name (none, "integer")
       let integer_v = Valence.Valence ([], integer)
       let ( = ) = equivalent
-      let go = test_parse_with Lvca_parsing.(C_comment_parser.junk *> parse)
+      let go = Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse))
 
       let%test_unit _ = assert (go "(integer)" = Arity (none, [ integer_v ]))
       let%test_unit _ = assert (go "(tm; tm)" = Arity (none, [ tm_v; tm_v ]))
@@ -317,8 +252,7 @@ module Operator_def = struct
         let info1 = Provenance.of_range (Opt_range.mk 0 5) in
         let info2 = Provenance.of_range (Opt_range.mk 3 5) in
         let parsed =
-          test_parse_with
-            Lvca_parsing.(C_comment_parser.junk *> parse)
+          Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse))
             "foo()  // comment"
         in
         assert (parsed = Operator_def (info1, "foo", Arity (info2, [])))
@@ -402,7 +336,9 @@ module Sort_def = struct
 
   let%test_module _ =
     (module struct
-      let test_parse = test_parse_with Lvca_parsing.(C_comment_parser.junk *> parse)
+      let test_parse =
+        Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse))
+      ;;
 
       let parse_print str =
         let pp ppf (name, sort_def) = pp ppf ~name sort_def in
@@ -601,8 +537,7 @@ let%test_module _ =
 
     let%test_unit _ =
       let parsed =
-        test_parse_with
-          Lvca_parsing.(C_comment_parser.junk *> parse)
+        Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse))
           {|
 // comment
 integer : *
@@ -627,7 +562,9 @@ empty :=
     ;;
 
     let kind_check str =
-      let lang = test_parse_with Lvca_parsing.(C_comment_parser.junk *> parse) str in
+      let lang =
+        Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse) str)
+      in
       match kind_check lang with
       | Ok map ->
         Stdio.printf "okay\n";
@@ -673,7 +610,7 @@ let%test_module "Parser" =
   (module struct
     open Lvca_provenance
 
-    let parse = test_parse_with Lvca_parsing.(C_comment_parser.junk *> parse)
+    let parse = Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse))
     let tm_sort = Sort.mk_Name "tm"
     let tm_valence = Valence.Valence ([], tm_sort)
     let ty_sort = Sort.mk_Name "ty"
