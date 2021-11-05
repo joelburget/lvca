@@ -103,12 +103,26 @@ module Core = struct
         [%expr
           Lvca_core.Type.Ty.Arrow
             ([%e provenance ~loc info], [%e t ~loc t1], [%e t ~loc t2])]
+      | Forall (info, (binders, body)) ->
+        [%expr
+          Lvca_core.Type.Ty.Forall
+            ([%e provenance ~loc info], ([%e pattern ~loc binders], [%e t ~loc body]))]
+      | Ty_var (i, name) ->
+        [%expr Lvca_core.Lang.Term.Ty_var ([%e provenance ~loc i], [%e string ~loc name])]
     ;;
   end
 
   let rec term ~loc = function
-    | Lang.Term.Embedded (i, tm) ->
-      [%expr Lvca_core.Lang.Term.Embedded ([%e provenance ~loc i], [%e nominal ~loc tm])]
+    | Lang.Term.Quoted (i, tm) ->
+      [%expr Lvca_core.Lang.Term.Quoted ([%e provenance ~loc i], [%e nominal ~loc tm])]
+    | Primitive (i, p) ->
+      [%expr
+        Lvca_core.Lang.Term.Primitive ([%e provenance ~loc i], [%e Primitive.all ~loc p])]
+    | Constructor (i, name, tms) ->
+      let tms = tms |> List_model.map ~f:(term ~loc) |> list ~loc in
+      [%expr
+        Lvca_core.Lang.Term.Constructor
+          ([%e provenance ~loc i], [%e Primitive.string ~loc name], [%e tms])]
     | Ap (i, tm, tms) ->
       let tms = tms |> List_model.map ~f:(term ~loc) |> list ~loc in
       [%expr Lvca_core.Lang.Term.Ap ([%e provenance ~loc i], [%e term ~loc tm], [%e tms])]

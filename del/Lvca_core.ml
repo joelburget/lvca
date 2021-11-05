@@ -12,45 +12,6 @@ let to_pattern_exn tm =
   |> Result.ok_or_failwith
 ;;
 
-module List_model = struct
-  include [%lvca.abstract_syntax_module "list a := Nil() | Cons(a; list a)"]
-
-  let rec of_list xs =
-    let info = Provenance.of_here [%here] in
-    match xs with [] -> List.mk_Nil ~info | x :: xs -> Cons (info, x, of_list xs)
-  ;;
-
-  let rec to_list xs =
-    match xs with List.Nil _ -> [] | Cons (_, x, xs) -> x :: to_list xs
-  ;;
-
-  let rec map ~f = function
-    | List.Nil i -> List.Nil i
-    | Cons (i, x, xs) -> Cons (i, f x, map ~f xs)
-  ;;
-end
-
-module Option_model = struct
-  include [%lvca.abstract_syntax_module "option a := None() | Some(a)"]
-
-  let of_option x =
-    let info = Provenance.of_here [%here] in
-    match x with None -> Option.None info | Some a -> Some (info, a)
-  ;;
-
-  let to_option = function Option.None _ -> None | Some (_, a) -> Some a
-  let map ~f = function Option.None i -> Option.None i | Some (i, a) -> Some (i, f a)
-end
-
-module Empty = struct
-  include [%lvca.abstract_syntax_module "empty :="]
-
-  type t = Empty.t
-
-  let pp _ppf = function (_ : t) -> .
-  let parse = Lvca_parsing.fail "(empty type)"
-end
-
 let extract_vars_from_empty_list_pattern pat =
   let rec go = function
     | Pattern.Operator (_, "Nil", []) -> []
@@ -59,100 +20,6 @@ let extract_vars_from_empty_list_pattern pat =
   in
   go pat
 ;;
-
-module Binding_aware_pattern_model = struct
-  include
-    [%lvca.abstract_syntax_module
-    {|
-string : *
-primitive : *
-list : * -> *
-
-pattern :=
-  | Operator(string; list scope)
-  | Primitive(primitive)
-  | Var(string)
-
-scope := Scope(list string; pattern)
-|}
-    , { string = "Primitive.String"
-      ; primitive = "Primitive.All"
-      ; list = "List_model.List"
-      }]
-
-  let rec into tm =
-    let info = Provenance.calculated_here [%here] [ Binding_aware_pattern.info tm ] in
-    match tm with
-    | Binding_aware_pattern.Operator (_, str, scopes) ->
-      let scopes = scopes |> List.map ~f:scope |> List_model.of_list in
-      Pattern.Operator (info, (info, str), scopes)
-    | Primitive (_, prim) -> Primitive (info, (info, prim))
-    | Var (_, str) -> Var (info, (info, str))
-
-  and scope (Binding_aware_pattern.Scope (names, pat)) =
-    Scope.Scope (Provenance.of_here [%here], List_model.of_list names, into pat)
-  ;;
-
-  let rec out tm =
-    let info = Provenance.calculated_here [%here] [ Pattern.info tm ] in
-    match tm with
-    | Pattern.Operator (_, (_, str), scopes) ->
-      let scopes = scopes |> List_model.to_list |> List.map ~f:scope in
-      Binding_aware_pattern.Operator (info, str, scopes)
-    | Primitive (_, (_, prim)) -> Primitive (info, prim)
-    | Var (_, (_, str)) -> Var (info, str)
-
-  and scope (Scope.Scope (_, names, pat)) =
-    Binding_aware_pattern.Scope (List_model.to_list names, out pat)
-  ;;
-end
-
-module Sort_model =
-[%lvca.abstract_syntax_module
-{|
-string : *
-
-sort :=
-  | Ap(string; ap_list)
-  | Name(string)
-
-ap_list :=
-  | Nil()
-  | Cons(sort; ap_list)
-|}
-, { string = "Primitive.String" }]
-
-module Sort = struct
-  include Nominal.Convertible.Extend (Sort_model.Sort)
-
-  let rec into tm =
-    let info = Provenance.calculated_here [%here] [ Lvca_syntax.Sort.info tm ] in
-    match tm with
-    | Lvca_syntax.Sort.Ap (_, name, ap_list) ->
-      Sort_model.Sort.Ap (info, (info, name), into_ap_list ap_list)
-    | Name (_, name) -> Name (info, (info, name))
-
-  and into_ap_list tm =
-    let info = Provenance.calculated_here [%here] [ Lvca_syntax.Sort.Ap_list.info tm ] in
-    match tm with
-    | Lvca_syntax.Sort.Nil _ -> Sort_model.Ap_list.Nil info
-    | Cons (_, sort, ap_list) -> Cons (info, into sort, into_ap_list ap_list)
-  ;;
-
-  let rec out tm =
-    let info = Provenance.calculated_here [%here] [ Sort_model.Sort.info tm ] in
-    match tm with
-    | Sort_model.Sort.Ap (_, (_, name), ap_list) ->
-      Lvca_syntax.Sort.Ap (info, name, out_ap_list ap_list)
-    | Name (_, (_, name)) -> Name (info, name)
-
-  and out_ap_list tm =
-    let info = Provenance.calculated_here [%here] [ Sort_model.Ap_list.info tm ] in
-    match tm with
-    | Sort_model.Ap_list.Nil _ -> Lvca_syntax.Sort.Nil info
-    | Cons (_, sort, ap_list) -> Cons (info, out sort, out_ap_list ap_list)
-  ;;
-end
 
 module Type = struct
   include
@@ -187,7 +54,7 @@ ty :=
           t1
           (go false)
           t2
-      | Sort (_, s) -> Lvca_syntax.Sort.pp ppf (Sort.out s)
+      | Sort (_, s) -> Lvca_syntax.Sort.pp ppf (Sort_model.Sort.out s)
       | Forall (_, (names, body)) ->
         let names = extract_vars_from_empty_list_pattern names in
         Fmt.pf
@@ -223,8 +90,8 @@ ty :=
             Ws.parens t
             <|> (Lvca_syntax.Sort.parse
                 >>| fun sort ->
-                let sort = Sort.into sort in
-                Sort (Sort.info sort, sort))
+                let sort = Sort_model.Sort.into sort in
+                Sort (Sort_model.Sort.info sort, sort))
           in
           sep_by1 (Ws.string "->") atom >>| of_list)
       <?> "core type"
@@ -731,7 +598,7 @@ let check_binding_pattern
   let lookup_operator = Abstract_syntax.lookup_operator syntax in
   let here = Provenance.of_here [%here] in
   let rec check (sort : Lvca_syntax.Sort.t) pat =
-    let sort' = Sort.into sort in
+    let sort' = Sort_model.Sort.into sort in
     match pat with
     | Binding_aware_pattern.Var (_, name) when Lvca_util.String.is_ignore name ->
       Ok String.Map.empty
@@ -762,7 +629,7 @@ let check_binding_pattern
 let primitive_types =
   let here = Provenance.of_here [%here] in
   let arr t1 t2 = Type.Arrow (here, t1, t2) in
-  let sort s = Type.Sort (Lvca_syntax.Sort.info s, Sort.into s) in
+  let sort s = Type.Sort (Lvca_syntax.Sort.info s, Sort_model.Sort.into s) in
   let int = sort (Lvca_syntax.Sort.Name (here, "int")) in
   let string = sort (Lvca_syntax.Sort.Name (here, "string")) in
   let bool = sort (Lvca_syntax.Sort.Name (here, "bool")) in
@@ -818,7 +685,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
     | Error { env; tm; error } -> Some { env; tm; ty; error }
     | Ok (Type.Arrow _ | Forall _ | Ty_var _) -> failwith "TODO"
     | Ok (Sort (_, sort)) ->
-      let sort = Sort.out sort in
+      let sort = Sort_model.Sort.out sort in
       branches
       |> List_model.to_list
       |> List.find_map ~f:(fun (Lang.Case_scope.Case_scope (_, pat, rhs)) ->
@@ -1745,7 +1612,7 @@ let%test_module "Checking / inference" =
 
     let type_env =
       String.Map.of_alist_exn
-        [ "x", Type.Sort (here, Sort_model.Sort.Name (here, (here, "a"))) ]
+        [ "x", Type.Sort (here, Sort_model.Sort.mk_Name ~info:here (here, "a")) ]
     ;;
 
     let%expect_test _ =

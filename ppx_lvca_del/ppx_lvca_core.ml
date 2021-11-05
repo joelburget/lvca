@@ -9,7 +9,7 @@ let expand_core ~(loc : Location.t) ~path:_ (expr : expression) : expression =
 
 let core_extension =
   Extension.declare
-    "lvca.core"
+    "lvca.del.core"
     Extension.Context.Expression
     Ast_pattern.(single_expr_payload __)
     expand_core

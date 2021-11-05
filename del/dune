@@ -1,6 +1,6 @@
 (library
- (name lvca_core)
- (public_name lvca.core)
+ (name lvca_del)
+ (public_name lvca.del)
  (inline_tests)
  (libraries lvca_parsing lvca_syntax)
  (wrapped false)

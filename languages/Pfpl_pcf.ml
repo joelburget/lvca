@@ -109,7 +109,7 @@ let rec to_pretty = function
 ;;
 
 let to_core =
-  [%lvca.core
+  [%lvca.del.core
     {|
 \(tm : exp) -> match tm with {
   | Zero() -> {Zero()}
