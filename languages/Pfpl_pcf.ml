@@ -112,7 +112,7 @@ let to_core =
   [%lvca.del.core
     {|
 \(tm : exp) -> match tm with {
-  | Zero() -> {Zero()}
+  | Zero() -> Zero()
   | Succ(exp) -> let exp = eval exp in Succ(exp)
   | Ifz(_ty; e0; x. e1; e) ->
     let e = eval e in
@@ -121,7 +121,7 @@ let to_core =
       | Succ(e) -> e[x := e1]
     }
   | Ap(Fun(x. e1); e2) -> e1[x := eval e2]
-  | Ap(e1; e2) -> eval {Ap({eval e1}; {e2})}
+  | Ap(e1; e2) -> let e1 = eval e1 in eval Ap(e1; e2)
   | Fix(_typ; x. e) -> e[x := tm]
 }
   |}]

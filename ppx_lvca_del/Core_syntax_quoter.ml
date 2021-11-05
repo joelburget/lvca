@@ -110,15 +110,8 @@ module Core = struct
   end
 
   let rec term ~loc = function
-    | Core.Lang.Term.Quoted (i, tm) ->
-      [%expr Core.Lang.Term.Quoted ([%e provenance ~loc i], [%e nominal ~loc tm])]
-    | Primitive (i, p) ->
-      [%expr Core.Lang.Term.Primitive ([%e provenance ~loc i], [%e Primitive.all ~loc p])]
-    | Constructor (i, name, tms) ->
-      let tms = tms |> List_model.map ~f:(term ~loc) |> list ~loc in
-      [%expr
-        Core.Lang.Term.Constructor
-          ([%e provenance ~loc i], [%e Primitive.string ~loc name], [%e tms])]
+    | Core.Lang.Term.Nominal (i, tm) ->
+      [%expr Core.Lang.Term.Nominal ([%e provenance ~loc i], [%e nominal ~loc tm])]
     | Ap (i, tm, tms) ->
       let tms = tms |> List_model.map ~f:(term ~loc) |> list ~loc in
       [%expr Core.Lang.Term.Ap ([%e provenance ~loc i], [%e term ~loc tm], [%e tms])]

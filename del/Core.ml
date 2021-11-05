@@ -169,15 +169,11 @@ nominal : *
 list : * -> *
 option : * -> *
 binding_aware_pattern : * -> *
-string : *
-primitive : *
 
 letrec_row := Letrec_row(ty; term)
 
 term :=
-  | Quoted(nominal)
-  | Primitive(primitive)
-  | Constructor(string; list term)
+  | Nominal(nominal)
   | Ap(term; list term)
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
@@ -193,8 +189,6 @@ case_scope := Case_scope(binding_aware_pattern; term)
       ; list = "List_model.List"
       ; option = "Option_model.Option"
       ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
-      ; primitive = "Primitive.All"
-      ; string = "Primitive.String"
       ; empty = "Empty"
       }]
 
@@ -210,7 +204,7 @@ case_scope := Case_scope(binding_aware_pattern; term)
 end
 
 module Pp = struct
-  let braces, list, any, pf, sp = Fmt.(braces, list, any, pf, sp)
+  let list, any, pf, sp = Fmt.(list, any, pf, sp)
 
   (* TODO: add parse <-> pretty tests *)
 
@@ -219,9 +213,7 @@ module Pp = struct
     Provenance.open_stag ppf (Lang.Term.info tm);
     match tm with
     | Lang.Term.Term_var (_, v) -> Fmt.string ppf v
-    | Quoted (_, tm) -> braces Nominal.Term.pp ppf tm
-    | Primitive (_, p) -> Primitive.All.pp ppf p
-    | Constructor _ -> failwith "TODO"
+    | Nominal (_, tm) -> Nominal.Term.pp ppf tm
     | Lambda (_, ty, (Single_var.{ name; info = _ }, body)) ->
       pf ppf "@[<hv>\\@[<hv>(%s : %a)@] ->@ %a@]" name Type.pp ty term body
     (* TODO: parens if necessary *)
@@ -260,7 +252,7 @@ module Pp = struct
     | Subst (_, (Single_var.{ name; info = _ }, body), arg) ->
       let formatter =
         match body with
-        | Quoted _ | Subst _ -> pf ppf "@[%a[%s := %a]@]"
+        | Nominal (_, Primitive _) | Subst _ -> pf ppf "@[%a[%s := %a]@]"
         | _ -> pf ppf "@[@[(%a)@][%s := %a]@]"
       in
       formatter term body name term arg;
@@ -297,17 +289,16 @@ module Parse = struct
     Lvca_util.String.Set.of_list [ "let"; "rec"; "and"; "in"; "match"; "with" ]
   ;;
 
+  let is_start = Char.(fun c -> is_lowercase c || c = '_')
   let is_continue = Char.(fun c -> is_alpha c || is_digit c || c = '_' || c = '\'')
 
   let var_identifier =
-    Ws.(identifier' ~is_start:Char.(fun c -> is_lowercase c || c = '_') ~is_continue ())
+    Ws.(identifier' ~is_start ~is_continue ())
     >>= fun ident ->
     if Set.mem reserved ident
     then fail (Printf.sprintf "identifier: reserved word (%s)" ident)
     else return ident
   ;;
-
-  let ctor_identifier = Ws.identifier' ~is_start:Char.is_uppercase ~is_continue ()
 
   let make_apps : Term.t list -> Term.t = function
     | [] -> Lvca_util.invariant_violation ~here:[%here] "must be a nonempty list"
@@ -327,22 +318,15 @@ module Parse = struct
 
   let term =
     fix (fun term ->
-        let parse_prim =
-          choice
-            [ (Primitive_impl.All.parse >>| fun prim -> Nominal.Term.Primitive prim)
-            ; Ws.braces term >>| Term.to_nominal
-            ]
-        in
         let atomic_term =
           choice
-            ~failure_msg:
-              "looking for a parenthesized term, identifier, or expression in braces"
+            ~failure_msg:"looking for a parenthesized term, identifier, or nominal term"
             [ Ws.parens term
             ; (var_identifier
               >>~ fun range value -> Term.Term_var (Provenance.of_range range, value))
-            ; Ws.braces (Nominal.Term.parse ~parse_prim)
-              >>~ (fun range tm -> Term.Quoted (Provenance.of_range range, tm))
-              <?> "quoted term"
+            ; Nominal.Term.parse'
+              >>~ (fun range tm -> Term.Nominal (Provenance.of_range range, tm))
+              <?> "nominal term"
             ]
         in
         let atomic_term' =
@@ -358,20 +342,8 @@ module Parse = struct
               let info = Provenance.of_range range in
               Term.Subst
                 (info, (Single_var.{ info (* TODO: wrong info *); name }, body), arg))
-            ; (ctor_identifier
-              >>== fun Parse_result.{ value = ident; range = start; _ } ->
-              Ws.parens (sep_end_by (Ws.char ';') term)
-              >>|| fun { value = children; range = finish } ->
-              let range = Opt_range.union start finish in
-              Parse_result.
-                { value =
-                    Term.Constructor
-                      ( Provenance.of_range range
-                      , (Provenance.of_range start, ident)
-                      , List_model.of_list children )
-                ; range
-                })
-            ; Provenance.make1 Term.mk_Primitive Primitive.All.parse
+            ; (Nominal.Term.parse'
+              >>~ fun info tm -> Term.Nominal (Provenance.of_range info, tm))
             ; return body
             ]
         in
@@ -551,7 +523,7 @@ module Check_error' = struct
     | Cant_infer_lambda -> Fmt.pf ppf "can't infer lambdas"
     | Var_not_found ->
       (match tm with
-      | Lang.Term.Quoted (_, Nominal.Term.Var (_, name)) ->
+      | Lang.Term.Nominal (_, Nominal.Term.Var (_, name)) ->
         Fmt.pf ppf "variable %s not found" name
       | _ ->
         Lvca_util.invariant_violation
@@ -673,8 +645,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
     else Some Check_error.{ env; tm; ty; error = Mismatch (ty, ty') }
   in
   match tm with
-  | Lang.Term.Quoted _ -> check_ty nominal_ty
-  | Primitive _ | Constructor _ -> failwith "TODO"
+  | Lang.Term.Nominal _ -> check_ty nominal_ty
   | Ap (_, f, args) ->
     (match infer env f with
     | Ok f_ty -> check_args env tm f_ty (List_model.to_list args)
@@ -719,8 +690,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
 
 and infer ({ type_env; syntax = _ } as env) tm =
   match tm with
-  | Lang.Term.Quoted _ -> Ok nominal_ty
-  | Primitive _ | Constructor _ -> failwith "TODO"
+  | Lang.Term.Nominal _ -> Ok nominal_ty
   | Ap (_, f, args) ->
     (match infer env f with
     | Ok f_ty ->
@@ -835,7 +805,7 @@ let find_match (v : Nominal.Term.t)
       | None -> None
       | Some bindings ->
         let here = Provenance.of_here [%here] in
-        let bindings = Map.map bindings ~f:(fun v -> Lang.Term.Quoted (here, v)) in
+        let bindings = Map.map bindings ~f:(fun v -> Lang.Term.Nominal (here, v)) in
         Some (rhs, bindings))
 ;;
 
@@ -858,7 +828,7 @@ let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
   match tm with
   | Lang.Term.Term_var (_, v) ->
     (match Map.find ctx v with
-    | Some (Quoted (_, v)) -> Ok v
+    | Some (Nominal (_, v)) -> Ok v
     | Some tm -> Error ("TODO", tm)
     | None -> Error ("Unbound variable " ^ v, tm))
   | Case (info, tm, branches) ->
@@ -870,14 +840,14 @@ let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
           [%here]
           [ info; Term.info tm; List_model.List.info branches ]
       in
-      Error ("no match found in case", Quoted (info, tm_val))
+      Error ("no match found in case", Nominal (info, tm_val))
     | Some (branch, bindings) ->
       eval_in_ctx (Lvca_util.Map.union_right_biased ctx bindings) branch)
   | Ap (_, Lambda (_, _ty, (Single_var.{ name; info = _ }, body)), Cons (_, arg, Nil _))
     ->
     let%bind arg_val = eval_in_ctx ctx arg in
     let here = Provenance.of_here [%here] in
-    let data = Lang.Term.Quoted (here, arg_val) in
+    let data = Lang.Term.Nominal (here, arg_val) in
     eval_in_ctx (Map.set ctx ~key:name ~data) body
   | Ap (info, Term_var (_, name), args) ->
     (match Map.find ctx name with
@@ -885,12 +855,12 @@ let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
     | Some tm ->
       let here = Provenance.calculated_here [%here] [ info ] in
       eval_in_ctx ctx (Ap (here, tm, args)))
-  | Quoted (_, tm) ->
+  | Nominal (_, tm) ->
     let free_vars = Nominal.Term.free_vars tm in
     let restricted_ctx = Map.filter_keys ctx ~f:(fun key -> Set.mem free_vars key) in
     let ctx =
       Map.map restricted_ctx ~f:(function
-          | Quoted (_, v) -> v
+          | Nominal (_, v) -> v
           | _ -> Lvca_util.invariant_violation ~here:[%here] "TODO")
     in
     Ok (Nominal.Term.subst_all ctx tm)
@@ -912,7 +882,7 @@ let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
   | Subst (info, (Single_var.{ name; _ }, body), tm) ->
     let%bind tm_val = eval_in_ctx ctx tm in
     let here = Provenance.calculated_here [%here] [ info ] in
-    let data = Lang.Term.Quoted (here, tm_val) in
+    let data = Lang.Term.Nominal (here, tm_val) in
     eval_in_ctx (Map.set ctx ~key:name ~data) body
   | _ -> Error ("Found a term we can't evaluate", tm)
 
@@ -920,12 +890,12 @@ and eval_nominal_in_ctx (ctx : eval_env) tm : eval_result =
   match tm with
   | Nominal.Term.Var (info, v) ->
     (match Map.find ctx v with
-    | Some (Quoted (_, v)) -> Ok v
+    | Some (Nominal (_, v)) -> Ok v
     | Some _ -> Lvca_util.invariant_violation ~here:[%here] "TODO"
     | None ->
       Error
         ( "Unbound variable " ^ v
-        , Lang.Term.Quoted (Provenance.calculated_here [%here] [ info ], tm) ))
+        , Lang.Term.Nominal (Provenance.calculated_here [%here] [ info ], tm) ))
   | _ -> Ok tm
 
 and eval_primitive eval_in_ctx eval_nominal_in_ctx (ctx : eval_env) tm name args =
@@ -1024,7 +994,7 @@ let var name = Lang.Term.Term_var (here, name)
 let single_var name = Single_var.{ name; info = here }
 let case tm case_scopes = Lang.Term.Case (here, tm, list case_scopes)
 let case_scope bpat tm = Lang.Case_scope.Case_scope (here, bpat, tm)
-let term tm = Lang.Term.Quoted (here, tm)
+let term tm = Lang.Term.Nominal (here, tm)
 
 let%test_module "Parsing" =
   (module struct
@@ -1035,18 +1005,18 @@ let%test_module "Parsing" =
     let one = Nominal.Term.Primitive (here, Integer (Z.of_int 1))
     let scope : Nominal.Term.t -> Nominal.Scope.t = fun body -> Scope ([], body)
 
-    let%test _ = parse_exn "{1}" = Term.Quoted (here, one)
-    let%test _ = parse_exn "{true()}" = Quoted (here, operator "true" [])
+    let%test _ = parse_exn "1" = Term.Nominal (here, one)
+    let%test _ = parse_exn "True()" = Nominal (here, operator "True" [])
     let%test _ = parse_exn "not x" = ap (var "not") [ var "x" ]
 
     let%test _ =
-      parse_exn "let str = string_of_chars chars in {var(str)}"
+      parse_exn "let str = string_of_chars chars in Var(str)"
       = Term.Let
           ( here
           , ap (var "string_of_chars") [ var "chars" ]
           , none
           , ( single_var "str"
-            , Quoted (here, operator "var" [ scope (Nominal.Term.Var (here, "str")) ]) )
+            , Nominal (here, operator "var" [ scope (Nominal.Term.Var (here, "str")) ]) )
           )
     ;;
 
@@ -1057,31 +1027,31 @@ let%test_module "Parsing" =
     ;;
 
     let%test _ =
-      parse_exn {|match x with { _ -> {1} }|}
-      = case (var "x") [ case_scope ignored (Quoted (here, one)) ]
+      parse_exn {|match x with { _ -> 1 }|}
+      = case (var "x") [ case_scope ignored (Nominal (here, one)) ]
     ;;
 
     let%test _ = parse_exn {|match empty with { }|} = Case (here, var "empty", Nil here)
 
     let%test _ =
-      parse_exn {|match x with { | _ -> {1} }|}
-      = case (var "x") [ case_scope ignored (Quoted (here, one)) ]
+      parse_exn {|match x with { | _ -> 1 }|}
+      = case (var "x") [ case_scope ignored (Nominal (here, one)) ]
     ;;
 
     let%test _ =
-      parse_exn {|match x with { true() -> {false()} | false() -> {true()} }|}
+      parse_exn {|match x with { True() -> False() | False() -> True() }|}
       = case
           (var "x")
-          [ case_scope (bpat_operator "true" []) (Quoted (here, operator "false" []))
-          ; case_scope (bpat_operator "false" []) (Quoted (here, operator "true" []))
+          [ case_scope (bpat_operator "true" []) (Nominal (here, operator "false" []))
+          ; case_scope (bpat_operator "false" []) (Nominal (here, operator "true" []))
           ]
     ;;
 
     let%test _ =
-      parse_exn "let x = {true()} in not x"
+      parse_exn "let x = True() in not x"
       = Let
           ( here
-          , Quoted (here, operator "true" [])
+          , Nominal (here, operator "true" [])
           , none
           , (single_var "x", ap (var "not") [ var "x" ]) )
     ;;
@@ -1092,24 +1062,22 @@ let%test_module "Parsing" =
     ;;
 
     let%test _ =
-      let (_ : Term.t) =
-        parse_exn {|match c with { 'c' -> {true()} | _ -> {false()} }|}
-      in
+      let (_ : Term.t) = parse_exn {|match c with { 'c' -> True() | _ -> False() }|} in
       true
     ;;
 
     let%test _ =
-      let (_ : Term.t) = parse_exn "{some(1)}" in
+      let (_ : Term.t) = parse_exn "Some(1)" in
       true
     ;;
 
     let%test _ =
-      let (_ : Term.t) = parse_exn "{some({{1}})}" in
+      let (_ : Term.t) = parse_exn "Some(1)" in
       true
     ;;
 
     let%test _ =
-      let (_ : Term.t) = parse_exn "{some({let x = {1} in {some({x})}})}" in
+      let (_ : Term.t) = parse_exn "let x = 1 in Some(x) in Some(x)}" in
       true
     ;;
 
@@ -1119,7 +1087,7 @@ let%test_module "Parsing" =
     ;;
 
     let%test _ =
-      let (_ : Term.t) = parse_exn {|\(tm : lam) -> tm[x := {Var("y")}]|} in
+      let (_ : Term.t) = parse_exn {|\(tm : lam) -> tm[x := Var("y")]|} in
       true
     ;;
 
@@ -1130,7 +1098,7 @@ let%test_module "Parsing" =
           | Lam(_) -> tm
           | App(f; arg) -> match reduce f with {
             | Lam(x. body) -> body[f := reduce arg]
-            | f' -> {App(f'; {reduce arg})}
+            | f' -> let arg = reduce arg in App(f'; arg)
           }
           | Real_expr(expr) -> expr
         }
@@ -1142,14 +1110,14 @@ let%test_module "Parsing" =
 
     let dynamics_str =
       {|\(tm : ty) -> match tm with {
-    | true() -> {true()}
-    | false() -> {false()}
-    | ite(t1; t2; t3) -> match meaning t1 with {
+    | True() -> True()
+    | False() -> False()
+    | Ite(t1; t2; t3) -> match meaning t1 with {
       | true()  -> meaning t2
       | false() -> meaning t3
     }
     | ap(f; arg) -> (meaning f) (meaning arg)
-    | fun(scope) -> {lambda(list(); scope)}
+    | fun(scope) -> Lambda(List(); scope)
   }
   |}
     ;;
@@ -1172,7 +1140,7 @@ let%test_module "Parsing" =
                   ; case_scope (bpat_operator "false" []) (term (t_operator "false" []))
                   ; case_scope
                       (bpat_operator
-                         "ite"
+                         "Ite"
                          [ no_bind_pat_var "t1"
                          ; no_bind_pat_var "t2"
                          ; no_bind_pat_var "t3"
@@ -1215,112 +1183,112 @@ let%test_module "Core eval" =
     ;;
 
     let%expect_test _ =
-      eval_str "{1}";
+      eval_str "1";
       [%expect {| 1 |}]
     ;;
 
     let%expect_test _ =
-      eval_str "{foo(1)}";
-      [%expect {| foo(1) |}]
+      eval_str "Foo(1)";
+      [%expect {| Foo(1) |}]
     ;;
 
     let%expect_test _ =
-      eval_str "{true()}";
-      [%expect {| true() |}]
+      eval_str "True()";
+      [%expect {| True() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "{false()}";
-      [%expect {| false() |}]
+      eval_str "False()";
+      [%expect {| False() |}]
     ;;
 
     let%expect_test _ =
       eval_str
-        {|match {true()} with {
-          | true() -> {false()}
-          | false() -> {true()}
+        {|match True() with {
+          | True() -> False()
+          | False() -> True()
         }
       |};
-      [%expect {| false() |}]
+      [%expect {| False() |}]
     ;;
 
     let%expect_test _ =
-      eval_str {|(\(x: bool) -> x) {true()}|};
-      [%expect {| true() |}]
+      eval_str {|(\(x: bool) -> x) True()|};
+      [%expect {| True() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "add {1} {2}";
+      eval_str "add 1 2";
       [%expect {| 3 |}]
     ;;
 
     let%expect_test _ =
-      eval_str "sub {1} {2}";
+      eval_str "sub 1 2";
       [%expect {| -1 |}]
     ;;
 
     let%expect_test _ =
-      eval_str "is_digit {'9'}";
+      eval_str "is_digit '9'";
       [%expect {| true() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "is_digit {'a'}";
-      [%expect {| false() |}]
+      eval_str "is_digit 'a'";
+      [%expect {| False() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "is_alpha {'a'}";
-      [%expect {| true() |}]
+      eval_str "is_alpha 'a'";
+      [%expect {| True() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "is_alpha {'A'}";
-      [%expect {| true() |}]
+      eval_str "is_alpha 'A'";
+      [%expect {| True() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "is_alpha {'9'}";
-      [%expect {| false() |}]
+      eval_str "is_alpha '9'";
+      [%expect {| False() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "is_alphanum {'9'}";
-      [%expect {| true() |}]
+      eval_str "is_alphanum '9'";
+      [%expect {| True() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "is_alphanum {'Z'}";
-      [%expect {| true() |}]
+      eval_str "is_alphanum 'Z'";
+      [%expect {| True() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "is_alphanum {'_'}";
-      [%expect {| false() |}]
+      eval_str "is_alphanum '_'";
+      [%expect {| False() |}]
     ;;
 
     let%expect_test _ =
-      eval_str "sub {1} {2}";
+      eval_str "sub 1 2";
       [%expect {| -1 |}]
     ;;
 
     let%expect_test _ =
-      eval_str "x[x := {1}]";
+      eval_str "x[x := 1]";
       [%expect {| 1 |}]
     ;;
 
     let%expect_test _ =
-      eval_str "(sub x {2})[x := {1}]";
+      eval_str "(sub x 2)[x := 1]";
       [%expect {| -1 |}]
     ;;
 
     let%expect_test _ =
-      eval_str {|rename {"foo"} {"bar"} {Cons(foo; Nil())}|};
+      eval_str {|rename "foo" "bar" Cons(foo; Nil())|};
       [%expect {| Cons(bar; Nil()) |}]
     ;;
 
     let%expect_test _ =
-      eval_str {|rename {"foo"} {"bar"} {Cons(baz; Nil())}|};
+      eval_str {|rename "foo" "bar" Cons(baz; Nil())|};
       [%expect {| Cons(baz; Nil()) |}]
     ;;
   end)
@@ -1346,37 +1314,37 @@ let%test_module "Core pretty" =
     let module' = mk_test Module.parse Module.pp
 
     let%expect_test _ =
-      term ~width:22 "match {true()} with { true() -> {false()} | false() -> {true()} }";
+      term ~width:22 "match True() with { True() -> False() | False() -> True() }";
       [%expect
         {|
-        match {true()} with {
-          | true()
-            -> {false()}
-          | false()
-            -> {true()}
+        match True() with {
+          | True()
+            -> False()
+          | False()
+            -> True()
         } |}]
     ;;
 
     let%expect_test _ =
-      term ~width:23 "match {true()} with { true() -> {false()} | false() -> {true()} }";
+      term ~width:23 "match True() with { True() -> False() | False() -> True() }";
       [%expect
         {|
-        match {true()} with {
-          | true() -> {false()}
-          | false() -> {true()}
+        match True() with {
+          | True() -> False()
+          | False() -> True()
         } |}]
     ;;
 
     let%expect_test _ =
-      term ~width:25 "match x with { _ -> {1} }";
-      [%expect {| match x with { _ -> {1} } |}]
+      term ~width:25 "match x with { _ -> 1 }";
+      [%expect {| match x with { _ -> 1 } |}]
     ;;
 
     let%expect_test _ =
-      term ~width:24 "match x with { _ -> {1} }";
+      term ~width:24 "match x with { _ -> 1 }";
       [%expect {|
         match x with {
-          | _ -> {1}
+          | _ -> 1
         } |}]
     ;;
 
@@ -1395,22 +1363,22 @@ let%test_module "Core pretty" =
     ;;
 
     let%expect_test _ =
-      term ~width:20 "let x = {true()} in not x";
+      term ~width:20 "let x = True() in not x";
       [%expect {|
-        let x = {true()} in
+        let x = True() in
         not x |}]
     ;;
 
     let%expect_test _ =
-      term ~width:20 "let x: bool = {true()} in not x";
+      term ~width:20 "let x: bool = True() in not x";
       [%expect {|
         let x: bool =
-        {true()} in not x |}]
+        True() in not x |}]
     ;;
 
     let%expect_test _ =
-      term "(sub x {2})[x := {1}]";
-      [%expect {| (sub x {2})[x := {1}] |}]
+      term "(sub x 2)[x := 1]";
+      [%expect {| (sub x 2)[x := 1] |}]
     ;;
 
     let%expect_test _ =
@@ -1449,10 +1417,10 @@ let%test_module "Core pretty" =
     ;;
 
     let%expect_test _ =
-      module' {|go : string; x := {"foo"}|};
+      module' {|go : string; x := "foo"|};
       [%expect {|
         go : string;
-        x := {"foo"} |}]
+        x := "foo" |}]
     ;;
   end)
 ;;
@@ -1471,33 +1439,33 @@ let%test_module "Core eval in dynamics" =
 
     let dynamics_str =
       {|\(tm : ty) -> match tm with {
-  | true() -> {true()}
-  | false() -> {false()}
-  | ite(t1; t2; t3) -> match meaning t1 with {
+  | True() -> True()
+  | False() -> False()
+  | Ite(t1; t2; t3) -> match meaning t1 with {
     | true()  -> meaning t2
     | false() -> meaning t3
   }
   | ap(f; arg) -> (meaning f) (meaning arg)
-  | fun(scope) -> {lambda(list(); scope)}
+  | fun(scope) -> Lambda(List(); scope)
 }
       |}
     ;;
 
     let%expect_test _ =
-      Stdio.print_string @@ eval_in dynamics_str "{true()}";
-      [%expect {| true() |}]
+      Stdio.print_string @@ eval_in dynamics_str "True()";
+      [%expect {| True() |}]
     ;;
 
     let id_dynamics = {|\(tm : ty) -> tm|}
 
     let%expect_test _ =
-      Stdio.print_string @@ eval_in id_dynamics "{true()}";
-      [%expect {| true() |}]
+      Stdio.print_string @@ eval_in id_dynamics "True()";
+      [%expect {| True() |}]
     ;;
 
     let%expect_test _ =
-      Stdio.print_string @@ eval_in id_dynamics "{lambda(tm. tm; list(ty()))}";
-      [%expect {| lambda(tm. tm; list(ty())) |}]
+      Stdio.print_string @@ eval_in id_dynamics "Lambda(tm. tm; List(Ty()))";
+      [%expect {| Lambda(tm. tm; List(Ty())) |}]
     ;;
   end)
 ;;
@@ -1560,37 +1528,37 @@ let%test_module "Checking / inference" =
     ;;
 
     let%expect_test _ =
-      check "nominal" "{true()}";
+      check "nominal" "True()";
       [%expect {| checked |}]
     ;;
 
     let%expect_test _ =
-      check "nominal" "{2}";
+      check "nominal" "2";
       [%expect {| checked |}]
     ;;
 
     let%expect_test _ =
-      check "nominal" "{2}";
+      check "nominal" "2";
       [%expect {| checked |}]
     ;;
 
     let%expect_test _ =
-      infer "{2}";
+      infer "2";
       [%expect {| inferred: nominal |}]
     ;;
 
     let%expect_test _ =
-      infer "{true()}";
+      infer "True()";
       [%expect {| inferred: nominal |}]
     ;;
 
     let%expect_test _ =
-      check "a -> a" "{nil()}";
+      check "a -> a" "Nil()";
       [%expect {| nominal != a -> a |}]
     ;;
 
     let%expect_test _ =
-      check "list integer" "{cons(1; nil())}";
+      check "list integer" "Cons(1; Nil())";
       [%expect {| nominal != list integer |}]
     ;;
 
@@ -1602,9 +1570,9 @@ let%test_module "Checking / inference" =
     let%expect_test _ =
       check
         "bool"
-        {|match {True()} with {
-          | True() -> {1}
-          | False() -> {2}
+        {|match True() with {
+          | True() -> 1
+          | False() -> 2
         }|};
       [%expect {| checked |}]
     ;;
@@ -1620,32 +1588,32 @@ let%test_module "Checking / inference" =
     ;;
 
     let%expect_test _ =
-      infer ~type_env "{x}";
+      infer ~type_env "x";
       [%expect {| inferred: nominal |}]
     ;;
 
     let%expect_test _ =
-      check ~type_env "bool" "{x}";
+      check ~type_env "bool" "x";
       [%expect {| nominal != bool |}]
     ;;
 
     let%expect_test _ =
-      check ~type_env "integer" "{x}";
+      check ~type_env "integer" "x";
       [%expect {| nominal != integer |}]
     ;;
 
     let%expect_test _ =
-      check ~type_env "list integer" {|rename {"foo"} {"bar"} {Cons(foo; Nil())}|};
+      check ~type_env "list integer" {|rename "foo" "bar" Cons(foo; Nil())|};
       [%expect {| checked |}]
     ;;
 
     let%expect_test _ =
-      check ~type_env "integer" {|add {1} {2}|};
+      check ~type_env "integer" {|add 1 2|};
       [%expect {| checked |}]
     ;;
 
     let%expect_test _ =
-      infer ~type_env {|add {1}|};
+      infer ~type_env {|add 1|};
       [%expect {| int -> int |}]
     ;;
 

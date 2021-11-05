@@ -34,14 +34,11 @@ nominal : *
 list : * -> *
 option : * -> *
 binding_aware_pattern : * -> *
-string : *
 
 letrec_row := Letrec_row(ty; term)
 
 term :=
-  | Quoted(nominal)
-  | Primitive(primitive)
-  | Constructor(string; list term)
+  | Nominal(nominal)
   | Ap(term; list term)
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
@@ -56,8 +53,6 @@ case_scope := Case_scope(binding_aware_pattern; term)
   ; list = "List_model.List"
   ; option = "Option_model.Option"
   ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
-  ; primitive = "Primitive.All"
-  ; string = "Primitive.String"
   ; empty = "Empty"
   }]
 
