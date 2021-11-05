@@ -15,7 +15,7 @@ core_term : *
 option : * -> *
 
 term :=
-  | AnyChar()
+  | Any_char()
   | Char(char)
   | String(string)
   | Satisfy(string; core_term)
@@ -77,7 +77,7 @@ module Term = struct
       Provenance.open_stag ppf loc;
       let formatter, prec =
         match p with
-        | AnyChar _ -> fmt ".", Prec.atom
+        | Any_char _ -> fmt ".", Prec.atom
         | Char (_, (_, char)) ->
           (fun ppf -> Fmt.(quote ~mark:"'" char) ppf char), Prec.atom
         | String (_, (_, str)) -> (fun ppf -> Fmt.(quote string) ppf str), Prec.atom
@@ -210,7 +210,7 @@ module Parse = struct
                 mk_Char
                 (attach_pos' Ws.char_lit : (Provenance.t * char) Lvca_parsing.t)
             ; make1 mk_String (attach_pos' Ws.string_lit)
-            ; make0 mk_AnyChar (Ws.char '.')
+            ; make0 mk_Any_char (Ws.char '.')
             ; make1 mk_Term_var Ws.identifier
             ; Ws.parens parser
             ]
@@ -716,7 +716,7 @@ module Evaluate = struct
   ;;
 
   let of_term : Lang.Term.t -> t = function
-    | AnyChar _ -> anychar
+    | Any_char _ -> anychar
     | Char (_, (_, c)) -> char c
     | String (_, (_, prefix)) -> string prefix
     | Satisfy (_, (_, name), core_term) -> satisfy name core_term
