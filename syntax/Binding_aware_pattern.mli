@@ -16,7 +16,7 @@ val of_nominal : Nominal.Term.t -> (t, Nominal.Conversion_error.t) Result.t
 module Capture_type : sig
   type t =
     | Bound_var of Sort.t
-    | Bound_pattern of Abstract_syntax.Pattern_sort.t
+    | Bound_pattern of Pattern_sort.t
     | Bound_term of Sort.t
 
   val pp : t Fmt.t

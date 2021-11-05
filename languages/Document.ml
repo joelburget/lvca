@@ -1,8 +1,7 @@
 open Base
 open Lvca_syntax
+open Lvca_models
 open Omd
-module Option_model = Lvca_core.Option_model.Option
-module List_model = Lvca_core.List_model.List
 
 let ( >> ) = Lvca_util.( >> )
 
@@ -58,8 +57,8 @@ doc := Doc(list block)
 , { char = "Primitive.Char"
   ; int32 = "Primitive.Int32"
   ; string = "Primitive.String"
-  ; option = "Option_model"
-  ; list = "List_model"
+  ; option = "Option_model.Option"
+  ; list = "List_model.List"
   }]
 
 module Attrs = struct
@@ -97,15 +96,15 @@ module Of_omd = struct
    fun (x, y) -> Attribute (here, (here, x), (here, y))
  ;;
 
-  let option : ('a -> 'b) -> 'a option -> 'b Option_model.t =
-   fun f opt -> opt |> Option.map ~f |> Lvca_core.Option_model.of_option
+  let option : ('a -> 'b) -> 'a option -> 'b Option_model.Option.t =
+   fun f opt -> opt |> Option.map ~f |> Option_model.of_option
  ;;
 
-  let list : ('a -> 'b) -> 'a list -> 'b List_model.t =
-   fun f lst -> lst |> List.map ~f |> Lvca_core.List_model.of_list
+  let list : ('a -> 'b) -> 'a list -> 'b List_model.List.t =
+   fun f lst -> lst |> List.map ~f |> List_model.of_list
  ;;
 
-  let attributes : Omd.attributes -> Lang.Attribute.t List_model.t = list attribute
+  let attributes : Omd.attributes -> Lang.Attribute.t List_model.List.t = list attribute
 
   let list_type : Omd.list_type -> Lang.List_type.t = function
     | Ordered (i, c) -> Ordered (here, (here, Int32.of_int_exn i), (here, c))
@@ -132,7 +131,9 @@ module Of_omd = struct
   and link : Omd.attributes Omd.link -> Lang.Link.t =
    fun { label; destination; title } ->
     let title =
-      match title with None -> Option_model.None here | Some x -> Some (here, (here, x))
+      match title with
+      | None -> Option_model.Option.None here
+      | Some x -> Some (here, (here, x))
     in
     Link_def (here, inline label, (here, destination), title)
  ;;

@@ -1,6 +1,7 @@
 open Base
 open Lvca_syntax
 open Lvca_provenance
+open Lvca_models
 
 module Base_language = struct
   include
@@ -36,7 +37,7 @@ v_type :=
 
 c_type := Computation(v_type; list string)
 |}
-    , { string = "Primitive.String"; list = "Lvca_core.List_model.List" }]
+    , { string = "Primitive.String"; list = "List_model.List" }]
 
   let subst ~body ~var:Single_var.{ name; _ } ~value =
     let value = Value.to_nominal value in
@@ -55,14 +56,14 @@ c_type := Computation(v_type; list string)
   ;;
 
   let return_clause (Handler.Handler (_, clauses)) =
-    let clauses = Lvca_core.List_model.to_list clauses in
+    let clauses = List_model.to_list clauses in
     List.find_map_exn clauses ~f:(function
         | Handler_clause.Return_clause (_, contents) -> Some contents
         | _ -> None)
   ;;
 
   let find_handler (Handler.Handler (_, clauses)) op_name =
-    let clauses = Lvca_core.List_model.to_list clauses in
+    let clauses = List_model.to_list clauses in
     List.find clauses ~f:(function
         | Handler_clause.Op_clause (_, (_, op_name'), _) -> String.(op_name' = op_name)
         | _ -> false)
@@ -148,7 +149,7 @@ v_type :=
 c_type := Computation(v_type; list string)
 |}
     , { string = "Primitive.String"
-      ; list = "Lvca_core.List_model.List"
+      ; list = "List_model.List"
       ; nonbinding = "Lvca_syntax.Nonbinding"
       }]
 
@@ -173,7 +174,7 @@ c_type := Computation(v_type; list string)
       | Op_clause (i, name, (x, y, c)) -> Op_clause (info i, name, (x, y, computation c))
 
     and handler (Handler.Handler (i, clauses)) =
-      let clauses = Lvca_core.List_model.map ~f:handler_clause clauses in
+      let clauses = List_model.map ~f:handler_clause clauses in
       Base_language.Handler.Handler (info i, clauses)
 
     and computation = function
@@ -203,7 +204,7 @@ c_type := Computation(v_type; list string)
       | Op_clause (i, name, (x, y, c)) -> Op_clause (info i, name, (x, y, computation c))
 
     and handler (Base_language.Handler.Handler (i, clauses)) =
-      let clauses = Lvca_core.List_model.map ~f:handler_clause clauses in
+      let clauses = List_model.map ~f:handler_clause clauses in
       Handler.Handler (info i, clauses)
 
     and computation = function
@@ -243,7 +244,7 @@ c_type := Computation(v_type; list string)
         Fmt.pf ppf "%a(%s; %s) -> %a" op_name op_name' x k computation c
 
     and handler ppf (Handler.Handler (_, clauses)) =
-      let clauses = Lvca_core.List_model.to_list clauses in
+      let clauses = List_model.to_list clauses in
       Fmt.pf
         ppf
         "handler @[<hv>{ %a }@]"
@@ -282,7 +283,7 @@ c_type := Computation(v_type; list string)
           d
 
     and c_type ppf (C_type.Computation (_, v, ops)) =
-      let ops = ops |> Lvca_core.List_model.to_list |> List.map ~f:snd in
+      let ops = ops |> List_model.to_list |> List.map ~f:snd in
       Fmt.pf
         ppf
         "%a!@[<hv>{%a}@]"
@@ -305,7 +306,7 @@ c_type := Computation(v_type; list string)
       >>| fun (range, str) -> Provenance.of_range range, str
     ;;
 
-    let of_list xs = Lvca_core.List_model.of_list xs
+    let of_list xs = List_model.of_list xs
 
     let mk_handler_clause computation =
       let open Handler_clause in

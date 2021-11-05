@@ -3,6 +3,5 @@
  (public_name lvca.del)
  (inline_tests)
  (libraries lvca_parsing lvca_syntax)
- (wrapped false)
  (preprocess
   (pps ppx_jane ppx_lvca)))

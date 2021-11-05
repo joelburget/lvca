@@ -2,7 +2,7 @@ open Base
 open Ppxlib
 open Syntax_quoter
 open Exp
-open Lvca_core
+open Lvca_del
 
 module Binding_aware_pattern = struct
   let rec t ~loc = function
@@ -33,18 +33,17 @@ end
 
 module Core = struct
   let rec list ~loc = function
-    | List_model.List.Nil i ->
-      [%expr Lvca_core.List_model.List.Nil [%e provenance ~loc i]]
+    | List_model.List.Nil i -> [%expr Lvca_del.List_model.List.Nil [%e provenance ~loc i]]
     | Cons (i, x, xs) ->
       [%expr
-        Lvca_core.List_model.List.Cons ([%e provenance ~loc i], [%e x], [%e list ~loc xs])]
+        Lvca_del.List_model.List.Cons ([%e provenance ~loc i], [%e x], [%e list ~loc xs])]
   ;;
 
   let option ~loc = function
     | Option_model.Option.None i ->
-      [%expr Lvca_core.Option_model.Option.None [%e provenance ~loc i]]
+      [%expr Lvca_del.Option_model.Option.None [%e provenance ~loc i]]
     | Some (i, a) ->
-      [%expr Lvca_core.Option_model.Option.Some ([%e provenance ~loc i], [%e a])]
+      [%expr Lvca_del.Option_model.Option.Some ([%e provenance ~loc i], [%e a])]
   ;;
 
   module Binding_aware_pattern_model = struct
@@ -53,86 +52,82 @@ module Core = struct
         let name_exp = Primitive.string ~loc name in
         let scopes = scopes |> List_model.map ~f:(scope ~loc) |> list ~loc in
         [%expr
-          Lvca_core.Binding_aware_pattern_model.Pattern.Operator
+          Lvca_del.Binding_aware_pattern_model.Pattern.Operator
             ([%e provenance ~loc info], [%e name_exp], [%e scopes])]
       | Var (info, str) ->
         [%expr
-          Lvca_core.Binding_aware_pattern_model.Pattern.Var
+          Lvca_del.Binding_aware_pattern_model.Pattern.Var
             ([%e provenance ~loc info], [%e Primitive.string ~loc str])]
       | Primitive (info, p) ->
         [%expr
-          Lvca_core.Binding_aware_pattern_model.Pattern.Primitive
+          Lvca_del.Binding_aware_pattern_model.Pattern.Primitive
             ([%e provenance ~loc info], [%e Primitive.all ~loc p])]
 
     and scope ~loc (Binding_aware_pattern_model.Scope.Scope (info, vars, body)) =
       let body = pattern ~loc body in
       let vars = vars |> List_model.map ~f:(Primitive.string ~loc) |> list ~loc in
       [%expr
-        Lvca_core.Binding_aware_pattern_model.Scope.Scope
+        Lvca_del.Binding_aware_pattern_model.Scope.Scope
           ([%e provenance ~loc info], [%e vars], [%e body])]
     ;;
   end
 
   module Sort_model = struct
     let rec sort ~loc = function
-      | Sort_model.Sort.Name (i, str) ->
+      | Sort_model.Kernel.Sort.Name (i, str) ->
         [%expr
-          Lvca_core.Sort_model.Sort.Name
+          Lvca_del.Sort_model.Sort.Name
             ([%e provenance ~loc i], [%e Primitive.string ~loc str])]
       | Ap (i, str, lst) ->
         [%expr
-          Lvca_core.Sort_model.Sort.Ap
+          Lvca_del.Sort_model.Sort.Ap
             ([%e provenance ~loc i], [%e Primitive.string ~loc str], [%e ap_list ~loc lst])]
 
     and ap_list ~loc = function
-      | Sort_model.Ap_list.Nil i ->
-        [%expr Lvca_core.Sort_model.Ap_list.Nil [%e provenance ~loc i]]
+      | Sort_model.Kernel.Ap_list.Nil i ->
+        [%expr Lvca_del.Sort_model.Ap_list.Nil [%e provenance ~loc i]]
       | Cons (i, s, lst) ->
         [%expr
-          Lvca_core.Sort_model.Ap_list.Cons
+          Lvca_del.Sort_model.Ap_list.Cons
             ([%e provenance ~loc i], [%e sort ~loc s], [%e ap_list ~loc lst])]
     ;;
   end
 
   module Type = struct
     let rec t ~loc = function
-      | Type.Ty.Sort (info, s) ->
-        [%expr
-          Lvca_core.Type.Ty.Sort ([%e provenance ~loc info], [%e Sort_model.sort ~loc s])]
+      | Core.Type.Ty.Sort (info, s) ->
+        [%expr Core.Type.Ty.Sort ([%e provenance ~loc info], [%e Sort_model.sort ~loc s])]
       | Arrow (info, t1, t2) ->
         [%expr
-          Lvca_core.Type.Ty.Arrow
-            ([%e provenance ~loc info], [%e t ~loc t1], [%e t ~loc t2])]
+          Core.Type.Ty.Arrow ([%e provenance ~loc info], [%e t ~loc t1], [%e t ~loc t2])]
       | Forall (info, (binders, body)) ->
         [%expr
-          Lvca_core.Type.Ty.Forall
+          Core.Type.Ty.Forall
             ([%e provenance ~loc info], ([%e pattern ~loc binders], [%e t ~loc body]))]
       | Ty_var (i, name) ->
-        [%expr Lvca_core.Lang.Term.Ty_var ([%e provenance ~loc i], [%e string ~loc name])]
+        [%expr Core.Lang.Term.Ty_var ([%e provenance ~loc i], [%e string ~loc name])]
     ;;
   end
 
   let rec term ~loc = function
-    | Lang.Term.Quoted (i, tm) ->
-      [%expr Lvca_core.Lang.Term.Quoted ([%e provenance ~loc i], [%e nominal ~loc tm])]
+    | Core.Lang.Term.Quoted (i, tm) ->
+      [%expr Core.Lang.Term.Quoted ([%e provenance ~loc i], [%e nominal ~loc tm])]
     | Primitive (i, p) ->
-      [%expr
-        Lvca_core.Lang.Term.Primitive ([%e provenance ~loc i], [%e Primitive.all ~loc p])]
+      [%expr Core.Lang.Term.Primitive ([%e provenance ~loc i], [%e Primitive.all ~loc p])]
     | Constructor (i, name, tms) ->
       let tms = tms |> List_model.map ~f:(term ~loc) |> list ~loc in
       [%expr
-        Lvca_core.Lang.Term.Constructor
+        Core.Lang.Term.Constructor
           ([%e provenance ~loc i], [%e Primitive.string ~loc name], [%e tms])]
     | Ap (i, tm, tms) ->
       let tms = tms |> List_model.map ~f:(term ~loc) |> list ~loc in
-      [%expr Lvca_core.Lang.Term.Ap ([%e provenance ~loc i], [%e term ~loc tm], [%e tms])]
+      [%expr Core.Lang.Term.Ap ([%e provenance ~loc i], [%e term ~loc tm], [%e tms])]
     | Case (i, tm, scopes) ->
       let scopes = scopes |> List_model.map ~f:(case_scope ~loc) |> list ~loc in
-      [%expr
-        Lvca_core.Lang.Term.Case ([%e provenance ~loc i], [%e term ~loc tm], [%e scopes])]
+      [%expr Core.Lang.Term.Case ([%e provenance ~loc i], [%e term ~loc tm], [%e scopes])]
     | Lambda (i, ty, (var, body)) ->
       [%expr
-        Lvca_core.Lang.Term.Lambda
+        Core.Lang.Term.Lambda
           ( [%e provenance ~loc i]
           , [%e Type.t ~loc ty]
           , ([%e single_var ~loc var], [%e term ~loc body]) )]
@@ -142,32 +137,32 @@ module Core = struct
       let ty = ty |> Option_model.map ~f:(Type.t ~loc) |> option ~loc in
       let var = single_var ~loc var in
       let body = term ~loc body in
-      [%expr Lvca_core.Lang.Term.Let ([%e info], [%e tm], [%e ty], ([%e var], [%e body]))]
+      [%expr Core.Lang.Term.Let ([%e info], [%e tm], [%e ty], ([%e var], [%e body]))]
     | Let_rec (i, rows, (binders, body)) ->
       let info = provenance ~loc i in
       let rows = rows |> List_model.map ~f:(letrec_row ~loc) |> list ~loc in
       let binders = pattern ~loc binders in
       let body = term ~loc body in
-      [%expr Lvca_core.Lang.Term.Let ([%e info], [%e rows], ([%e binders], [%e body]))]
+      [%expr Core.Lang.Term.Let ([%e info], [%e rows], ([%e binders], [%e body]))]
     | Subst (i, (var, body), arg) ->
       let info = provenance ~loc i in
       let arg = term ~loc arg in
       let var = single_var ~loc var in
       let body = term ~loc body in
-      [%expr Lvca_core.Lang.Term.Subst ([%e info], ([%e var], [%e body]), [%e arg])]
+      [%expr Core.Lang.Term.Subst ([%e info], ([%e var], [%e body]), [%e arg])]
     | Term_var (i, name) ->
-      [%expr Lvca_core.Lang.Term.Term_var ([%e provenance ~loc i], [%e string ~loc name])]
+      [%expr Core.Lang.Term.Term_var ([%e provenance ~loc i], [%e string ~loc name])]
 
-  and case_scope ~loc (Lang.Case_scope.Case_scope (info, pat, tm)) =
+  and case_scope ~loc (Core.Lang.Case_scope.Case_scope (info, pat, tm)) =
     [%expr
-      Lvca_core.Lang.Case_scope.Case_scope
+      Core.Lang.Case_scope.Case_scope
         ( [%e provenance ~loc info]
         , [%e Binding_aware_pattern_model.pattern ~loc pat]
         , [%e term ~loc tm] )]
 
-  and letrec_row ~loc (Lang.Letrec_row.Letrec_row (info, ty, tm)) =
+  and letrec_row ~loc (Core.Lang.Letrec_row.Letrec_row (info, ty, tm)) =
     [%expr
-      Lvca_core.Lang.Letrec_row.Letrec_row
+      Core.Lang.Letrec_row.Letrec_row
         ([%e provenance ~loc info], [%e Type.t ~loc ty], [%e term ~loc tm])]
   ;;
 end

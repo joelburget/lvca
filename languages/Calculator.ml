@@ -2,8 +2,8 @@ open Base
 open Lvca_syntax
 open Lvca_provenance
 open Lvca_util
+open Lvca_models
 open Stdio
-module List_model = Lvca_core.List_model
 
 module Lang =
 [%lvca.abstract_syntax_module

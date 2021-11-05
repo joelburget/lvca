@@ -203,8 +203,7 @@ module Exp = struct
   ;;
 
   let kind ~loc (Kind.Kind (pos, n)) =
-    [%expr
-      Lvca_syntax.Abstract_syntax.Kind.Kind ([%e provenance ~loc pos], [%e int ~loc n])]
+    [%expr Lvca_syntax.Kind.Kind ([%e provenance ~loc pos], [%e int ~loc n])]
   ;;
 
   let sort_def ~loc (Sort_def.Sort_def (vars, op_defs)) =

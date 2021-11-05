@@ -2,8 +2,7 @@ open Base
 open Lvca_provenance
 open Lvca_syntax
 open Lvca_util
-module List_model = Lvca_core.List_model
-module Option_model = Lvca_core.Option_model
+open Lvca_del
 module Format = Stdlib.Format
 
 module Lang =
@@ -38,7 +37,7 @@ sequence :=
 , { char = "Primitive.Char"
   ; string = "Primitive.String"
   ; list = "List_model.List"
-  ; core_term = "Lvca_core.Term"
+  ; core_term = "Core.Term"
   ; option = "Option_model.Option"
   }]
 
@@ -73,7 +72,7 @@ module Term = struct
   ;;
 
   let pp ppf p =
-    let core = Lvca_core.Term.pp_concrete in
+    let core = Core.Term.pp_concrete in
     let fmt, pf = Fmt.(fmt, pf) in
     let with_parens ~ambient_prec ~prec pp =
       if ambient_prec > prec then Fmt.parens pp else pp
@@ -176,7 +175,7 @@ module Parse = struct
       | Bound(single_var; term)
       | Unbound(term)
     |}
-  , { count = "Lvca_core.Term"; term = "Lang.Term"; single_var = "Single_var" }]
+  , { count = "Core.Term"; term = "Lang.Term"; single_var = "Single_var" }]
 
   open Parse_helpers.Quantifier
   open Parse_helpers.Sequence_elem
@@ -196,7 +195,7 @@ module Parse = struct
 
   let rec mk_sequence binders rhs =
     match binders with
-    | [] -> Lang.Sequence.Empty_sequence (Lvca_core.Term.info rhs, rhs)
+    | [] -> Lang.Sequence.Empty_sequence (Core.Term.info rhs, rhs)
     | Bound (info, name, tm) :: binders ->
       Binding (info, tm, (name, mk_sequence binders rhs))
     | Unbound (info, tm) :: binders -> Non_binding (info, tm, mk_sequence binders rhs)
@@ -234,7 +233,7 @@ module Parse = struct
                   >>~ fun range i ->
                   let i = Z.of_string i in
                   let info = Provenance.of_range range in
-                  Lvca_core.Lang.Term.Embedded (info, Primitive (info, Integer i)))
+                  Core.Lang.Term.Embedded (info, Primitive (info, Integer i)))
               ; make0 mk_Q_option (Ws.char '?')
               ; make0 mk_Q_many (Ws.char '*')
               ; make0 mk_Q_many1 (Ws.char '+')
@@ -272,7 +271,7 @@ module Parse = struct
                    ; (Ws.string_lit
                      >>~ fun range str ->
                      let info = Provenance.of_range range in
-                     Lvca_core.Lang.Term.Embedded (info, Primitive (info, String str)))
+                     Core.Lang.Term.Embedded (info, Primitive (info, String str)))
                    ])
             ]
           <|> parse_quantified
@@ -336,7 +335,7 @@ end
 module Evaluate = struct
   type term_ctx = Nominal.Term.t String.Map.t
   type parser_ctx = Lang.Term.t String.Map.t
-  type parse_result = (Nominal.Term.t, string * Lvca_core.Term.t option) Result.t
+  type parse_result = (Nominal.Term.t, string * Core.Term.t option) Result.t
 
   type trace_snapshot =
     { success : bool
@@ -427,7 +426,7 @@ module Evaluate = struct
               (Fmt.str
                  {|expected: satisfy (%s -> {%a})|}
                  name
-                 Lvca_core.Term.pp_concrete
+                 Core.Term.pp_concrete
                  core_term)
           in
           if pos >= String.length str
@@ -436,13 +435,13 @@ module Evaluate = struct
             let c = str.[pos] in
             let info = Provenance.of_range ~input (Opt_range.mk pos (pos + 1)) in
             let tm =
-              Lvca_core.Lang.Term.Let
+              Core.Lang.Term.Let
                 ( info
                 , Embedded (info, Primitive (info, Char c))
-                , Lvca_core.Option_model.Option.None info
+                , Option_model.Option.None info
                 , (Single_var.{ name; info }, core_term) )
             in
-            match Lvca_core.eval_in_ctx term_ctx tm with
+            match Core.eval_in_ctx term_ctx tm with
             | Ok (Operator (_, "true", [])) -> pos + 1, [], Ok (mk_Char pos c)
             | Ok (Operator (_, "false", [])) | Ok _ ->
               pos, [], err_msg (* TODO: throw harder error? (type error) *)
@@ -453,7 +452,7 @@ module Evaluate = struct
   let fail c_tm =
     { run =
         (fun ~of_term:_ ~term_ctx ~parser_ctx:_ ~pos _str ->
-          match Lvca_core.eval_in_ctx term_ctx c_tm with
+          match Core.eval_in_ctx term_ctx c_tm with
           | Ok (Primitive (_, String msg)) -> pos, [], mk_Error msg
           | _ -> failwith "TODO: fail")
     }
@@ -527,7 +526,7 @@ module Evaluate = struct
     in
     { run =
         (fun ~of_term ~term_ctx ~parser_ctx ~pos str ->
-          match Lvca_core.eval_in_ctx term_ctx n_tm with
+          match Core.eval_in_ctx term_ctx n_tm with
           | Ok (Primitive (_, Integer n)) ->
             let n = Z.to_int n (* TODO: may raise Overflow *) in
             let results = go ~of_term ~term_ctx ~parser_ctx ~pos n str in
@@ -682,7 +681,7 @@ module Evaluate = struct
                        | Some key -> Map.set ctx ~key ~data:tm)
               in
               let result =
-                Lvca_core.eval_in_ctx term_ctx tm
+                Core.eval_in_ctx term_ctx tm
                 |> Result.map_error ~f:(Tuple2.map2 ~f:(fun tm -> Some tm))
               in
               pos, snapshots, result))
@@ -815,7 +814,7 @@ fix (expr -> choice (
   ;;
 end
 
-let parse_parser = Lvca_parsing.parse_string (Parse.t Lvca_core.Parse.term)
+let parse_parser = Lvca_parsing.parse_string (Parse.t Core.Parse.term)
 
 let%test_module "Parsing" =
   (module struct
@@ -827,8 +826,7 @@ let%test_module "Parsing" =
     let parse_print_parser : ?width:int -> string -> unit =
      fun ?width parser_str ->
       match
-        Lvca_parsing.(
-          parse_string (whitespace *> Parse.t Lvca_core.Parse.term) parser_str)
+        Lvca_parsing.(parse_string (whitespace *> Parse.t Core.Parse.term) parser_str)
       with
       | Error msg -> Stdio.print_string ("failed to parse parser desc: " ^ msg)
       | Ok parser ->
@@ -1037,10 +1035,7 @@ fix (expr -> (
 module Properties = struct
   open Property_result
 
-  let parse parser_str =
-    Lvca_parsing.parse_string (Parse.t Lvca_core.Parse.term) parser_str
-  ;;
-
+  let parse parser_str = Lvca_parsing.parse_string (Parse.t Core.Parse.term) parser_str
   let pp_str p = Fmt.to_to_string Term.pp p
 
   let string_round_trip1 t =

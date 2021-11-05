@@ -1,6 +1,6 @@
 open Lvca_syntax
-module Option_model = Lvca_core.Option_model
-module List_model = Lvca_core.List_model
+module Option_model = Lvca_del.Option_model
+module List_model = Lvca_del.List_model
 module Either_model = [%lvca.abstract_syntax_module "either a b := Left(a) | Right(b)"]
 
 module Primitive_model =

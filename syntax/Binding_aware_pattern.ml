@@ -14,11 +14,11 @@ let ( >> ) = Lvca_util.(( >> ))
 module Capture_type = struct
   type t =
     | Bound_var of Sort.t
-    | Bound_pattern of Abstract_syntax.Pattern_sort.t
+    | Bound_pattern of Pattern_sort.t
     | Bound_term of Sort.t
 
   let pp ppf = function
-    | Bound_pattern pattern_sort -> Abstract_syntax.Pattern_sort.pp ppf pattern_sort
+    | Bound_pattern pattern_sort -> Pattern_sort.pp ppf pattern_sort
     | Bound_var sort | Bound_term sort -> Sort.pp ppf sort
   ;;
 end

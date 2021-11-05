@@ -114,6 +114,7 @@ ty :=
         let%expect_test _ =
           go "forall a. a";
           go "forall a b. a";
+          go "forall a. forall b. a";
           [%expect]
         ;;
       end)

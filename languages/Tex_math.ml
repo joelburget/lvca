@@ -3,7 +3,7 @@
 open Base
 
 open Lvca_syntax
-module List_model = Lvca_core.List_model.List
+open Lvca_models
 
 (* TODO?  | Literal(string) *)
 module Lang =
@@ -19,7 +19,7 @@ tex :=
   | Grouped(list tex)
   | Space()
 |}
-, { string = "Primitive.String"; char = "Primitive.Char"; list = "List_model" }]
+, { string = "Primitive.String"; char = "Primitive.Char"; list = "List_model.List" }]
 
 include Lang
 
@@ -1049,7 +1049,7 @@ let rec check tm =
     if Supported.is_valid_control_seq str
     then None
     else Some (Fmt.str "%s is not a known control sequence" str)
-  | Grouped (_, list) -> list |> Lvca_core.List_model.to_list |> List.find_map ~f:check
+  | Grouped (_, list) -> list |> List_model.to_list |> List.find_map ~f:check
   | Token _ | Space _ -> None
 ;;
 
@@ -1076,7 +1076,11 @@ let ends_with ~f str =
 ;;
 
 let is_ascii c = Char.to_int c < 128
-let rec to_list = function List_model.Nil _ -> [] | Cons (_, x, xs) -> x :: to_list xs
+
+let rec to_list = function
+  | List_model.List.Nil _ -> []
+  | Cons (_, x, xs) -> x :: to_list xs
+;;
 
 (* characters with special meaning: & % $ # _ { } ~ ^ \ *)
 let is_special_char c = String.mem {|&%$#_{}~^\|} c
@@ -1148,7 +1152,7 @@ let parse : Lang.Tex.t list Lvca_parsing.t =
         let grouped =
           No_junk.braces (many1 expr)
           >>~ fun range value ->
-          Grouped (Provenance.of_range range, Lvca_core.List_model.of_list value)
+          Grouped (Provenance.of_range range, List_model.of_list value)
         in
         choice
           ~failure_msg:

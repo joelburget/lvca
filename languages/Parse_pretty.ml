@@ -1,5 +1,6 @@
 open Base
 open Lvca_syntax
+open Lvca_models
 
 module Lang =
 [%lvca.abstract_syntax_module
@@ -21,7 +22,7 @@ directive :=
   | Sep_by1(directive; list directive)
   | Term(term)
   |}
-, { list = "Lvca_core.List_model.List"
+, { list = "List_model.List"
   ; string = "Primitive.String"
   ; term = "Nominal.Term"
   ; binding_aware_pattern = "Binding_aware_pattern"

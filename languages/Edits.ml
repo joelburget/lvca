@@ -1,6 +1,6 @@
 open Base
 open Lvca_syntax
-open Lvca_core
+open Lvca_del
 open Stdio
 
 module Lang =
@@ -15,12 +15,9 @@ edit :=
   | Labeled(edit; string)
   | List(list edit)
 |}
-, { core = "Lvca_core.Lang.Term"
-  ; string = "Primitive.String"
-  ; list = "Lvca_core.List_model.List"
-  }]
+, { core = "Core.Lang.Term"; string = "Primitive.String"; list = "List_model.List" }]
 
-type core = Term.t
+type core = Core.Term.t
 
 type 'lang t =
   | Atomic of 'lang
@@ -67,23 +64,21 @@ let%test_module "Parsing" =
   (module struct
     let parse (str : string) : (core t, string) Result.t =
       Lvca_parsing.(
-        parse_string
-          (whitespace *> parse (C_comment_parser.braces Lvca_core.Parse.term))
-          str)
+        parse_string (whitespace *> parse (C_comment_parser.braces Core.Term.parse)) str)
     ;;
 
     let parse_and_print : string -> unit =
      fun str ->
       match parse str with
-      | Ok edit -> pp (Fmt.braces Term.pp_concrete) Caml.Format.std_formatter edit
+      | Ok edit -> pp (Fmt.braces Core.Term.pp_concrete) Caml.Format.std_formatter edit
       | Error msg -> print_string msg
    ;;
 
-    let eval_atom : term -> core -> (term, eval_error) Result.t =
+    let eval_atom : term -> core -> (term, Core.eval_error) Result.t =
      fun tm core ->
-      let open Lvca_core.Lang.Term in
+      let open Core.Lang.Term in
       let here = Provenance.of_here [%here] in
-      eval (Ap (here, core, List_model.of_list [ Embedded (here, tm) ]))
+      Core.eval (Ap (here, core, List_model.of_list [ Embedded (here, tm) ]))
    ;;
 
     (* TODO: don't throw away this information, switch from strings *)
