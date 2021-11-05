@@ -297,17 +297,17 @@ module Parse = struct
     Lvca_util.String.Set.of_list [ "let"; "rec"; "and"; "in"; "match"; "with" ]
   ;;
 
-  let char_p = Char.(fun c -> is_alpha c || is_digit c || c = '_' || c = '\'')
+  let is_continue = Char.(fun c -> is_alpha c || is_digit c || c = '_' || c = '\'')
 
   let var_identifier =
-    Ws.(identifier' ~initial_char_p:Char.(fun c -> is_lowercase c || c = '_') ~char_p ())
+    Ws.(identifier' ~is_start:Char.(fun c -> is_lowercase c || c = '_') ~is_continue ())
     >>= fun ident ->
     if Set.mem reserved ident
     then fail (Printf.sprintf "identifier: reserved word (%s)" ident)
     else return ident
   ;;
 
-  let ctor_identifier = Ws.identifier' ~initial_char_p:Char.is_uppercase ~char_p ()
+  let ctor_identifier = Ws.identifier' ~is_start:Char.is_uppercase ~is_continue ()
 
   let make_apps : Term.t list -> Term.t = function
     | [] -> Lvca_util.invariant_violation ~here:[%here] "must be a nonempty list"

@@ -95,8 +95,8 @@ module type Character_parser = sig
   val char_lit : char t
 
   val identifier'
-    :  ?initial_char_p:(char -> bool)
-    -> ?char_p:(char -> bool)
+    :  ?is_start:(char -> bool)
+    -> ?is_continue:(char -> bool)
     -> unit
     -> string t
 

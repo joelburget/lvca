@@ -304,15 +304,15 @@ module Basic = struct
   let char c = go (char c)
   let satisfy f = go (satisfy f)
   let string str = go (string str)
-  let initial_char_p = Char.(fun c -> is_alpha c || c = '_')
-  let char_p = Char.(fun c -> is_alpha c || is_digit c || c = '_' || c = '\'')
+  let is_start = Char.(fun c -> is_alpha c || c = '_')
+  let is_continue = Char.(fun c -> is_alpha c || is_digit c || c = '_' || c = '\'')
 
-  let identifier' ?(initial_char_p = initial_char_p) ?(char_p = char_p) () =
+  let identifier' ?(is_start = is_start) ?(is_continue = is_continue) () =
     go
       (lift2
          (fun c cs -> String.(of_char c ^ cs))
-         (Angstrom.satisfy initial_char_p)
-         (take_while char_p))
+         (Angstrom.satisfy is_start)
+         (take_while is_continue))
   ;;
 
   let identifier = identifier' ()
@@ -508,8 +508,8 @@ module type Character_parser = sig
   val char_lit : char t
 
   val identifier'
-    :  ?initial_char_p:(char -> bool)
-    -> ?char_p:(char -> bool)
+    :  ?is_start:(char -> bool)
+    -> ?is_continue:(char -> bool)
     -> unit
     -> string t
 
@@ -530,8 +530,8 @@ module No_junk : Character_parser = struct
   let junk1 = fail "no junk"
   let char_lit = adapt Basic.char_lit
 
-  let identifier' ?initial_char_p ?char_p () =
-    adapt (Basic.identifier' ?initial_char_p ?char_p ())
+  let identifier' ?is_start ?is_continue () =
+    adapt (Basic.identifier' ?is_start ?is_continue ())
   ;;
 
   let identifier = adapt Basic.identifier
@@ -556,8 +556,8 @@ module Mk_character_parser (Junk : Junk_parser) : Character_parser = struct
 
   let char_lit = No_junk.char_lit <* Junk.junk
 
-  let identifier' ?initial_char_p ?char_p () =
-    No_junk.identifier' ?initial_char_p ?char_p () <* Junk.junk
+  let identifier' ?is_start ?is_continue () =
+    No_junk.identifier' ?is_start ?is_continue () <* Junk.junk
   ;;
 
   let identifier = No_junk.identifier <* Junk.junk
