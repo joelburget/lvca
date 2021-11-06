@@ -95,18 +95,23 @@ module type Character_parser = sig
   val char_lit : char t
 
   val identifier'
-    :  ?is_start:(char -> bool)
+    :  is_start:(char -> bool)
     -> ?is_continue:(char -> bool)
     -> unit
     -> string t
 
-  val identifier : string t
+  val upper_identifier : string t
+  val lower_identifier : string t
   val integer_lit : string t
   val integer_or_float_lit : (string, float) Base.Either.t t
   val string_lit : string t
   val satisfy : (char -> bool) -> char t
   val char : char -> char t
   val string : string -> string t
+
+  (** The same a string parser, but requires trailing whitespace or a comment. *)
+  val keyword : string -> string t
+
   val parens : 'a t -> 'a t
   val braces : 'a t -> 'a t
   val brackets : 'a t -> 'a t

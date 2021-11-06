@@ -304,10 +304,11 @@ module Basic = struct
   let char c = go (char c)
   let satisfy f = go (satisfy f)
   let string str = go (string str)
-  let is_start = Char.(fun c -> is_alpha c || c = '_')
+  let is_start_upper = Char.(fun c -> is_uppercase c || c = '_')
+  let is_start_lower = Char.(fun c -> is_lowercase c || c = '_')
   let is_continue = Char.(fun c -> is_alpha c || is_digit c || c = '_' || c = '\'')
 
-  let identifier' ?(is_start = is_start) ?(is_continue = is_continue) () =
+  let identifier' ~is_start ?(is_continue = is_continue) () =
     go
       (lift2
          (fun c cs -> String.(of_char c ^ cs))
@@ -315,7 +316,8 @@ module Basic = struct
          (take_while is_continue))
   ;;
 
-  let identifier = identifier' ()
+  let upper_identifier = identifier' ~is_start:is_start_upper ()
+  let lower_identifier = identifier' ~is_start:is_start_lower ()
 end
 
 let ( ( >>|| )
@@ -508,18 +510,20 @@ module type Character_parser = sig
   val char_lit : char t
 
   val identifier'
-    :  ?is_start:(char -> bool)
+    :  is_start:(char -> bool)
     -> ?is_continue:(char -> bool)
     -> unit
     -> string t
 
-  val identifier : string t
+  val upper_identifier : string t
+  val lower_identifier : string t
   val integer_lit : string t
   val integer_or_float_lit : (string, float) Base.Either.t t
   val string_lit : string t
   val satisfy : (char -> bool) -> char t
   val char : char -> char t
   val string : string -> string t
+  val keyword : string -> string t
   val parens : 'a t -> 'a t
   val braces : 'a t -> 'a t
   val brackets : 'a t -> 'a t
@@ -530,17 +534,19 @@ module No_junk : Character_parser = struct
   let junk1 = fail "no junk"
   let char_lit = adapt Basic.char_lit
 
-  let identifier' ?is_start ?is_continue () =
-    adapt (Basic.identifier' ?is_start ?is_continue ())
+  let identifier' ~is_start ?is_continue () =
+    adapt (Basic.identifier' ~is_start ?is_continue ())
   ;;
 
-  let identifier = adapt Basic.identifier
+  let upper_identifier = adapt Basic.upper_identifier
+  let lower_identifier = adapt Basic.lower_identifier
   let integer_lit = adapt Basic.integer_lit
   let integer_or_float_lit = adapt Basic.integer_or_float_lit
   let string_lit = adapt Basic.string_lit
   let char c = adapt (Basic.char c)
   let satisfy f = adapt (Basic.satisfy f)
   let string str = adapt (Basic.string str)
+  let keyword = string
 
   let mk_bracket_parser open_c close_c p =
     lift3 (fun _ v _ -> v) (char open_c <* whitespace) p (whitespace *> char close_c)
@@ -556,17 +562,19 @@ module Mk_character_parser (Junk : Junk_parser) : Character_parser = struct
 
   let char_lit = No_junk.char_lit <* Junk.junk
 
-  let identifier' ?is_start ?is_continue () =
-    No_junk.identifier' ?is_start ?is_continue () <* Junk.junk
+  let identifier' ~is_start ?is_continue () =
+    No_junk.identifier' ~is_start ?is_continue () <* Junk.junk
   ;;
 
-  let identifier = No_junk.identifier <* Junk.junk
+  let upper_identifier = No_junk.upper_identifier <* Junk.junk
+  let lower_identifier = No_junk.lower_identifier <* Junk.junk
   let integer_lit = No_junk.integer_lit <* Junk.junk
   let integer_or_float_lit = No_junk.integer_or_float_lit <* Junk.junk
   let string_lit = No_junk.string_lit <* Junk.junk
   let char c = No_junk.char c <* Junk.junk
   let satisfy f = No_junk.satisfy f <* Junk.junk
   let string str = No_junk.string str <* Junk.junk
+  let keyword str = No_junk.string str <* Junk.junk1
   let parens p = No_junk.parens p <* Junk.junk
   let braces p = No_junk.braces p <* Junk.junk
   let brackets p = No_junk.brackets p <* Junk.junk
@@ -831,6 +839,62 @@ let%test_module "Parsing" =
       go "* -> * foo // comment";
       (*  01234567890 *)
       [%expect {|{0,6}|}]
+    ;;
+
+    let%expect_test _ =
+      go "* -> * foo";
+      (*  01234567890 *)
+      [%expect {|{0,6}|}]
+    ;;
+
+    let go str =
+      let parse = parse_string (No_junk.string "foo" <* whitespace1) in
+      match parse str with Ok _ -> Fmt.pr "okay\n" | _ -> Fmt.pr "not okay\n"
+    ;;
+
+    let%expect_test _ =
+      go "foo";
+      go "foo ";
+      go "foo // comment";
+      [%expect {|
+      not okay
+      okay
+      not okay
+      |}]
+    ;;
+
+    let go str =
+      let parse = parse_string (Whitespace_parser.keyword "foo" ) in
+      match parse str with Ok _ -> Fmt.pr "okay\n" | _ -> Fmt.pr "not okay\n"
+    ;;
+
+    let%expect_test _ =
+      go "foo";
+      go "foo ";
+      go "foo // comment";
+      [%expect {|
+      not okay
+      okay
+      not okay
+      |}]
+    ;;
+
+    let go str =
+      let parse = parse_string (C_comment_parser.keyword "foo" ) in
+      match parse str with Ok _ -> Fmt.pr "okay\n" | _ -> Fmt.pr "not okay\n"
+    ;;
+
+    let%expect_test _ =
+      go "foo";
+      go "foo ";
+      go "foo// comment";
+      go "foo // comment";
+      [%expect {|
+      not okay
+      okay
+      okay
+      okay
+      |}]
     ;;
   end)
 ;;
