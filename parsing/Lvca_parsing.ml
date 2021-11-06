@@ -308,16 +308,28 @@ module Basic = struct
   let is_start_lower = Char.(fun c -> is_lowercase c || c = '_')
   let is_continue = Char.(fun c -> is_alpha c || is_digit c || c = '_' || c = '\'')
 
-  let identifier' ~is_start ?(is_continue = is_continue) () =
-    go
-      (lift2
-         (fun c cs -> String.(of_char c ^ cs))
-         (Angstrom.satisfy is_start)
-         (take_while is_continue))
+  let identifier' ~is_start ?(is_continue = is_continue) reserved_words =
+    let p =
+      go
+        (lift2
+           (fun c cs -> String.(of_char c ^ cs))
+           (Angstrom.satisfy is_start)
+           (take_while is_continue))
+    in
+    p
+    >>= fun (ident, range) ->
+    if Set.mem reserved_words ident
+    then fail (Printf.sprintf "identifier: reserved word (%s)" ident)
+    else return (ident, range)
   ;;
 
-  let upper_identifier = identifier' ~is_start:is_start_upper ()
-  let lower_identifier = identifier' ~is_start:is_start_lower ()
+  let upper_identifier reserved_words =
+    identifier' ~is_start:is_start_upper reserved_words
+  ;;
+
+  let lower_identifier reserved_words =
+    identifier' ~is_start:is_start_lower reserved_words
+  ;;
 end
 
 let ( ( >>|| )
@@ -512,11 +524,11 @@ module type Character_parser = sig
   val identifier'
     :  is_start:(char -> bool)
     -> ?is_continue:(char -> bool)
-    -> unit
+    -> Lvca_util.String.Set.t
     -> string t
 
-  val upper_identifier : string t
-  val lower_identifier : string t
+  val upper_identifier : Lvca_util.String.Set.t -> string t
+  val lower_identifier : Lvca_util.String.Set.t -> string t
   val integer_lit : string t
   val integer_or_float_lit : (string, float) Base.Either.t t
   val string_lit : string t
@@ -534,12 +546,12 @@ module No_junk : Character_parser = struct
   let junk1 = fail "no junk"
   let char_lit = adapt Basic.char_lit
 
-  let identifier' ~is_start ?is_continue () =
-    adapt (Basic.identifier' ~is_start ?is_continue ())
+  let identifier' ~is_start ?is_continue reserved_words =
+    adapt (Basic.identifier' ~is_start ?is_continue reserved_words)
   ;;
 
-  let upper_identifier = adapt Basic.upper_identifier
-  let lower_identifier = adapt Basic.lower_identifier
+  let upper_identifier reserved_words = adapt (Basic.upper_identifier reserved_words)
+  let lower_identifier reserved_words = adapt (Basic.lower_identifier reserved_words)
   let integer_lit = adapt Basic.integer_lit
   let integer_or_float_lit = adapt Basic.integer_or_float_lit
   let string_lit = adapt Basic.string_lit
@@ -562,12 +574,18 @@ module Mk_character_parser (Junk : Junk_parser) : Character_parser = struct
 
   let char_lit = No_junk.char_lit <* Junk.junk
 
-  let identifier' ~is_start ?is_continue () =
-    No_junk.identifier' ~is_start ?is_continue () <* Junk.junk
+  let identifier' ~is_start ?is_continue reserved_words =
+    No_junk.identifier' ~is_start ?is_continue reserved_words <* Junk.junk
   ;;
 
-  let upper_identifier = No_junk.upper_identifier <* Junk.junk
-  let lower_identifier = No_junk.lower_identifier <* Junk.junk
+  let upper_identifier reserved_words =
+    No_junk.upper_identifier reserved_words <* Junk.junk
+  ;;
+
+  let lower_identifier reserved_words =
+    No_junk.lower_identifier reserved_words <* Junk.junk
+  ;;
+
   let integer_lit = No_junk.integer_lit <* Junk.junk
   let integer_or_float_lit = No_junk.integer_or_float_lit <* Junk.junk
   let string_lit = No_junk.string_lit <* Junk.junk
@@ -897,8 +915,10 @@ let%test_module "Parsing" =
       |}]
     ;;
 
+    let reserved_words = Lvca_util.String.Set.of_list [ "reserved"; "Reserved" ]
+
     let go str =
-      let parse = parse_string Whitespace_parser.lower_identifier in
+      let parse = parse_string (Whitespace_parser.lower_identifier reserved_words) in
       match parse str with Ok _ -> Fmt.pr "okay\n" | _ -> Fmt.pr "not okay\n"
     ;;
 
@@ -906,14 +926,16 @@ let%test_module "Parsing" =
       go "foo";
       go "_foo1";
       go "Bar";
-      [%expect{|
+      go "reserved";
+      [%expect {|
         okay
         okay
+        not okay
         not okay |}]
     ;;
 
     let go str =
-      let parse = parse_string Whitespace_parser.upper_identifier in
+      let parse = parse_string (Whitespace_parser.upper_identifier reserved_words) in
       match parse str with Ok _ -> Fmt.pr "okay\n" | _ -> Fmt.pr "not okay\n"
     ;;
 
@@ -921,9 +943,11 @@ let%test_module "Parsing" =
       go "Foo";
       go "_foo1";
       go "bar";
-      [%expect{|
+      go "Reserved";
+      [%expect {|
         okay
         okay
+        not okay
         not okay |}]
     ;;
   end)

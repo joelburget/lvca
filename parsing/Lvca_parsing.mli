@@ -97,11 +97,11 @@ module type Character_parser = sig
   val identifier'
     :  is_start:(char -> bool)
     -> ?is_continue:(char -> bool)
-    -> unit
+    -> Lvca_util.String.Set.t
     -> string t
 
-  val upper_identifier : string t
-  val lower_identifier : string t
+  val upper_identifier : Lvca_util.String.Set.t -> string t
+  val lower_identifier : Lvca_util.String.Set.t -> string t
   val integer_lit : string t
   val integer_or_float_lit : (string, float) Base.Either.t t
   val string_lit : string t
