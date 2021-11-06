@@ -864,7 +864,7 @@ let%test_module "Parsing" =
     ;;
 
     let go str =
-      let parse = parse_string (Whitespace_parser.keyword "foo" ) in
+      let parse = parse_string (Whitespace_parser.keyword "foo") in
       match parse str with Ok _ -> Fmt.pr "okay\n" | _ -> Fmt.pr "not okay\n"
     ;;
 
@@ -880,7 +880,7 @@ let%test_module "Parsing" =
     ;;
 
     let go str =
-      let parse = parse_string (C_comment_parser.keyword "foo" ) in
+      let parse = parse_string (C_comment_parser.keyword "foo") in
       match parse str with Ok _ -> Fmt.pr "okay\n" | _ -> Fmt.pr "not okay\n"
     ;;
 
@@ -895,6 +895,36 @@ let%test_module "Parsing" =
       okay
       okay
       |}]
+    ;;
+
+    let go str =
+      let parse = parse_string Whitespace_parser.lower_identifier in
+      match parse str with Ok _ -> Fmt.pr "okay\n" | _ -> Fmt.pr "not okay\n"
+    ;;
+
+    let%expect_test _ =
+      go "foo";
+      go "_foo1";
+      go "Bar";
+      [%expect{|
+        okay
+        okay
+        not okay |}]
+    ;;
+
+    let go str =
+      let parse = parse_string Whitespace_parser.upper_identifier in
+      match parse str with Ok _ -> Fmt.pr "okay\n" | _ -> Fmt.pr "not okay\n"
+    ;;
+
+    let%expect_test _ =
+      go "Foo";
+      go "_foo1";
+      go "bar";
+      [%expect{|
+        okay
+        okay
+        not okay |}]
     ;;
   end)
 ;;
