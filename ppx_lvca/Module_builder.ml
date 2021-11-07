@@ -5,7 +5,6 @@ open Lvca_util
 open Ppxlib
 module SSet = String.Set
 module SMap = String.Map
-module Syn = Abstract_syntax
 module Graph = Directed_graph.Make (Base.String)
 
 module Supported_function = struct
@@ -272,14 +271,14 @@ let get_sort_ref_info ~prims ~sort_defs =
   let known_sorts_2 = prims |> Map.keys |> SSet.of_list in
   let known_sorts = Set.union known_sorts_1 known_sorts_2 in
   let sort_deps =
-    List.map sort_defs ~f:(fun (sort_name, Syn.Sort_def.Sort_def (vars, op_defs)) ->
+    List.map sort_defs ~f:(fun (sort_name, Sort_def.Sort_def (vars, op_defs)) ->
         let vars = vars |> List.map ~f:fst |> SSet.of_list in
         let sort_deps =
           op_defs
           |> List.map
-               ~f:(fun (Syn.Operator_def.Operator_def (_info, _name, Arity (_, arity))) ->
+               ~f:(fun (Operator_def.Operator_def (_info, _name, Arity (_, arity))) ->
                  arity
-                 |> List.map ~f:(fun (Syn.Valence.Valence (_sort_slots, body_sort)) ->
+                 |> List.map ~f:(fun (Valence.Valence (_sort_slots, body_sort)) ->
                         let sort_name = sort_head body_sort in
                         if Set.mem known_sorts sort_name
                         then all_sort_names body_sort
@@ -307,11 +306,11 @@ let make_binding_status sort_defs =
     |> List.map ~f:(fun (name, _def) -> name, Unbound)
     |> Hashtbl.of_alist_exn (module String)
   in
-  List.iter sort_defs ~f:(fun (_sort_name, Syn.Sort_def.Sort_def (_vars, op_defs)) ->
+  List.iter sort_defs ~f:(fun (_sort_name, Sort_def.Sort_def (_vars, op_defs)) ->
       List.iter
         op_defs
-        ~f:(fun (Syn.Operator_def.Operator_def (_info, _name, Arity (_, arity))) ->
-          List.iter arity ~f:(fun (Syn.Valence.Valence (sort_slots, _body_sort)) ->
+        ~f:(fun (Operator_def.Operator_def (_info, _name, Arity (_, arity))) ->
+          List.iter arity ~f:(fun (Valence.Valence (sort_slots, _body_sort)) ->
               List.iter sort_slots ~f:(fun slot ->
                   let sort =
                     match slot with
@@ -332,7 +331,7 @@ module Helpers (Context : Builder_context) = struct
   (** Context for classifying a sort ([classify_sort]) as [defn_status]. *)
   type context =
     { var_names : SSet.t
-    ; mutual_sorts : Syn.Sort_def.t SMap.t
+    ; mutual_sorts : Sort_def.t SMap.t
     ; prims : string list SMap.t
     }
 
@@ -351,7 +350,7 @@ module Helpers (Context : Builder_context) = struct
     then Variable
     else (
       match Map.find mutual_sorts sort_name with
-      | Some (Syn.Sort_def.Sort_def (vars, _op_defs)) ->
+      | Some (Sort_def.Sort_def (vars, _op_defs)) ->
         (if List.(Int.(length vars <> length sort_args))
         then
           Location.Error.(
@@ -513,12 +512,12 @@ module Ctor_decl (Context : Builder_context) = struct
   let args_of_valence
       ~type_decl_context
       context
-      (Syn.Valence.Valence (binding_sort_slots, body_sort))
+      (Valence.Valence (binding_sort_slots, body_sort))
     =
     let pattern_type = [%type: Pattern.t] in
     let args =
       List.map binding_sort_slots ~f:(function
-          | Syn.Sort_slot.Sort_binding sort ->
+          | Sort_slot.Sort_binding sort ->
             let loc = sort |> Sort.info |> get_range |> update_loc in
             [%type: Lvca_syntax.Single_var.t]
           | Sort_pattern _sort -> pattern_type)
@@ -531,7 +530,7 @@ module Ctor_decl (Context : Builder_context) = struct
       ~var_names
       ~mutual_sorts
       ~prims
-      (Syn.Arity.Arity (_, arity))
+      (Arity.Arity (_, arity))
     =
     let args_of_valence =
       args_of_valence ~type_decl_context { var_names; mutual_sorts; prims }
@@ -547,7 +546,7 @@ module Ctor_decl (Context : Builder_context) = struct
       ~var_names
       ~mutual_sorts
       ~prims
-      (Syn.Operator_def.Operator_def (_info, op_name, arity))
+      (Operator_def.Operator_def (_info, op_name, arity))
     =
     let args = args_of_arity ~type_decl_context ~var_names ~mutual_sorts ~prims arity in
     let txt =
@@ -571,7 +570,7 @@ module Type_decls (Context : Builder_context) = struct
       ~prims
       ~sort_name
       ~sort_binding_status
-      (Syn.Sort_def.Sort_def (vars, op_defs))
+      (Sort_def.Sort_def (vars, op_defs))
     =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let op_ctors =
@@ -598,7 +597,7 @@ module Type_decls (Context : Builder_context) = struct
         |> Set.to_list
         |> List.map ~f:(fun sort_name ->
                let sort_def = Map.find_exn sort_def_map sort_name in
-               let (Syn.Sort_def.Sort_def (vars, _op_defs)) = sort_def in
+               let (Sort_def.Sort_def (vars, _op_defs)) = sort_def in
                let params = vars |> List.map ~f:fst |> List.map ~f:plain_typ_var in
                let op_ctors =
                  mk_op_ctors
@@ -629,7 +628,7 @@ module Operator_pat (Context : Builder_context) = struct
       ?(match_info = false)
       ?(match_non_info = true)
       ?(name_base = "x")
-      (Syn.Operator_def.Operator_def (_info, op_name, Arity (_, arity)))
+      (Operator_def.Operator_def (_info, op_name, Arity (_, arity)))
     =
     if not (is_valid_capital_name op_name)
     then Location.raise_errorf ~loc "Invalid OCaml operator name: %s" op_name;
@@ -637,7 +636,7 @@ module Operator_pat (Context : Builder_context) = struct
     let v ix = pvar (Printf.sprintf "%s%d" name_base ix) in
     let contents =
       arity
-      |> List.map ~f:(fun (Syn.Valence.Valence (slots, _)) ->
+      |> List.map ~f:(fun (Valence.Valence (slots, _)) ->
              let slots =
                ( (* Always one binder for the body *) ) :: List.map slots ~f:(Fn.const ())
              in
@@ -692,7 +691,7 @@ module To_nominal (Context : Builder_context) = struct
       ~var_names
       ~prims
       sort_defs
-      (Syn.Operator_def.Operator_def (_info, op_name, Arity (_, arity)))
+      (Operator_def.Operator_def (_info, op_name, Arity (_, arity)))
     =
     (* TODO: change to name "info" *)
     let info = evar "x0" in
@@ -701,11 +700,11 @@ module To_nominal (Context : Builder_context) = struct
     let body_arg sort =
       mk_sort_app ~fun_defn:Fun_to_nominal ~classify_sort ~args:[ Nolabel, v () ] sort
     in
-    let mk_scope (Syn.Valence.Valence (slots, body_sort)) =
+    let mk_scope (Valence.Valence (slots, body_sort)) =
       let args =
         slots
         |> List.map ~f:(function
-               | Syn.Sort_slot.Sort_binding _ ->
+               | Sort_slot.Sort_binding _ ->
                  let v = v () in
                  [%expr Lvca_syntax.Pattern.Var ([%e v].info, [%e v].name)]
                | Sort_pattern _ -> v ())
@@ -723,7 +722,7 @@ module To_nominal (Context : Builder_context) = struct
       ~sort_binding_status
       sort_defs
       sort_name
-      (Syn.Sort_def.Sort_def (vars, op_defs))
+      (Sort_def.Sort_def (vars, op_defs))
     =
     let type_vars = List.map vars ~f:fst in
     let var_names = SSet.of_list type_vars in
@@ -799,14 +798,14 @@ module Of_nominal (Context : Builder_context) = struct
 
     Note: we currently never map to [Primitive].
   *)
-  let mk_nominal_pat (Syn.Operator_def.Operator_def (_info, op_name, Arity (_, arity))) =
+  let mk_nominal_pat (Operator_def.Operator_def (_info, op_name, Arity (_, arity))) =
     (* TODO: change to name "info" *)
     let info = pvar "x0" in
     let v = pvar_allocator "x" in
-    let mk_scope (Syn.Valence.Valence (slots, _body_sort)) =
+    let mk_scope (Valence.Valence (slots, _body_sort)) =
       let args =
         List.map slots ~f:(function
-            | Syn.Sort_slot.Sort_binding _ ->
+            | Sort_slot.Sort_binding _ ->
               let info_v = v () in
               let name_v = v () in
               [%pat? Lvca_syntax.Pattern.Var ([%p info_v], [%p name_v])]
@@ -824,7 +823,7 @@ module Of_nominal (Context : Builder_context) = struct
       ~var_names
       ~prims
       sort_defs
-      (Syn.Operator_def.Operator_def (_info, op_name, Arity (_, arity)))
+      (Operator_def.Operator_def (_info, op_name, Arity (_, arity)))
     =
     let v = var_allocator "x" in
     let ev = v >> snd in
@@ -837,12 +836,12 @@ module Of_nominal (Context : Builder_context) = struct
     in
     let contents =
       arity
-      |> List.map ~f:(fun (Syn.Valence.Valence (slots, body_sort)) ->
+      |> List.map ~f:(fun (Valence.Valence (slots, body_sort)) ->
              let slots_args =
                slots
                |> List.map ~f:(fun slot ->
                       match slot with
-                      | Syn.Sort_slot.Sort_binding _sort ->
+                      | Sort_slot.Sort_binding _sort ->
                         let info_v = ev () in
                         let name_v = ev () in
                         [%expr
@@ -867,7 +866,7 @@ module Of_nominal (Context : Builder_context) = struct
       ~sort_binding_status
       sort_defs
       sort_name
-      (Syn.Sort_def.Sort_def (vars, op_defs))
+      (Sort_def.Sort_def (vars, op_defs))
     =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
@@ -960,12 +959,12 @@ module Equivalent (Context : Builder_context) = struct
       ~sort_binding_status
       sort_defs
       sort_name
-      (Syn.Sort_def.Sort_def (vars, op_defs))
+      (Sort_def.Sort_def (vars, op_defs))
     =
     let type_vars = List.map vars ~f:fst in
     let var_names = SSet.of_list type_vars in
     let classify_sort = classify_sort { var_names; mutual_sorts = sort_defs; prims } in
-    let f (Syn.Operator_def.Operator_def (_info, _op_name, Arity (_, arity)) as op_def) =
+    let f (Operator_def.Operator_def (_info, _op_name, Arity (_, arity)) as op_def) =
       let lhs =
         let p1, p2 =
           ("x", "y")
@@ -982,14 +981,14 @@ module Equivalent (Context : Builder_context) = struct
             |> Tuple2.map ~f:(fun base -> evar (Printf.sprintf "%s%d" base !var_ix))
           in
           arity
-          |> List.map ~f:(fun (Syn.Valence.Valence (slots, body_sort)) ->
+          |> List.map ~f:(fun (Valence.Valence (slots, body_sort)) ->
                  let slots_checks =
                    slots
                    |> List.map ~f:(fun slot ->
                           Int.incr var_ix;
                           let x, y = mk_xy () in
                           match slot with
-                          | Syn.Sort_slot.Sort_binding _sort ->
+                          | Sort_slot.Sort_binding _sort ->
                             [%expr
                               Lvca_syntax.Single_var.equivalent ~info_eq [%e x] [%e y]]
                           | Sort_pattern _ ->
@@ -1072,7 +1071,7 @@ module Info (Context : Builder_context) = struct
       ~sort_binding_status
       _sort_defs
       sort_name
-      (Syn.Sort_def.Sort_def (vars, op_defs))
+      (Sort_def.Sort_def (vars, op_defs))
     =
     let type_vars = List.map vars ~f:fst in
     let mk_case op_def =
@@ -1139,9 +1138,9 @@ module Wrapper_module (Context : Builder_context) = struct
         (maker :
           prims:string list SMap.t
           -> sort_binding_status:(string, bound_unbound) Hashtbl.t
-          -> Syn.Sort_def.t SMap.t
+          -> Sort_def.t SMap.t
           -> string
-          -> Syn.Sort_def.t
+          -> Sort_def.t
           -> Ppxlib.value_binding)
       =
       ordered_sccs
@@ -1207,7 +1206,7 @@ module Individual_type_sig (Context : Builder_context) = struct
   module Type_decls = Type_decls (Context)
 
   let mk ~prims ~sort_def_map ~sort_binding_status sort_name sort_def =
-    let (Syn.Sort_def.Sort_def (vars, _op_defs)) = sort_def in
+    let (Sort_def.Sort_def (vars, _op_defs)) = sort_def in
     let var_names = List.map vars ~f:fst in
     let params = List.map var_names ~f:plain_typ_var in
     let op_ctors =
@@ -1244,7 +1243,7 @@ module Individual_type_module (Context : Builder_context) = struct
   module Type_decls = Type_decls (Context)
 
   let mk ~prims ~sort_def_map ~sort_binding_status sort_name sort_def =
-    let (Syn.Sort_def.Sort_def (vars, op_defs)) = sort_def in
+    let (Sort_def.Sort_def (vars, op_defs)) = sort_def in
     let var_names = List.map vars ~f:fst in
     let type_vars = List.map var_names ~f:ptyp_var in
     let params = List.map var_names ~f:plain_typ_var in
@@ -1337,7 +1336,10 @@ module Container_module (Context : Builder_context) = struct
   module Wrapper_module = Wrapper_module (Context)
   module Individual_type_module = Individual_type_module (Context)
 
-  let mk ?(module_mapping = SMap.empty) (Syn.{ externals = _; sort_defs } as lang) =
+  let mk
+      ?(module_mapping = SMap.empty)
+      (Abstract_syntax.{ externals = _; sort_defs } as lang)
+    =
     let prims = module_mapping in
     let sort_def_map = SMap.of_alist_exn sort_defs in
     let sort_dep_map = get_sort_ref_info ~prims ~sort_defs in
@@ -1384,7 +1386,7 @@ module Sig (Context : Builder_context) = struct
   module Individual_type_sig = Individual_type_sig (Context)
   module Wrapper_module = Wrapper_module (Context)
 
-  let mk ?(module_mapping = SMap.empty) Syn.{ externals = _; sort_defs } =
+  let mk ?(module_mapping = SMap.empty) Abstract_syntax.{ externals = _; sort_defs } =
     let prims = module_mapping in
     let sort_def_map = SMap.of_alist_exn sort_defs in
     let sort_dep_map = get_sort_ref_info ~prims ~sort_defs in
@@ -1400,7 +1402,7 @@ module Sig (Context : Builder_context) = struct
     let type_sigs =
       List.map
         sort_defs
-        ~f:(fun (sort_name, (Syn.Sort_def.Sort_def (vars, op_defs) as sort_def)) ->
+        ~f:(fun (sort_name, (Sort_def.Sort_def (vars, op_defs) as sort_def)) ->
           let var_names = List.map vars ~f:fst in
           let taken = SSet.of_list var_names in
           let taken, unique_var_names =

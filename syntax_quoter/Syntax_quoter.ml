@@ -175,10 +175,10 @@ module Exp = struct
 
   let sort_slot ~loc = function
     | Sort_slot.Sort_binding s ->
-      [%expr Lvca_syntax.Abstract_syntax.Sort_slot.Sort_binding [%e sort ~loc s]]
+      [%expr Lvca_syntax.Sort_slot.Sort_binding [%e sort ~loc s]]
     | Sort_pattern { pattern_sort; var_sort } ->
       [%expr
-        Lvca_syntax.Abstract_syntax.Sort_slot.Sort_pattern
+        Lvca_syntax.Sort_slot.Sort_pattern
           { pattern_sort = [%e sort ~loc pattern_sort]
           ; var_sort = [%e sort ~loc var_sort]
           }]
@@ -187,18 +187,17 @@ module Exp = struct
   let valence ~loc (Valence.Valence (sort_slots, body_sort)) =
     let sort_slots = sort_slots |> List.map ~f:(sort_slot ~loc) |> list ~loc in
     let body_sort = sort ~loc body_sort in
-    [%expr Lvca_syntax.Abstract_syntax.Valence.Valence ([%e sort_slots], [%e body_sort])]
+    [%expr Lvca_syntax.Valence.Valence ([%e sort_slots], [%e body_sort])]
   ;;
 
   let arity ~loc (Arity.Arity (info, valences)) =
     let valences = valences |> List.map ~f:(valence ~loc) |> list ~loc in
-    [%expr
-      Lvca_syntax.Abstract_syntax.Arity.Arity ([%e provenance ~loc info], [%e valences])]
+    [%expr Lvca_syntax.Arity.Arity ([%e provenance ~loc info], [%e valences])]
   ;;
 
   let operator_def ~loc (Operator_def.Operator_def (info, name, arity')) =
     [%expr
-      Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+      Lvca_syntax.Operator_def.Operator_def
         ([%e provenance ~loc info], [%e string ~loc name], [%e arity ~loc arity'])]
   ;;
 
@@ -212,7 +211,7 @@ module Exp = struct
     in
     let vars = vars |> List.map ~f |> list ~loc in
     let op_defs = op_defs |> List.map ~f:(operator_def ~loc) |> list ~loc in
-    [%expr Lvca_syntax.Abstract_syntax.Sort_def.Sort_def ([%e vars], [%e op_defs])]
+    [%expr Lvca_syntax.Sort_def.Sort_def ([%e vars], [%e op_defs])]
   ;;
 
   let language ~loc { externals; sort_defs } =

@@ -95,8 +95,8 @@ module Term : sig
     -> t
     -> (Pattern.t, t) Base.Either.t Check_failure.t option
 
-  val parse : parse_prim:t Lvca_parsing.t -> t Lvca_parsing.t
-  val parse' : t Lvca_parsing.t
+  val parse : Lvca_util.String.Set.t -> parse_prim:t Lvca_parsing.t -> t Lvca_parsing.t
+  val parse' : Lvca_util.String.Set.t -> t Lvca_parsing.t
 
   module Properties : sig
     include Properties_intf.Parse_pretty_s with type t := t

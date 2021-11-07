@@ -30,6 +30,6 @@ val of_nominal_with_bindings
 (** Are the two terms equivalent up to variable renaming? *)
 val alpha_equivalent : term -> term -> bool
 
-val parse : term Lvca_parsing.t
+val parse : Lvca_util.String.Set.t -> term Lvca_parsing.t
 
 (* module Properties : Properties_intf.S with type t := term *)

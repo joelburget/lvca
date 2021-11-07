@@ -266,7 +266,7 @@ module Term = struct
             (* TODO: kind check *)
             let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
             let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
-            let concrete_arity = Abstract_syntax.Arity.instantiate sort_env arity in
+            let concrete_arity = Arity.instantiate sort_env arity in
             check_slots var_sorts concrete_arity op_scopes)
       in
       Option.map result ~f:(fun { message; stack } ->
@@ -283,7 +283,7 @@ module Term = struct
                str
                  "Wrong number of subterms (%u) for this arity (%a)"
                  (List.length scopes)
-                 (list ~sep:comma Abstract_syntax.Valence.pp)
+                 (list ~sep:comma Valence.pp)
                  valences))
       | Ok scope_valences ->
         List.find_map scope_valences ~f:(fun (scope, valence) ->
@@ -298,7 +298,7 @@ module Term = struct
                str
                  "Wrong number of binders (%u) for this valence (%a) (expected %u)"
                  (List.length binders)
-                 Abstract_syntax.Valence.pp
+                 Valence.pp
                  valence
                  (List.length binder_sorts)))
       | Ok binders ->
@@ -361,12 +361,12 @@ module Term = struct
     | Var (info, name) -> Var (info, name)
   ;;
 
-  let parse ~parse_prim =
+  let parse reserved_words ~parse_prim =
     let open Lvca_parsing in
-    let module Ws = C_comment_parser in
+    let open C_comment_parser in
     fix (fun term ->
         let slot =
-          sep_by1 (Ws.char '.') term
+          sep_by1 (char '.') term
           >>== fun Parse_result.{ value; range } ->
           let binders, tm = List.unsnoc value in
           match binders |> List.map ~f:to_pattern |> Result.all with
@@ -376,26 +376,27 @@ module Term = struct
         choice
           ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
           [ parse_prim
-          ; (Ws.identifier
-            >>= fun ident ->
-            choice
-              [ (Ws.parens (sep_end_by (Ws.char ';') slot)
-                >>| fun slots -> mk_Operator ident slots)
-              ; return (mk_Var ident)
-              ])
+          ; (lower_identifier reserved_words
+            >>~ fun range name -> Var (Provenance.of_range range, name))
+          ; make2
+              (fun ~info ident slots ->
+                mk_Operator ~provenance:(Provenance.of_range info) ident slots)
+              (upper_identifier reserved_words)
+              (parens (sep_end_by (char ';') slot))
           ])
     <?> "term"
   ;;
 
-  let parse' =
+  let parse' reserved_words =
     parse
+      reserved_words
       ~parse_prim:Lvca_parsing.(Primitive_impl.All.parse >>| fun prim -> Primitive prim)
   ;;
 
   module Properties = struct
     open Property_result
 
-    let parse = Lvca_parsing.parse_string parse'
+    let parse = Lvca_parsing.parse_string (parse' String.Set.empty)
     let to_string tm = Fmt.to_to_string pp tm
 
     let json_round_trip1 t =
@@ -556,7 +557,7 @@ module Convertible = struct
 
     let parse =
       let open Lvca_parsing in
-      Term.parse'
+      Term.(parse' String.Set.empty)
       >>= fun nom ->
       match of_nominal nom with
       | Error err ->
@@ -725,27 +726,28 @@ let%test_module "Nominal" =
       [%expect {| e69505a495d739f89cf515c31cf3a2cca4e29a1a4fede9a331b45207a6fb33e5 |}]
     ;;
 
-    (*
     let to_pattern_exn tm =
       match Term.to_pattern tm with
       | Ok pat -> pat
       | Error _ -> failwith "failed to convert term to pattern"
     ;;
 
-    let ( = ) = Pattern.( = )
+    let info = Provenance.of_here [%here]
+    let ( = ) = Pattern.equivalent ~info_eq:(fun _ _ -> true)
 
-    let%test _ = to_pattern_exn (Var (i 1, "abc")) = Var (1, "abc")
-    let%test _ = to_pattern_exn (Var (i 2, "_abc")) = Var (2, "_abc")
-    let%test _ = to_pattern_exn (Var (i 3, "_")) = Var (3, "_")
+    let%test _ = to_pattern_exn (Var (info, "abc")) = Var (info, "abc")
+    let%test _ = to_pattern_exn (Var (info, "_abc")) = Var (info, "_abc")
+    let%test _ = to_pattern_exn (Var (info, "_")) = Var (info, "_")
 
-    let ( = ) = Term.( = )
+    let ( = ) = Term.equivalent ~info_eq:(fun _ _ -> true)
 
-    let%test _ = Term.of_pattern (Var (4, "_abc")) = Var (4, "_abc")
-    let%test _ = Term.of_pattern (Var (5, "_")) = Var (5, "_")
-       *)
+    let%test _ = Term.of_pattern (Var (info, "_abc")) = Var (info, "_abc")
+    let%test _ = Term.of_pattern (Var (info, "_")) = Var (info, "_")
 
     let parse_exn str =
-      let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse')) in
+      let parse =
+        Lvca_parsing.(parse_string (whitespace *> Term.parse' String.Set.empty))
+      in
       match parse str with Error msg -> failwith msg | Ok tm -> tm
     ;;
 
@@ -753,22 +755,23 @@ let%test_module "Nominal" =
 
     let%expect_test _ =
       "a" |> parse_exn |> Term.rename "a" "b" |> pp;
-      [%expect {| <syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418> |}]
-    ;;
-
-    let%expect_test _ =
-      "foo(a; b; c; 1; 'c')" |> parse_exn |> Term.rename "a" "b" |> pp;
       [%expect
-        {| <syntax/Nominal.ml:14:302>foo(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>c</syntax/Nominal.ml:18:418>; <{ input = Input_unknown; range = {13,14} }>1</{ input = Input_unknown; range = {13,14} }>; <{ input = Input_unknown; range = {16,19} }>'c'</{ input = Input_unknown; range = {16,19} }>)</syntax/Nominal.ml:14:302> |}]
+        {| <{ input = Input_unknown; range = {0,1} }>b</{ input = Input_unknown; range = {0,1} }> |}]
     ;;
 
     let%expect_test _ =
-      "foo(lam(a. a); lam(b. b); lam(a. b); lam(b. a))"
+      "Foo(a; b; c; 1; 'c')" |> parse_exn |> Term.rename "a" "b" |> pp;
+      [%expect
+        {| <{ input = Input_unknown; range = {0,20} }>Foo(<{ input = Input_unknown; range = {4,5} }>b</{ input = Input_unknown; range = {4,5} }>; <{ input = Input_unknown; range = {7,8} }>b</{ input = Input_unknown; range = {7,8} }>; <{ input = Input_unknown; range = {10,11} }>c</{ input = Input_unknown; range = {10,11} }>; <{ input = Input_unknown; range = {13,14} }>1</{ input = Input_unknown; range = {13,14} }>; <{ input = Input_unknown; range = {16,19} }>'c'</{ input = Input_unknown; range = {16,19} }>)</{ input = Input_unknown; range = {0,20} }> |}]
+    ;;
+
+    let%expect_test _ =
+      "Foo(Lam(a. a); Lam(b. b); Lam(a. b); Lam(b. a))"
       |> parse_exn
       |> Term.rename "a" "b"
       |> pp;
       [%expect
-        {| <syntax/Nominal.ml:14:302>foo(<syntax/Nominal.ml:14:302>lam(<syntax/Nominal.ml:18:418>a</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>a</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>; <syntax/Nominal.ml:14:302>lam(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>; <syntax/Nominal.ml:14:302>lam(<syntax/Nominal.ml:18:418>a</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>; <syntax/Nominal.ml:14:302>lam(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>)</syntax/Nominal.ml:14:302> |}]
+        {| <{ input = Input_unknown; range = {0,47} }>Foo(<{ input = Input_unknown; range = {4,13} }>Lam(<{ input = Input_unknown; range = {8,9} }>a</{ input = Input_unknown; range = {8,9} }>. <{ input = Input_unknown; range = {11,12} }>a</{ input = Input_unknown; range = {11,12} }>)</{ input = Input_unknown; range = {4,13} }>; <{ input = Input_unknown; range = {15,24} }>Lam(<{ input = Input_unknown; range = {19,20} }>b</{ input = Input_unknown; range = {19,20} }>. <{ input = Input_unknown; range = {22,23} }>b</{ input = Input_unknown; range = {22,23} }>)</{ input = Input_unknown; range = {15,24} }>; <{ input = Input_unknown; range = {26,35} }>Lam(<{ input = Input_unknown; range = {30,31} }>a</{ input = Input_unknown; range = {30,31} }>. <{ input = Input_unknown; range = {33,34} }>b</{ input = Input_unknown; range = {33,34} }>)</{ input = Input_unknown; range = {26,35} }>; <{ input = Input_unknown; range = {37,46} }>Lam(<{ input = Input_unknown; range = {41,42} }>b</{ input = Input_unknown; range = {41,42} }>. <{ input = Input_unknown; range = {44,45} }>b</{ input = Input_unknown; range = {44,45} }>)</{ input = Input_unknown; range = {37,46} }>)</{ input = Input_unknown; range = {0,47} }> |}]
     ;;
   end)
 ;;
@@ -776,7 +779,7 @@ let%test_module "Nominal" =
 let%test_module "TermParser" =
   (module struct
     let ( = ) = Result.equal Term.equivalent String.( = )
-    let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse'))
+    let parse = Lvca_parsing.(parse_string (whitespace *> Term.parse' String.Set.empty))
 
     let print_parse str =
       match parse str with
@@ -786,11 +789,9 @@ let%test_module "TermParser" =
 
     let%test _ = parse "x" = Ok (mk_Var "x")
 
-    (*
     let%test _ =
       parse "123" = Ok (mk_Primitive (Primitive_impl.All.mk_Integer (Z.of_int 123)))
     ;;
-       *)
 
     let%expect_test _ =
       print_parse {|123  // comment|};
@@ -801,34 +802,28 @@ let%test_module "TermParser" =
     |}]
     ;;
 
-    (* let%test _ = parse "\"abc\"" = Ok (mk_Primitive (Primitive_impl.All.mk_String "abc")) *)
+    let%test _ = parse "\"abc\"" = Ok (mk_Primitive (Primitive_impl.All.mk_String "abc"))
 
     let x = mk_Var "x"
-    let t = mk_Operator "true" []
+    let t = mk_Operator "True" []
 
-    (*
     let%test _ =
-      parse "lam(x. x)" = Ok (mk_Operator "lam" [ Scope ([ Pattern.mk_Var "x" ], x) ])
+      parse "Lam(x. x)" = Ok (mk_Operator "Lam" [ Scope ([ Pattern.mk_Var "x" ], x) ])
     ;;
-       *)
 
-    let%test _ = parse {| match() |} = Ok (mk_Operator "match" [])
+    let%test _ = parse {| Match() |} = Ok (mk_Operator "Match" [])
 
     let%test _ =
-      parse {| match(x; x) |} = Ok (mk_Operator "match" [ Scope ([], x); Scope ([], x) ])
+      parse {| Match(x; x) |} = Ok (mk_Operator "Match" [ Scope ([], x); Scope ([], x) ])
     ;;
 
     let%test _ =
-      parse {| match(true(); // comment
-      true()) |}
-      = Ok (mk_Operator "match" [ Scope ([], t); Scope ([], t) ])
+      parse {| Match(True(); // comment
+      True()) |}
+      = Ok (mk_Operator "Match" [ Scope ([], t); Scope ([], t) ])
     ;;
 
-    (* TODO
-    let%test _ =
-      parse {| match(x;) |} = Ok (mk_Operator "match" [ Scope ([], x) ])
-    ;;
-    *)
+    let%test _ = parse {| Match(x;) |} = Ok (mk_Operator "Match" [ Scope ([], x) ])
 
     let%expect_test _ =
       print_parse {|"str"|};
@@ -840,69 +835,70 @@ let%test_module "TermParser" =
     ;;
 
     let%expect_test _ =
-      print_parse {|a()|};
+      print_parse {|A()|};
       (*            0123*)
-      [%expect {|
-      <syntax/Nominal.ml:14:302>a()</syntax/Nominal.ml:14:302>
+      [%expect
+        {|
+      <{ input = Input_unknown; range = {0,3} }>A()</{ input = Input_unknown; range = {0,3} }>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b)|};
+      print_parse {|A(b)|};
       (*            01234*)
       [%expect
         {|
-      <syntax/Nominal.ml:14:302>a(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>
+      <{ input = Input_unknown; range = {0,4} }>A(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>)</{ input = Input_unknown; range = {0,4} }>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b;c)|};
+      print_parse {|A(b;c)|};
       (*            0123456*)
       [%expect
         {|
-      <syntax/Nominal.ml:14:302>a(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>c</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>
+      <{ input = Input_unknown; range = {0,6} }>A(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>; <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>)</{ input = Input_unknown; range = {0,6} }>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b;c;d;e;)|};
+      print_parse {|A(b;c;d;e;)|};
       (*            012345678901*)
       [%expect
         {|
-      <syntax/Nominal.ml:14:302>a(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>c</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>d</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>e</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>
+      <{ input = Input_unknown; range = {0,11} }>A(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>; <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>; <{ input = Input_unknown; range = {6,7} }>d</{ input = Input_unknown; range = {6,7} }>; <{ input = Input_unknown; range = {8,9} }>e</{ input = Input_unknown; range = {8,9} }>)</{ input = Input_unknown; range = {0,11} }>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b.c;d;e;)|};
+      print_parse {|A(b.c;d;e;)|};
       (*            012345678901*)
       [%expect
         {|
-      <syntax/Nominal.ml:14:302>a(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>c</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>d</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>e</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>
+      <{ input = Input_unknown; range = {0,11} }>A(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>. <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>; <{ input = Input_unknown; range = {6,7} }>d</{ input = Input_unknown; range = {6,7} }>; <{ input = Input_unknown; range = {8,9} }>e</{ input = Input_unknown; range = {8,9} }>)</{ input = Input_unknown; range = {0,11} }>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b.c;d;e;f;g)|};
+      print_parse {|A(b.c;d;e;f;g)|};
       (*            012345678901234*)
       [%expect
         {|
-      <syntax/Nominal.ml:14:302>a(<syntax/Nominal.ml:18:418>b</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>c</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>d</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>e</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>f</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>g</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>
+      <{ input = Input_unknown; range = {0,14} }>A(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>. <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>; <{ input = Input_unknown; range = {6,7} }>d</{ input = Input_unknown; range = {6,7} }>; <{ input = Input_unknown; range = {8,9} }>e</{ input = Input_unknown; range = {8,9} }>; <{ input = Input_unknown; range = {10,11} }>f</{ input = Input_unknown; range = {10,11} }>; <{ input = Input_unknown; range = {12,13} }>g</{ input = Input_unknown; range = {12,13} }>)</{ input = Input_unknown; range = {0,14} }>
     |}]
     ;;
 
     let%expect_test _ =
       print_parse
         {|
-match(x; match_lines(
-  match_line(foo(). true());
-  match_line(bar(_; _x; y). y)
+Match(x; Match_lines(
+  Match_line(Foo(). True());
+  Match_line(Bar(_; _x; y). y)
 )) |};
       [%expect
         {|
-        <syntax/Nominal.ml:14:302>match(<syntax/Nominal.ml:18:418>x</syntax/Nominal.ml:18:418>;
-        <syntax/Nominal.ml:14:302>match_lines(<syntax/Nominal.ml:14:302>match_line(<syntax/Nominal.ml:14:302>foo()</syntax/Nominal.ml:14:302>. <syntax/Nominal.ml:14:302>true()</syntax/Nominal.ml:14:302>)</syntax/Nominal.ml:14:302>; <syntax/Nominal.ml:14:302>match_line(<syntax/Nominal.ml:14:302>bar(<syntax/Nominal.ml:18:418>_</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>_x</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:18:418>y</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>. <syntax/Nominal.ml:18:418>y</syntax/Nominal.ml:18:418>)</syntax/Nominal.ml:14:302>)</syntax/Nominal.ml:14:302>)</syntax/Nominal.ml:14:302> |}]
+        <{ input = Input_unknown; range = {1,85} }>Match(<{ input = Input_unknown; range = {7,8} }>x</{ input = Input_unknown; range = {7,8} }>;
+        <{ input = Input_unknown; range = {10,84} }>Match_lines(<{ input = Input_unknown; range = {25,50} }>Match_line(<{ input = Input_unknown; range = {36,41} }>Foo()</{ input = Input_unknown; range = {36,41} }>. <{ input = Input_unknown; range = {43,49} }>True()</{ input = Input_unknown; range = {43,49} }>)</{ input = Input_unknown; range = {25,50} }>; <{ input = Input_unknown; range = {54,82} }>Match_line(<{ input = Input_unknown; range = {65,78} }>Bar(<{ input = Input_unknown; range = {69,70} }>_</{ input = Input_unknown; range = {69,70} }>; <{ input = Input_unknown; range = {72,74} }>_x</{ input = Input_unknown; range = {72,74} }>; <{ input = Input_unknown; range = {76,77} }>y</{ input = Input_unknown; range = {76,77} }>)</{ input = Input_unknown; range = {65,78} }>. <{ input = Input_unknown; range = {80,81} }>y</{ input = Input_unknown; range = {80,81} }>)</{ input = Input_unknown; range = {54,82} }>)</{ input = Input_unknown; range = {10,84} }>)</{ input = Input_unknown; range = {1,85} }> |}]
     ;;
 
     let%expect_test _ =
@@ -911,7 +907,7 @@ match(x; match_lines(
                     0         1         2         3*)
       [%expect
         {|
-      <syntax/Nominal.ml:14:302>Succ(<syntax/Nominal.ml:14:302>Ifz(<syntax/Nominal.ml:14:302>Zero()</syntax/Nominal.ml:14:302>; <syntax/Nominal.ml:18:418>x</syntax/Nominal.ml:18:418>. <syntax/Nominal.ml:18:418>x</syntax/Nominal.ml:18:418>; <syntax/Nominal.ml:14:302>Zero()</syntax/Nominal.ml:14:302>)</syntax/Nominal.ml:14:302>)</syntax/Nominal.ml:14:302>
+      <{ input = Input_unknown; range = {0,31} }>Succ(<{ input = Input_unknown; range = {5,30} }>Ifz(<{ input = Input_unknown; range = {9,15} }>Zero()</{ input = Input_unknown; range = {9,15} }>; <{ input = Input_unknown; range = {17,18} }>x</{ input = Input_unknown; range = {17,18} }>. <{ input = Input_unknown; range = {20,21} }>x</{ input = Input_unknown; range = {20,21} }>; <{ input = Input_unknown; range = {23,29} }>Zero()</{ input = Input_unknown; range = {23,29} }>)</{ input = Input_unknown; range = {5,30} }>)</{ input = Input_unknown; range = {0,31} }>
     |}]
     ;;
 
@@ -931,33 +927,34 @@ let%test_module "check" =
     ;;
 
     let parse_term term_str =
-      Lvca_parsing.parse_string Term.parse' term_str |> Result.ok_or_failwith
+      Lvca_parsing.parse_string (Term.parse' String.Set.empty) term_str
+      |> Result.ok_or_failwith
     ;;
 
-    let parse_sort str = Lvca_parsing.(parse_string Sort.parse str)
+    let parse_sort str = Lvca_parsing.(parse_string (Sort.parse String.Set.empty) str)
 
     let lang_desc =
       {|
 value :=
-  | unit()
-  | lit_int(integer)
-  | lit_str(string)
-  | list(list value)
+  | Unit()
+  | Lit_int(integer)
+  | Lit_str(string)
+  | List(list value)
 
 list a :=
-  | nil()
-  | cons(a; list a)
+  | Nil()
+  | Cons(a; list a)
 
 match_line :=
-  | match_line(value[value]. term)
+  | Match_line(value[value]. term)
 
 term :=
-  | lambda(value. term)
-  | alt_lambda(term. term)
-  | match(match_line)
-  | value(value)
+  | Lambda(value. term)
+  | Alt_lambda(term. term)
+  | Match(match_line)
+  | Value(value)
 
-test := foo(term[term]. term)
+test := Foo(term[term]. term)
       |}
     ;;
 
@@ -978,145 +975,122 @@ test := foo(term[term]. term)
     ;;
 
     let%expect_test _ =
-      check_term' "term" "lambda(a. value(a))";
+      check_term' "term" "Lambda(a. Value(a))";
       [%expect]
     ;;
 
-    (*
     let%expect_test _ =
-      check_term'
-        "term"
-        {|match(
-        match_line(
-          list(cons(a; nil())).
-          value(list(cons(a; cons(a; nil()))))
-        ),
-        match_line(_. value(list(nil())))
-      )
-    |};
+      check_term' "term" "Unit()";
       [%expect
         {|
-        Expected a single term, but found a list
-        stack:
-        - term: match(match_line(list(cons(a; nil())).
-                      value(list(cons(a; cons(a; nil()))))),
-                match_line(_. value(list(nil())))),
-          sort: term |}]
-    ;;
-    *)
-
-    let%expect_test _ =
-      check_term' "term" "unit()";
-      [%expect
-        {|
-      Nominal.check: failed to find operator unit in sort term
+      Nominal.check: failed to find operator Unit in sort term
       stack:
-      - term: unit(), sort: term |}]
+      - term: Unit(), sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "term" "lambda(a. b)";
+      check_term' "term" "Lambda(a. b)";
       [%expect
         {|
       Unknown variable b (is it bound?)
       stack:
-      - term: lambda(a. b), sort: term
+      - term: Lambda(a. b), sort: term
       - term: b, sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "term" "lambda(val. alt_lambda(tm. val))";
+      check_term' "term" "Lambda(val. Alt_lambda(tm. val))";
       [%expect
         {|
       Variable val has unexpected sort (saw: value) (expected: term)
       stack:
-      - term: lambda(val. alt_lambda(tm. val)), sort: term
-      - term: alt_lambda(tm. val), sort: term
+      - term: Lambda(val. Alt_lambda(tm. val)), sort: term
+      - term: Alt_lambda(tm. val), sort: term
       - term: val, sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "value" {|lit_int("foo")|};
+      check_term' "value" {|Lit_int("foo")|};
       [%expect
         {|
       Unexpected sort (integer) for a primitive ("foo")
       stack:
-      - term: lit_int("foo"), sort: value
+      - term: Lit_int("foo"), sort: value
       - term: "foo", sort: integer |}]
     ;;
 
     let%expect_test _ =
-      check_term' "value" "lit_str(123)";
+      check_term' "value" "Lit_str(123)";
       [%expect
         {|
       Unexpected sort (string) for a primitive (123)
       stack:
-      - term: lit_str(123), sort: value
+      - term: Lit_str(123), sort: value
       - term: 123, sort: string |}]
     ;;
 
     let%expect_test _ =
-      check_term' "term" "lambda(a; b)";
+      check_term' "term" "Lambda(a; b)";
       [%expect
         {|
       Wrong number of subterms (2) for this arity (value. term)
       stack:
-      - term: lambda(a; b), sort: term |}]
+      - term: Lambda(a; b), sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "value" "lit_int(1; 2)";
+      check_term' "value" "Lit_int(1; 2)";
       [%expect
         {|
       Wrong number of subterms (2) for this arity (integer)
       stack:
-      - term: lit_int(1; 2), sort: value |}]
+      - term: Lit_int(1; 2), sort: value |}]
     ;;
 
     let%expect_test _ =
-      check_term' "match_line" "match_line(a. b. value(a))";
+      check_term' "match_line" "Match_line(a. b. Value(a))";
       [%expect
         {|
       Wrong number of binders (2) for this valence (value[value]. term) (expected 1)
       stack:
-      - term: match_line(a. b. value(a)), sort: match_line |}]
+      - term: Match_line(a. b. Value(a)), sort: match_line |}]
     ;;
 
     let%expect_test _ =
-      check_term' "match_line" "match_line(a. a)";
+      check_term' "match_line" "Match_line(a. a)";
       [%expect
         {|
       Variable a has unexpected sort (saw: value) (expected: term)
       stack:
-      - term: match_line(a. a), sort: match_line
+      - term: Match_line(a. a), sort: match_line
       - term: a, sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "term" "lambda(a. b. a)";
+      check_term' "term" "Lambda(a. b. a)";
       [%expect
         {|
       Wrong number of binders (2) for this valence (value. term) (expected 1)
       stack:
-      - term: lambda(a. b. a), sort: term |}]
+      - term: Lambda(a. b. a), sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "term" "lambda(list(cons(a; cons(b; nil))). value(a))";
+      check_term' "term" "Lambda(List(Cons(a; Cons(b; Nil()))). Value(a))";
       [%expect
         {|
       Fixed-valence binders must all be vars (no patterns)
       stack:
-      - term: lambda(list(cons(a; cons(b; nil))). value(a)), sort: term |}]
+      - term: Lambda(List(Cons(a; Cons(b; Nil()))). Value(a)), sort: term |}]
     ;;
 
     let%expect_test _ =
-      check_term' "term" "match(a. a)";
+      check_term' "term" "Match(a. a)";
       [%expect
         {|
       Wrong number of binders (1) for this valence (match_line) (expected 0)
       stack:
-      - term: match(a. a), sort: term |}]
+      - term: Match(a. a), sort: term |}]
     ;;
 
     let%expect_test _ =

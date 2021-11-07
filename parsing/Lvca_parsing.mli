@@ -109,7 +109,7 @@ module type Character_parser = sig
   val char : char -> char t
   val string : string -> string t
 
-  (** The same a string parser, but requires trailing whitespace or a comment. *)
+  (** The same as a string parser, but requires trailing whitespace or a comment. *)
   val keyword : string -> string t
 
   val parens : 'a t -> 'a t

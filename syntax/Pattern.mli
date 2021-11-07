@@ -71,7 +71,7 @@ val check
   -> (Sort.t String.Map.t, t Check_failure.t) Result.t
 
 (** {1 Parsing} *)
-val parse : t Lvca_parsing.t
+val parse : String.Set.t -> t Lvca_parsing.t
 
 module Properties : sig
   include Properties_intf.Parse_pretty_s with type t := t

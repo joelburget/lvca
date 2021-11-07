@@ -103,7 +103,7 @@ let parse =
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive.All.parse >>| fun prim -> Primitive prim)
-        ; (Ws.identifier
+        ; (Ws.upper_identifier Lvca_util.String.Set.empty
           >>== fun Parse_result.{ value = ident; range = start; _ } ->
           Ws.parens (sep_end_by (Ws.char ';') term)
           >>|| (fun { value = children; range = finish } ->

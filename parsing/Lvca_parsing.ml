@@ -550,15 +550,25 @@ module No_junk : Character_parser = struct
     adapt (Basic.identifier' ~is_start ?is_continue reserved_words)
   ;;
 
-  let upper_identifier reserved_words = adapt (Basic.upper_identifier reserved_words)
-  let lower_identifier reserved_words = adapt (Basic.lower_identifier reserved_words)
-  let integer_lit = adapt Basic.integer_lit
-  let integer_or_float_lit = adapt Basic.integer_or_float_lit
+  let upper_identifier reserved_words =
+    adapt (Basic.upper_identifier reserved_words) <?> "upper-case identifier"
+  ;;
+
+  let lower_identifier reserved_words =
+    adapt (Basic.lower_identifier reserved_words) <?> "lower-case identifier"
+  ;;
+
+  let integer_lit = adapt Basic.integer_lit <?> "integer literal"
+
+  let integer_or_float_lit =
+    adapt Basic.integer_or_float_lit <?> "integer or float literal"
+  ;;
+
   let string_lit = adapt Basic.string_lit
-  let char c = adapt (Basic.char c)
+  let char c = adapt (Basic.char c) <?> Fmt.str "char %C" c
   let satisfy f = adapt (Basic.satisfy f)
-  let string str = adapt (Basic.string str)
-  let keyword = string
+  let string str = adapt (Basic.string str) <?> Fmt.str "string %S" str
+  let keyword str = adapt (Basic.string str) <?> Fmt.str "keyword %S" str
 
   let mk_bracket_parser open_c close_c p =
     lift3 (fun _ v _ -> v) (char open_c <* whitespace) p (whitespace *> char close_c)

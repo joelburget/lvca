@@ -31,4 +31,4 @@ val pp : t Fmt.t
 val instantiate : t String.Map.t -> t -> t
 val split : t -> string * t list
 val kind_check : Int.Set.t String.Map.t -> t -> Int.Set.t String.Map.t
-val parse : t Lvca_parsing.t
+val parse : String.Set.t -> t Lvca_parsing.t

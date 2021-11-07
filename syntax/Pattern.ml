@@ -164,7 +164,7 @@ let check lang ~pattern_sort ~var_sort =
           (* TODO: kind check *)
           let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
           let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
-          check_slots (Abstract_syntax.Arity.instantiate sort_env arity) subpats)
+          check_slots (Arity.instantiate sort_env arity) subpats)
     in
     Result.map_error result ~f:(fun Check_failure.{ message; stack } ->
         Check_failure.{ message; stack = { term = pat; sort } :: stack })
@@ -177,7 +177,7 @@ let check lang ~pattern_sort ~var_sort =
              str
                "Wrong number of subterms (%u) for this arity (%a)"
                (List.length pats)
-               (list ~sep:comma Abstract_syntax.Valence.pp)
+               (list ~sep:comma Valence.pp)
                valences))
     | Ok pat_valences ->
       pat_valences
@@ -192,7 +192,7 @@ let check lang ~pattern_sort ~var_sort =
                        "Invalid pattern (%a) binding a non-sort valence (%a)"
                        pp
                        pat
-                       Abstract_syntax.Valence.pp
+                       Valence.pp
                        valence)))
       |> Result.all
       |> Result.map ~f:String.Map.strict_unions
@@ -201,24 +201,21 @@ let check lang ~pattern_sort ~var_sort =
   check pattern_sort
 ;;
 
-let parse =
+let parse reserved_word =
   let open Lvca_parsing in
-  let module Ws = C_comment_parser in
+  let open C_comment_parser in
   fix (fun pat ->
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive_impl.All.parse >>| fun prim -> Primitive prim)
-        ; (Ws.identifier
+        ; (lower_identifier reserved_word
+          >>~ fun range ident -> Var (Provenance.of_range range, ident))
+        ; (upper_identifier reserved_word
           >>== fun { range; value = ident } ->
-          choice
-            [ Ws.(
-                parens (sep_end_by (char ';' <* whitespace) pat)
-                >>~ fun range' children ->
-                let range = Opt_range.union range range' in
-                Operator (Provenance.of_range range, ident, children))
-            ; return (Var (Provenance.of_range range, ident))
-            ]
-          <?> "pattern body")
+          parens (sep_end_by (char ';' <* whitespace) pat)
+          >>~ fun range' children ->
+          let range = Opt_range.union range range' in
+          Operator (Provenance.of_range range, ident, children))
         ])
   <?> "pattern"
 ;;
@@ -232,7 +229,7 @@ let%test_module "Parsing" =
     ;;
 
     let print_parse tm =
-      match Lvca_parsing.parse_string parse tm with
+      match Lvca_parsing.parse_string (parse String.Set.empty) tm with
       | Ok pat -> Fmt.pr "%a" pp pat
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
@@ -246,10 +243,10 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      print_parse {|a()|};
+      print_parse {|A()|};
       [%expect
         {|
-      <{ input = Input_unknown; range = {0,3} }>a()</{ input = Input_unknown; range = {0,3} }>
+      <{ input = Input_unknown; range = {0,3} }>A()</{ input = Input_unknown; range = {0,3} }>
     |}]
     ;;
 
@@ -278,43 +275,44 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b)|};
+      print_parse {|A(b)|};
       [%expect
         {|
-      <{ input = Input_unknown; range = {0,4} }>a(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>)</{ input = Input_unknown; range = {0,4} }>
+      <{ input = Input_unknown; range = {0,4} }>A(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>)</{ input = Input_unknown; range = {0,4} }>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b;c)|};
+      print_parse {|A(b;c)|};
       (*0123456*)
       [%expect
         {|
-      <{ input = Input_unknown; range = {0,6} }>a(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>; <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>)</{ input = Input_unknown; range = {0,6} }>
+      <{ input = Input_unknown; range = {0,6} }>A(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>; <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>)</{ input = Input_unknown; range = {0,6} }>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b;c;)|};
+      print_parse {|A(b;c;)|};
       (*01234567*)
       [%expect
         {|
-      <{ input = Input_unknown; range = {0,7} }>a(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>; <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>)</{ input = Input_unknown; range = {0,7} }>
+      <{ input = Input_unknown; range = {0,7} }>A(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>; <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>)</{ input = Input_unknown; range = {0,7} }>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b;c;d;e;)|};
+      print_parse {|A(b;c;d;e;)|};
       (*012345678901*)
       [%expect
         {|
-      <{ input = Input_unknown; range = {0,11} }>a(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>; <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>; <{ input = Input_unknown; range = {6,7} }>d</{ input = Input_unknown; range = {6,7} }>; <{ input = Input_unknown; range = {8,9} }>e</{ input = Input_unknown; range = {8,9} }>)</{ input = Input_unknown; range = {0,11} }>
+      <{ input = Input_unknown; range = {0,11} }>A(<{ input = Input_unknown; range = {2,3} }>b</{ input = Input_unknown; range = {2,3} }>; <{ input = Input_unknown; range = {4,5} }>c</{ input = Input_unknown; range = {4,5} }>; <{ input = Input_unknown; range = {6,7} }>d</{ input = Input_unknown; range = {6,7} }>; <{ input = Input_unknown; range = {8,9} }>e</{ input = Input_unknown; range = {8,9} }>)</{ input = Input_unknown; range = {0,11} }>
     |}]
     ;;
 
     let%expect_test _ =
-      print_parse {|a(b;;c)|};
-      [%expect {| failed: : end_of_input |}]
+      print_parse {|A(b;;c)|};
+      [%expect
+        {| failed: pattern: looking for a primitive or identifier (for a var or operator) |}]
     ;;
   end)
 ;;
@@ -322,7 +320,7 @@ let%test_module "Parsing" =
 module Properties = struct
   open Property_result
 
-  let parse = Lvca_parsing.parse_string parse
+  let parse = Lvca_parsing.parse_string (parse String.Set.empty)
   let to_string = Fmt.to_to_string pp
 
   let json_round_trip1 t =
@@ -371,31 +369,34 @@ let%test_module "check" =
       |> Result.ok_or_failwith
     ;;
 
-    let parse_pattern str = Lvca_parsing.parse_string parse str |> Result.ok_or_failwith
-    let parse_sort str = Lvca_parsing.(parse_string Sort.parse str)
+    let parse_pattern str =
+      Lvca_parsing.parse_string (parse String.Set.empty) str |> Result.ok_or_failwith
+    ;;
+
+    let parse_sort str = Lvca_parsing.(parse_string (Sort.parse String.Set.empty) str)
 
     let lang_desc =
       {|
 value :=
-  | unit()
-  | lit_int(integer)
-  | lit_str(string)
-  | list(list value)
+  | Unit()
+  | Lit_int(integer)
+  | Lit_str(string)
+  | List(list value)
 
 list a :=
-  | nil()
-  | cons(a; list a)
+  | Nil()
+  | Cons(a; list a)
 
 match_line :=
-  | match_line(value[value]. term)
+  | Match_line(value[value]. term)
 
 term :=
-  | lambda(value. term)
-  | alt_lambda(term. term)
-  | match(match_line)
-  | value(value)
+  | Lambda(value. term)
+  | Alt_lambda(term. term)
+  | Match(match_line)
+  | Value(value)
 
-test := foo(term[term]. term)
+test := Foo(term[term]. term)
       |}
     ;;
 
@@ -416,27 +417,27 @@ test := foo(term[term]. term)
     ;;
 
     let%expect_test _ =
-      print_check_pattern "value" "unit()";
+      print_check_pattern "value" "Unit()";
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "value" "lit_int(1)";
+      print_check_pattern "value" "Lit_int(1)";
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "value" {|lit_str("str")|};
+      print_check_pattern "value" {|Lit_str("str")|};
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "list value" {|nil()|};
+      print_check_pattern "list value" {|Nil()|};
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "list value" {|cons(unit(); nil())|};
+      print_check_pattern "list value" {|Cons(Unit(); Nil())|};
       [%expect]
     ;;
 
@@ -444,24 +445,24 @@ test := foo(term[term]. term)
       print_check_pattern
         ~var_sort_str:"value"
         "term"
-        {|value(list(cons(unit(); nil())))|};
+        {|Value(List(Cons(Unit(); Nil())))|};
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern ~var_sort_str:"value" "term" {|value(list(cons(a; nil())))|};
+      print_check_pattern ~var_sort_str:"value" "term" {|Value(List(Cons(a; Nil())))|};
       [%expect]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "term" {|value(list(cons(a; nil())))|};
+      print_check_pattern "term" {|Value(List(Cons(a; Nil())))|};
       [%expect
         {|
         Pattern a is of sort `term`. Expected `value`.
         stack:
-        - pattern: value(list(cons(a; nil()))), sort: term
-        - pattern: list(cons(a; nil())), sort: value
-        - pattern: cons(a; nil()), sort: list value
+        - pattern: Value(List(Cons(a; Nil()))), sort: term
+        - pattern: List(Cons(a; Nil())), sort: value
+        - pattern: Cons(a; Nil()), sort: list value
         - pattern: a, sort: value
       |}]
     ;;
@@ -470,32 +471,32 @@ test := foo(term[term]. term)
       print_check_pattern
         ~var_sort_str:"value"
         "term"
-        {|value(list(cons(a; cons(a; _))))|};
+        {|Value(List(Cons(a; Cons(a; _))))|};
       [%expect
         {|
       Did you mean to bind the same variable (a) twice in the same pattern? That's not allowed!
       stack:
-      - pattern: value(list(cons(a; cons(a; _)))), sort: term
-      - pattern: list(cons(a; cons(a; _))), sort: value
-      - pattern: cons(a; cons(a; _)), sort: list value |}]
+      - pattern: Value(List(Cons(a; Cons(a; _)))), sort: term
+      - pattern: List(Cons(a; Cons(a; _))), sort: value
+      - pattern: Cons(a; Cons(a; _)), sort: list value |}]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "term" "lambda(a)";
+      print_check_pattern "term" "Lambda(a)";
       [%expect
         {|
         Invalid pattern (a) binding a non-sort valence (value. term)
         stack:
-        - pattern: lambda(a), sort: term |}]
+        - pattern: Lambda(a), sort: term |}]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "match_line" "match_line(a)";
+      print_check_pattern "match_line" "Match_line(a)";
       [%expect
         {|
         Invalid pattern (a) binding a non-sort valence (value[value]. term)
         stack:
-        - pattern: match_line(a), sort: match_line |}]
+        - pattern: Match_line(a), sort: match_line |}]
     ;;
 
     let%expect_test _ =
@@ -508,39 +509,39 @@ test := foo(term[term]. term)
     ;;
 
     let%expect_test _ =
-      print_check_pattern "value" "foo()";
+      print_check_pattern "value" "Foo()";
       [%expect
         {|
-      Pattern.check: failed to find operator foo in sort value
+      Pattern.check: failed to find operator Foo in sort value
       stack:
-      - pattern: foo(), sort: value |}]
+      - pattern: Foo(), sort: value |}]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "value" "unit(1)";
+      print_check_pattern "value" "Unit(1)";
       [%expect
         {|
       Wrong number of subterms (1) for this arity ()
       stack:
-      - pattern: unit(1), sort: value |}]
+      - pattern: Unit(1), sort: value |}]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "term" "lambda(1)";
+      print_check_pattern "term" "Lambda(1)";
       [%expect
         {|
       Invalid pattern (1) binding a non-sort valence (value. term)
       stack:
-      - pattern: lambda(1), sort: term |}]
+      - pattern: Lambda(1), sort: term |}]
     ;;
 
     let%expect_test _ =
-      print_check_pattern "term" "match(a; b)";
+      print_check_pattern "term" "Match(a; b)";
       [%expect
         {|
       Wrong number of subterms (2) for this arity (match_line)
       stack:
-      - pattern: match(a; b), sort: term |}]
+      - pattern: Match(a; b), sort: term |}]
     ;;
 
     let%expect_test _ =

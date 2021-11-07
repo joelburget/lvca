@@ -1,6 +1,7 @@
 open Base
-open Lvca_syntax
 open Ppxlib
+open Lvca_syntax
+open Lvca_util
 open Syntax_quoter
 
 let parse p = Lvca_parsing.(parse_string (whitespace *> p))
@@ -16,7 +17,7 @@ let parse_module_name =
 ;;
 
 let expand_nominal ~(loc : Location.t) ~path:_ (str : string) : expression =
-  match parse Nominal.Term.parse' str with
+  match parse (Nominal.Term.parse' String.Set.empty) str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> Exp.nominal ~loc tm
 ;;
@@ -28,7 +29,7 @@ let expand_nonbinding ~(loc : Location.t) ~path:_ str : expression =
 ;;
 
 let expand_pattern ~(loc : Location.t) ~path:_ str : expression =
-  match parse Pattern.parse str with
+  match parse (Pattern.parse String.Set.empty) str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> Exp.pattern ~loc tm
 ;;
@@ -46,7 +47,7 @@ let mk_module_mapping ~loc exprs =
              | Ok modules -> sort_name, modules)
            | _ -> Location.raise_errorf ~loc "expected a constant string")
          | _ -> Location.raise_errorf ~loc "expected an identifier")
-  |> Lvca_util.String.Map.of_alist_exn
+  |> String.Map.of_alist_exn
 ;;
 
 let check_expr_opt ~loc expr_opt =

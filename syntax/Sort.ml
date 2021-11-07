@@ -94,14 +94,14 @@ let split = function
   | Ap (_, name, ts) -> name, Ap_list.to_list ts
 ;;
 
-let parse =
+let parse reserved_word =
   let open Lvca_parsing in
   fix (fun sort ->
       let atomic_sort =
         choice
           ~failure_msg:"looking for parens or an identifier"
           [ C_comment_parser.parens sort
-          ; (C_comment_parser.identifier
+          ; (C_comment_parser.lower_identifier reserved_word
             >>~ fun loc value -> Name (Provenance.of_range loc, value))
           ]
       in
@@ -137,6 +137,7 @@ let%test_module "Sort_Parser" =
     ;;
 
     let ( = ) = equivalent ~info_eq:(fun _ _ -> true)
+    let parse = parse String.Set.empty
 
     let%test_unit _ = assert (parse_with parse "a" = a)
     let%test_unit _ = assert (parse_with parse "(a)" = a)

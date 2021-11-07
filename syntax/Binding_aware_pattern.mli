@@ -92,7 +92,7 @@ val check
   -> (Capture_type.t String.Map.t, t Check_failure.t) Result.t
 
 (** {1 Parsing} *)
-val parse : t Lvca_parsing.t
+val parse : String.Set.t -> t Lvca_parsing.t
 
 module Properties : sig
   val string_round_trip1 : t -> Property_result.t

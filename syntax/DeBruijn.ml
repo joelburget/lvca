@@ -134,9 +134,9 @@ module Kernel = struct
     | Some tm -> Nominal.Term.pp ppf tm
   ;;
 
-  let parse =
+  let parse reserved_words =
     let open Lvca_parsing in
-    Nominal.Term.parse'
+    Nominal.Term.parse' reserved_words
     >>= fun tm ->
     match of_nominal tm with
     | Ok tm -> return tm

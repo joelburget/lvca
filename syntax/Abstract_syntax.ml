@@ -1,404 +1,5 @@
-(** Types for representing languages *)
-
 open Base
-open Lvca_provenance
 open Lvca_util
-
-module Sort_slot = struct
-  type t =
-    | Sort_binding of Sort.t
-    | Sort_pattern of Pattern_sort.t
-
-  let equivalent ?(info_eq = fun _ _ -> true) slot1 slot2 =
-    match slot1, slot2 with
-    | Sort_binding s1, Sort_binding s2 -> Sort.equivalent ~info_eq s1 s2
-    | Sort_pattern ps1, Sort_pattern ps2 -> Pattern_sort.equivalent ~info_eq ps1 ps2
-    | _, _ -> false
-  ;;
-
-  let ( = ) = equivalent ~info_eq:Provenance.( = )
-
-  let pp ppf = function
-    | Sort_binding sort -> Sort.pp ppf sort
-    | Sort_pattern ps -> Pattern_sort.pp ppf ps
-  ;;
-
-  let instantiate env = function
-    | Sort_binding s -> Sort_binding (Sort.instantiate env s)
-    | Sort_pattern ps -> Sort_pattern (Pattern_sort.instantiate env ps)
-  ;;
-
-  let kind_check env = function
-    | Sort_binding sort -> Sort.kind_check env sort
-    | Sort_pattern { pattern_sort; var_sort } ->
-      [ pattern_sort; var_sort ] |> List.fold ~init:env ~f:Sort.kind_check
-  ;;
-
-  let parse =
-    let open Lvca_parsing in
-    Sort.parse
-    >>= fun sort ->
-    choice
-      [ (C_comment_parser.brackets Sort.parse
-        >>| fun var_sort -> Sort_pattern { pattern_sort = sort; var_sort })
-      ; return (Sort_binding sort)
-      ]
-    <?> "sort slot"
-  ;;
-end
-
-module Valence = struct
-  type t = Valence of Sort_slot.t list * Sort.t
-
-  let equivalent
-      ?(info_eq = fun _ _ -> true)
-      (Valence (slots1, sort1))
-      (Valence (slots2, sort2))
-    =
-    List.equal Sort_slot.(equivalent ~info_eq) slots1 slots2
-    && Sort.(equivalent ~info_eq) sort1 sort2
-  ;;
-
-  let ( = ) = equivalent ~info_eq:Provenance.( = )
-
-  let pp ppf (Valence (binders, result)) =
-    match binders with
-    | [] -> Sort.pp ppf result
-    | _ ->
-      Fmt.pf ppf "%a. %a" Fmt.(list ~sep:(any ".@ ") Sort_slot.pp) binders Sort.pp result
-  ;;
-
-  let instantiate env = function
-    | Valence (binding_sort_slots, body_sort) ->
-      Valence
-        ( List.map binding_sort_slots ~f:(Sort_slot.instantiate env)
-        , Sort.instantiate env body_sort )
-  ;;
-
-  let kind_check env (Valence (binding_slots, value_sort)) =
-    let env = binding_slots |> List.fold ~init:env ~f:Sort_slot.kind_check in
-    Sort.kind_check env value_sort
-  ;;
-
-  let parse =
-    let open Lvca_parsing in
-    let t =
-      sep_by1 (C_comment_parser.char '.') Sort_slot.parse
-      >>= fun slots ->
-      let binders, body_slot = List.unsnoc slots in
-      match body_slot with
-      | Sort_slot.Sort_binding body_sort -> return (Valence (binders, body_sort))
-      | _ ->
-        fail
-          (Fmt.str
-             "Expected a simple sort, instead found a pattern sort (%a)"
-             Sort_slot.pp
-             body_slot)
-    in
-    t <?> "valence"
-  ;;
-end
-
-module Arity = struct
-  type t = Arity of Provenance.t * Valence.t list
-
-  let mk ?(provenance = Provenance.of_here [%here]) valences = Arity (provenance, valences)
-
-  let pp ppf (Arity (info, valences)) =
-    Provenance.open_stag ppf info;
-    Fmt.(parens (list ~sep:semi Valence.pp)) ppf valences;
-    Provenance.close_stag ppf info
-  ;;
-
-  let equivalent
-      ?(info_eq = fun _ _ -> true)
-      (Arity (i1, valences1))
-      (Arity (i2, valences2))
-    =
-    info_eq i1 i2 && List.equal Valence.(equivalent ~info_eq) valences1 valences2
-  ;;
-
-  let ( = ) = equivalent ~info_eq:Provenance.( = )
-
-  let instantiate env (Arity (info, valences)) =
-    Arity (info, List.map ~f:(Valence.instantiate env) valences)
-  ;;
-
-  let parse =
-    let open Lvca_parsing in
-    let open C_comment_parser in
-    parens (sep_by (char ';') Valence.parse)
-    >>| (fun valences -> Arity (Provenance.of_here [%here], valences))
-    <?> "arity"
-  ;;
-
-  let%test_module "parsing" =
-    (module struct
-      let none = Provenance.of_here [%here]
-      let tm = Sort.Name (none, "tm")
-      let tm_v = Valence.Valence ([], tm)
-      let integer = Sort.Name (none, "integer")
-      let integer_v = Valence.Valence ([], integer)
-      let ( = ) = equivalent
-      let go = Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse))
-
-      let%test_unit _ = assert (go "(integer)" = Arity (none, [ integer_v ]))
-      let%test_unit _ = assert (go "(tm; tm)" = Arity (none, [ tm_v; tm_v ]))
-
-      let%test_unit _ =
-        assert (
-          go "(tm. tm)  // comment"
-          = Arity (none, [ Valence.Valence ([ Sort_binding tm ], tm) ]))
-      ;;
-
-      let%test_unit _ = assert (go "(tm)" = Arity (none, [ Valence.Valence ([], tm) ]))
-
-      let%test_unit _ =
-        assert (
-          go "(tm[tm]. tm)"
-          = Arity
-              ( none
-              , [ Valence.Valence
-                    ([ Sort_pattern { pattern_sort = tm; var_sort = tm } ], tm)
-                ] ))
-      ;;
-
-      let expect_okay str =
-        match Lvca_parsing.parse_string parse str with
-        | Ok _ -> ()
-        | Error msg -> Stdio.print_string msg
-      ;;
-
-      let%expect_test _ = expect_okay "(tm[tm]. tm[tm]. tm)"
-      let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)"
-      let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)"
-      let%expect_test _ = expect_okay "((foo bar)[baz quux]. tm)  // comment"
-      let%test_unit _ = assert (go "()" = Arity (none, []))
-      let%test_unit _ = assert (go "()" = Arity (none, []))
-    end)
-  ;;
-end
-
-module Operator_def = struct
-  type t = Operator_def of Provenance.t * string * Arity.t
-
-  let mk ?(provenance = Provenance.of_here [%here]) name arity =
-    Operator_def (provenance, name, arity)
-  ;;
-
-  let equivalent
-      ?(info_eq = fun _ _ -> true)
-      (Operator_def (info1, name1, arity1))
-      (Operator_def (info2, name2, arity2))
-    =
-    info_eq info1 info2
-    && String.(name1 = name2)
-    && Arity.equivalent ~info_eq arity1 arity2
-  ;;
-
-  let ( = ) = equivalent ~info_eq:Provenance.( = )
-
-  let kind_check env (Operator_def (_info, _name, Arity (_, valences))) =
-    List.fold valences ~init:env ~f:Valence.kind_check
-  ;;
-
-  let pp ppf (Operator_def (info, name, arity)) =
-    Provenance.open_stag ppf info;
-    Fmt.pf ppf "%s%a" name Arity.pp arity;
-    Provenance.close_stag ppf info
-  ;;
-
-  let parse =
-    let open Lvca_parsing in
-    C_comment_parser.identifier
-    >>= (fun ident ->
-          Arity.parse
-          >>~ fun location arity ->
-          Operator_def (Provenance.of_range location, ident, arity))
-    <?> "operator definition"
-  ;;
-
-  let%test_module "parsing" =
-    (module struct
-      let ( = ) = equivalent
-
-      let%test_unit _ =
-        let info1 = Provenance.of_range (Opt_range.mk 0 5) in
-        let info2 = Provenance.of_range (Opt_range.mk 3 5) in
-        let parsed =
-          Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse))
-            "foo()  // comment"
-        in
-        assert (parsed = Operator_def (info1, "foo", Arity (info2, [])))
-      ;;
-    end)
-  ;;
-end
-
-module Sort_def = struct
-  type t = Sort_def of (string * Kind.t option) list * Operator_def.t list
-
-  let equivalent
-      ?(info_eq = fun _ _ -> true)
-      (Sort_def (vars1, ops1))
-      (Sort_def (vars2, ops2))
-    =
-    List.equal
-      (Tuple2.equal String.( = ) (Option.equal Kind.(equivalent ~info_eq)))
-      vars1
-      vars2
-    && List.equal Operator_def.(equivalent ~info_eq) ops1 ops2
-  ;;
-
-  let ( = ) = equivalent ~info_eq:Provenance.( = )
-
-  let kind_check env sort_name (Sort_def (vars, operators)) =
-    let update_env env name n =
-      Map.update env name ~f:(function
-          | None -> Int.Set.singleton n
-          | Some set -> Set.add set n)
-    in
-    let env = update_env env sort_name (List.length vars) in
-    List.fold operators ~init:env ~f:Operator_def.kind_check
-  ;;
-
-  let pp ~name ppf (Sort_def (sort_vars, operator_defs)) =
-    let open Fmt in
-    let pp_sort_var ppf (name, kind_opt) =
-      match kind_opt with
-      | None -> string ppf name
-      | Some kind -> pf ppf "(%s : %a)" name Kind.pp kind
-    in
-    let pp_sort_vars ppf vars =
-      match vars with [] -> () | _ -> Fmt.pf ppf " %a" (list pp_sort_var) vars
-    in
-    match operator_defs with
-    | [] -> pf ppf "%s%a :=" name pp_sort_vars sort_vars
-    | [ single_def ] ->
-      pf ppf "%s%a := @[%a@]" name pp_sort_vars sort_vars Operator_def.pp single_def
-    | _ ->
-      pf
-        ppf
-        "%s%a :=@,@[<v 2>  | %a@]"
-        name
-        pp_sort_vars
-        sort_vars
-        (list ~sep:(any "@,| ") Operator_def.pp)
-        operator_defs
-  ;;
-
-  let parse =
-    let open Lvca_parsing in
-    let module Ws = C_comment_parser in
-    let bar = Ws.char '|' in
-    let sort_var_decl =
-      choice
-        ~failure_msg:"looking for an identifier or parens"
-        [ (Ws.identifier >>| fun name -> name, None)
-        ; (Ws.parens Kind.Parse.decl >>| fun (name, kind) -> name, Some kind)
-        ]
-      <?> "sort variable declaration"
-    in
-    lift4
-      (fun name vars _assign op_defs -> name, Sort_def (vars, op_defs))
-      Ws.identifier
-      (many sort_var_decl)
-      (Ws.string ":=")
-      (option '|' bar *> sep_by bar Operator_def.parse)
-    <?> "sort definition"
-  ;;
-
-  let%test_module _ =
-    (module struct
-      let test_parse =
-        Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse))
-      ;;
-
-      let parse_print str =
-        let pp ppf (name, sort_def) = pp ppf ~name sort_def in
-        str |> test_parse |> Fmt.pr "%a\n" pp
-      ;;
-
-      let%expect_test _ =
-        parse_print {|foo := foo() // comment|};
-        [%expect "foo := foo()"]
-      ;;
-
-      let%expect_test _ =
-        parse_print {|foo x := foo()|};
-        [%expect {|foo x := foo()|}]
-      ;;
-
-      let%expect_test _ =
-        parse_print
-          {|
-// comment
-tm :=  // comment
-  | add(tm; tm)  // comment
-  | lit(integer)  // comment
-    |};
-        [%expect {|
-    tm :=
-      | add(tm; tm)
-      | lit(integer)
-    |}]
-      ;;
-
-      let%expect_test _ =
-        let foo = Sort.mk_Name "foo" in
-        let sort_def =
-          Sort_def
-            ( []
-            , [ Operator_def.mk "foo" (Arity.mk [ Valence ([], Sort.mk_Name "integer") ])
-              ; Operator_def.mk
-                  "bar"
-                  (Arity.mk
-                     [ Valence.Valence
-                         ( [ Sort_pattern { pattern_sort = foo; var_sort = foo }
-                           ; Sort_binding foo
-                           ]
-                         , foo )
-                     ])
-              ] )
-        in
-        Fmt.pr "%a" (pp ~name:"foo") sort_def;
-        [%expect
-          {|
-        foo :=
-          | foo(integer)
-          | bar(foo[foo]. foo. foo) |}]
-      ;;
-
-      let%expect_test _ =
-        let sort_def =
-          Sort_def
-            ( []
-            , [ Operator_def.mk "foo" (Arity.mk [ Valence ([], Sort.mk_Name "integer") ])
-              ] )
-        in
-        Fmt.pr "%a" (pp ~name:"foo") sort_def;
-        [%expect {| foo := foo(integer) |}]
-      ;;
-
-      let%expect_test _ =
-        let sort_def =
-          Sort_def
-            ( [ "a", None ]
-            , [ Operator_def.mk "foo" (Arity.mk [ Valence ([], Sort.mk_Name "integer") ])
-              ] )
-        in
-        Fmt.pr "%a" (pp ~name:"foo") sort_def;
-        [%expect {| foo a := foo(integer) |}]
-      ;;
-
-      let%expect_test _ =
-        let sort_def = Sort_def ([ "a", Some (Kind.mk 2) ], []) in
-        Fmt.pr "%a" (pp ~name:"foo") sort_def;
-        [%expect {| foo (a : * -> *) := |}]
-      ;;
-    end)
-  ;;
-end
 
 type t =
   { externals : (string * Kind.t) list
@@ -502,8 +103,8 @@ let%test_module _ =
       ( "tm"
       , Sort_def.Sort_def
           ( []
-          , [ Operator_def.mk "add" (Arity.mk [ tm_v; tm_v ])
-            ; Operator_def.mk "lit" (Arity.mk [ integer_v ])
+          , [ Operator_def.mk "Add" (Arity.mk [ tm_v; tm_v ])
+            ; Operator_def.mk "Lit" (Arity.mk [ integer_v ])
             ] ) )
     ;;
 
@@ -518,9 +119,9 @@ integer : *
 
 // comment
 tm :=
-  | add(tm; // comment
+  | Add(tm; // comment
   tm)
-  | lit(integer)
+  | Lit(integer)
 
 // comment
 empty :=
@@ -545,19 +146,16 @@ empty :=
         map |> Map.iteri ~f:(fun ~key ~data -> Stdio.printf "%s: %d\n" key data)
       | Error mismap ->
         Stdio.printf "failed\n";
-        mismap
-        |> Map.iteri ~f:(fun ~key ~data ->
-               let inferred_kinds_str =
-                 data
-                 |> Set.to_list
-                 |> List.map ~f:Int.to_string
-                 |> String.concat ~sep:", "
-               in
-               Stdio.printf "%s: %s\n" key inferred_kinds_str)
+        Map.iteri mismap ~f:(fun ~key ~data ->
+            data
+            |> Set.to_list
+            |> List.map ~f:Int.to_string
+            |> String.concat ~sep:", "
+            |> Stdio.printf "%s: %s\n" key)
     ;;
 
     let%expect_test _ =
-      kind_check {|tm a := foo(a)|};
+      kind_check {|tm a := Foo(a)|};
       [%expect {|
         okay
         a: 0
@@ -565,14 +163,14 @@ empty :=
     ;;
 
     let%expect_test _ =
-      kind_check {|tm a := foo(a) | bar(a b)|};
+      kind_check {|tm a := Foo(a) | Bar(a b)|};
       [%expect {|
         failed
         a: 0, 1 |}]
     ;;
 
     let%expect_test _ =
-      kind_check {|tm := foo(a) | bar(a b)|};
+      kind_check {|tm := Foo(a) | Bar(a b)|};
       [%expect {|
         failed
         a: 0, 1 |}]
@@ -594,7 +192,7 @@ let%test_module "Parser" =
     let ( = ) = equivalent
 
     let%test _ =
-      parse "bool := true() | false()"
+      parse "bool := True() | False()"
       (*     0123456789012345678901234 *)
       = { externals = []
         ; sort_defs =
@@ -603,11 +201,11 @@ let%test_module "Parser" =
                   ( []
                   , [ Operator_def
                         ( Provenance.of_range (Opt_range.mk 8 14)
-                        , "true"
+                        , "True"
                         , Arity (Provenance.of_range (Opt_range.mk 12 14), []) )
                     ; Operator_def
                         ( Provenance.of_range (Opt_range.mk 17 24)
-                        , "false"
+                        , "False"
                         , Arity (Provenance.of_range (Opt_range.mk 22 24), []) )
                     ] ) )
             ]
@@ -621,16 +219,16 @@ let%test_module "Parser" =
       list : * -> *
 
       ty :=
-        | bool()
-        | arr(ty; ty)
+        | Bool()
+        | Arr(ty; ty)
 
       tm :=
-        | app(tm; tm)
-        | lam(tm. tm)
+        | App(tm; tm)
+        | Lam(tm. tm)
 
       foo (x : *) :=
-        | foo(foo[x]. x; x. x)
-        | bar(x)
+        | Foo(foo[x]. x; x. x)
+        | Bar(x)
       |}
       =
       let externals = [ "integer", Kind.mk 1; "list", Kind.mk 2 ] in
@@ -638,22 +236,22 @@ let%test_module "Parser" =
         [ ( "ty"
           , Sort_def.Sort_def
               ( []
-              , [ Operator_def.mk "bool" (Arity.mk [])
-                ; Operator_def.mk "arr" (Arity.mk [ ty_valence; ty_valence ])
+              , [ Operator_def.mk "Bool" (Arity.mk [])
+                ; Operator_def.mk "Arr" (Arity.mk [ ty_valence; ty_valence ])
                 ] ) )
         ; ( "tm"
           , Sort_def
               ( []
-              , [ Operator_def.mk "app" (Arity.mk [ tm_valence; tm_valence ])
+              , [ Operator_def.mk "App" (Arity.mk [ tm_valence; tm_valence ])
                 ; Operator_def.mk
-                    "lam"
+                    "Lam"
                     (Arity.mk [ Valence ([ Sort_binding tm_sort ], tm_sort) ])
                 ] ) )
         ; ( "foo"
           , Sort_def
               ( [ "x", Some (Kind.mk 1) ]
               , [ Operator_def.mk
-                    "foo"
+                    "Foo"
                     (Arity.mk
                        [ Valence
                            ( [ Sort_pattern { pattern_sort = foo_sort; var_sort = x_sort }
@@ -661,7 +259,7 @@ let%test_module "Parser" =
                            , x_sort )
                        ; Valence ([ Sort_binding x_sort ], x_sort)
                        ])
-                ; Operator_def.mk "bar" (Arity.mk [ Valence ([], x_sort) ])
+                ; Operator_def.mk "Bar" (Arity.mk [ Valence ([], x_sort) ])
                 ] ) )
         ]
       in
@@ -695,18 +293,18 @@ integer : *
 string : *
 
 value :=
-  | unit()
-  | lit_int(integer)
-  | lit_str(string)
+  | Unit()
+  | Lit_int(integer)
+  | Lit_str(string)
 
 match_line :=
-  | match_line(value[value]. term)
+  | Match_line(value[value]. term)
 
 term :=
-  | lambda(value. term)
-  | alt_lambda(term. term)
-  | match(list match_line)
-  | value(value)
+  | Lambda(value. term)
+  | Alt_lambda(term. term)
+  | Match(list match_line)
+  | Value(value)
    |};
       [%expect
         {|
@@ -715,17 +313,17 @@ integer : *
 string : *
 
 value :=
-  | unit()
-  | lit_int(integer)
-  | lit_str(string)
+  | Unit()
+  | Lit_int(integer)
+  | Lit_str(string)
 
-match_line := match_line(value[value]. term)
+match_line := Match_line(value[value]. term)
 
 term :=
-  | lambda(value. term)
-  | alt_lambda(term. term)
-  | match(list match_line)
-  | value(value)
+  | Lambda(value. term)
+  | Alt_lambda(term. term)
+  | Match(list match_line)
+  | Value(value)
    |}]
     ;;
 
