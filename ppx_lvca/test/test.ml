@@ -9,10 +9,10 @@ list := Nil() | Cons(term; list)
 |}, { term = "Nominal.Term" }]
 
 (* let test_nonbinding = [%lvca.nonbinding "foo(bar(1))"] *)
-let test_pattern = [%lvca.pattern "foo(x)"]
+let test_pattern = [%lvca.pattern "Foo(x)"]
 
 let test_language = [%lvca.abstract_syntax {|
-foo := foo(integer)
+foo := Foo(integer)
 |}]
 
 module List_model : [%lvca.abstract_syntax_module_sig

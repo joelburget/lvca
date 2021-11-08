@@ -2,6 +2,8 @@ open Base
 open Lvca_syntax
 open Lvca_util
 
+let reserved = String.Set.empty
+
 module Typing_rule = struct
   type t =
     { tm : Binding_aware_pattern.t
@@ -52,12 +54,12 @@ module Typing_clause = struct
           match dir with
           | LeftArr -> Checking_rule { tm; ty }
           | RightArr -> Inference_rule { tm; ty })
-        Binding_aware_pattern.parse
+        (Binding_aware_pattern.parse reserved)
         (choice
            ~failure_msg:"looking for <= or =>"
            C_comment_parser.
              [ (string "<=" >>| fun _ -> LeftArr); (string "=>" >>| fun _ -> RightArr) ])
-        Binding_aware_pattern.parse
+        (Binding_aware_pattern.parse reserved)
       <?> "typing clause"
     ;;
   end
@@ -113,23 +115,23 @@ module Hypothesis = struct
 
   module Parse = struct
     open Lvca_parsing
-    module Ws = C_comment_parser
+    open C_comment_parser
 
     let typed_term =
       lift3
         (fun ident _ tm -> ident, tm)
-        Ws.identifier
-        (Ws.char ':')
-        Binding_aware_pattern.parse
+        (lower_identifier reserved)
+        (char ':')
+        (Binding_aware_pattern.parse reserved)
       <?> "typed pattern"
     ;;
 
     let context =
-      Ws.string "ctx"
+      string "ctx"
       *> choice
-           [ (Ws.char ','
+           [ (char ','
              >>= fun _ ->
-             sep_by1 (Ws.char ',') typed_term
+             sep_by1 (char ',') typed_term
              >>= fun ctx_entries ->
              match String.Map.of_alist ctx_entries with
              | `Ok context -> return context
@@ -143,11 +145,7 @@ module Hypothesis = struct
     ;;
 
     let t =
-      lift3
-        (fun ctx _ clause -> ctx, clause)
-        context
-        (Ws.string ">>")
-        Typing_clause.Parse.t
+      lift3 (fun ctx _ clause -> ctx, clause) context (string ">>") Typing_clause.Parse.t
       <?> "hypothesis"
     ;;
   end
@@ -201,14 +199,14 @@ module Rule = struct
 
   module Parse = struct
     open Lvca_parsing
-    module Ws = C_comment_parser
+    open C_comment_parser
 
     let line : string option Lvca_parsing.t =
       lift3
         (fun _ _ ident -> ident)
-        (Ws.string "--")
-        (many (Ws.char '-'))
-        (option None ((fun ident -> Some ident) <$> Ws.parens Ws.identifier))
+        (string "--")
+        (many (char '-'))
+        (option None ((fun ident -> Some ident) <$> parens (lower_identifier reserved)))
       <?> "line"
     ;;
 
@@ -255,7 +253,7 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       print_parse {|
-    ctx, x : a >> foo(x) <= a
+    ctx, x : a >> Foo(x) <= a
     ---
     ctx >> tm => ty
   |};
@@ -269,26 +267,26 @@ let%test_module "Parsing" =
     ctx, x : t >> x => t
 
     ---
-    ctx >> str(x) => str()
+    ctx >> Str(x) => str()
 
     ---
-    ctx >> num(x) => num()
+    ctx >> Num(x) => num()
 
     ctx >> e1 <= num()    ctx >> e2 <= num()
     ---
-    ctx >> plus(e1; e2) => num()
+    ctx >> Plus(e1; e2) => num()
 
     ctx >> e1 <= str()    ctx >> e2 <= str()
     ---
-    ctx >> cat(e1; e2) => str()
+    ctx >> Cat(e1; e2) => str()
 
     ctx >> e <= str()
     ---
-    ctx >> len(e) => num()
+    ctx >> Len(e) => num()
 
     ctx >> e1 => t1   ctx, x : t1 >> e2 <= t2
-    --- (let)
-    ctx >> let(e1; x. e2) <= t2
+    --- (Let)
+    ctx >> Let(e1; x. e2) <= t2
   |};
       [%expect {| parsed |}]
     ;;

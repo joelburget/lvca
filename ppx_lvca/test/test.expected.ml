@@ -62,9 +62,9 @@ module Test4 =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
           end
@@ -75,7 +75,7 @@ module Test4 =
         {
           externals =
             [("term",
-               (Lvca_syntax.Abstract_syntax.Kind.Kind
+               (Lvca_syntax.Kind.Kind
                   ((Lvca_syntax.Provenance.Located
                       (Lvca_syntax.Provenance.Located.Parse_located
                          ((let open Lvca_syntax.Provenance.Parse_located in
@@ -89,9 +89,9 @@ module Test4 =
                              })))), 1)))];
           sort_defs =
             [("list",
-               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+               (Lvca_syntax.Sort_def.Sort_def
                   ([],
-                    [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                    [Lvca_syntax.Operator_def.Operator_def
                        ((Lvca_syntax.Provenance.Located
                            (Lvca_syntax.Provenance.Located.Parse_located
                               ((let open Lvca_syntax.Provenance.Parse_located in
@@ -103,16 +103,16 @@ module Test4 =
                                          (let open Lvca_provenance.Range in
                                             { start = 21; finish = 23 }))
                                   })))), "Nil",
-                         (Lvca_syntax.Abstract_syntax.Arity.Arity
+                         (Lvca_syntax.Arity.Arity
                             ((Lvca_syntax.Provenance.Located
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
-                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 222;
-                                     pos_bol = 6019;
-                                     pos_cnum = 6070
+                                     pos_fname = "syntax/Arity.ml";
+                                     pos_lnum = 31;
+                                     pos_bol = 785;
+                                     pos_cnum = 834
                                    })), [])));
-                    Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                    Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -124,16 +124,16 @@ module Test4 =
                                         (let open Lvca_provenance.Range in
                                            { start = 30; finish = 42 }))
                                  })))), "Cons",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Name
                                      ((Lvca_syntax.Provenance.Located
@@ -150,7 +150,7 @@ module Test4 =
                                                             finish = 35
                                                           }))
                                                 })))), "term")));
-                             Lvca_syntax.Abstract_syntax.Valence.Valence
+                             Lvca_syntax.Valence.Valence
                                ([],
                                  (Lvca_syntax.Sort.Name
                                     ((Lvca_syntax.Provenance.Located
@@ -193,7 +193,7 @@ let test_pattern =
                   (Some
                      (let open Lvca_provenance.Range in
                         { start = 0; finish = 6 }))
-              }))), "foo",
+              }))), "Foo",
       [Lvca_syntax.Pattern.Var
          ((Lvca_syntax.Provenance.Located
              (Lvca_syntax.Provenance.Located.Parse_located
@@ -212,9 +212,9 @@ let test_language =
       externals = [];
       sort_defs =
         [("foo",
-           (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+           (Lvca_syntax.Sort_def.Sort_def
               ([],
-                [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                [Lvca_syntax.Operator_def.Operator_def
                    ((Lvca_syntax.Provenance.Located
                        (Lvca_syntax.Provenance.Located.Parse_located
                           ((let open Lvca_syntax.Provenance.Parse_located in
@@ -225,17 +225,17 @@ let test_language =
                                   (Some
                                      (let open Lvca_provenance.Range in
                                         { start = 11; finish = 20 }))
-                              })))), "foo",
-                     (Lvca_syntax.Abstract_syntax.Arity.Arity
+                              })))), "Foo",
+                     (Lvca_syntax.Arity.Arity
                         ((Lvca_syntax.Provenance.Located
                             (Lvca_syntax.Provenance.Located.Source_located
                                {
-                                 pos_fname = "syntax/Abstract_syntax.ml";
-                                 pos_lnum = 222;
-                                 pos_bol = 6019;
-                                 pos_cnum = 6070
+                                 pos_fname = "syntax/Arity.ml";
+                                 pos_lnum = 31;
+                                 pos_bol = 785;
+                                 pos_cnum = 834
                                })),
-                          [Lvca_syntax.Abstract_syntax.Valence.Valence
+                          [Lvca_syntax.Valence.Valence
                              ([],
                                (Lvca_syntax.Sort.Name
                                   ((Lvca_syntax.Provenance.Located
@@ -358,9 +358,9 @@ module List_model :
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
           end
@@ -372,9 +372,9 @@ module List_model :
           externals = [];
           sort_defs =
             [("list",
-               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+               (Lvca_syntax.Sort_def.Sort_def
                   ([("a", None)],
-                    [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                    [Lvca_syntax.Operator_def.Operator_def
                        ((Lvca_syntax.Provenance.Located
                            (Lvca_syntax.Provenance.Located.Parse_located
                               ((let open Lvca_syntax.Provenance.Parse_located in
@@ -386,16 +386,16 @@ module List_model :
                                          (let open Lvca_provenance.Range in
                                             { start = 13; finish = 15 }))
                                   })))), "Nil",
-                         (Lvca_syntax.Abstract_syntax.Arity.Arity
+                         (Lvca_syntax.Arity.Arity
                             ((Lvca_syntax.Provenance.Located
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
-                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 222;
-                                     pos_bol = 6019;
-                                     pos_cnum = 6070
+                                     pos_fname = "syntax/Arity.ml";
+                                     pos_lnum = 31;
+                                     pos_bol = 785;
+                                     pos_cnum = 834
                                    })), [])));
-                    Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                    Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -407,16 +407,16 @@ module List_model :
                                         (let open Lvca_provenance.Range in
                                            { start = 22; finish = 33 }))
                                  })))), "Cons",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Name
                                      ((Lvca_syntax.Provenance.Located
@@ -433,7 +433,7 @@ module List_model :
                                                             finish = 24
                                                           }))
                                                 })))), "a")));
-                             Lvca_syntax.Abstract_syntax.Valence.Valence
+                             Lvca_syntax.Valence.Valence
                                ([],
                                  (Lvca_syntax.Sort.Ap
                                     ((Lvca_syntax.Provenance.Located
@@ -717,9 +717,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let pair a b =
@@ -742,9 +742,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let rec foo =
@@ -778,9 +778,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let pair_plus a b =
@@ -807,9 +807,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let rec term =
@@ -829,9 +829,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let rec mut_a =
@@ -851,9 +851,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             and mut_b =
@@ -873,9 +873,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let rec nat =
@@ -896,9 +896,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
           end
@@ -909,7 +909,7 @@ module Lang =
         {
           externals =
             [("integer",
-               (Lvca_syntax.Abstract_syntax.Kind.Kind
+               (Lvca_syntax.Kind.Kind
                   ((Lvca_syntax.Provenance.Located
                       (Lvca_syntax.Provenance.Located.Parse_located
                          ((let open Lvca_syntax.Provenance.Parse_located in
@@ -922,7 +922,7 @@ module Lang =
                                        { start = 11; finish = 12 }))
                              })))), 1)));
             ("string",
-              (Lvca_syntax.Abstract_syntax.Kind.Kind
+              (Lvca_syntax.Kind.Kind
                  ((Lvca_syntax.Provenance.Located
                      (Lvca_syntax.Provenance.Located.Parse_located
                         ((let open Lvca_syntax.Provenance.Parse_located in
@@ -935,7 +935,7 @@ module Lang =
                                       { start = 22; finish = 23 }))
                             })))), 1)));
             ("maybe",
-              (Lvca_syntax.Abstract_syntax.Kind.Kind
+              (Lvca_syntax.Kind.Kind
                  ((Lvca_syntax.Provenance.Located
                      (Lvca_syntax.Provenance.Located.Parse_located
                         ((let open Lvca_syntax.Provenance.Parse_located in
@@ -948,7 +948,7 @@ module Lang =
                                       { start = 32; finish = 38 }))
                             })))), 2)));
             ("list",
-              (Lvca_syntax.Abstract_syntax.Kind.Kind
+              (Lvca_syntax.Kind.Kind
                  ((Lvca_syntax.Provenance.Located
                      (Lvca_syntax.Provenance.Located.Parse_located
                         ((let open Lvca_syntax.Provenance.Parse_located in
@@ -962,9 +962,9 @@ module Lang =
                             })))), 2)))];
           sort_defs =
             [("foo",
-               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+               (Lvca_syntax.Sort_def.Sort_def
                   ([],
-                    [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                    [Lvca_syntax.Operator_def.Operator_def
                        ((Lvca_syntax.Provenance.Located
                            (Lvca_syntax.Provenance.Located.Parse_located
                               ((let open Lvca_syntax.Provenance.Parse_located in
@@ -976,16 +976,16 @@ module Lang =
                                          (let open Lvca_provenance.Range in
                                             { start = 68; finish = 77 }))
                                   })))), "Foo",
-                         (Lvca_syntax.Abstract_syntax.Arity.Arity
+                         (Lvca_syntax.Arity.Arity
                             ((Lvca_syntax.Provenance.Located
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
-                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 222;
-                                     pos_bol = 6019;
-                                     pos_cnum = 6070
+                                     pos_fname = "syntax/Arity.ml";
+                                     pos_lnum = 31;
+                                     pos_bol = 785;
+                                     pos_cnum = 834
                                    })),
-                              [Lvca_syntax.Abstract_syntax.Valence.Valence
+                              [Lvca_syntax.Valence.Valence
                                  ([],
                                    (Lvca_syntax.Sort.Name
                                       ((Lvca_syntax.Provenance.Located
@@ -1002,7 +1002,7 @@ module Lang =
                                                              finish = 76
                                                            }))
                                                  })))), "integer")))])));
-                    Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                    Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -1014,17 +1014,17 @@ module Lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 85; finish = 105 }))
                                  })))), "Bar",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
-                                ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_pattern
+                             [Lvca_syntax.Valence.Valence
+                                ([Lvca_syntax.Sort_slot.Sort_pattern
                                     {
                                       pattern_sort =
                                         (Lvca_syntax.Sort.Name
@@ -1059,7 +1059,7 @@ module Lang =
                                                                 }))
                                                       })))), "foo"))
                                     };
-                                 Lvca_syntax.Abstract_syntax.Sort_slot.Sort_binding
+                                 Lvca_syntax.Sort_slot.Sort_binding
                                    (Lvca_syntax.Sort.Name
                                       ((Lvca_syntax.Provenance.Located
                                           (Lvca_syntax.Provenance.Located.Parse_located
@@ -1091,9 +1091,9 @@ module Lang =
                                                           }))
                                                 })))), "foo")))])))])));
             ("nat",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -1105,16 +1105,16 @@ module Lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 115; finish = 117 }))
                                  })))), "Z",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })), [])));
-                   Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   Lvca_syntax.Operator_def.Operator_def
                      ((Lvca_syntax.Provenance.Located
                          (Lvca_syntax.Provenance.Located.Parse_located
                             ((let open Lvca_syntax.Provenance.Parse_located in
@@ -1126,16 +1126,16 @@ module Lang =
                                        (let open Lvca_provenance.Range in
                                           { start = 121; finish = 126 }))
                                 })))), "S",
-                       (Lvca_syntax.Abstract_syntax.Arity.Arity
+                       (Lvca_syntax.Arity.Arity
                           ((Lvca_syntax.Provenance.Located
                               (Lvca_syntax.Provenance.Located.Source_located
                                  {
-                                   pos_fname = "syntax/Abstract_syntax.ml";
-                                   pos_lnum = 222;
-                                   pos_bol = 6019;
-                                   pos_cnum = 6070
+                                   pos_fname = "syntax/Arity.ml";
+                                   pos_lnum = 31;
+                                   pos_bol = 785;
+                                   pos_cnum = 834
                                  })),
-                            [Lvca_syntax.Abstract_syntax.Valence.Valence
+                            [Lvca_syntax.Valence.Valence
                                ([],
                                  (Lvca_syntax.Sort.Name
                                     ((Lvca_syntax.Provenance.Located
@@ -1153,9 +1153,9 @@ module Lang =
                                                          }))
                                                })))), "nat")))])))])));
             ("pair",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([("a", None); ("b", None)],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -1167,16 +1167,16 @@ module Lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 144; finish = 150 }))
                                  })))), "Pair",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Name
                                      ((Lvca_syntax.Provenance.Located
@@ -1193,7 +1193,7 @@ module Lang =
                                                             finish = 146
                                                           }))
                                                 })))), "a")));
-                             Lvca_syntax.Abstract_syntax.Valence.Valence
+                             Lvca_syntax.Valence.Valence
                                ([],
                                  (Lvca_syntax.Sort.Name
                                     ((Lvca_syntax.Provenance.Located
@@ -1211,9 +1211,9 @@ module Lang =
                                                          }))
                                                })))), "b")))])))])));
             ("pair_plus",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([("a", None); ("b", None)],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -1225,16 +1225,16 @@ module Lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 176; finish = 187 }))
                                  })))), "PairPlus",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Name
                                      ((Lvca_syntax.Provenance.Located
@@ -1251,7 +1251,7 @@ module Lang =
                                                             finish = 178
                                                           }))
                                                 })))), "a")));
-                             Lvca_syntax.Abstract_syntax.Valence.Valence
+                             Lvca_syntax.Valence.Valence
                                ([],
                                  (Lvca_syntax.Sort.Name
                                     ((Lvca_syntax.Provenance.Located
@@ -1268,7 +1268,7 @@ module Lang =
                                                            finish = 181
                                                          }))
                                                })))), "b")));
-                             Lvca_syntax.Abstract_syntax.Valence.Valence
+                             Lvca_syntax.Valence.Valence
                                ([],
                                  (Lvca_syntax.Sort.Name
                                     ((Lvca_syntax.Provenance.Located
@@ -1286,9 +1286,9 @@ module Lang =
                                                          }))
                                                })))), "foo")))])))])));
             ("nonempty",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -1300,16 +1300,16 @@ module Lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 209; finish = 230 }))
                                  })))), "Nonempty",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Name
                                      ((Lvca_syntax.Provenance.Located
@@ -1326,7 +1326,7 @@ module Lang =
                                                             finish = 216
                                                           }))
                                                 })))), "string")));
-                             Lvca_syntax.Abstract_syntax.Valence.Valence
+                             Lvca_syntax.Valence.Valence
                                ([],
                                  (Lvca_syntax.Sort.Ap
                                     ((Lvca_syntax.Provenance.Located
@@ -1381,9 +1381,9 @@ module Lang =
                                                       pos_cnum = 1408
                                                     }))))))))])))])));
             ("term",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -1395,16 +1395,16 @@ module Lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 248; finish = 259 }))
                                  })))), "Operator",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Ap
                                      ((Lvca_syntax.Provenance.Located
@@ -1459,9 +1459,9 @@ module Lang =
                                                        pos_cnum = 1408
                                                      }))))))))])))])));
             ("mut_a",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -1473,16 +1473,16 @@ module Lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 275; finish = 282 }))
                                  })))), "Mut_a",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Name
                                      ((Lvca_syntax.Provenance.Located
@@ -1500,9 +1500,9 @@ module Lang =
                                                           }))
                                                 })))), "mut_b")))])))])));
             ("mut_b",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -1514,16 +1514,16 @@ module Lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 297; finish = 304 }))
                                  })))), "Mut_b",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Name
                                      ((Lvca_syntax.Provenance.Located
@@ -1748,9 +1748,9 @@ module Ifz_lang :
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
           end
@@ -1762,9 +1762,9 @@ module Ifz_lang :
           externals = [];
           sort_defs =
             [("ifz",
-               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+               (Lvca_syntax.Sort_def.Sort_def
                   ([],
-                    [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                    [Lvca_syntax.Operator_def.Operator_def
                        ((Lvca_syntax.Provenance.Located
                            (Lvca_syntax.Provenance.Located.Parse_located
                               ((let open Lvca_syntax.Provenance.Parse_located in
@@ -1776,16 +1776,16 @@ module Ifz_lang :
                                          (let open Lvca_provenance.Range in
                                             { start = 10; finish = 30 }))
                                   })))), "Ifz",
-                         (Lvca_syntax.Abstract_syntax.Arity.Arity
+                         (Lvca_syntax.Arity.Arity
                             ((Lvca_syntax.Provenance.Located
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
-                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 222;
-                                     pos_bol = 6019;
-                                     pos_cnum = 6070
+                                     pos_fname = "syntax/Arity.ml";
+                                     pos_lnum = 31;
+                                     pos_bol = 785;
+                                     pos_cnum = 834
                                    })),
-                              [Lvca_syntax.Abstract_syntax.Valence.Valence
+                              [Lvca_syntax.Valence.Valence
                                  ([],
                                    (Lvca_syntax.Sort.Name
                                       ((Lvca_syntax.Provenance.Located
@@ -1802,8 +1802,8 @@ module Ifz_lang :
                                                              finish = 14
                                                            }))
                                                  })))), "ifz")));
-                              Lvca_syntax.Abstract_syntax.Valence.Valence
-                                ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_binding
+                              Lvca_syntax.Valence.Valence
+                                ([Lvca_syntax.Sort_slot.Sort_binding
                                     (Lvca_syntax.Sort.Name
                                        ((Lvca_syntax.Provenance.Located
                                            (Lvca_syntax.Provenance.Located.Parse_located
@@ -1834,7 +1834,7 @@ module Ifz_lang :
                                                             finish = 24
                                                           }))
                                                 })))), "ifz")));
-                              Lvca_syntax.Abstract_syntax.Valence.Valence
+                              Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Name
                                      ((Lvca_syntax.Provenance.Located
@@ -2069,9 +2069,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let predefined =
@@ -2086,9 +2086,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let list_list_predefined_1 =
@@ -2108,9 +2108,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let list_list_a a =
@@ -2130,9 +2130,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let list_list_predefined_2 =
@@ -2152,9 +2152,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let list_list_string_1 =
@@ -2174,9 +2174,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let list_list_string_2 =
@@ -2196,9 +2196,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let list_predefined =
@@ -2218,9 +2218,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let list_external =
@@ -2240,9 +2240,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
           end
@@ -2253,7 +2253,7 @@ module List_lang =
         {
           externals =
             [("string",
-               (Lvca_syntax.Abstract_syntax.Kind.Kind
+               (Lvca_syntax.Kind.Kind
                   ((Lvca_syntax.Provenance.Located
                       (Lvca_syntax.Provenance.Located.Parse_located
                          ((let open Lvca_syntax.Provenance.Parse_located in
@@ -2267,9 +2267,9 @@ module List_lang =
                              })))), 1)))];
           sort_defs =
             [("predefined",
-               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+               (Lvca_syntax.Sort_def.Sort_def
                   ([],
-                    [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                    [Lvca_syntax.Operator_def.Operator_def
                        ((Lvca_syntax.Provenance.Located
                            (Lvca_syntax.Provenance.Located.Parse_located
                               ((let open Lvca_syntax.Provenance.Parse_located in
@@ -2281,19 +2281,19 @@ module List_lang =
                                          (let open Lvca_provenance.Range in
                                             { start = 37; finish = 39 }))
                                   })))), "Predefined",
-                         (Lvca_syntax.Abstract_syntax.Arity.Arity
+                         (Lvca_syntax.Arity.Arity
                             ((Lvca_syntax.Provenance.Located
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
-                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 222;
-                                     pos_bol = 6019;
-                                     pos_cnum = 6070
+                                     pos_fname = "syntax/Arity.ml";
+                                     pos_lnum = 31;
+                                     pos_bol = 785;
+                                     pos_cnum = 834
                                    })), [])))])));
             ("list",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([("a", None)],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -2305,16 +2305,16 @@ module List_lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 53; finish = 55 }))
                                  })))), "Nil",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })), [])));
-                   Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   Lvca_syntax.Operator_def.Operator_def
                      ((Lvca_syntax.Provenance.Located
                          (Lvca_syntax.Provenance.Located.Parse_located
                             ((let open Lvca_syntax.Provenance.Parse_located in
@@ -2326,16 +2326,16 @@ module List_lang =
                                        (let open Lvca_provenance.Range in
                                           { start = 62; finish = 73 }))
                                 })))), "Cons",
-                       (Lvca_syntax.Abstract_syntax.Arity.Arity
+                       (Lvca_syntax.Arity.Arity
                           ((Lvca_syntax.Provenance.Located
                               (Lvca_syntax.Provenance.Located.Source_located
                                  {
-                                   pos_fname = "syntax/Abstract_syntax.ml";
-                                   pos_lnum = 222;
-                                   pos_bol = 6019;
-                                   pos_cnum = 6070
+                                   pos_fname = "syntax/Arity.ml";
+                                   pos_lnum = 31;
+                                   pos_bol = 785;
+                                   pos_cnum = 834
                                  })),
-                            [Lvca_syntax.Abstract_syntax.Valence.Valence
+                            [Lvca_syntax.Valence.Valence
                                ([],
                                  (Lvca_syntax.Sort.Name
                                     ((Lvca_syntax.Provenance.Located
@@ -2352,7 +2352,7 @@ module List_lang =
                                                            finish = 64
                                                          }))
                                                })))), "a")));
-                            Lvca_syntax.Abstract_syntax.Valence.Valence
+                            Lvca_syntax.Valence.Valence
                               ([],
                                 (Lvca_syntax.Sort.Ap
                                    ((Lvca_syntax.Provenance.Located
@@ -2406,9 +2406,9 @@ module List_lang =
                                                      pos_cnum = 1408
                                                    }))))))))])))])));
             ("list_external",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -2420,16 +2420,16 @@ module List_lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 104; finish = 117 }))
                                  })))), "List_external",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Ap
                                      ((Lvca_syntax.Provenance.Located
@@ -2484,9 +2484,9 @@ module List_lang =
                                                        pos_cnum = 1408
                                                      }))))))))])))])));
             ("list_predefined",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -2498,16 +2498,16 @@ module List_lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 152; finish = 169 }))
                                  })))), "List_predefined",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Ap
                                      ((Lvca_syntax.Provenance.Located
@@ -2563,9 +2563,9 @@ module List_lang =
                                                        pos_cnum = 1408
                                                      }))))))))])))])));
             ("list_list_a",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([("a", None)],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -2577,16 +2577,16 @@ module List_lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 199; finish = 214 }))
                                  })))), "List_list_a",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Ap
                                      ((Lvca_syntax.Provenance.Located
@@ -2682,9 +2682,9 @@ module List_lang =
                                                        pos_cnum = 1408
                                                      }))))))))])))])));
             ("list_list_string_1",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -2696,16 +2696,16 @@ module List_lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 255; finish = 275 }))
                                  })))), "List_list_string_1",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Ap
                                      ((Lvca_syntax.Provenance.Located
@@ -2801,9 +2801,9 @@ module List_lang =
                                                        pos_cnum = 1408
                                                      }))))))))])))])));
             ("list_list_string_2",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -2815,16 +2815,16 @@ module List_lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 316; finish = 336 }))
                                  })))), "List_list_string_2",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Ap
                                      ((Lvca_syntax.Provenance.Located
@@ -2879,9 +2879,9 @@ module List_lang =
                                                        pos_cnum = 1408
                                                      }))))))))])))])));
             ("list_list_predefined_1",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -2893,16 +2893,16 @@ module List_lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 385; finish = 409 }))
                                  })))), "List_list_predefined_1",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Ap
                                      ((Lvca_syntax.Provenance.Located
@@ -2998,9 +2998,9 @@ module List_lang =
                                                        pos_cnum = 1408
                                                      }))))))))])))])));
             ("list_list_predefined_2",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -3012,16 +3012,16 @@ module List_lang =
                                         (let open Lvca_provenance.Range in
                                            { start = 458; finish = 482 }))
                                  })))), "List_list_predefined_2",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Ap
                                      ((Lvca_syntax.Provenance.Located
@@ -3367,9 +3367,9 @@ module Option_model :
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
           end
@@ -3381,9 +3381,9 @@ module Option_model :
           externals = [];
           sort_defs =
             [("option",
-               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+               (Lvca_syntax.Sort_def.Sort_def
                   ([("a", None)],
-                    [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                    [Lvca_syntax.Operator_def.Operator_def
                        ((Lvca_syntax.Provenance.Located
                            (Lvca_syntax.Provenance.Located.Parse_located
                               ((let open Lvca_syntax.Provenance.Parse_located in
@@ -3395,16 +3395,16 @@ module Option_model :
                                          (let open Lvca_provenance.Range in
                                             { start = 16; finish = 18 }))
                                   })))), "None",
-                         (Lvca_syntax.Abstract_syntax.Arity.Arity
+                         (Lvca_syntax.Arity.Arity
                             ((Lvca_syntax.Provenance.Located
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
-                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 222;
-                                     pos_bol = 6019;
-                                     pos_cnum = 6070
+                                     pos_fname = "syntax/Arity.ml";
+                                     pos_lnum = 31;
+                                     pos_bol = 785;
+                                     pos_cnum = 834
                                    })), [])));
-                    Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                    Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -3416,16 +3416,16 @@ module Option_model :
                                         (let open Lvca_provenance.Range in
                                            { start = 25; finish = 28 }))
                                  })))), "Some",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Name
                                      ((Lvca_syntax.Provenance.Located
@@ -3498,9 +3498,9 @@ module Empty :
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
           end
@@ -3510,9 +3510,7 @@ module Empty :
       let open Lvca_syntax.Abstract_syntax in
         {
           externals = [];
-          sort_defs =
-            [("empty",
-               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def ([], [])))]
+          sort_defs = [("empty", (Lvca_syntax.Sort_def.Sort_def ([], [])))]
         }
     module Empty =
       struct
@@ -3627,9 +3625,9 @@ module Empty_as_var =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let rec foo =
@@ -3663,9 +3661,9 @@ module Empty_as_var =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
             let rec list a =
@@ -3690,9 +3688,9 @@ module Empty_as_var =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 884;
-                                          pos_bol = 27499;
-                                          pos_cnum = 27533
+                                          pos_lnum = 897;
+                                          pos_bol = 27810;
+                                          pos_cnum = 27844
                                         })) tm in
                   Error err
           end
@@ -3704,9 +3702,9 @@ module Empty_as_var =
           externals = [];
           sort_defs =
             [("list",
-               (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+               (Lvca_syntax.Sort_def.Sort_def
                   ([("a", None)],
-                    [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                    [Lvca_syntax.Operator_def.Operator_def
                        ((Lvca_syntax.Provenance.Located
                            (Lvca_syntax.Provenance.Located.Parse_located
                               ((let open Lvca_syntax.Provenance.Parse_located in
@@ -3718,16 +3716,16 @@ module Empty_as_var =
                                          (let open Lvca_provenance.Range in
                                             { start = 14; finish = 16 }))
                                   })))), "Nil",
-                         (Lvca_syntax.Abstract_syntax.Arity.Arity
+                         (Lvca_syntax.Arity.Arity
                             ((Lvca_syntax.Provenance.Located
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
-                                     pos_fname = "syntax/Abstract_syntax.ml";
-                                     pos_lnum = 222;
-                                     pos_bol = 6019;
-                                     pos_cnum = 6070
+                                     pos_fname = "syntax/Arity.ml";
+                                     pos_lnum = 31;
+                                     pos_bol = 785;
+                                     pos_cnum = 834
                                    })), [])));
-                    Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                    Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -3739,16 +3737,16 @@ module Empty_as_var =
                                         (let open Lvca_provenance.Range in
                                            { start = 23; finish = 34 }))
                                  })))), "Cons",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
+                             [Lvca_syntax.Valence.Valence
                                 ([],
                                   (Lvca_syntax.Sort.Name
                                      ((Lvca_syntax.Provenance.Located
@@ -3765,7 +3763,7 @@ module Empty_as_var =
                                                             finish = 25
                                                           }))
                                                 })))), "a")));
-                             Lvca_syntax.Abstract_syntax.Valence.Valence
+                             Lvca_syntax.Valence.Valence
                                ([],
                                  (Lvca_syntax.Sort.Ap
                                     ((Lvca_syntax.Provenance.Located
@@ -3819,12 +3817,11 @@ module Empty_as_var =
                                                       pos_bol = 1372;
                                                       pos_cnum = 1408
                                                     }))))))))])))])));
-            ("empty",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def ([], [])));
+            ("empty", (Lvca_syntax.Sort_def.Sort_def ([], [])));
             ("foo",
-              (Lvca_syntax.Abstract_syntax.Sort_def.Sort_def
+              (Lvca_syntax.Sort_def.Sort_def
                  ([],
-                   [Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   [Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
                           (Lvca_syntax.Provenance.Located.Parse_located
                              ((let open Lvca_syntax.Provenance.Parse_located in
@@ -3836,17 +3833,17 @@ module Empty_as_var =
                                         (let open Lvca_provenance.Range in
                                            { start = 58; finish = 72 }))
                                  })))), "Foo",
-                        (Lvca_syntax.Abstract_syntax.Arity.Arity
+                        (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
-                                    pos_fname = "syntax/Abstract_syntax.ml";
-                                    pos_lnum = 222;
-                                    pos_bol = 6019;
-                                    pos_cnum = 6070
+                                    pos_fname = "syntax/Arity.ml";
+                                    pos_lnum = 31;
+                                    pos_bol = 785;
+                                    pos_cnum = 834
                                   })),
-                             [Lvca_syntax.Abstract_syntax.Valence.Valence
-                                ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_binding
+                             [Lvca_syntax.Valence.Valence
+                                ([Lvca_syntax.Sort_slot.Sort_binding
                                     (Lvca_syntax.Sort.Name
                                        ((Lvca_syntax.Provenance.Located
                                            (Lvca_syntax.Provenance.Located.Parse_located
@@ -3877,7 +3874,7 @@ module Empty_as_var =
                                                             finish = 71
                                                           }))
                                                 })))), "empty")))])));
-                   Lvca_syntax.Abstract_syntax.Operator_def.Operator_def
+                   Lvca_syntax.Operator_def.Operator_def
                      ((Lvca_syntax.Provenance.Located
                          (Lvca_syntax.Provenance.Located.Parse_located
                             ((let open Lvca_syntax.Provenance.Parse_located in
@@ -3889,17 +3886,17 @@ module Empty_as_var =
                                        (let open Lvca_provenance.Range in
                                           { start = 80; finish = 104 }))
                                 })))), "Bar",
-                       (Lvca_syntax.Abstract_syntax.Arity.Arity
+                       (Lvca_syntax.Arity.Arity
                           ((Lvca_syntax.Provenance.Located
                               (Lvca_syntax.Provenance.Located.Source_located
                                  {
-                                   pos_fname = "syntax/Abstract_syntax.ml";
-                                   pos_lnum = 222;
-                                   pos_bol = 6019;
-                                   pos_cnum = 6070
+                                   pos_fname = "syntax/Arity.ml";
+                                   pos_lnum = 31;
+                                   pos_bol = 785;
+                                   pos_cnum = 834
                                  })),
-                            [Lvca_syntax.Abstract_syntax.Valence.Valence
-                               ([Lvca_syntax.Abstract_syntax.Sort_slot.Sort_pattern
+                            [Lvca_syntax.Valence.Valence
+                               ([Lvca_syntax.Sort_slot.Sort_pattern
                                    {
                                      pattern_sort =
                                        (Lvca_syntax.Sort.Ap

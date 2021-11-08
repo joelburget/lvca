@@ -268,9 +268,9 @@ and check_hyp
 
         ctx >> e1 => t1     ctx, x : t1 >> e2 => t2
         ---
-        ctx >> let(e1; x. e2) => t2
+        ctx >> Let(e1; x. e2) => t2
 
-      and term [let(num(1); v. v)]:
+      and term [Let(Num(1); v. v)]:
 
         [x] is the only variable that appears in a context. We first look up
         its [ty], in this case [t1]. Then we find the name the variable is
@@ -358,33 +358,34 @@ let infer env term = infer_trace (fun _ -> ()) env term
 
 let%test_module "check / infer" =
   (module struct
+    let reserved = Lvca_util.String.Set.empty
     let parse p = Lvca_parsing.(parse_string (whitespace *> p))
     let parse_statics = parse Statics.parse
-    let parse_tm = parse Nominal.Term.parse'
+    let parse_tm = parse (Nominal.Term.parse' reserved)
 
     let rules =
       {|
     --- (str_literal)
-    ctx >> str(x) => str()
+    ctx >> Str(x) => str()
 
     --- (num_literal)
-    ctx >> num(x) => num()
+    ctx >> Num(x) => num()
 
     ctx >> e1 <= num()    ctx >> e2 <= num()
     --- (plus)
-    ctx >> plus(e1; e2) => num()
+    ctx >> Plus(e1; e2) => num()
 
     ctx >> e1 <= str()    ctx >> e2 <= str()
     --- (cat)
-    ctx >> cat(e1; e2) => str()
+    ctx >> Cat(e1; e2) => str()
 
     ctx >> e <= str()
     --- (len)
-    ctx >> len(e) => num()
+    ctx >> Len(e) => num()
 
     ctx >> e1 => t1   ctx, x : t1 >> e2 => t2
     --- (let)
-    ctx >> let(e1; x. e2) => t2
+    ctx >> Let(e1; x. e2) => t2
 
     ctx >> e => t
     --- (infer_check)
@@ -415,52 +416,52 @@ let%test_module "check / infer" =
     ;;
 
     let%expect_test _ =
-      print_check ~tm:"num(1)" ~ty:"num()";
+      print_check ~tm:"Num(1)" ~ty:"num()";
       [%expect {| |}]
     ;;
 
     let%expect_test _ =
-      print_infer "num(1)";
+      print_infer "Num(1)";
       [%expect {| num() |}]
     ;;
 
     let%expect_test _ =
-      print_check ~tm:"num(1)" ~ty:"num()";
+      print_check ~tm:"Num(1)" ~ty:"num()";
       [%expect {| |}]
     ;;
 
     let%expect_test _ =
-      print_infer {| len(str("foo")) |};
+      print_infer {| Len(Str("foo")) |};
       [%expect {| num() |}]
     ;;
 
     let%expect_test _ =
-      print_check ~tm:{| len(str("foo")) |} ~ty:"num()";
+      print_check ~tm:{| Len(Str("foo")) |} ~ty:"num()";
       [%expect {| |}]
     ;;
 
     let%expect_test _ =
-      print_infer {| plus(len(str("foo")); num(1)) |};
+      print_infer {| Plus(Len(Str("foo")); Num(1)) |};
       [%expect {| num() |}]
     ;;
 
     let%expect_test _ =
-      print_infer {| let(num(1); v. v) |};
+      print_infer {| Let(Num(1); v. v) |};
       [%expect {| num() |}]
     ;;
 
     let%expect_test _ =
-      print_infer {| let(len(str("foo")); x. plus(x; num(1))) |};
+      print_infer {| Let(Len(Str("foo")); x. Plus(x; Num(1))) |};
       [%expect {| num() |}]
     ;;
 
     let%expect_test _ =
-      print_infer {| let(num(1); x. let(str("foo"); y. y)) |};
+      print_infer {| Let(Num(1); x. Let(Str("foo"); y. y)) |};
       [%expect {| str() |}]
     ;;
 
     let%expect_test _ =
-      print_infer {| let(num(1); x. let(str("foo"); x. x)) |};
+      print_infer {| Let(Num(1); x. Let(Str("foo"); x. x)) |};
       [%expect {| str() |}]
     ;;
   end)
