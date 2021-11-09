@@ -296,13 +296,14 @@ c_type := Computation(v_type; list string)
 
   module Parse = struct
     open Lvca_parsing
-    module Ws = C_comment_parser
+    open C_comment_parser
 
     let make0, make1, make2, make4, make6 = Provenance.(make0, make1, make2, make4, make6)
-    let ident = make1 Single_var.mk Ws.identifier
+    let identifier = lower_identifier Lvca_util.String.Set.empty
+    let ident = make1 Single_var.mk identifier
 
     let op_name =
-      No_junk.char '#' *> attach_pos' Ws.identifier
+      No_junk.char '#' *> attach_pos' identifier
       >>| fun (range, str) -> Provenance.of_range range, str
     ;;
 
@@ -313,15 +314,15 @@ c_type := Computation(v_type; list string)
       choice
         [ make4
             (fun ~info _ name _ c -> mk_Return_clause ~info (name, c))
-            (Ws.string "return")
+            (string "return")
             ident
-            (Ws.string "->")
+            (string "->")
             computation
         ; make4
             (fun ~info op_name (x, k) _ c -> mk_Op_clause ~info op_name (x, k, c))
             op_name
-            (Ws.parens (lift3 (fun x _semi k -> x, k) ident (Ws.char ';') ident))
-            (Ws.string "->")
+            (parens (lift3 (fun x _semi k -> x, k) ident (char ';') ident))
+            (string "->")
             computation
         ]
       <?> "Handler_clause"
@@ -332,10 +333,9 @@ c_type := Computation(v_type; list string)
       let go =
         make1
           mk_Handler
-          (Ws.string "handler" *> Ws.braces (sep_by (Ws.char '|') handler_clause)
-          >>| of_list)
+          (string "handler" *> braces (sep_by (char '|') handler_clause) >>| of_list)
       in
-      Ws.parens go <|> go <?> "handler"
+      parens go <|> go <?> "handler"
     ;;
 
     let mk_value handler computation =
@@ -344,63 +344,63 @@ c_type := Computation(v_type; list string)
         choice
           [ make4
               (fun ~info _ ident _ c -> mk_Fun ~info (ident, c))
-              (Ws.string "fun")
+              (string "fun")
               ident
-              (Ws.string "->")
+              (string "->")
               computation
             <?> "Fun"
           ; make1 mk_Handler_val handler
           ; make1 mk_Adt Nonbinding.parse
-          ; make1 mk_Value_var Ws.identifier
+          ; make1 mk_Value_var identifier
           ]
       in
-      Ws.parens go <|> go <?> "value"
+      parens go <|> go <?> "value"
     ;;
 
     let mk_computation value computation =
       let open Computation in
       let go =
         choice
-          [ make2 (fun ~info _ v -> mk_Return ~info v) (Ws.string "return") value
+          [ make2 (fun ~info _ v -> mk_Return ~info v) (string "return") value
             <?> "Return"
           ; make2
               (fun ~info op_name (v, body) -> mk_Op ~info op_name v body)
               op_name
-              (Ws.parens
+              (parens
                  (lift3
                     (fun v y body -> v, (y, body))
-                    (value <* Ws.char ';')
-                    (ident <* Ws.char '.')
+                    (value <* char ';')
+                    (ident <* char '.')
                     computation))
           ; make6
               (fun ~info _ ident _ c1 _ c2 -> mk_Do ~info c1 (ident, c2))
-              (Ws.string "do")
+              (string "do")
               ident
-              (Ws.string "<-")
+              (string "<-")
               computation
-              (Ws.string "in")
+              (string "in")
               computation
             <?> "Do"
           ; make6
               (fun ~info _ v _ c1 _ c2 -> mk_If ~info v c1 c2)
-              (Ws.string "if")
+              (string "if")
               value
-              (Ws.string "then")
+              (string "then")
               computation
-              (Ws.string "else")
+              (string "else")
               computation
             <?> "If"
           ; make4
               (fun ~info _ v _ c -> mk_With_handle ~info v c)
-              (Ws.string "with")
+              (string "with")
               value
-              (Ws.string "handle")
+              (string "handle")
               computation
             <?> "With_handle"
           ; make2 mk_App value value <?> "App"
           ]
       in
-      Ws.parens go <|> go <?> "computation"
+      parens go <|> go <?> "computation"
     ;;
 
     let computation =
@@ -420,13 +420,13 @@ c_type := Computation(v_type; list string)
         make2
           C_type.mk_Computation
           atomic_v_type
-          (Ws.char '!' *> Ws.braces (sep_by (Ws.char ',') op_name) >>| of_list)
+          (char '!' *> braces (sep_by (char ',') op_name) >>| of_list)
       in
-      choice [ Ws.parens go; go ] <?> "computation type"
+      choice [ parens go; go ] <?> "computation type"
     ;;
 
     let mk_atomic_v_type v_type =
-      choice [ Ws.parens v_type; make0 V_type.mk_Bool (Ws.string "bool") ]
+      choice [ parens v_type; make0 V_type.mk_Bool (string "bool") ]
       <?> "atomic value type"
     ;;
 
@@ -436,7 +436,7 @@ c_type := Computation(v_type; list string)
           let atomic_v_type = mk_atomic_v_type v_type in
           let c_type = mk_c_type atomic_v_type in
           choice
-            [ make2 mk_Handler_ty (c_type <* Ws.string "=>") c_type
+            [ make2 mk_Handler_ty (c_type <* string "=>") c_type
             ; (atomic_v_type
               >>== fun { value; range } ->
               choice
@@ -444,7 +444,7 @@ c_type := Computation(v_type; list string)
                     (fun ~info c_type ->
                       let info = Opt_range.union range info |> Provenance.of_range in
                       mk_Fun_ty ~info value c_type)
-                    (Ws.string "->" *> c_type)
+                    (string "->" *> c_type)
                 ; return ~range value
                 ])
             ])

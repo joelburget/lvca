@@ -200,6 +200,7 @@ module Parse = struct
   let attach_pos' p = attach_pos' p >>| fun (range, a) -> Provenance.of_range range, a
   let make0, make1, make2 = Provenance.(make0, make1, make2)
   let input = Provenance.Parse_input.Buffer_name "input"
+  let identifier = Ws.lower_identifier String.Set.empty
 
   let t c_term =
     fix (fun parser ->
@@ -211,7 +212,7 @@ module Parse = struct
                 (attach_pos' Ws.char_lit : (Provenance.t * char) Lvca_parsing.t)
             ; make1 mk_String (attach_pos' Ws.string_lit)
             ; make0 mk_Any_char (Ws.char '.')
-            ; make1 mk_Term_var Ws.identifier
+            ; make1 mk_Term_var identifier
             ; Ws.parens parser
             ]
         in
@@ -245,7 +246,7 @@ module Parse = struct
                 (Ws.parens
                    (lift3
                       (fun v _arr body -> v, body)
-                      (make1 Single_var.mk Ws.identifier)
+                      (make1 Single_var.mk identifier)
                       arrow
                       parser))
             ; make2
@@ -254,7 +255,7 @@ module Parse = struct
                 (Ws.parens
                    (lift3
                       (fun name _arr tm -> name, tm)
-                      (Ws.identifier
+                      (identifier
                       >>~ fun range ident -> Provenance.of_range ~input range, ident)
                       arrow
                       (Ws.braces c_term)))
@@ -278,7 +279,7 @@ module Parse = struct
                 (fun ~info ident _eq tm ->
                   let info = Provenance.of_range info in
                   mk_Bound ~info ident tm)
-                (make1 Single_var.mk Ws.identifier)
+                (make1 Single_var.mk identifier)
                 (Ws.char '=')
                 parse_app
             ; make1 mk_Unbound parse_app
@@ -314,7 +315,7 @@ module Parse = struct
                   let info = Provenance.of_range info in
                   mk_Let ~info tm (name, rhs))
                 (Ws.string "let")
-                (make1 Single_var.mk Ws.identifier)
+                (make1 Single_var.mk identifier)
                 (Ws.char '=')
                 parser
                 (Ws.string "in")

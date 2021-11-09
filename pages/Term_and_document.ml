@@ -4,8 +4,8 @@ open Note
 open Lvca_syntax
 module Document = Lvca_languages.Document
 open Document.Lang
-module List_model = Lvca_core.List_model
-module Option_model = Lvca_core.Option_model
+module List_model = Lvca_del.List_model
+module Option_model = Lvca_del.Option_model
 
 type term = Doc.t
 

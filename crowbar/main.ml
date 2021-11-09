@@ -131,7 +131,7 @@ let term_str_conf tm_str =
 
 (* Limited core generator: only generates nominal terms. *)
 let core_gen =
-  Crowbar.map [ nominal_gen ] (fun tm -> Lvca_core.Lang.Term.Embedded (prov, tm))
+  Crowbar.map [ nominal_gen ] (fun tm -> Lvca_del.Core.Lang.Term.Nominal (prov, tm))
 ;;
 
 (* Limitations of parser generator:
@@ -141,7 +141,7 @@ let core_gen =
 let parser_gen =
   let mk_var name = Single_var.{ name; info = prov } in
   Crowbar.(
-    Lvca_languages.Parser.Term.(
+    Lvca_languages.Parser.Lang.Term.(
       Lvca_languages.Parser.Sequence.(
         fix (fun parser_gen ->
             let binder_gen =
@@ -159,7 +159,7 @@ let parser_gen =
             in
             let sequence_gen = map [ list binder_gen; core_gen ] mk_sequence in
             choose
-              [ const (AnyChar prov)
+              [ const (Any_char prov)
               ; map [ char ] (fun c -> Char (prov, (prov, c)))
               ; map [ str_gen ] (fun s -> String (prov, (prov, s)))
               ; map [ ident_gen; core_gen ] (fun ident tm ->
@@ -174,7 +174,7 @@ let parser_gen =
               ; map [ ident_gen; parser_gen ] (fun ident p ->
                     Fix (prov, (mk_var ident, p)))
               ; map [ parser_gen; parser_gen ] (fun p1 p2 ->
-                    Choice (prov, Lvca_core.List_model.of_list [ p1; p2 ]))
+                    Choice (prov, Lvca_del.List_model.of_list [ p1; p2 ]))
               ; map [ sequence_gen ] (mk_Sequence ~info:prov)
               ; map [ ident_gen ] (mk_Term_var ~info:prov)
               ]))))

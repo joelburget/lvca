@@ -111,7 +111,8 @@ module DebuggerAction = struct
     | ChopStack of int list (** Click on a stack member *)
 end
 
-let parser = P.Parse.t Lvca_core.Term.parse
+let reserved = String.Set.of_list [ "choice"; "satisfy"; "match"; "with" ]
+let parser = P.Parse.t Lvca_del.Core.Term.parse
 let parse_parser = Lvca_parsing.parse_string parser
 
 module Examples = struct
@@ -248,7 +249,7 @@ let view_term ~highlight_s tm =
 ;;
 
 let view_core ~highlight_s core =
-  let pp_view, tm_selection_e = pp_view ~highlight_s core Lvca_core.Term.pp in
+  let pp_view, tm_selection_e = pp_view ~highlight_s core Lvca_del.Core.Term.pp in
   success_msg [ pp_view ], tm_selection_e
 ;;
 

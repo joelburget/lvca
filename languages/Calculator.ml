@@ -199,11 +199,11 @@ module Parse = struct
               ~failure_msg:"looking for min or max"
             >>== fun { value = name; range = p1 } ->
             lift2
-              (fun atom1 (atom2, p2) ->
+              (fun atom1 (p2, atom2) ->
                 let pos = Opt_range.union p1 p2 |> Provenance.of_range in
                 mk_binary pos name atom1 atom2)
               atom
-              (attach_pos atom)
+              (attach_pos' atom)
           in
           atom <|> unary_op <|> min_max
         in

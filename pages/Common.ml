@@ -7,9 +7,11 @@ open Prelude
 
 type term = Nominal.Term.t
 
+let reserved = Lvca_util.String.Set.empty
+
 let parse_term =
   let open Lvca_parsing in
-  parse_string (whitespace *> Nominal.Term.parse')
+  parse_string (whitespace *> Nominal.Term.parse' reserved)
 ;;
 
 type lang =
@@ -18,7 +20,7 @@ type lang =
 
 let parser_of = function
   | Lambda -> Lvca_languages.Lambda_calculus.Parse.t
-  | Term -> Nominal.Term.parse'
+  | Term -> Nominal.Term.parse' reserved
 ;;
 
 (* let term_pretty = Nominal.Term.pp *)

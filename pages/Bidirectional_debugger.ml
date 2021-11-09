@@ -44,6 +44,7 @@ let ( a
     , ul ))
 ;;
 
+let reserved = String.Set.empty
 let html_eq = Common.html_eq
 let class', classes, mk_reactive', type' = Prelude.(class', classes, mk_reactive', type')
 let string_of_term tm = Fmt.to_to_string Nominal.Term.pp tm
@@ -259,7 +260,9 @@ module Term_render_component = struct
           let handle_trace = Queue.enqueue steps in
           let env = Bidirectional.Env.{ rules; var_types = String.Map.empty } in
           let debugger_state =
-            let parsed = Lvca_parsing.(parse_string Nominal.Term.parse' input) in
+            let parsed =
+              Lvca_parsing.(parse_string (Nominal.Term.parse' reserved) input)
+            in
             match parsed with
             | Error msg ->
               Fmt.pr "failed to parse: %s\n" msg;

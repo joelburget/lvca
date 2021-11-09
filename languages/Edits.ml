@@ -37,19 +37,21 @@ let rec pp : 'lang Fmt.t -> 'lang t Fmt.t =
   | List edits -> Fmt.(brackets (list ~sep:comma pp')) ppf edits
 ;;
 
+let reserved = Lvca_util.String.Set.empty
+
 let parse lang_p =
   let open Lvca_parsing in
-  let module Ws = C_comment_parser in
+  let open C_comment_parser in
   fix (fun t ->
       choice
         ~failure_msg:
           "looking for a core term, list (in brackets), or an identifier (label)"
         [ lang_p >>| (fun core -> Atomic core) <?> "core term"
-        ; Ws.brackets (sep_by (Ws.char ',') t) >>| (fun ts -> List ts) <?> "list"
+        ; brackets (sep_by (char ',') t) >>| (fun ts -> List ts) <?> "list"
         ; lift3
             (fun name _colon edit -> Labeled (edit, name))
-            Ws.identifier
-            (Ws.char ':')
+            (lower_identifier reserved)
+            (char ':')
             t
           <?> "labeled"
         ])
@@ -98,7 +100,7 @@ let%test_module "Parsing" =
       let open Result.Let_syntax in
       match
         let%bind edit = parse edit in
-        let%bind tm = Lvca_parsing.parse_string Nominal.Term.parse' tm in
+        let%bind tm = Lvca_parsing.parse_string (Nominal.Term.parse' reserved) tm in
         let%map tm = eval tm edit in
         Nominal.Term.pp Caml.Format.std_formatter tm
       with

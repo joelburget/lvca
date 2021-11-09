@@ -8,10 +8,10 @@ module Description = struct
     [%lvca.abstract_syntax
       {|
      expr :=
-     | lit(integer)
-     | add(expr; expr)
+     | Lit(integer)
+     | Add(expr; expr)
 
-     type := int()  |}]
+     type := Int()  |}]
   ;;
 
   let parser_str =
@@ -25,7 +25,7 @@ module Description = struct
     in
     l=atom r=('+' space parser)? -> {
       match r with
-        | some(r') -> add(l; r')
+        | some(r') -> Add(l; r')
         | none() -> l
     }
   )
@@ -35,17 +35,17 @@ module Description = struct
   let statics =
     {|
   ----------------------
-  ctx >> lit(_) => int()
+  ctx >> Lit(_) => Int()
 
   -------------------------
-  ctx >> add(_; _) => int()
+  ctx >> Add(_; _) => Int()
     |}
   ;;
 
   let expr_name = "expr"
 
   (* let dynamics_str = {| let rec dynamics = \(expr : expr()) -> match expr with { |
-     add(a; b) -> let a' = dynamics a in let b' = dynamics b in {add(a'; b')} | lit(i) ->
+     Add(a; b) -> let a' = dynamics a in let b' = dynamics b in {Add(a'; b')} | Lit(i) ->
      i } in dynamics |}
 
      let dynamics : Core.term = Lvca_parsing.(parse_string (whitespace *> ParseDynamics.term))
@@ -61,7 +61,7 @@ module Parse = struct
     Ws.integer_lit
     >>~ fun range str ->
     let range = Provenance.of_range range in
-    Nonbinding.Operator (range, "lit", [ Primitive (range, Integer (Z.of_string str)) ])
+    Nonbinding.Operator (range, "Lit", [ Primitive (range, Integer (Z.of_string str)) ])
   ;;
 
   let t : Nonbinding.t Lvca_parsing.t =
@@ -71,7 +71,7 @@ module Parse = struct
         let f (l, rng1) (r, rng2) =
           let rng = Opt_range.union rng1 rng2 in
           let info = Provenance.of_range rng in
-          Nonbinding.Operator (info, "add", [ l; r ]), rng
+          Nonbinding.Operator (info, "Add", [ l; r ]), rng
         in
         atom
         >>= fun init -> many (plus *> atom) >>| fun lst -> List.fold lst ~init ~f |> fst)
@@ -89,7 +89,7 @@ let pp =
   in
   let rec pp' prec ppf tm =
     match tm with
-    | Nonbinding.Operator (_, "add", [ a; b ]) ->
+    | Nonbinding.Operator (_, "Add", [ a; b ]) ->
       with_stag
         ppf
         (String_tag (Nonbinding.hash tm))
@@ -97,7 +97,7 @@ let pp =
           if prec > 0
           then Fmt.pf ppf "(%a + %a)" (pp' 0) a (pp' 1) b
           else Fmt.pf ppf "%a + %a" (pp' 0) a (pp' 1) b)
-    | Operator (_, "lit", [ Primitive (_, Integer i) ]) ->
+    | Operator (_, "Lit", [ Primitive (_, Integer i) ]) ->
       with_stag ppf (String_tag (Nonbinding.hash tm)) (fun () -> Z.pp_print ppf i)
     | tm -> Fmt.failwith "Invalid Hutton's Razor term %a" Nonbinding.pp tm
   in
@@ -105,11 +105,11 @@ let pp =
 ;;
 
 let rec eval_tm : Nonbinding.t -> (Z.t, string) Result.t = function
-  | Operator (_, "add", [ a; b ]) ->
+  | Operator (_, "Add", [ a; b ]) ->
     (match eval_tm a, eval_tm b with
     | Ok a', Ok b' -> Ok Z.(a' + b')
     | Error msg, _ | _, Error msg -> Error msg)
-  | Operator (_, "lit", [ Primitive (_, Integer i) ]) -> Ok i
+  | Operator (_, "Lit", [ Primitive (_, Integer i) ]) -> Ok i
   | tm -> Error (Fmt.str "found un-evaluable term: %a" Nonbinding.pp tm)
 ;;
 
@@ -168,7 +168,7 @@ let%test_module "Hutton's Razor" =
     let%expect_test _ =
       print_representations "1";
       [%expect {|
-      lit(1)
+      Lit(1)
       <bf7475>1</bf7475>
     |}]
     ;;
@@ -178,7 +178,7 @@ let%test_module "Hutton's Razor" =
       (*012345*)
       [%expect
         {|
-      add(lit(1); lit(2))
+      Add(Lit(1); Lit(2))
       <a2e561><bf7475>1</bf7475> + <20ff08>2</20ff08></a2e561>
     |}]
     ;;
@@ -188,7 +188,7 @@ let%test_module "Hutton's Razor" =
       (*0123456789*)
       [%expect
         {|
-      add(add(lit(1); lit(2)); lit(3))
+      Add(Add(Lit(1); Lit(2)); Lit(3))
       <5e04bc><a2e561><bf7475>1</bf7475> + <20ff08>2</20ff08></a2e561> + <420b31>3</420b31></5e04bc>
     |}]
     ;;
@@ -198,7 +198,7 @@ let%test_module "Hutton's Razor" =
       (*012345678901*)
       [%expect
         {|
-      add(lit(1); add(lit(2); lit(3)))
+      Add(Lit(1); Add(Lit(2); Lit(3)))
       <0cc723><bf7475>1</bf7475> + <90e51f>(<20ff08>2</20ff08> + <420b31>3</420b31>)</90e51f></0cc723>
     |}]
     ;;

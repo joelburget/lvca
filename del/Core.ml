@@ -36,9 +36,9 @@ let rec make_empty_list_pattern vars =
 ;;
 
 module Type = struct
-  include
-    [%lvca.abstract_syntax_module
-    {|
+  module Kernel =
+  [%lvca.abstract_syntax_module
+  {|
 sort : *
 
 // we allow quantifiers only on the outside
@@ -49,7 +49,9 @@ quantified_ty :=
   | Sort(sort)
   | Arrow(quantified_ty; quantified_ty)
       |}
-    , { sort = "Sort_model.Sort"; empty = "Empty" }]
+  , { sort = "Sort_model.Sort"; empty = "Empty" }]
+
+  open Kernel
 
   let rec pp_quantified_ty need_parens ppf = function
     | Quantified_ty.Arrow (_, t1, t2) ->
@@ -78,7 +80,6 @@ quantified_ty :=
   module Parse = struct
     open Lvca_parsing
     open C_comment_parser
-    open Ty
     open Quantified_ty
 
     let arrow s1 s2 = Arrow (Provenance.of_here [%here], s1, s2)
@@ -104,8 +105,6 @@ quantified_ty :=
           sep_by1 (string "->") atom >>| of_list)
       <?> "core type"
     ;;
-
-    let here = Provenance.of_here [%here]
 
     let ty =
       choice
@@ -189,10 +188,10 @@ quantified_ty :=
     ;;
   end
 
-  let rec chop_trailing n ty =
+  let rec _chop_trailing n ty =
     match n, ty with
     | 0, _ -> ty
-    | _, Quantified_ty.Arrow (_, _, t) -> chop_trailing (n - 1) t
+    | _, Quantified_ty.Arrow (_, _, t) -> _chop_trailing (n - 1) t
     | _, _ -> Lvca_util.invariant_violation ~here:[%here] "expected an arrow"
   ;;
 
@@ -592,12 +591,16 @@ end
 let here = Provenance.of_here [%here]
 let nominal_ty = Type.Quantified_ty.Sort (here, Name (here, (here, "nominal")))
 
-let check_binding_pattern
-    syntax
-    (pat : Binding_aware_pattern.t)
-    (sort : Lvca_syntax.Sort.t)
+let _check_binding_pattern
+    _syntax
+    (_pat : Binding_aware_pattern.t)
+    (_sort : Lvca_syntax.Sort.t)
     : (type_env, Check_error'.t) Result.t
   =
+  failwith "TODO"
+;;
+
+(*
   let lookup_operator = Abstract_syntax.lookup_operator syntax in
   let here = Provenance.of_here [%here] in
   let rec check (sort : Lvca_syntax.Sort.t) pat =
@@ -628,9 +631,9 @@ let check_binding_pattern
         check_slots (Arity.instantiate sort_env arity) subpats)
   and check_slots (Arity (_, _)) _ = failwith "TODO" in
   check sort pat
-;;
+       *)
 
-let primitive_types =
+let _primitive_types =
   let here = Provenance.of_here [%here] in
   let arr t1 t2 = Type.Quantified_ty.Arrow (here, t1, t2) in
   let sort s =
@@ -655,7 +658,7 @@ let primitive_types =
     in
     Type.Ty.Forall (here, (names, body))
   in
-  let a = Type.Ty.Ty_var (here, "a") in
+  let a = Type.Quantified_ty.Quantified_ty_var (here, "a") in
   String.Map.of_alist_exn
     [ "rename", forall [] (arr string (arr string nominal_ty))
     ; "var", forall [] (arr string nominal_ty)
@@ -673,6 +676,10 @@ let primitive_types =
     ]
 ;;
 
+let check _ _ _ = failwith "TODO"
+let infer _ _ = failwith "TODO"
+
+(*
 let rec check ({ type_env; syntax } as env) tm ty =
   let check_ty ty' =
     if Type.Ty.equivalent ty ty'
@@ -786,6 +793,7 @@ and check_binders ({ type_env; syntax = _ } as env) rows binders =
   in
   match defn_check_error with None -> Ok type_env | Some err -> Error err
 ;;
+*)
 
 let merge_pattern_context
     : Nominal.Term.t String.Map.t option list -> Nominal.Term.t String.Map.t option
@@ -1519,6 +1527,7 @@ let%test_module "Checking / inference" =
       [%expect {| checked |}]
     ;;
 
+    (* TODO
     let type_env =
       String.Map.of_alist_exn
         [ ( "x"
@@ -1584,5 +1593,6 @@ let%test_module "Checking / inference" =
         inferred: char -> bool
         inferred: char -> bool |}]
     ;;
+       *)
   end)
 ;;

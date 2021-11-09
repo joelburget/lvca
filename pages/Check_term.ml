@@ -7,7 +7,11 @@ let parse_lang lang_str =
   Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse) lang_str)
 ;;
 
-let parse_term term_str = Lvca_parsing.parse_string Nominal.Term.parse' term_str
+let reserved = Lvca_util.String.Set.empty
+
+let parse_term term_str =
+  Lvca_parsing.parse_string (Nominal.Term.parse' reserved) term_str
+;;
 
 module Model = struct
   type t =

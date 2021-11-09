@@ -96,12 +96,13 @@ let split = function
 
 let parse reserved_word =
   let open Lvca_parsing in
+  let open C_comment_parser in
   fix (fun sort ->
       let atomic_sort =
         choice
           ~failure_msg:"looking for parens or an identifier"
-          [ C_comment_parser.parens sort
-          ; (C_comment_parser.lower_identifier reserved_word
+          [ parens sort
+          ; (lower_identifier reserved_word
             >>~ fun loc value -> Name (Provenance.of_range loc, value))
           ]
       in

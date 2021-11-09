@@ -6,6 +6,8 @@ open Prelude
 open Lvca_provenance
 open Lvca_syntax
 
+let reserved = Lvca_util.String.Set.empty
+
 module Model = struct
   module Internal =
   [%lvca.abstract_syntax_module
@@ -67,7 +69,8 @@ module View = struct
 
   let find_matches filter_str =
     match
-      Lvca_parsing.(parse_string (whitespace *> Binding_aware_pattern.parse) filter_str)
+      Lvca_parsing.(
+        parse_string (whitespace *> Binding_aware_pattern.parse reserved) filter_str)
     with
     | Error msg ->
       Fmt.pr "failed to parse binding-aware-pattern: %s\n" msg;

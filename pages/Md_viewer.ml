@@ -2,8 +2,8 @@ open Base
 open Brr
 module Document = Lvca_languages.Document
 open Document.Lang
-module List_model = Lvca_core.List_model
-module Option_model = Lvca_core.Option_model
+module List_model = Lvca_del.List_model
+module Option_model = Lvca_del.Option_model
 
 type demo_env = El.t Lvca_util.String.Map.t
 

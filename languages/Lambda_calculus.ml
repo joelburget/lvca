@@ -2,7 +2,7 @@ open Base
 open Lvca_syntax
 open Lvca_provenance
 
-let language = [%lvca.abstract_syntax "tm := app(tm; tm) | lam(tm. tm)"]
+let language = [%lvca.abstract_syntax "tm := App(tm; tm) | Lam(tm. tm)"]
 
 let eval tm =
   let open Result.Let_syntax in
@@ -11,14 +11,14 @@ let eval tm =
   in
   let rec eval' tm =
     match tm with
-    | DeBruijn.Operator (_, "app", [ Second t1; Second t2 ]) ->
+    | DeBruijn.Operator (_, "App", [ Second t1; Second t2 ]) ->
       let%bind t1' = eval' t1 in
       let%bind t2' = eval' t2 in
       (match t1' with
-      | DeBruijn.Operator (_, "lam", [ First body ]) ->
+      | DeBruijn.Operator (_, "Lam", [ First body ]) ->
         eval' (DeBruijn.open_scope t2' body)
       | _ -> Error (Printf.sprintf "Unexpected term (1) %s" (tm_str tm)))
-    | Operator (_, "lam", _) -> Ok tm
+    | Operator (_, "Lam", _) -> Ok tm
     | Bound_var (_, _) -> Error "bound variable encountered"
     | Free_var _ -> Ok tm
     | _ -> Error (Printf.sprintf "Unexpected term (2) %s" (tm_str tm))
@@ -34,38 +34,39 @@ let eval tm =
 
 module Parse = struct
   open Lvca_parsing
-  module Ws = C_comment_parser
+  open C_comment_parser
 
   let info = Nominal.Term.info
+  let identifier = lower_identifier Lvca_util.String.Set.empty
 
   let t_var : Nominal.Term.t Lvca_parsing.t =
-    Ws.identifier >>~ fun range name -> Nominal.Term.Var (Provenance.of_range range, name)
+    identifier >>~ fun range name -> Nominal.Term.Var (Provenance.of_range range, name)
   ;;
 
   let p_var : Pattern.t Lvca_parsing.t =
-    Ws.identifier >>~ fun range name -> Pattern.Var (Provenance.of_range range, name)
+    identifier >>~ fun range name -> Pattern.Var (Provenance.of_range range, name)
   ;;
 
-  (* Precedence 0: lam (right-associative) 1: app (left-associative) *)
+  (* Precedence 0: Lam (right-associative) 1: App (left-associative) *)
 
   let t : Nominal.Term.t Lvca_parsing.t =
     fix (fun t ->
-        let atom = t_var <|> Ws.parens t in
+        let atom = t_var <|> parens t in
         let lam : Nominal.Term.t Lvca_parsing.t =
           make4
             (fun ~info _lam var _arr body ->
               Nominal.Term.Operator
-                (Provenance.of_range info, "lam", [ Scope ([ var ], body) ]))
-            (Ws.char '\\')
+                (Provenance.of_range info, "Lam", [ Scope ([ var ], body) ]))
+            (char '\\')
             p_var
-            (Ws.string "->")
+            (string "->")
             t
         in
         let f (x, rng1) (y, rng2) =
           let range = Opt_range.union rng1 rng2 in
           let tm =
             Nominal.Term.Operator
-              (Provenance.of_range range, "app", [ Scope ([], x); Scope ([], y) ])
+              (Provenance.of_range range, "App", [ Scope ([], x); Scope ([], y) ])
           in
           tm, range
         in
@@ -81,12 +82,12 @@ let pp =
     Format.pp_open_stag ppf (Format.String_tag (Nominal.Term.hash tm));
     Provenance.open_stag ppf (Nominal.Term.info tm);
     (match tm with
-    | Nominal.Term.Operator (_, "app", [ Scope ([], a); Scope ([], b) ]) ->
+    | Nominal.Term.Operator (_, "App", [ Scope ([], a); Scope ([], b) ]) ->
       if prec > 1
       then Fmt.pf ppf "(%a %a)" (pp' 1) a (pp' 2) b
       else Fmt.pf ppf "%a %a" (pp' 1) a (pp' 2) b
     | Var (_, name) -> Fmt.string ppf name
-    | Operator (_, "lam", [ Scope ([ Pattern.Var (_range, name) ], body) ]) ->
+    | Operator (_, "Lam", [ Scope ([ Pattern.Var (_range, name) ], body) ]) ->
       if prec > 0
       then Fmt.pf ppf {|(\%s -> %a)|} name (pp' 0) body
       else Fmt.pf ppf {|\%s -> %a|} name (pp' 0) body
