@@ -97,18 +97,20 @@ module Model = struct
   ;;
 end
 
+(*
 module Action = struct
   type t =
-    | ToggleTrace
-    | SetSelection of Source_ranges.t
-    | UpdateTest of string
-    | SetInputHl of Source_ranges.t
+    | Toggle_trace
+    | Set_selection of Source_ranges.t
+    | Update_test of string
+    | Set_input_hl of Source_ranges.t
 end
+   *)
 
 module DebuggerAction = struct
   type t =
-    | SubparserZoom of int (** Click on a subparser *)
-    | ChopStack of int list (** Click on a stack member *)
+    | Subparser_zoom of int (** Click on a subparser *)
+    | Chop_stack of int list (** Click on a stack member *)
 end
 
 let reserved = String.Set.of_list [ "choice"; "satisfy"; "match"; "with" ]
@@ -313,7 +315,9 @@ let snapshot_controls str snapshots =
     |> List.mapi ~f:(fun i snapshot ->
            let Model.TraceSnapshot.{ success; parser; _ } = snapshot in
            let click_evt, btn = button "view" in
-           let click_evt = click_evt |> E.map (fun _ -> DebuggerAction.SubparserZoom i) in
+           let click_evt =
+             click_evt |> E.map (fun _ -> DebuggerAction.Subparser_zoom i)
+           in
            let highlight_s = S.const Source_ranges.empty in
            ( click_evt
            , tr
@@ -385,7 +389,7 @@ let view_stack root path_s =
                   let click_evt, btn = button "return here" in
                   let click_evt =
                     click_evt
-                    |> E.map (fun _ -> DebuggerAction.ChopStack (List.take path i))
+                    |> E.map (fun _ -> DebuggerAction.Chop_stack (List.take path i))
                   in
                   let at =
                     [ (if i > 0 then Some "border-t-2" else None)
@@ -435,8 +439,8 @@ let view_root_snapshot str root =
     E.log evt (fun evt ->
         let path =
           match evt with
-          | ChopStack path -> path
-          | SubparserZoom i -> List.snoc (S.value path_s) i
+          | Chop_stack path -> path
+          | Subparser_zoom i -> List.snoc (S.value path_s) i
         in
         set_path path)
   in
