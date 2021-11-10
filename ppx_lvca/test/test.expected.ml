@@ -1,5 +1,5 @@
 open Lvca_syntax
-module Test4 =
+module Nominal_list =
   struct
     module Wrapper =
       struct
@@ -182,6 +182,86 @@ module Test4 =
         let mk_Cons ~info  x_0 x_1 = Cons (info, x_0, x_1)
       end
   end
+let test_nominal =
+  Lvca_syntax.Nominal.Term.Operator
+    ((Lvca_syntax.Provenance.Located
+        (Lvca_syntax.Provenance.Located.Parse_located
+           (let open Lvca_syntax.Provenance.Parse_located in
+              {
+                input = Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                range =
+                  (Some
+                     (let open Lvca_provenance.Range in
+                        { start = 0; finish = 11 }))
+              }))), "Foo",
+      [Lvca_syntax.Nominal.Scope.Scope
+         ([],
+           (Lvca_syntax.Nominal.Term.Operator
+              ((Lvca_syntax.Provenance.Located
+                  (Lvca_syntax.Provenance.Located.Parse_located
+                     ((let open Lvca_syntax.Provenance.Parse_located in
+                         {
+                           input =
+                             Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                           range =
+                             (Some
+                                (let open Lvca_provenance.Range in
+                                   { start = 4; finish = 10 }))
+                         })))), "Bar",
+                [Lvca_syntax.Nominal.Scope.Scope
+                   ([],
+                     (Lvca_syntax.Nominal.Term.Primitive
+                        ((Lvca_syntax.Provenance.Located
+                            (Lvca_syntax.Provenance.Located.Parse_located
+                               ((let open Lvca_syntax.Provenance.Parse_located in
+                                   {
+                                     input =
+                                       Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                     range =
+                                       (Some
+                                          (let open Lvca_provenance.Range in
+                                             { start = 8; finish = 9 }))
+                                   })))),
+                          (Lvca_syntax.Primitive_impl.All_plain.Integer
+                             (Z.of_string "1")))))])))])
+let test_nonbinding =
+  Lvca_syntax.Nonbinding.Operator
+    ((Lvca_syntax.Provenance.Located
+        (Lvca_syntax.Provenance.Located.Parse_located
+           (let open Lvca_syntax.Provenance.Parse_located in
+              {
+                input = Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                range =
+                  (Some
+                     (let open Lvca_provenance.Range in
+                        { start = 0; finish = 11 }))
+              }))), "Foo",
+      [Lvca_syntax.Nonbinding.Operator
+         ((Lvca_syntax.Provenance.Located
+             (Lvca_syntax.Provenance.Located.Parse_located
+                ((let open Lvca_syntax.Provenance.Parse_located in
+                    {
+                      input =
+                        Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                      range =
+                        (Some
+                           (let open Lvca_provenance.Range in
+                              { start = 4; finish = 10 }))
+                    })))), "Bar",
+           [Lvca_syntax.Nonbinding.Primitive
+              ((Lvca_syntax.Provenance.Located
+                  (Lvca_syntax.Provenance.Located.Parse_located
+                     ((let open Lvca_syntax.Provenance.Parse_located in
+                         {
+                           input =
+                             Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                           range =
+                             (Some
+                                (let open Lvca_provenance.Range in
+                                   { start = 8; finish = 9 }))
+                         })))),
+                (Lvca_syntax.Primitive_impl.All_plain.Integer
+                   (Z.of_string "1")))])])
 let test_pattern =
   Lvca_syntax.Pattern.Operator
     ((Lvca_syntax.Provenance.Located
@@ -224,7 +304,7 @@ let test_language =
                                 range =
                                   (Some
                                      (let open Lvca_provenance.Range in
-                                        { start = 11; finish = 20 }))
+                                        { start = 10; finish = 19 }))
                               })))), "Foo",
                      (Lvca_syntax.Arity.Arity
                         ((Lvca_syntax.Provenance.Located
@@ -248,8 +328,8 @@ let test_language =
                                                  (Some
                                                     (let open Lvca_provenance.Range in
                                                        {
-                                                         start = 12;
-                                                         finish = 19
+                                                         start = 11;
+                                                         finish = 18
                                                        }))
                                              })))), "integer")))])))])))]
     }
@@ -508,7 +588,6 @@ module List =
     let of_nominal _ tm = Error (Nominal.Conversion_error.mk_Term tm)
     let equivalent _a ~info_eq:_  _ _ = true
   end
-module Maybe = List
 module Lang =
   struct
     module Wrapper =

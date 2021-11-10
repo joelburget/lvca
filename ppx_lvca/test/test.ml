@@ -1,6 +1,6 @@
 open Lvca_syntax
 
-module Test4 =
+module Nominal_list =
 [%lvca.abstract_syntax_module
 {|
 term: *
@@ -8,12 +8,10 @@ term: *
 list := Nil() | Cons(term; list)
 |}, { term = "Nominal.Term" }]
 
-(* let test_nonbinding = [%lvca.nonbinding "foo(bar(1))"] *)
+let test_nominal = [%lvca.nominal "Foo(Bar(1))"]
+let test_nonbinding = [%lvca.nonbinding "Foo(Bar(1))"]
 let test_pattern = [%lvca.pattern "Foo(x)"]
-
-let test_language = [%lvca.abstract_syntax {|
-foo := Foo(integer)
-|}]
+let test_language = [%lvca.abstract_syntax "foo := Foo(integer)"]
 
 module List_model : [%lvca.abstract_syntax_module_sig
 "list a := Nil() | Cons(a; list a)"] =
@@ -27,8 +25,6 @@ module List = struct
   let of_nominal _ tm = Error (Nominal.Conversion_error.mk_Term tm)
   let equivalent _a ~info_eq:_ _ _ = true
 end
-
-module Maybe = List
 
 module Lang =
 [%lvca.abstract_syntax_module
@@ -56,7 +52,7 @@ mut_b := Mut_b(mut_a)
 |}
 , { integer = "Primitive.Integer"
   ; string = "Primitive.String"
-  ; maybe = "Maybe"
+  ; maybe = "List" (* Just for testing *)
   ; list = "List"
   }]
 
