@@ -8,21 +8,6 @@ module Format = Stdlib.Format
 let reserved = Lvca_util.String.Set.of_list [ "let"; "rec"; "and"; "in"; "match"; "with" ]
 let var_identifier = Lvca_parsing.C_comment_parser.lower_identifier reserved
 
-let rec extract_vars_from_empty_list_pattern = function
-  | Pattern.Operator (_, "Nil", []) -> []
-  | Operator (_, "Cons", [ Var (_, name); pats ]) ->
-    name :: extract_vars_from_empty_list_pattern pats
-  | _ -> Lvca_util.invariant_violation ~here:[%here] "Invalid empty list pattern"
-;;
-
-let rec make_empty_list_pattern vars =
-  match vars with
-  | [] -> Pattern.Operator (Provenance.of_here [%here], "Nil", [])
-  | (v, pos) :: vars ->
-    Operator
-      (Provenance.of_here [%here], "Cons", [ Var (v, pos); make_empty_list_pattern vars ])
-;;
-
 module Type = struct
   module Kernel =
   [%lvca.abstract_syntax_module
@@ -210,7 +195,7 @@ module Pp = struct
         cases'
     | Let (_, tm, ty, (Single_var.{ name; info = _ }, body)) -> let_ ppf tm ty name body
     | Let_rec (_, rows, (binders, rhs)) ->
-      let binders = extract_vars_from_empty_list_pattern binders in
+      let binders = List_model.extract_vars_from_empty_pattern binders in
       let rows = List_model.to_list rows in
       let pp_bound_row ppf (var_name, Lang.Letrec_row.Letrec_row (_, ty, body)) =
         pf ppf "%s@ :@ %a@ =@ %a" var_name Type.pp ty term body
@@ -341,7 +326,7 @@ module Parse = struct
                  let info = Provenance.of_range (Opt_range.union rows_pos rhs_pos) in
                  let binders, rows = List.unzip rows in
                  let rows = List_model.of_list rows in
-                 let binders = make_empty_list_pattern binders in
+                 let binders = List_model.make_empty_pattern binders in
                  Term.Let_rec (info, rows, (binders, rhs)))
                (attach_pos (sep_by1 (keyword "and") (letrec_row term)))
                (keyword "in")
@@ -679,7 +664,7 @@ and check_args env tm ty args =
   | Sort _, _ -> Some Check_error.{ env; tm; ty; error = Overapplication }
 
 and check_binders ({ type_env; syntax = _ } as env) rows binders =
-  let binders = extract_vars_from_empty_list_pattern binders in
+  let binders = List_model.extract_vars_from_empty_pattern binders in
   let rows = List_model.to_list rows in
   let defns =
     match List.zip binders rows with
@@ -814,7 +799,7 @@ let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
     in
     Ok (Nominal.Term.subst_all ctx tm)
   | Let_rec (_, rows, (binders, body)) ->
-    let binders = extract_vars_from_empty_list_pattern binders in
+    let binders = List_model.extract_vars_from_empty_pattern binders in
     let rows = List_model.to_list rows in
     (match List.zip binders rows with
     | Unequal_lengths ->
