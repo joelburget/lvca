@@ -8,13 +8,11 @@ module Format = Stdlib.Format
 let reserved = Lvca_util.String.Set.of_list [ "let"; "rec"; "and"; "in"; "match"; "with" ]
 let var_identifier = Lvca_parsing.C_comment_parser.lower_identifier reserved
 
-let extract_vars_from_empty_list_pattern pat =
-  let rec go = function
-    | Pattern.Operator (_, "Nil", []) -> []
-    | Operator (_, "Cons", [ Var (_, name); pats ]) -> name :: go pats
-    | _ -> Lvca_util.invariant_violation ~here:[%here] "Invalid empty list pattern"
-  in
-  go pat
+let rec extract_vars_from_empty_list_pattern = function
+  | Pattern.Operator (_, "Nil", []) -> []
+  | Operator (_, "Cons", [ Var (_, name); pats ]) ->
+    name :: extract_vars_from_empty_list_pattern pats
+  | _ -> Lvca_util.invariant_violation ~here:[%here] "Invalid empty list pattern"
 ;;
 
 let rec make_empty_list_pattern vars =
