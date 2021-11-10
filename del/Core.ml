@@ -5,17 +5,7 @@ open Lvca_util
 open Result.Let_syntax
 module Format = Stdlib.Format
 
-let to_pattern_exn tm =
-  tm
-  |> Nominal.Term.to_pattern
-  |> Result.map_error ~f:(fun _ -> "failed to convert term to pattern")
-  |> Result.ok_or_failwith
-;;
-
-let reserved =
-  Lvca_util.String.Set.of_list [ "let"; "rec"; "and"; "in"; "match"; "with"; "forall" ]
-;;
-
+let reserved = Lvca_util.String.Set.of_list [ "let"; "rec"; "and"; "in"; "match"; "with" ]
 let var_identifier = Lvca_parsing.C_comment_parser.lower_identifier reserved
 
 let extract_vars_from_empty_list_pattern pat =
@@ -41,46 +31,29 @@ module Type = struct
   {|
 sort : *
 
-// we allow quantifiers only on the outside
-ty := Forall((list empty)[quantified_ty]. quantified_ty)
+ty := Sort(sort) | Arrow(ty; ty)
+  |}, { sort = "Sort_model.Sort" }]
 
-// everything inside the quantifiers
-quantified_ty :=
-  | Sort(sort)
-  | Arrow(quantified_ty; quantified_ty)
-      |}
-  , { sort = "Sort_model.Sort"; empty = "Empty" }]
+  include Nominal.Convertible.Extend (Kernel.Ty)
+  include Kernel.Ty
 
-  open Kernel
-
-  let rec pp_quantified_ty need_parens ppf = function
-    | Quantified_ty.Arrow (_, t1, t2) ->
+  let rec pp need_parens ppf = function
+    | Arrow (_, t1, t2) ->
       Fmt.pf
         ppf
         (if need_parens then "@[<hv>(%a -> %a)@]" else "%a -> %a")
-        (pp_quantified_ty true)
+        (pp true)
         t1
-        (pp_quantified_ty false)
+        (pp false)
         t2
     | Sort (_, s) -> Lvca_syntax.Sort.pp ppf (Sort_model.Sort.out s)
-    | Quantified_ty_var (_, name) -> Fmt.pf ppf "%s" name
   ;;
 
-  let pp_ty ppf (Ty.Forall (_, (names, quantified_ty))) =
-    let names = extract_vars_from_empty_list_pattern names in
-    Fmt.pf
-      ppf
-      "forall %a. %a"
-      Fmt.(list string)
-      names
-      (pp_quantified_ty false)
-      quantified_ty
-  ;;
+  let pp = pp false
 
   module Parse = struct
     open Lvca_parsing
     open C_comment_parser
-    open Quantified_ty
 
     let arrow s1 s2 = Arrow (Provenance.of_here [%here], s1, s2)
 
@@ -93,10 +66,10 @@ quantified_ty :=
       | sort :: sorts -> arrow sort (of_list sorts)
     ;;
 
-    let quantified_ty =
-      fix (fun quantified_ty ->
+    let ty =
+      fix (fun ty ->
           let atom =
-            parens quantified_ty
+            parens ty
             <|> (Lvca_syntax.Sort.parse reserved
                 >>| fun sort ->
                 let sort = Sort_model.Sort.into sort in
@@ -106,31 +79,10 @@ quantified_ty :=
       <?> "core type"
     ;;
 
-    let ty =
-      choice
-        ~failure_msg:"quantified or unquantified type"
-        [ lift4
-            (fun (_forall, pos0) names _dot (body, pos1) ->
-              let names =
-                List.map names ~f:(fun (name, pos) -> Provenance.of_range pos, name)
-              in
-              let range = Opt_range.union pos0 pos1 in
-              Ty.Forall (Provenance.of_range range, (make_empty_list_pattern names, body)))
-            (attach_pos (keyword "forall"))
-            (many (attach_pos var_identifier))
-            (char '.')
-            (attach_pos quantified_ty)
-        ; (quantified_ty
-          >>~ fun range ty ->
-          Ty.Forall (Provenance.of_range range, ([%lvca.pattern "Nil()"], ty)))
-        ]
-      <?> "type"
-    ;;
-
     let%test_module "parsing / printing" =
       (module struct
         let parse = parse_string ty >> Result.ok_or_failwith
-        let go = parse >> Fmt.pr "%a\n" pp_ty
+        let go = parse >> Fmt.pr "%a\n" pp
 
         let%expect_test _ =
           go "bool";
@@ -140,13 +92,6 @@ quantified_ty :=
             list bool
           |}]
         ;;
-
-        let%expect_test _ =
-          go "forall a. a";
-          go "forall a b. a";
-          go "forall a. forall b. a";
-          [%expect]
-        ;;
       end)
     ;;
 
@@ -155,7 +100,7 @@ quantified_ty :=
         let here = Provenance.of_here [%here]
         let s = Sort_model.Sort.mk_Name ~info:here (here, "s")
         let mk_Sort s = mk_Sort ~info:here s
-        let ( = ) = Quantified_ty.equivalent ~info_eq:(fun _ _ -> true)
+        let ( = ) = equivalent ~info_eq:(fun _ _ -> true)
 
         let%test _ = of_list [ mk_Sort s ] = mk_Sort s
         let%test _ = of_list [ mk_Sort s; mk_Sort s ] = arrow (mk_Sort s) (mk_Sort s)
@@ -188,26 +133,14 @@ quantified_ty :=
     ;;
   end
 
-  let rec _chop_trailing n ty =
+  let parse = Parse.ty
+
+  let rec chop_trailing n ty =
     match n, ty with
     | 0, _ -> ty
-    | _, Quantified_ty.Arrow (_, _, t) -> _chop_trailing (n - 1) t
+    | _, Arrow (_, _, t) -> chop_trailing (n - 1) t
     | _, _ -> Lvca_util.invariant_violation ~here:[%here] "expected an arrow"
   ;;
-
-  module Quantified_ty = struct
-    include Nominal.Convertible.Extend (Quantified_ty)
-    include Quantified_ty
-
-    let parse = Parse.quantified_ty
-  end
-
-  module Ty = struct
-    include Nominal.Convertible.Extend (Ty)
-    include Ty
-
-    let parse = Parse.ty
-  end
 end
 
 module Lang = struct
@@ -234,7 +167,7 @@ term :=
 
 case_scope := Case_scope(binding_aware_pattern; term)
 |}
-    , { ty = "Type.Ty"
+    , { ty = "Type"
       ; nominal = "Nominal.Term"
       ; list = "List_model.List"
       ; option = "Option_model.Option"
@@ -263,7 +196,7 @@ module Pp = struct
     | Lang.Term.Term_var (_, v) -> Fmt.string ppf v
     | Nominal (_, tm) -> Nominal.Term.pp ppf tm
     | Lambda (_, ty, (Single_var.{ name; info = _ }, body)) ->
-      pf ppf "@[<hv>\\@[<hv>(%s : %a)@] ->@ %a@]" name Type.Ty.pp ty term body
+      pf ppf "@[<hv>\\@[<hv>(%s : %a)@] ->@ %a@]" name Type.pp ty term body
     (* TODO: parens if necessary *)
     | Ap (_, f, args) ->
       pf ppf "@[<h>%a@ @[<hov>%a@]@]" term f (list ~sep:sp term) (List_model.to_list args)
@@ -282,7 +215,7 @@ module Pp = struct
       let binders = extract_vars_from_empty_list_pattern binders in
       let rows = List_model.to_list rows in
       let pp_bound_row ppf (var_name, Lang.Letrec_row.Letrec_row (_, ty, body)) =
-        pf ppf "%s@ :@ %a@ =@ %a" var_name Type.Ty.pp ty term body
+        pf ppf "%s@ :@ %a@ =@ %a" var_name Type.pp ty term body
       in
       (match List.zip binders rows with
       | Unequal_lengths ->
@@ -308,7 +241,7 @@ module Pp = struct
 
   and let_ ppf tm ty name body =
     let pp_ty ppf = function
-      | Option_model.Option.Some (_, ty) -> pf ppf ": %a" Type.Ty.pp ty
+      | Option_model.Option.Some (_, ty) -> pf ppf ": %a" Type.pp ty
       | None _ -> ()
     in
     pf ppf "@[let %s%a =@ %a in@ @[%a@]@]" name pp_ty ty term tm term body
@@ -393,7 +326,7 @@ module Parse = struct
         ( (Provenance.of_range var_pos, var)
         , Letrec_row.Letrec_row (Provenance.of_range range, ty, rhs) ))
       (attach_pos var_identifier)
-      (char ':' *> Type.Ty.parse)
+      (char ':' *> Type.parse)
       (char '=')
       (attach_pos term)
     <?> "letrec row"
@@ -427,7 +360,7 @@ module Parse = struct
                (attach_pos var_identifier)
                (option
                   (Option_model.Option.None (Provenance.of_here [%here]))
-                  (char ':' *> Type.Ty.parse
+                  (char ':' *> Type.parse
                   >>| fun tm -> Option_model.Option.Some (Provenance.of_here [%here], tm)
                   ))
                (char '=')
@@ -451,7 +384,7 @@ module Parse = struct
                (fun ident _ ty -> ident, ty)
                (attach_pos var_identifier)
                (char ':')
-               Type.Ty.parse)))
+               Type.parse)))
       (string "->")
       term
     <?> "lambda"
@@ -494,7 +427,7 @@ end
 
 module Module = struct
   type t =
-    { externals : (string * Type.Ty.t) list
+    { externals : (string * Type.t) list
     ; defs : (string * Lang.Term.t) list
     }
 
@@ -503,7 +436,7 @@ module Module = struct
     let pp_externals ppf = function
       | [] -> ()
       | lst ->
-        Fmt.pf ppf "%a;" (list ~sep:semi (pair ~sep:(any " : ") string Type.Ty.pp)) lst
+        Fmt.pf ppf "%a;" (list ~sep:semi (pair ~sep:(any " : ") string Type.pp)) lst
     in
     let pp_def ppf (name, sort_def) = pf ppf "%s := %a" name Pp.term sort_def in
     pf ppf "%a@,%a" pp_externals externals (list pp_def) defs
@@ -517,7 +450,7 @@ module Module = struct
         (fun ident _ ty _ -> ident, ty)
         var_identifier
         (string ":")
-        Type.Ty.parse
+        Type.parse
         (string ";")
     in
     let def =
@@ -532,7 +465,7 @@ type eval_env = Term.t String.Map.t
 let preimage _ = failwith "TODO"
 let reverse _tm _cases = failwith "TODO"
 
-type type_env = Type.Ty.t String.Map.t
+type type_env = Type.t String.Map.t
 
 type check_env =
   { type_env : type_env
@@ -545,7 +478,7 @@ module Check_error' = struct
     | Cant_infer_lambda
     | Var_not_found
     | Operator_not_found
-    | Mismatch of Type.Ty.t * Type.Ty.t
+    | Mismatch of Type.t * Type.t
     | Binding_pattern_check of string
     | Overapplication
 
@@ -561,7 +494,7 @@ module Check_error' = struct
           ~here:[%here]
           Fmt.(str "expected Var (got %a)" Pp.term tm))
     | Operator_not_found -> Fmt.pf ppf "operator not found"
-    | Mismatch (ty, ty') -> Fmt.pf ppf "%a != %a" Type.Ty.pp ty' Type.Ty.pp ty
+    | Mismatch (ty, ty') -> Fmt.pf ppf "%a != %a" Type.pp ty' Type.pp ty
     | Binding_pattern_check str -> Fmt.pf ppf "%s" str
     | Overapplication -> Fmt.pf ppf "non-function applied to arguments"
   ;;
@@ -571,7 +504,7 @@ module Check_error = struct
   type t =
     { env : check_env
     ; tm : Lang.Term.t
-    ; ty : Type.Ty.t
+    ; ty : Type.t
     ; error : Check_error'.t
     }
 
@@ -589,18 +522,14 @@ module Infer_error = struct
 end
 
 let here = Provenance.of_here [%here]
-let nominal_ty = Type.Quantified_ty.Sort (here, Name (here, (here, "nominal")))
+let nominal_ty = Type.Sort (here, Name (here, (here, "nominal")))
 
-let _check_binding_pattern
-    _syntax
-    (_pat : Binding_aware_pattern.t)
-    (_sort : Lvca_syntax.Sort.t)
+let check_binding_pattern
+    syntax
+    (pat : Binding_aware_pattern.t)
+    (sort : Lvca_syntax.Sort.t)
     : (type_env, Check_error'.t) Result.t
   =
-  failwith "TODO"
-;;
-
-(*
   let lookup_operator = Abstract_syntax.lookup_operator syntax in
   let here = Provenance.of_here [%here] in
   let rec check (sort : Lvca_syntax.Sort.t) pat =
@@ -608,8 +537,7 @@ let _check_binding_pattern
     match pat with
     | Binding_aware_pattern.Var (_, name) when Lvca_util.String.is_ignore name ->
       Ok String.Map.empty
-    | Var (_, name) ->
-      Ok (String.Map.singleton name (Type.Quantified_ty.Sort (here, sort')))
+    | Var (_, name) -> Ok (String.Map.singleton name (Type.Sort (here, sort')))
     | Primitive prim ->
       (match Primitive_impl.All.check prim sort with
       | None -> Ok String.Map.empty
@@ -631,14 +559,12 @@ let _check_binding_pattern
         check_slots (Arity.instantiate sort_env arity) subpats)
   and check_slots (Arity (_, _)) _ = failwith "TODO" in
   check sort pat
-       *)
+;;
 
-let _primitive_types =
+let primitive_types =
   let here = Provenance.of_here [%here] in
-  let arr t1 t2 = Type.Quantified_ty.Arrow (here, t1, t2) in
-  let sort s =
-    Type.Quantified_ty.Sort (Lvca_syntax.Sort.info s, Sort_model.Sort.into s)
-  in
+  let arr t1 t2 = Type.Arrow (here, t1, t2) in
+  let sort s = Type.Sort (Lvca_syntax.Sort.info s, Sort_model.Sort.into s) in
   let int = sort (Lvca_syntax.Sort.Name (here, "int")) in
   let string = sort (Lvca_syntax.Sort.Name (here, "string")) in
   let bool = sort (Lvca_syntax.Sort.Name (here, "bool")) in
@@ -648,41 +574,26 @@ let _primitive_types =
     sort (Lvca_syntax.Sort.Ap (here, "list", Lvca_syntax.Sort.Ap_list.of_list [ s ]))
   in
   let binary_int = arr int (arr int int) in
-  let forall names body =
-    let names =
-      names
-      |> List.map ~f:(fun name -> Nominal.Term.Var (here, name))
-      |> List_model.of_list
-      |> List_model.List.to_nominal Nominal.Term.to_nominal
-      |> to_pattern_exn
-    in
-    Type.Ty.Forall (here, (names, body))
-  in
-  let a = Type.Quantified_ty.Quantified_ty_var (here, "a") in
   String.Map.of_alist_exn
-    [ "rename", forall [] (arr string (arr string nominal_ty))
-    ; "var", forall [] (arr string nominal_ty)
-    ; "quote", forall [ "a" ] (arr a nominal_ty)
-    ; "antiquote", forall [ "a" ] (arr nominal_ty a)
-    ; "add", forall [] binary_int
-    ; "sub", forall [] binary_int
-    ; "string_of_chars", forall [] (arr (list char') string)
-    ; "is_digit", forall [] (arr char bool)
-    ; "is_lowercase", forall [] (arr char bool)
-    ; "is_uppercase", forall [] (arr char bool)
-    ; "is_alpha", forall [] (arr char bool)
-    ; "is_alphanum", forall [] (arr char bool)
-    ; "is_whitespace", forall [] (arr char bool)
+    [ "rename", arr string (arr string nominal_ty)
+    ; "var", arr string nominal_ty
+      (* ; "quote",  (arr a nominal_ty) *)
+      (* ; "antiquote",  (arr nominal_ty a) *)
+    ; "add", binary_int
+    ; "sub", binary_int
+    ; "string_of_chars", arr (list char') string
+    ; "is_digit", arr char bool
+    ; "is_lowercase", arr char bool
+    ; "is_uppercase", arr char bool
+    ; "is_alpha", arr char bool
+    ; "is_alphanum", arr char bool
+    ; "is_whitespace", arr char bool
     ]
 ;;
 
-let check _ _ _ = failwith "TODO"
-let infer _ _ = failwith "TODO"
-
-(*
 let rec check ({ type_env; syntax } as env) tm ty =
   let check_ty ty' =
-    if Type.Ty.equivalent ty ty'
+    if Type.equivalent ty ty'
     then None
     else Some Check_error.{ env; tm; ty; error = Mismatch (ty, ty') }
   in
@@ -695,7 +606,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
   | Case (_, tm, branches) ->
     (match infer env tm with
     | Error { env; tm; error } -> Some { env; tm; ty; error }
-    | Ok (Type.Quantified_ty.Arrow _ | Forall _ | Ty_var _) -> failwith "TODO"
+    | Ok (Type.Arrow _) -> failwith "TODO"
     | Ok (Sort (_, sort)) ->
       let sort = Sort_model.Sort.out sort in
       branches
@@ -763,13 +674,11 @@ and infer ({ type_env; syntax = _ } as env) tm =
 
 and check_args env tm ty args =
   match ty, args with
-  | Type.Quantified_ty.Arrow (_, t1, t2), arg :: args ->
+  | Type.Arrow (_, t1, t2), arg :: args ->
     Option.first_some (check env arg t1) (check_args env tm t2 args)
   | Arrow _, [] -> None (* under-applied is okay *)
   | Sort _, [] -> None
   | Sort _, _ -> Some Check_error.{ env; tm; ty; error = Overapplication }
-  | Forall _, _ -> Some Check_error.{ env; tm; ty; error = failwith "TODO" }
-  | Ty_var _, _ -> failwith "TODO"
 
 and check_binders ({ type_env; syntax = _ } as env) rows binders =
   let binders = extract_vars_from_empty_list_pattern binders in
@@ -793,7 +702,6 @@ and check_binders ({ type_env; syntax = _ } as env) rows binders =
   in
   match defn_check_error with None -> Ok type_env | Some err -> Error err
 ;;
-*)
 
 let merge_pattern_context
     : Nominal.Term.t String.Map.t option list -> Nominal.Term.t String.Map.t option
@@ -1260,7 +1168,7 @@ let%test_module "Core pretty" =
     ;;
 
     let term = mk_test Parse.term Pp.term
-    let ty = mk_test Type.Ty.parse Type.Ty.pp
+    let ty = mk_test Type.parse Type.pp
     let module' = mk_test Module.parse Module.pp
 
     let%expect_test _ =
@@ -1425,10 +1333,7 @@ let%test_module "Checking / inference" =
   (module struct
     module Term = Lang.Term
 
-    let parse_type str =
-      Lvca_parsing.parse_string Type.Ty.parse str |> Result.ok_or_failwith
-    ;;
-
+    let parse_type str = Lvca_parsing.parse_string Type.parse str |> Result.ok_or_failwith
     let externals = [ "option", Kind.Kind (here, 2) ]
 
     let sort_defs =
@@ -1474,7 +1379,7 @@ let%test_module "Checking / inference" =
       let ctx = { type_env; syntax } in
       match infer ctx tm with
       | Error err -> Infer_error.pp Fmt.stdout err
-      | Ok ty -> Fmt.pr "inferred: %a\n" Type.Ty.pp ty
+      | Ok ty -> Fmt.pr "inferred: %a\n" Type.pp ty
     ;;
 
     let%expect_test _ =
@@ -1527,13 +1432,9 @@ let%test_module "Checking / inference" =
       [%expect {| checked |}]
     ;;
 
-    (* TODO
     let type_env =
       String.Map.of_alist_exn
-        [ ( "x"
-          , Type.Quantified_ty.Sort (here, Sort_model.Sort.mk_Name ~info:here (here, "a"))
-          )
-        ]
+        [ "x", Type.Sort (here, Sort_model.Sort.mk_Name ~info:here (here, "a")) ]
     ;;
 
     let%expect_test _ =
@@ -1593,6 +1494,5 @@ let%test_module "Checking / inference" =
         inferred: char -> bool
         inferred: char -> bool |}]
     ;;
-       *)
   end)
 ;;

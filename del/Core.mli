@@ -10,36 +10,20 @@ open Lvca_util
 (** {1 Types} *)
 
 module Type : sig
-  module Kernel : [%lvca.abstract_syntax_module_sig
-  {|
-sort : *
-
-// we allow quantifiers only on the outside
-ty := Forall((list empty)[quantified_ty]. quantified_ty)
-
-// everything inside the quantifiers
-quantified_ty :=
-  | Sort(sort)
-  | Arrow(quantified_ty; quantified_ty)
-      |}
-  , { sort = "Sort_model.Sort"; empty = "Empty" }]
-
-  module Quantified_ty : sig
-    include Nominal.Convertible.Extended_s with type t = Kernel.Quantified_ty.t
-
-    val mk_Sort : info:Lvca_syntax.Provenance.t -> Sort_model.Sort.t -> t
-    val mk_Arrow : info:Lvca_syntax.Provenance.t -> t -> t -> t
-    val mk_Quantified_ty_var : info:Lvca_syntax.Provenance.t -> string -> t
+  (* TODO(24): remove *)
+  module Kernel : sig
+    val language : Abstract_syntax.t
   end
 
-  module Ty : sig
-    include Nominal.Convertible.Extended_s with type t = Kernel.Ty.t
+  (* TODO(24): generate *)
+  type t =
+    | Sort of Provenance.t * Sort_model.Sort.t
+    | Arrow of Provenance.t * t * t
 
-    val mk_Forall
-      :  info:Lvca_syntax.Provenance.t
-      -> Lvca_syntax.Pattern.t * Quantified_ty.t
-      -> t
-  end
+  include Nominal.Convertible.Extended_s with type t := t
+
+  val mk_Sort : info:Lvca_syntax.Provenance.t -> Sort_model.Sort.t -> t
+  val mk_Arrow : info:Lvca_syntax.Provenance.t -> t -> t -> t
 end
 
 module Lang : [%lvca.abstract_syntax_module_sig
@@ -62,7 +46,7 @@ term :=
 
 case_scope := Case_scope(binding_aware_pattern; term)
 |}
-, { ty = "Type.Ty"
+, { ty = "Type"
   ; nominal = "Nominal.Term"
   ; list = "List_model.List"
   ; option = "Option_model.Option"
@@ -84,7 +68,7 @@ end
 (** {1 Core type} *)
 module Module : sig
   type t =
-    { externals : (string * Type.Ty.t) list
+    { externals : (string * Type.t) list
     ; defs : (string * Lang.Term.t) list
     }
 
@@ -94,7 +78,7 @@ end
 
 (** {1 Checking} *)
 
-type type_env = Type.Ty.t String.Map.t
+type type_env = Type.t String.Map.t
 
 type check_env =
   { type_env : type_env
@@ -107,7 +91,7 @@ module Check_error' : sig
     | Cant_infer_lambda
     | Var_not_found
     | Operator_not_found
-    | Mismatch of Type.Ty.t * Type.Ty.t
+    | Mismatch of Type.t * Type.t
     | Binding_pattern_check of string
     | Overapplication
 end
@@ -116,7 +100,7 @@ module Check_error : sig
   type t =
     { env : check_env
     ; tm : Lang.Term.t
-    ; ty : Type.Ty.t
+    ; ty : Type.t
     ; error : Check_error'.t
     }
 end
@@ -130,9 +114,9 @@ module Infer_error : sig
 end
 
 (** Typecheck a term in an environment. *)
-val infer : check_env -> Lang.Term.t -> (Type.Ty.t, Infer_error.t) Result.t
+val infer : check_env -> Lang.Term.t -> (Type.t, Infer_error.t) Result.t
 
-val check : check_env -> Lang.Term.t -> Type.Ty.t -> Check_error.t option
+val check : check_env -> Lang.Term.t -> Type.t -> Check_error.t option
 
 (** {1 Evaluation} *)
 
