@@ -29,15 +29,54 @@ let equivalent ?(info_eq = fun _ _ -> true) t1 t2 =
 
 let ( = ) = equivalent ~info_eq:Provenance.( = )
 
+module Lookup_error = struct
+  type t =
+    | Sort_not_found of String.Set.t
+    | Operator_not_found of String.Set.t
+
+  open Fmt
+
+  let pp ppf = function
+    | Sort_not_found sort_names ->
+      pf
+        ppf
+        "sort not found (options: {%a})"
+        (list string ~sep:comma)
+        (Set.to_list sort_names)
+    | Operator_not_found op_names ->
+      pf
+        ppf
+        "operator not found (options: {%a})"
+        (list string ~sep:comma)
+        (Set.to_list op_names)
+  ;;
+end
+
 let lookup_operator { externals = _; sort_defs } sort_name op_name =
-  let open Option.Let_syntax in
+  let open Result.Let_syntax in
   let%bind (Sort_def (vars, operator_defs)) =
-    List.find_map sort_defs ~f:(fun (name, def) ->
-        if String.(name = sort_name) then Some def else None)
+    match
+      List.find_map sort_defs ~f:(fun (name, def) ->
+          if String.(name = sort_name) then Some def else None)
+    with
+    | None ->
+      let options = sort_defs |> List.map ~f:fst |> String.Set.of_list in
+      Error (Lookup_error.Sort_not_found options)
+    | Some it -> Ok it
   in
   let%map result =
-    List.find operator_defs ~f:(fun (Operator_def (_, op_def_name, _)) ->
-        String.(op_def_name = op_name))
+    match
+      List.find operator_defs ~f:(fun (Operator_def (_, op_def_name, _)) ->
+          String.(op_def_name = op_name))
+    with
+    | None ->
+      let options =
+        operator_defs
+        |> List.map ~f:(fun (Operator_def (_, op_def_name, _)) -> op_def_name)
+        |> String.Set.of_list
+      in
+      Error (Lookup_error.Operator_not_found options)
+    | Some opdef -> Ok opdef
   in
   vars, result
 ;;

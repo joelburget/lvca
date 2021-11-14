@@ -528,14 +528,16 @@ let check_binding_pattern
     | Operator (_, op_name, subpats) ->
       let sort_name, sort_args = Lvca_syntax.Sort.split sort in
       (match lookup_operator sort_name op_name with
-      | None ->
+      | Error lookup_err ->
         Error
           (Check_error'.Binding_pattern_check
-             (Printf.sprintf
-                "Pattern.check: failed to find operator %s in sort %s"
+             (Fmt.str
+                "Pattern.check: failed to find operator %s in sort %s: %a"
                 op_name
-                sort_name))
-      | Some (sort_vars, Operator_def (_, _, arity)) ->
+                sort_name
+                Abstract_syntax.Lookup_error.pp
+                lookup_err))
+      | Ok (sort_vars, Operator_def (_, _, arity)) ->
         (* TODO: kind check *)
         let sort_vars = List.map sort_vars ~f:Tuple2.get1 in
         let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in

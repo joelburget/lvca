@@ -32,11 +32,19 @@ val ( = ) : t -> t -> bool
 
 (** {1 Misc} *)
 
+module Lookup_error : sig
+  type t =
+    | Sort_not_found of String.Set.t
+    | Operator_not_found of String.Set.t
+
+  val pp : t Fmt.t
+end
+
 val lookup_operator
   :  t
   -> string (** sort name *)
   -> string (** operator_name *)
-  -> ((string * Kind.t option) list * Operator_def.t) option
+  -> ((string * Kind.t option) list * Operator_def.t, Lookup_error.t) Result.t
 
 val pp : t Fmt.t
 

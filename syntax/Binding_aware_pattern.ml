@@ -247,14 +247,16 @@ let check check_prim lang sort =
       | Operator (_, op_name, subpats) ->
         let sort_name, sort_args = Sort.split sort in
         (match lookup_operator sort_name op_name with
-        | None ->
+        | Error lookup_err ->
           Error
             (Check_failure.err
-               (Printf.sprintf
-                  "Binding_aware_pattern.check: failed to find operator %s in sort %s"
+               (Fmt.str
+                  "Binding_aware_pattern.check: failed to find operator %s in sort %s: %a"
                   op_name
-                  sort_name))
-        | Some (sort_vars, Operator_def (_, _, arity)) ->
+                  sort_name
+                  Abstract_syntax.Lookup_error.pp
+                  lookup_err))
+        | Ok (sort_vars, Operator_def (_, _, arity)) ->
           (* TODO: kind check *)
           let sort_vars = sort_vars |> List.map ~f:Tuple2.get1 in
           let sort_env = SMap.of_alist_exn (List.zip_exn sort_vars sort_args) in
