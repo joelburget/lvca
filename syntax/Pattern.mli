@@ -9,7 +9,7 @@ type t =
 val mk_Operator : ?provenance:Provenance.t -> string -> t list -> t
 val mk_Primitive : Primitive_impl.All.t -> t
 val mk_Var : ?provenance:Provenance.t -> string -> t
-val equivalent : info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
+val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
 val ( = ) : t -> t -> bool
 
 (** {1 Vars} *)
