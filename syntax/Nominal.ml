@@ -224,6 +224,8 @@ module Term = struct
         | Some (Scope (_pats, tm)) -> select_path ~path tm))
   ;;
 
+  type check_failure = (Pattern.t, t) Base.Either.t Check_failure.t
+
   let check lang =
     let lookup_operator = Abstract_syntax.lookup_operator lang in
     let check_pattern = Pattern.check lang in

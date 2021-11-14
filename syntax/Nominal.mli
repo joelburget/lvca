@@ -74,6 +74,8 @@ module Term : sig
   val match_pattern : Pattern.t -> t -> t String.Map.t option
   val free_vars : t -> String.Set.t
 
+  type check_failure = (Pattern.t, t) Base.Either.t Check_failure.t
+
   (** Check that the given term matches the given sort.
 
       This recursively checks subterms and patterns.
@@ -93,7 +95,7 @@ module Term : sig
     :  Abstract_syntax.t (** Abstract syntax *)
     -> Sort.t (** Sort to check term against *)
     -> t
-    -> (Pattern.t, t) Base.Either.t Check_failure.t option
+    -> check_failure option
 
   val parse : Lvca_util.String.Set.t -> parse_prim:t Lvca_parsing.t -> t Lvca_parsing.t
   val parse' : Lvca_util.String.Set.t -> t Lvca_parsing.t
