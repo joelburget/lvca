@@ -37,7 +37,7 @@ Here’s an incomplete list of problems with this situation:
 
 - The obvious tedium of actually writing all those pragmas.
 - With pragmas at the beginning of every file, there can be a huge amount of duplication. I just grepped a medium-size codebase with 137 Haskell files and… 99 of them had `{-# LANGUAGE OverloadedStrings #-}`.
-- Sometimes these features interact in weird ways that you should maybe be aware of if you’re using them. [Ahem](https://gitlab.haskell.org/ghc/ghc/issues/1496). If this complexity is daunting as a user, it’s surely far harder for GHC implementers trying to do things correctly.
+- Sometimes these features [interact in weird ways](https://twitter.com/totbwf/status/1455684517117583370) that you should maybe be aware of if you’re using them. [Ahem](https://gitlab.haskell.org/ghc/ghc/issues/1496). If this complexity is daunting as a user, it’s surely far harder for GHC implementers trying to do things correctly.
 
 ## Strings
 
