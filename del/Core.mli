@@ -28,22 +28,31 @@ end
 
 module Lang : [%lvca.abstract_syntax_module_sig
 {|
+ty : *
 nominal : *
 list : * -> *
 option : * -> *
 binding_aware_pattern : * -> *
+pattern : *
+primitive : *
+string : *
+empty : *
 
 letrec_row := Letrec_row(ty; term)
 
 term :=
-  | Nominal(nominal)
+  | Primitive(primitive)
+  | Operator(string; list operator_scope)
   | Ap(term; list term)
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
   | Let(term; option ty; term. term)
   | Let_rec(list letrec_row; (list empty)[term]. term)
   | Subst(term. term; term)
+  | Quote(term)
+  | Unquote(term)
 
+operator_scope := Operator_scope(list pattern; nominal)
 case_scope := Case_scope(binding_aware_pattern; term)
 |}
 , { ty = "Type"
@@ -52,6 +61,9 @@ case_scope := Case_scope(binding_aware_pattern; term)
   ; option = "Option_model.Option"
   ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
   ; empty = "Empty"
+  ; pattern = "Pattern_model.Pattern"
+  ; primitive = "Primitive.All"
+  ; string = "Primitive.String"
   }]
 
 module Term : sig
@@ -76,6 +88,14 @@ module Module : sig
   val parse : t Lvca_parsing.t
 end
 
+(** {1 Evaluation} *)
+
+type eval_env = Lang.Term.t String.Map.t
+type eval_error = string * Lang.Term.t
+
+val eval_in_ctx : eval_env -> Lang.Term.t -> (Nominal.Term.t, eval_error) Base.Result.t
+val eval : Lang.Term.t -> (Nominal.Term.t, eval_error) Base.Result.t
+
 (** {1 Checking} *)
 
 type type_env = Type.t String.Map.t
@@ -94,6 +114,11 @@ module Check_error' : sig
     | Mismatch of Type.t * Type.t
     | Binding_pattern_check of string
     | Overapplication
+    | Message of string
+    | Check_failure of Nominal.Term.check_failure
+    | Eval_error of eval_error
+
+  val pp : Term.t -> t Fmt.t
 end
 
 module Check_error : sig
@@ -103,6 +128,8 @@ module Check_error : sig
     ; ty : Type.t
     ; error : Check_error'.t
     }
+
+  val pp : t Fmt.t
 end
 
 module Infer_error : sig
@@ -111,20 +138,14 @@ module Infer_error : sig
     ; tm : Lang.Term.t
     ; error : Check_error'.t
     }
+
+  val pp : t Fmt.t
 end
 
 (** Typecheck a term in an environment. *)
 val infer : check_env -> Lang.Term.t -> (Type.t, Infer_error.t) Result.t
 
 val check : check_env -> Lang.Term.t -> Type.t -> Check_error.t option
-
-(** {1 Evaluation} *)
-
-type eval_env = Lang.Term.t String.Map.t
-type eval_error = string * Lang.Term.t
-
-val eval_in_ctx : eval_env -> Lang.Term.t -> (Nominal.Term.t, eval_error) Base.Result.t
-val eval : Lang.Term.t -> (Nominal.Term.t, eval_error) Base.Result.t
 
 (** {1 Patterns} *)
 val match_pattern

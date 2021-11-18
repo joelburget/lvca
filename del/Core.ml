@@ -5,7 +5,10 @@ open Lvca_util
 open Result.Let_syntax
 module Format = Stdlib.Format
 
-let reserved = Lvca_util.String.Set.of_list [ "let"; "rec"; "and"; "in"; "match"; "with" ]
+let reserved =
+  Lvca_util.String.Set.of_list [ "let"; "rec"; "and"; "in"; "match"; "with"; "unquote" ]
+;;
+
 let var_identifier = Lvca_parsing.C_comment_parser.lower_identifier reserved
 
 module Type = struct
@@ -135,11 +138,16 @@ nominal : *
 list : * -> *
 option : * -> *
 binding_aware_pattern : * -> *
+pattern : *
+primitive : *
+string : *
+empty : *
 
 letrec_row := Letrec_row(ty; term)
 
 term :=
-  | Nominal(nominal)
+  | Primitive(primitive)
+  | Operator(string; list operator_scope)
   | Ap(term; list term)
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
@@ -147,7 +155,10 @@ term :=
   // let rec defines a group (represented as a list but unordered) of definitions at once
   | Let_rec(list letrec_row; (list empty)[term]. term)
   | Subst(term. term; term)
+  | Quote(term)
+  | Unquote(term)
 
+operator_scope := Operator_scope(list pattern; nominal)
 case_scope := Case_scope(binding_aware_pattern; term)
 |}
     , { ty = "Type"
@@ -156,6 +167,9 @@ case_scope := Case_scope(binding_aware_pattern; term)
       ; option = "Option_model.Option"
       ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
       ; empty = "Empty"
+      ; pattern = "Pattern_model.Pattern"
+      ; primitive = "Primitive.All"
+      ; string = "Primitive.String"
       }]
 
   module Term = struct
@@ -170,14 +184,17 @@ case_scope := Case_scope(binding_aware_pattern; term)
 end
 
 module Pp = struct
-  let list, any, pf, sp = Fmt.(list, any, pf, sp)
+  let list, any, pf, sp, semi = Fmt.(list, any, pf, sp, semi)
 
   let rec term : Lang.Term.t Fmt.t =
    fun ppf tm ->
     Provenance.open_stag ppf (Lang.Term.info tm);
     match tm with
     | Lang.Term.Term_var (_, v) -> Fmt.string ppf v
-    | Nominal (_, tm) -> Nominal.Term.pp ppf tm
+    | Primitive (_, tm) -> Primitive.All.pp ppf tm
+    | Operator (_, (_, tag), subtms) ->
+      let subtms = List_model.to_list subtms in
+      pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi operator_scope) subtms
     | Lambda (_, ty, (Single_var.{ name; info = _ }, body)) ->
       pf ppf "@[<hv>\\@[<hv>(%s : %a)@] ->@ %a@]" name Type.pp ty term body
     (* TODO: parens if necessary *)
@@ -216,11 +233,13 @@ module Pp = struct
     | Subst (_, (Single_var.{ name; info = _ }, body), arg) ->
       let formatter =
         match body with
-        | Nominal (_, Primitive _) | Subst _ -> pf ppf "@[%a[%s := %a]@]"
+        | Primitive _ | Subst _ -> pf ppf "@[%a[%s := %a]@]"
         | _ -> pf ppf "@[@[(%a)@][%s := %a]@]"
       in
       formatter term body name term arg;
       Provenance.close_stag ppf (Lang.Term.info tm)
+    | Quote (_, tm) -> pf ppf "@[{%a}@]" term tm
+    | Unquote (_, tm) -> pf ppf "@[unquote %a@]" term tm
 
   and let_ ppf tm ty name body =
     let pp_ty ppf = function
@@ -241,8 +260,45 @@ module Pp = struct
       term
       body;
     Provenance.close_stag ppf info
+
+  and operator_scope ppf (Lang.Operator_scope.Operator_scope (_info, bindings, body)) =
+    let any, list, pf = Fmt.(any, list, pf) in
+    let bindings = bindings |> List_model.to_list |> List.map ~f:Pattern_model.out in
+    match bindings with
+    | [] -> Nominal.Term.pp ppf body
+    | _ ->
+      pf ppf "%a.@ %a" (list ~sep:(any ".@ ") Pattern.pp) bindings Nominal.Term.pp body
   ;;
 end
+
+module Operator_scope = struct
+  let out (Lang.Operator_scope.Operator_scope (_, patterns, tm)) =
+    let patterns = patterns |> List_model.to_list |> List.map ~f:Pattern_model.out in
+    Nominal.Scope.Scope (patterns, tm)
+  ;;
+
+  let into (Nominal.Scope.Scope (patterns, tm)) =
+    let patterns = patterns |> List.map ~f:Pattern_model.into |> List_model.of_list in
+    Lang.Operator_scope.Operator_scope (Provenance.of_here [%here], patterns, tm)
+  ;;
+end
+
+let term_to_nominal tm =
+  match tm with
+  | Lang.Term.Primitive (info, (_, v)) -> Ok (Nominal.Term.Primitive (info, v))
+  | Operator (info, (_, name), subterms) ->
+    let subterms = subterms |> List_model.to_list |> List.map ~f:Operator_scope.out in
+    Ok (Nominal.Term.Operator (info, name, subterms))
+  | _ -> Error ("TODO: term_to_nominal", tm)
+;;
+
+let nominal_to_term = function
+  | Nominal.Term.Operator (info, name, scopes) ->
+    let scopes = scopes |> List.map ~f:Operator_scope.into |> List_model.of_list in
+    Lang.Term.Operator (info, (info, name), scopes)
+  | Primitive (info, p) -> Primitive (info, (info, p))
+  | Var _ -> failwith "TODO: nominal_to_term"
+;;
 
 module Parse = struct
   open Lvca_parsing
@@ -265,13 +321,10 @@ module Parse = struct
     choice
       ~failure_msg:"looking for a parenthesized expression or nominal term"
       [ parens term
-      ; Nominal.Term.parse' reserved
-        >>~ (fun range tm ->
-              match tm with
-              (* TODO: this special case feels wrong *)
-              | Var (info, name) -> Term.Term_var (info, name)
-              | _ -> Nominal (Provenance.of_range range, tm))
-        <?> "nominal term / variable"
+      ; (braces term >>~ fun range tm -> Term.Quote (Provenance.of_range range, tm))
+      ; (var_identifier
+        >>~ fun range ident -> Term.Term_var (Provenance.of_range range, ident))
+      ; Nominal.Term.parse' reserved >>| nominal_to_term
       ]
   ;;
 
@@ -387,6 +440,15 @@ module Parse = struct
     <?> "match"
   ;;
 
+  let parse_unquote term =
+    lift2
+      (fun (_, unquote_pos) (tm, tm_pos) ->
+        let pos = Opt_range.union unquote_pos tm_pos in
+        Term.Unquote (Provenance.of_range pos, tm))
+      (attach_pos (keyword "unquote"))
+      (attach_pos term)
+  ;;
+
   let term =
     fix (fun term ->
         choice
@@ -394,6 +456,7 @@ module Parse = struct
           [ parse_lambda term
           ; parse_let term
           ; parse_match term
+          ; parse_unquote term
           ; many1 (atomic_term' term) >>| make_apps <?> "application"
           ])
     <?> "core term"
@@ -444,6 +507,7 @@ module Module = struct
 end
 
 type eval_env = Term.t String.Map.t
+type eval_error = string * Lang.Term.t
 
 let preimage _ = failwith "TODO"
 let reverse _tm _cases = failwith "TODO"
@@ -464,14 +528,16 @@ module Check_error' = struct
     | Mismatch of Type.t * Type.t
     | Binding_pattern_check of string
     | Overapplication
+    | Message of string
+    | Check_failure of Nominal.Term.check_failure
+    | Eval_error of eval_error
 
-  let pp ppf tm = function
+  let pp tm ppf = function
     | Cant_infer_case -> Fmt.pf ppf "can't infer cases"
     | Cant_infer_lambda -> Fmt.pf ppf "can't infer lambdas"
     | Var_not_found ->
       (match tm with
-      | Lang.Term.Nominal (_, Nominal.Term.Var (_, name)) ->
-        Fmt.pf ppf "variable %s not found" name
+      | Lang.Term.Term_var (_, name) -> Fmt.pf ppf "variable %s not found" name
       | _ ->
         Lvca_util.invariant_violation
           ~here:[%here]
@@ -480,6 +546,16 @@ module Check_error' = struct
     | Mismatch (ty, ty') -> Fmt.pf ppf "%a != %a" Type.pp ty' Type.pp ty
     | Binding_pattern_check str -> Fmt.pf ppf "%s" str
     | Overapplication -> Fmt.pf ppf "non-function applied to arguments"
+    | Message msg -> Fmt.pf ppf "%s" msg
+    | Check_failure err ->
+      let pp ppf term =
+        match term with
+        | Either.First pat -> Fmt.pf ppf "pattern: %a" Pattern.pp pat
+        | Second tm -> Fmt.pf ppf "term: %a" Nominal.Term.pp tm
+      in
+      Check_failure.pp pp ppf err
+    | Eval_error (msg, tm) ->
+      Fmt.pf ppf "evaluation error (%s) in term: %a" msg Term.pp tm
   ;;
 end
 
@@ -491,7 +567,7 @@ module Check_error = struct
     ; error : Check_error'.t
     }
 
-  let pp ppf { env = _; tm; ty = _; error } = Check_error'.pp ppf tm error
+  let pp ppf { env = _; tm; ty = _; error } = Check_error'.pp tm ppf error
 end
 
 module Infer_error = struct
@@ -501,7 +577,7 @@ module Infer_error = struct
     ; error : Check_error'.t
     }
 
-  let pp ppf { env = _; tm; error } = Check_error'.pp ppf tm error
+  let pp ppf { env = _; tm; error } = Check_error'.pp tm ppf error
 end
 
 let here = Provenance.of_here [%here]
@@ -542,151 +618,43 @@ let check_binding_pattern
         let sort_vars = List.map sort_vars ~f:Tuple2.get1 in
         let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
         check_slots (Arity.instantiate sort_env arity) subpats)
-  and check_slots (Arity (_, _)) _ = failwith "TODO" in
+  and check_slots (Arity (_, _)) _ = failwith "TODO: check_slots" in
   check sort pat
 ;;
 
-let primitive_types =
-  let here = Provenance.of_here [%here] in
-  let arr t1 t2 = Type.Arrow (here, t1, t2) in
-  let sort s = Type.Sort (Lvca_syntax.Sort.info s, Sort_model.Sort.into s) in
-  let int = sort (Lvca_syntax.Sort.Name (here, "int")) in
-  let string = sort (Lvca_syntax.Sort.Name (here, "string")) in
-  let bool = sort (Lvca_syntax.Sort.Name (here, "bool")) in
-  let char' = Lvca_syntax.Sort.Name (here, "char") in
-  let char = sort char' in
-  let list s =
-    sort (Lvca_syntax.Sort.Ap (here, "list", Lvca_syntax.Sort.Ap_list.of_list [ s ]))
-  in
-  let binary_int = arr int (arr int int) in
-  String.Map.of_alist_exn
-    [ "rename", arr string (arr string nominal_ty)
-    ; "var", arr string nominal_ty
-      (* ; "quote",  (arr a nominal_ty) *)
-      (* ; "antiquote",  (arr nominal_ty a) *)
-    ; "add", binary_int
-    ; "sub", binary_int
-    ; "string_of_chars", arr (list char') string
-    ; "is_digit", arr char bool
-    ; "is_lowercase", arr char bool
-    ; "is_uppercase", arr char bool
-    ; "is_alpha", arr char bool
-    ; "is_alphanum", arr char bool
-    ; "is_whitespace", arr char bool
-    ]
-;;
+module Primitive_types = struct
+  let here = Provenance.of_here [%here]
+  let sort s = Type.Sort (Lvca_syntax.Sort.info s, Sort_model.Sort.into s)
+  let sort' name = sort (Lvca_syntax.Sort.Name (here, name))
+  let char_name = Lvca_syntax.Sort.Name (here, "char")
+  let bool = sort' "bool"
+  let char = sort' "char"
+  let float = sort' "float"
+  let int32 = sort' "int32"
+  let integer = sort' "integer"
+  let string = sort' "string"
 
-let rec check ({ type_env; syntax } as env) tm ty =
-  let check_ty ty' =
-    if Type.equivalent ty ty'
-    then None
-    else Some Check_error.{ env; tm; ty; error = Mismatch (ty, ty') }
-  in
-  match tm with
-  | Lang.Term.Nominal _ -> check_ty nominal_ty
-  | Ap (_, f, args) ->
-    (match infer env f with
-    | Ok f_ty -> check_args env tm f_ty (List_model.to_list args)
-    | Error Infer_error.{ env; tm; error } -> Some { env; tm; ty; error })
-  | Case (_, tm, branches) ->
-    (match infer env tm with
-    | Error { env; tm; error } -> Some { env; tm; ty; error }
-    | Ok (Type.Arrow _) -> failwith "TODO"
-    | Ok (Sort (_, sort)) ->
-      let sort = Sort_model.Sort.out sort in
-      branches
-      |> List_model.to_list
-      |> List.find_map ~f:(fun (Lang.Case_scope.Case_scope (_, pat, rhs)) ->
-             match
-               check_binding_pattern syntax (Binding_aware_pattern_model.out pat) sort
-             with
-             | Ok type_env -> check { env with type_env } rhs ty
-             | Error error -> Some { env; tm; ty; error }))
-  | Lambda (_, ty', (Single_var.{ name; info = _ }, body)) ->
-    let type_env = Map.set type_env ~key:name ~data:ty' in
-    check { type_env; syntax } body ty
-  | Let (_, tm, ty', (Single_var.{ name; info = _ }, body)) ->
-    let inferred_tm_ty =
-      match ty' with None _ -> infer env tm | Some (_, tm_ty) -> Ok tm_ty
+  let funs =
+    let arr t1 t2 = Type.Arrow (here, t1, t2) in
+    let list s =
+      sort (Lvca_syntax.Sort.Ap (here, "list", Lvca_syntax.Sort.Ap_list.of_list [ s ]))
     in
-    (match inferred_tm_ty with
-    | Ok tm_ty ->
-      let type_env = Map.set type_env ~key:name ~data:tm_ty in
-      check { env with type_env } body ty
-    | Error Infer_error.{ env; tm; error } -> Some Check_error.{ env; tm; ty; error })
-  | Let_rec (_, rows, (binders, body)) ->
-    (match check_binders env rows binders with
-    | Error err -> Some err
-    | Ok type_env -> check { env with type_env } body ty)
-  | Subst (info, binding, arg) ->
-    let info = Provenance.calculated_here [%here] [ info ] in
-    check env (Let (info, arg, None info, binding)) ty
-  | Term_var _ ->
-    (match infer env tm with
-    | Error { env; tm; error } -> Some { env; tm; ty; error }
-    | Ok ty' -> check_ty ty')
-
-and infer ({ type_env; syntax = _ } as env) tm =
-  match tm with
-  | Lang.Term.Nominal _ -> Ok nominal_ty
-  | Ap (_, f, args) ->
-    (match infer env f with
-    | Ok f_ty ->
-      (match check_args env tm f_ty (List_model.to_list args) with
-      | None -> Ok (Type.chop_trailing (args |> List_model.to_list |> List.length) f_ty)
-      | Some { env; tm; ty = _; error } -> Error { env; tm; error })
-    | Error err -> Error err)
-  | Case _ -> Error { env; tm; error = Cant_infer_case }
-  | Lambda _ -> Error { env; tm; error = Cant_infer_lambda }
-  | Let (_, tm, ty, (Single_var.{ name; info = _ }, body)) ->
-    let%bind tm_ty = match ty with None _ -> infer env tm | Some (_, ty) -> Ok ty in
-    let type_env = Map.set type_env ~key:name ~data:tm_ty in
-    infer { env with type_env } body
-  | Let_rec (_, rows, (binders, body)) ->
-    (match check_binders env rows binders with
-    | Error { env; tm; ty = _; error } -> Error { env; tm; error }
-    | Ok type_env -> infer { env with type_env } body)
-  | Subst (info, binding, arg) ->
-    let info = Provenance.calculated_here [%here] [ info ] in
-    infer env (Let (info, arg, None info, binding))
-  | Term_var (_, name) ->
-    (match Map.find type_env name with
-    | None ->
-      (match Map.find primitive_types name with
-      | None -> Error { env; tm; error = Var_not_found }
-      | Some ty' -> Ok ty')
-    | Some ty' -> Ok ty')
-
-and check_args env tm ty args =
-  match ty, args with
-  | Type.Arrow (_, t1, t2), arg :: args ->
-    Option.first_some (check env arg t1) (check_args env tm t2 args)
-  | Arrow _, [] -> None (* under-applied is okay *)
-  | Sort _, [] -> None
-  | Sort _, _ -> Some Check_error.{ env; tm; ty; error = Overapplication }
-
-and check_binders ({ type_env; syntax = _ } as env) rows binders =
-  let binders = List_model.extract_vars_from_empty_pattern binders in
-  let rows = List_model.to_list rows in
-  let defns =
-    match List.zip binders rows with
-    | Unequal_lengths ->
-      Lvca_util.invariant_violation ~here:[%here] "Binder / row mismatch"
-    | Ok defns -> defns
-  in
-  let type_env =
-    List.fold
-      defns
-      ~init:type_env
-      ~f:(fun type_env (name, Lang.Letrec_row.Letrec_row (_, ty, _)) ->
-        Map.set type_env ~key:name ~data:ty)
-  in
-  let defn_check_error =
-    List.find_map defns ~f:(fun (_name, Letrec_row (_, ty, tm)) ->
-        check { env with type_env } tm ty)
-  in
-  match defn_check_error with None -> Ok type_env | Some err -> Error err
-;;
+    let binary_integer = arr integer (arr integer integer) in
+    String.Map.of_alist_exn
+      [ "rename", arr string (arr string (arr nominal_ty nominal_ty))
+      ; "var", arr string nominal_ty
+      ; "add", binary_integer
+      ; "sub", binary_integer
+      ; "string_of_chars", arr (list char_name) string
+      ; "is_digit", arr char bool
+      ; "is_lowercase", arr char bool
+      ; "is_uppercase", arr char bool
+      ; "is_alpha", arr char bool
+      ; "is_alphanum", arr char bool
+      ; "is_whitespace", arr char bool
+      ]
+  ;;
+end
 
 let merge_pattern_context
     : Nominal.Term.t String.Map.t option list -> Nominal.Term.t String.Map.t option
@@ -740,12 +708,9 @@ let find_match (v : Nominal.Term.t)
       match match_pattern v pat with
       | None -> None
       | Some bindings ->
-        let here = Provenance.of_here [%here] in
-        let bindings = Map.map bindings ~f:(fun v -> Lang.Term.Nominal (here, v)) in
+        let bindings = bindings |> Map.map ~f:nominal_to_term in
         Some (rhs, bindings))
 ;;
-
-type eval_error = string * Lang.Term.t
 
 let eval_char_bool_fn eval_nominal_in_ctx name f (ctx : eval_env) tm c =
   let true_tm info = Nominal.Term.Operator (info, "True", []) in
@@ -760,30 +725,74 @@ let eval_char_bool_fn eval_nominal_in_ctx name f (ctx : eval_env) tm c =
 
 type eval_result = (Nominal.Term.t, string * Term.t) Result.t
 
+module Quote = struct
+  let rec list f = function
+    | [] -> [%lvca.nominal "Nil()"]
+    | x :: xs ->
+      Operator
+        (Provenance.of_here [%here], "Cons", [ Scope ([], f x); Scope ([], list f xs) ])
+  ;;
+
+  let rec pattern = function
+    | Pattern.Var (info, name) ->
+      let info = Provenance.calculated_here [%here] [ info ] in
+      let prim = Nominal.Term.Primitive (info, Primitive_impl.All_plain.String name) in
+      Nominal.Term.Operator (info, "Var", [ Scope ([], prim) ])
+    | Primitive (info, prim) ->
+      let info = Provenance.calculated_here [%here] [ info ] in
+      let prim = Nominal.Term.Primitive (info, prim) in
+      Nominal.Term.Operator (info, "Primitive", [ Scope ([], prim) ])
+    | Operator (info, name, pats) ->
+      let info = Provenance.calculated_here [%here] [ info ] in
+      let name_prim =
+        Nominal.Term.Primitive (info, Primitive_impl.All_plain.String name)
+      in
+      let pats = list pattern pats in
+      Nominal.Term.Operator (info, "Operator", [ Scope ([], name_prim); Scope ([], pats) ])
+  ;;
+
+  let rec term = function
+    | Nominal.Term.Var (info, name) ->
+      let info = Provenance.calculated_here [%here] [ info ] in
+      let prim = Nominal.Term.Primitive (info, Primitive_impl.All_plain.String name) in
+      Nominal.Term.Operator (info, "Var", [ Scope ([], prim) ])
+    | Primitive (info, prim) ->
+      let info = Provenance.calculated_here [%here] [ info ] in
+      let prim = Nominal.Term.Primitive (info, prim) in
+      Nominal.Term.Operator (info, "Primitive", [ Scope ([], prim) ])
+    | Operator (info, name, scopes) ->
+      let info = Provenance.calculated_here [%here] [ info ] in
+      let name_prim =
+        Nominal.Term.Primitive (info, Primitive_impl.All_plain.String name)
+      in
+      let scopes = list scope scopes in
+      Nominal.Term.Operator
+        (info, "Operator", [ Scope ([], name_prim); Scope ([], scopes) ])
+
+  and scope (Scope (binders, body)) =
+    Nominal.Term.Operator
+      ( Provenance.of_here [%here]
+      , "Scope"
+      , [ Scope ([], list pattern binders); Scope ([], term body) ] )
+  ;;
+end
+
 let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
   match tm with
   | Lang.Term.Term_var (_, v) ->
     (match Map.find ctx v with
-    | Some (Nominal (_, v)) -> Ok v
-    | Some tm -> Error ("TODO", tm)
+    | Some tm -> term_to_nominal tm
     | None -> Error ("Unbound variable " ^ v, tm))
-  | Case (info, tm, branches) ->
+  | Case (_, tm, branches) ->
     let%bind tm_val = eval_in_ctx ctx tm in
     (match find_match tm_val (List_model.to_list branches) with
-    | None ->
-      let info =
-        Provenance.calculated_here
-          [%here]
-          [ info; Term.info tm; List_model.List.info branches ]
-      in
-      Error ("no match found in case", Nominal (info, tm_val))
+    | None -> Error ("no match found in case", nominal_to_term tm_val)
     | Some (branch, bindings) ->
       eval_in_ctx (Lvca_util.Map.union_right_biased ctx bindings) branch)
   | Ap (_, Lambda (_, _ty, (Single_var.{ name; info = _ }, body)), Cons (_, arg, Nil _))
     ->
     let%bind arg_val = eval_in_ctx ctx arg in
-    let here = Provenance.of_here [%here] in
-    let data = Lang.Term.Nominal (here, arg_val) in
+    let data = nominal_to_term arg_val in
     eval_in_ctx (Map.set ctx ~key:name ~data) body
   | Ap (info, Term_var (_, name), args) ->
     (match Map.find ctx name with
@@ -791,15 +800,6 @@ let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
     | Some tm ->
       let here = Provenance.calculated_here [%here] [ info ] in
       eval_in_ctx ctx (Ap (here, tm, args)))
-  | Nominal (_, tm) ->
-    let free_vars = Nominal.Term.free_vars tm in
-    let restricted_ctx = Map.filter_keys ctx ~f:(fun key -> Set.mem free_vars key) in
-    let ctx =
-      Map.map restricted_ctx ~f:(function
-          | Nominal (_, v) -> v
-          | _ -> Lvca_util.invariant_violation ~here:[%here] "TODO")
-    in
-    Ok (Nominal.Term.subst_all ctx tm)
   | Let_rec (_, rows, (binders, body)) ->
     let binders = List_model.extract_vars_from_empty_pattern binders in
     let rows = List_model.to_list rows in
@@ -814,24 +814,29 @@ let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
             Map.set ctx ~key:name ~data:body)
       in
       eval_in_ctx ctx body)
-  | Let (info, tm, _, (Single_var.{ name; info = _ }, body))
-  | Subst (info, (Single_var.{ name; _ }, body), tm) ->
+  | Let (_info, tm, _, (Single_var.{ name; info = _ }, body))
+  | Subst (_info, (Single_var.{ name; _ }, body), tm) ->
     let%bind tm_val = eval_in_ctx ctx tm in
-    let here = Provenance.calculated_here [%here] [ info ] in
-    let data = Lang.Term.Nominal (here, tm_val) in
+    let data = nominal_to_term tm_val in
     eval_in_ctx (Map.set ctx ~key:name ~data) body
+  | Operator _ -> term_to_nominal tm
+  | Primitive (info, (_, p)) -> Ok (Nominal.Term.Primitive (info, p))
+  | Quote (_, tm) -> eval_in_ctx ctx tm |> Result.map ~f:Quote.term
+  | Unquote (_, tm) ->
+    let%bind tm_val = eval_in_ctx ctx tm in
+    (match Term.of_nominal tm_val with
+    | Ok tm -> eval_in_ctx ctx tm
+    | Error conversion_error ->
+      let msg = Fmt.str "%a" Nominal.Conversion_error.pp conversion_error in
+      Error (msg, tm))
   | _ -> Error ("Found a term we can't evaluate", tm)
 
 and eval_nominal_in_ctx (ctx : eval_env) tm : eval_result =
   match tm with
-  | Nominal.Term.Var (info, v) ->
+  | Nominal.Term.Var (_info, v) ->
     (match Map.find ctx v with
-    | Some (Nominal (_, v)) -> Ok v
-    | Some _ -> Lvca_util.invariant_violation ~here:[%here] "TODO"
-    | None ->
-      Error
-        ( "Unbound variable " ^ v
-        , Lang.Term.Nominal (Provenance.calculated_here [%here] [ info ], tm) ))
+    | Some tm -> term_to_nominal tm
+    | None -> Error ("Unbound variable " ^ v, nominal_to_term tm))
   | _ -> Ok tm
 
 and eval_primitive eval_in_ctx eval_nominal_in_ctx (ctx : eval_env) tm name args =
@@ -906,6 +911,169 @@ and eval_primitive eval_in_ctx eval_nominal_in_ctx (ctx : eval_env) tm name args
 
 let eval core = eval_in_ctx String.Map.empty core
 
+let rec check ({ type_env; syntax } as env) tm ty =
+  let check_ty ty' =
+    if Type.equivalent ty ty'
+    then None
+    else Some Check_error.{ env; tm; ty; error = Mismatch (ty, ty') }
+  in
+  match tm with
+  | Lang.Term.Primitive (_, (_, p)) ->
+    let open Primitive_types in
+    let sort =
+      match p with
+      | Primitive_impl.All_plain.String _ -> string
+      | Float _ -> float
+      | Char _ -> char
+      | Integer _ -> integer
+      | Int32 _ -> int32
+    in
+    check_ty sort
+  | Operator _ ->
+    (match ty with
+    | Arrow _ ->
+      Some Check_error.{ env; tm; ty; error = Message "Expected sort, found arrow" }
+    | Sort (_, sort) ->
+      (match term_to_nominal tm with
+      | Error (msg, tm) -> Some Check_error.{ env; tm; ty; error = Message msg }
+      | Ok nom ->
+        (match Nominal.Term.check syntax (Sort_model.Sort.out sort) nom with
+        | None -> None
+        | Some check_failure ->
+          Some Check_error.{ env; tm; ty; error = Check_failure check_failure })))
+  | Ap (_, f, args) ->
+    (match infer env f with
+    | Ok f_ty -> check_args env tm f_ty (List_model.to_list args)
+    | Error Infer_error.{ env; tm; error } -> Some { env; tm; ty; error })
+  | Case (_, tm, branches) ->
+    (match infer env tm with
+    | Error { env; tm; error } -> Some { env; tm; ty; error }
+    | Ok (Type.Arrow _) -> failwith "TODO: check Case"
+    | Ok (Sort (_, sort)) ->
+      let sort = Sort_model.Sort.out sort in
+      branches
+      |> List_model.to_list
+      |> List.find_map ~f:(fun (Lang.Case_scope.Case_scope (_, pat, rhs)) ->
+             match
+               check_binding_pattern syntax (Binding_aware_pattern_model.out pat) sort
+             with
+             | Ok type_env -> check { env with type_env } rhs ty
+             | Error error -> Some { env; tm; ty; error }))
+  | Lambda (_, ty', (Single_var.{ name; info = _ }, body)) ->
+    let type_env = Map.set type_env ~key:name ~data:ty' in
+    check { type_env; syntax } body ty
+  | Let (_, tm, ty', (Single_var.{ name; info = _ }, body)) ->
+    let inferred_tm_ty =
+      match ty' with None _ -> infer env tm | Some (_, tm_ty) -> Ok tm_ty
+    in
+    (match inferred_tm_ty with
+    | Ok tm_ty ->
+      let type_env = Map.set type_env ~key:name ~data:tm_ty in
+      check { env with type_env } body ty
+    | Error Infer_error.{ env; tm; error } -> Some Check_error.{ env; tm; ty; error })
+  | Let_rec (_, rows, (binders, body)) ->
+    (match check_binders env rows binders with
+    | Error err -> Some err
+    | Ok type_env -> check { env with type_env } body ty)
+  | Subst (info, binding, arg) ->
+    let info = Provenance.calculated_here [%here] [ info ] in
+    check env (Let (info, arg, None info, binding)) ty
+  | Term_var _ ->
+    (match infer env tm with
+    | Error { env; tm; error } -> Some { env; tm; ty; error }
+    | Ok ty' -> check_ty ty')
+  | Quote _ -> check_ty nominal_ty
+  | Unquote (_, tm) ->
+    (match ty with
+    | Arrow _ ->
+      Some Check_error.{ env; tm; ty; error = Message "Expected sort, found arrow" }
+    | Sort (_, sort) ->
+      (match eval tm with
+      | Ok nom ->
+        (match Nominal.Term.check syntax (Sort_model.Sort.out sort) nom with
+        | None -> None
+        | Some check_failure ->
+          Some Check_error.{ env; tm; ty; error = Check_failure check_failure })
+      | Error err -> Some Check_error.{ env; tm; ty; error = Eval_error err }))
+
+and infer ({ type_env; syntax = _ } as env) tm =
+  match tm with
+  | Lang.Term.Primitive (_, (_, p)) ->
+    let open Primitive_types in
+    let sort =
+      match p with
+      | Primitive_impl.All_plain.String _ -> string
+      | Float _ -> float
+      | Char _ -> char
+      | Integer _ -> integer
+      | Int32 _ -> int32
+    in
+    Ok sort
+  | Operator _ -> failwith "TODO: infer Operator"
+  | Ap (_, f, args) ->
+    (match infer env f with
+    | Ok f_ty ->
+      (match check_args env tm f_ty (List_model.to_list args) with
+      | None -> Ok (Type.chop_trailing (args |> List_model.to_list |> List.length) f_ty)
+      | Some { env; tm; ty = _; error } -> Error { env; tm; error })
+    | Error err -> Error err)
+  | Case _ -> Error { env; tm; error = Cant_infer_case }
+  | Lambda _ -> Error { env; tm; error = Cant_infer_lambda }
+  | Let (_, tm, ty, (Single_var.{ name; info = _ }, body)) ->
+    let%bind tm_ty = match ty with None _ -> infer env tm | Some (_, ty) -> Ok ty in
+    let type_env = Map.set type_env ~key:name ~data:tm_ty in
+    infer { env with type_env } body
+  | Let_rec (_, rows, (binders, body)) ->
+    (match check_binders env rows binders with
+    | Error { env; tm; ty = _; error } -> Error { env; tm; error }
+    | Ok type_env -> infer { env with type_env } body)
+  | Subst (info, binding, arg) ->
+    let info = Provenance.calculated_here [%here] [ info ] in
+    infer env (Let (info, arg, None info, binding))
+  | Term_var (_, name) ->
+    (match Map.find type_env name with
+    | None ->
+      (match Map.find Primitive_types.funs name with
+      | None -> Error { env; tm; error = Var_not_found }
+      | Some ty' -> Ok ty')
+    | Some ty' -> Ok ty')
+  | Quote _ -> Ok nominal_ty
+  | Unquote (_, tm) ->
+    (match eval tm with
+    | Ok _nom -> failwith "TODO"
+    | Error err -> Error Infer_error.{ env; tm; error = Eval_error err })
+
+and check_args env tm ty args =
+  match ty, args with
+  | Type.Arrow (_, t1, t2), arg :: args ->
+    Option.first_some (check env arg t1) (check_args env tm t2 args)
+  | Arrow _, [] -> None (* under-applied is okay *)
+  | Sort _, [] -> None
+  | Sort _, _ -> Some Check_error.{ env; tm; ty; error = Overapplication }
+
+and check_binders ({ type_env; syntax = _ } as env) rows binders =
+  let binders = List_model.extract_vars_from_empty_pattern binders in
+  let rows = List_model.to_list rows in
+  let defns =
+    match List.zip binders rows with
+    | Unequal_lengths ->
+      Lvca_util.invariant_violation ~here:[%here] "Binder / row mismatch"
+    | Ok defns -> defns
+  in
+  let type_env =
+    List.fold
+      defns
+      ~init:type_env
+      ~f:(fun type_env (name, Lang.Letrec_row.Letrec_row (_, ty, _)) ->
+        Map.set type_env ~key:name ~data:ty)
+  in
+  let defn_check_error =
+    List.find_map defns ~f:(fun (_name, Letrec_row (_, ty, tm)) ->
+        check { env with type_env } tm ty)
+  in
+  match defn_check_error with None -> Ok type_env | Some err -> Error err
+;;
+
 let parse_exn =
   Lvca_parsing.(parse_string (whitespace *> Parse.term)) >> Result.ok_or_failwith
 ;;
@@ -931,7 +1099,7 @@ let%test_module "Parsing" =
       parse_pretty {|fail "some reason for failing"|};
       parse_pretty "match c with { 'c' -> True() | _ -> False() }";
       parse_pretty "Some(1)";
-      parse_pretty "let x = 1 in Some(x) in Some(x)}";
+      parse_pretty "let x = let x = 1 in Some(x) in Some(x)";
       parse_pretty "body[f := reduce arg]";
       parse_pretty {|\(tm : lam) -> tm[x := Var("y")]|};
       [%expect
@@ -942,19 +1110,44 @@ let%test_module "Parsing" =
       Var(str)
       let x = x in x
       let str = string_of_chars chars in str
+
       let str = string_of_chars chars in Var(str)
       \(x : bool) -> x
-      match x with { _ -> 1 }
-      match empty with { }
-      match x with { | _ -> 1 }
-      match x with { True() -> False() | False() -> True() }
+      match x with {
+                                                                     | _ -> 1
+                                                                   }
+      match empty with {
+                                                                       |
+                                                                     }
+      match x with {
+                                                                         |
+                                                                       _ -> 1
+                                                                       }
+      match x with {
+                                                                          |
+                                                                         True()
+                                                                         ->
+                                                                         False()
+                                                                          |
+                                                                         False()
+                                                                         ->
+                                                                         True()
+                                                                         }
+
       let x = True() in not x
       fail "some reason for failing"
-      match c with { 'c' -> True() | _ -> False() }
+      match c with {
+                                                               | 'c' -> True()
+                                                               | _ -> False()
+                                                             }
       Some(1)
-      let x = 1 in Some(x) in Some(x)}
-      body[f := reduce arg]
-      \(tm : lam) -> tm[x := Var("y")]
+      let x =
+                                                                       let x = 1 in
+                                                                       Some(x) in
+                                                                       Some(x)
+
+      (body)[f := reduce arg]
+      \(tm : lam) -> (tm)[x := Var("y")]
       |}]
     ;;
 
@@ -972,12 +1165,14 @@ let%test_module "Parsing" =
       |};
       [%expect
         {|
-      \(tm: term) -> match tm with {
+      \(tm : term) ->
+      match tm with {
         | Lam(_) -> tm
-        | App(f; arg) -> match reduce f with {
-          | Lam(x. body) -> body[f := reduce arg]
-          | f' -> let arg = reduce arg in App(f'; arg)
-        }
+        | App(f; arg)
+          -> match reduce f with {
+               | Lam(x. body) -> (body)[f := reduce arg]
+               | f' -> let arg = reduce arg in App(f'; arg)
+             }
         | Real_expr(expr) -> expr
       }
       |}]
@@ -990,24 +1185,23 @@ let%test_module "Parsing" =
         | True() -> True()
         | False() -> False()
         | Ite(t1; t2; t3) -> match meaning t1 with {
-          | true()  -> meaning t2
-          | false() -> meaning t3
+          | True()  -> meaning t2
+          | False() -> meaning t3
         }
-        | ap(f; arg) -> (meaning f) (meaning arg)
-        | fun(scope) -> Lambda(List(); scope)
+        | Ap(f; arg) -> (meaning f) (meaning arg)
+        | Fun(scope) -> Lambda(List(); scope)
       }
       |};
       [%expect
         {|
-      \(tm : ty) -> match tm with {
+      \(tm : ty) ->
+      match tm with {
         | True() -> True()
         | False() -> False()
-        | Ite(t1; t2; t3) -> match meaning t1 with {
-          | true()  -> meaning t2
-          | false() -> meaning t3
-        }
-        | ap(f; arg) -> (meaning f) (meaning arg)
-        | fun(scope) -> Lambda(List(); scope)
+        | Ite(t1; t2; t3)
+          -> match meaning t1 with { True() -> meaning t2 | False() -> meaning t3 }
+        | Ap(f; arg) -> meaning f meaning arg
+        | Fun(scope) -> Lambda(List(); scope)
       }
       |}]
     ;;
@@ -1126,17 +1320,55 @@ let%test_module "Core eval" =
     ;;
 
     let%expect_test _ =
-      eval_str {|rename "foo" "bar" Cons(foo; Nil())|};
+      eval_str "{False()}";
+      [%expect {| Operator("False"; Nil()) |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "{1}";
+      [%expect {| Primitive(1) |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "{Some(1)}";
+      [%expect {| Operator("Some"; Cons(Scope(Nil(); Primitive(1)); Nil())) |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "{sub 1 2}";
+      [%expect {| Primitive(-1) |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "{a}";
+      [%expect {| Unbound variable a: a |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "{Lam(a. a)}";
+      [%expect {| Operator("Lam"; Cons(Scope(Cons(Var("a"); Nil()); Var("a")); Nil())) |}]
+    ;;
+
+    let%expect_test _ =
+      eval_str "unquote {False()}";
+      [%expect {| False() |}]
+    ;;
+
+    (* TODO
+    let%expect_test _ =
+      eval_str {|unquote (rename "foo" "bar" {Cons(foo; Nil())})|};
       [%expect {| Cons(bar; Nil()) |}]
     ;;
 
     let%expect_test _ =
-      eval_str {|rename "foo" "bar" Cons(baz; Nil())|};
+      eval_str {|unquote (rename "foo" "bar" {Cons(baz; Nil())})|};
       [%expect {| Cons(baz; Nil()) |}]
     ;;
+       *)
   end)
 ;;
 
+(*
 let%test_module "Core pretty" =
   (module struct
     let mk_test parser pp ?(width = 80) str =
@@ -1240,23 +1472,23 @@ let%test_module "Core pretty" =
     ;;
 
     let%expect_test _ =
-      ty "int -> bool";
-      [%expect "int -> bool"]
+      ty "integer -> bool";
+      [%expect "integer -> bool"]
     ;;
 
     let%expect_test _ =
-      ty "(int -> bool) -> string";
-      [%expect "(int -> bool) -> string"]
+      ty "(integer -> bool) -> string";
+      [%expect "(integer -> bool) -> string"]
     ;;
 
     let%expect_test _ =
-      ty "int -> (bool -> string)";
-      [%expect "int -> bool -> string"]
+      ty "integer -> (bool -> string)";
+      [%expect "integer -> bool -> string"]
     ;;
 
     let%expect_test _ =
-      ty "(int -> float) -> (bool -> string)";
-      [%expect "(int -> float) -> bool -> string"]
+      ty "(integer -> float) -> (bool -> string)";
+      [%expect "(integer -> float) -> bool -> string"]
     ;;
 
     let%expect_test _ =
@@ -1289,8 +1521,8 @@ let%test_module "Core eval in dynamics" =
     | true()  -> meaning t2
     | false() -> meaning t3
   }
-  | ap(f; arg) -> (meaning f) (meaning arg)
-  | fun(scope) -> Lambda(List(); scope)
+  | Ap(f; arg) -> (meaning f) (meaning arg)
+  | Fun(scope) -> Lambda(List(); scope)
 }
       |}
     ;;
@@ -1325,17 +1557,17 @@ let%test_module "Checking / inference" =
       [ ( "bool"
         , Sort_def.Sort_def
             ( []
-            , [ Operator_def.Operator_def (here, "true", Arity (here, []))
-              ; Operator_def.Operator_def (here, "false", Arity (here, []))
+            , [ Operator_def.Operator_def (here, "True", Arity (here, []))
+              ; Operator_def.Operator_def (here, "False", Arity (here, []))
               ] ) )
       ; ( "list"
         , let a = Lvca_syntax.Sort.Name (here, "a") in
           Sort_def.Sort_def
             ( [ "a", Some (Kind.Kind (here, 1)) ]
-            , [ Operator_def.Operator_def (here, "nil", Arity (here, []))
+            , [ Operator_def.Operator_def (here, "Nil", Arity (here, []))
               ; Operator_def.Operator_def
                   ( here
-                  , "cons"
+                  , "Cons"
                   , Arity
                       ( here
                       , [ Valence.Valence ([], a)
@@ -1368,23 +1600,33 @@ let%test_module "Checking / inference" =
     ;;
 
     let%expect_test _ =
+      check "bool" "True()";
+      [%expect {| checked |}]
+    ;;
+
+    let%expect_test _ =
       check "nominal" "True()";
+      [%expect
+        {|
+        Nominal.check: failed to find operator True in sort nominal: sort not found (options: {bool,
+        list})
+        stack:
+        - term: True(), sort: nominal |}]
+    ;;
+
+    let%expect_test _ =
+      check "integer" "2";
       [%expect {| checked |}]
     ;;
 
     let%expect_test _ =
-      check "nominal" "2";
-      [%expect {| checked |}]
-    ;;
-
-    let%expect_test _ =
-      check "nominal" "2";
+      check "integer" "2";
       [%expect {| checked |}]
     ;;
 
     let%expect_test _ =
       infer "2";
-      [%expect {| inferred: nominal |}]
+      [%expect {| inferred: integer |}]
     ;;
 
     let%expect_test _ =
@@ -1394,12 +1636,12 @@ let%test_module "Checking / inference" =
 
     let%expect_test _ =
       check "a -> a" "Nil()";
-      [%expect {| nominal != a -> a |}]
+      [%expect {| Expected sort, found arrow |}]
     ;;
 
     let%expect_test _ =
       check "list integer" "Cons(1; Nil())";
-      [%expect {| nominal != list integer |}]
+      [%expect {| checked |}]
     ;;
 
     let%expect_test _ =
@@ -1409,7 +1651,7 @@ let%test_module "Checking / inference" =
 
     let%expect_test _ =
       check
-        "bool"
+        "integer"
         {|match True() with {
           | True() -> 1
           | False() -> 2
@@ -1428,22 +1670,22 @@ let%test_module "Checking / inference" =
     ;;
 
     let%expect_test _ =
-      infer ~type_env "x";
-      [%expect {| inferred: nominal |}]
-    ;;
-
-    let%expect_test _ =
       check ~type_env "bool" "x";
-      [%expect {| nominal != bool |}]
+      [%expect {| a != bool |}]
     ;;
 
     let%expect_test _ =
-      check ~type_env "integer" "x";
-      [%expect {| nominal != integer |}]
+      check ~type_env "nominal" {|{True()}|};
+      [%expect {| checked |}]
     ;;
 
     let%expect_test _ =
-      check ~type_env "list integer" {|rename "foo" "bar" Cons(foo; Nil())|};
+      check ~type_env "bool" {|unquote {True()}|};
+      [%expect {| checked |}]
+    ;;
+
+    let%expect_test _ =
+      check ~type_env "list integer" {|unquote (rename "foo" "bar" {Cons(foo; Nil())})|};
       [%expect {| checked |}]
     ;;
 
@@ -1454,7 +1696,7 @@ let%test_module "Checking / inference" =
 
     let%expect_test _ =
       infer ~type_env {|add 1|};
-      [%expect {| int -> int |}]
+      [%expect {| inferred: integer -> integer |}]
     ;;
 
     let%expect_test _ =
@@ -1469,7 +1711,7 @@ let%test_module "Checking / inference" =
       infer ~type_env {|is_whitespace|};
       [%expect
         {|
-        inferred: int -> int -> int
+        inferred: integer -> integer -> integer
         inferred: list char -> string
         inferred: string -> nominal
         inferred: char -> bool
@@ -1481,3 +1723,4 @@ let%test_module "Checking / inference" =
     ;;
   end)
 ;;
+*)
