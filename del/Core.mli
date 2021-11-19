@@ -26,10 +26,9 @@ module Type : sig
   val mk_Arrow : info:Lvca_syntax.Provenance.t -> t -> t -> t
 end
 
-module Lang : [%lvca.abstract_syntax_module_sig
+module Term_syntax : [%lvca.abstract_syntax_module_sig
 {|
 ty : *
-nominal : *
 list : * -> *
 option : * -> *
 binding_aware_pattern : * -> *
@@ -52,11 +51,10 @@ term :=
   | Quote(term)
   | Unquote(term)
 
-operator_scope := Operator_scope(list pattern; nominal)
+operator_scope := Operator_scope(list pattern; term)
 case_scope := Case_scope(binding_aware_pattern; term)
 |}
 , { ty = "Type"
-  ; nominal = "Nominal.Term"
   ; list = "List_model.List"
   ; option = "Option_model.Option"
   ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
@@ -67,21 +65,42 @@ case_scope := Case_scope(binding_aware_pattern; term)
   }]
 
 module Term : sig
-  include Nominal.Convertible.Extended_s with type t = Lang.Term.t
+  include Nominal.Convertible.Extended_s with type t = Term_syntax.Term.t
 
   val parse_concrete : t Lvca_parsing.t
   val pp_concrete : t Fmt.t
 end
 
+module Value_syntax : [%lvca.abstract_syntax_module_sig
+{|
+ty : *
+list : * -> *
+pattern : *
+primitive : *
+string : *
+
+value :=
+  | VPrimitive(primitive)
+  | VOperator(string; list value)
+  | VLambda(ty; term. term)
+|}
+, { ty = "Type"
+  ; list = "List_model.List"
+  ; pattern = "Pattern_model.Pattern"
+  ; primitive = "Primitive.All"
+  ; string = "Primitive.String"
+  ; term = "Term_syntax.Term"
+  }]
+
 module Parse : sig
-  val term : Lang.Term.t Lvca_parsing.t
+  val term : Term_syntax.Term.t Lvca_parsing.t
 end
 
 (** {1 Core type} *)
 module Module : sig
   type t =
     { externals : (string * Type.t) list
-    ; defs : (string * Lang.Term.t) list
+    ; defs : (string * Term_syntax.Term.t) list
     }
 
   val pp : t Fmt.t
@@ -90,11 +109,15 @@ end
 
 (** {1 Evaluation} *)
 
-type eval_env = Lang.Term.t String.Map.t
-type eval_error = string * Lang.Term.t
+type eval_env = Value_syntax.Value.t String.Map.t
+type eval_error = string * Term_syntax.Term.t
 
-val eval_in_ctx : eval_env -> Lang.Term.t -> (Nominal.Term.t, eval_error) Base.Result.t
-val eval : Lang.Term.t -> (Nominal.Term.t, eval_error) Base.Result.t
+val eval_in_ctx
+  :  eval_env
+  -> Term_syntax.Term.t
+  -> (Value_syntax.Value.t, eval_error) Base.Result.t
+
+val eval : Term_syntax.Term.t -> (Value_syntax.Value.t, eval_error) Base.Result.t
 
 (** {1 Checking} *)
 
@@ -115,7 +138,8 @@ module Check_error' : sig
     | Binding_pattern_check of string
     | Overapplication
     | Message of string
-    | Check_failure of Nominal.Term.check_failure
+    | Pattern_check_failure of Pattern.t Check_failure.t
+    | Binding_pattern_check_failure of Binding_aware_pattern.t Check_failure.t
     | Eval_error of eval_error
 
   val pp : Term.t -> t Fmt.t
@@ -124,7 +148,7 @@ end
 module Check_error : sig
   type t =
     { env : check_env
-    ; tm : Lang.Term.t
+    ; tm : Term_syntax.Term.t
     ; ty : Type.t
     ; error : Check_error'.t
     }
@@ -135,7 +159,7 @@ end
 module Infer_error : sig
   type t =
     { env : check_env
-    ; tm : Lang.Term.t
+    ; tm : Term_syntax.Term.t
     ; error : Check_error'.t
     }
 
@@ -143,21 +167,21 @@ module Infer_error : sig
 end
 
 (** Typecheck a term in an environment. *)
-val infer : check_env -> Lang.Term.t -> (Type.t, Infer_error.t) Result.t
+val infer : check_env -> Term_syntax.Term.t -> (Type.t, Infer_error.t) Result.t
 
-val check : check_env -> Lang.Term.t -> Type.t -> Check_error.t option
+val check : check_env -> Term_syntax.Term.t -> Type.t -> Check_error.t option
 
 (** {1 Patterns} *)
 val match_pattern
-  :  Nominal.Term.t
-  -> Binding_aware_pattern.t
-  -> Nominal.Term.t String.Map.t option
+  :  Binding_aware_pattern.t
+  -> Value_syntax.Value.t
+  -> Value_syntax.Value.t String.Map.t option
 
 val find_match
-  :  Nominal.Term.t
-  -> Lang.Case_scope.t list
-  -> (Lang.Term.t * eval_env) option
+  :  Value_syntax.Value.t
+  -> Term_syntax.Case_scope.t list
+  -> (Term_syntax.Term.t * eval_env) option
 
 (* val coverage_check :  Cases.t -> *)
-val preimage : Lang.Case_scope.t list -> Binding_aware_pattern.t list
-val reverse : Nominal.Term.t -> Lang.Case_scope.t list -> eval_env option
+val preimage : Term_syntax.Case_scope.t list -> Binding_aware_pattern.t list
+val reverse : Nominal.Term.t -> Term_syntax.Case_scope.t list -> eval_env option

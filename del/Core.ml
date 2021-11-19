@@ -129,12 +129,11 @@ ty := Sort(sort) | Arrow(ty; ty)
   ;;
 end
 
-module Lang = struct
+module Term_syntax = struct
   include
     [%lvca.abstract_syntax_module
     {|
 ty : *
-nominal : *
 list : * -> *
 option : * -> *
 binding_aware_pattern : * -> *
@@ -158,11 +157,11 @@ term :=
   | Quote(term)
   | Unquote(term)
 
-operator_scope := Operator_scope(list pattern; nominal)
+// TODO: do we actually want to allow binders?
+operator_scope := Operator_scope(list pattern; term)
 case_scope := Case_scope(binding_aware_pattern; term)
 |}
     , { ty = "Type"
-      ; nominal = "Nominal.Term"
       ; list = "List_model.List"
       ; option = "Option_model.Option"
       ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
@@ -183,14 +182,38 @@ case_scope := Case_scope(binding_aware_pattern; term)
   end
 end
 
+module Value_syntax = struct
+  include
+    [%lvca.abstract_syntax_module
+    {|
+ty : *
+list : * -> *
+pattern : *
+primitive : *
+string : *
+
+value :=
+  | VPrimitive(primitive)
+  | VOperator(string; list value)
+  | VLambda(ty; term. term)
+|}
+    , { ty = "Type"
+      ; list = "List_model.List"
+      ; pattern = "Pattern_model.Pattern"
+      ; primitive = "Primitive.All"
+      ; string = "Primitive.String"
+      ; term = "Term_syntax.Term"
+      }]
+end
+
 module Pp = struct
   let list, any, pf, sp, semi = Fmt.(list, any, pf, sp, semi)
 
-  let rec term : Lang.Term.t Fmt.t =
+  let rec term : Term_syntax.Term.t Fmt.t =
    fun ppf tm ->
-    Provenance.open_stag ppf (Lang.Term.info tm);
+    Provenance.open_stag ppf (Term_syntax.Term.info tm);
     match tm with
-    | Lang.Term.Term_var (_, v) -> Fmt.string ppf v
+    | Term_syntax.Term.Term_var (_, v) -> Fmt.string ppf v
     | Primitive (_, tm) -> Primitive.All.pp ppf tm
     | Operator (_, (_, tag), subtms) ->
       let subtms = List_model.to_list subtms in
@@ -214,7 +237,7 @@ module Pp = struct
     | Let_rec (_, rows, (binders, rhs)) ->
       let binders = List_model.extract_vars_from_empty_pattern binders in
       let rows = List_model.to_list rows in
-      let pp_bound_row ppf (var_name, Lang.Letrec_row.Letrec_row (_, ty, body)) =
+      let pp_bound_row ppf (var_name, Term_syntax.Letrec_row.Letrec_row (_, ty, body)) =
         pf ppf "%s@ :@ %a@ =@ %a" var_name Type.pp ty term body
       in
       (match List.zip binders rows with
@@ -237,7 +260,7 @@ module Pp = struct
         | _ -> pf ppf "@[@[(%a)@][%s := %a]@]"
       in
       formatter term body name term arg;
-      Provenance.close_stag ppf (Lang.Term.info tm)
+      Provenance.close_stag ppf (Term_syntax.Term.info tm)
     | Quote (_, tm) -> pf ppf "@[{%a}@]" term tm
     | Unquote (_, tm) -> pf ppf "@[unquote %a@]" term tm
 
@@ -250,7 +273,7 @@ module Pp = struct
 
   and cases ppf x = list ~sep:(any "@;<1 2>| ") case_scope ppf (List_model.to_list x)
 
-  and case_scope ppf (Lang.Case_scope.Case_scope (info, pat, body)) =
+  and case_scope ppf (Term_syntax.Case_scope.Case_scope (info, pat, body)) =
     Provenance.open_stag ppf info;
     pf
       ppf
@@ -261,49 +284,76 @@ module Pp = struct
       body;
     Provenance.close_stag ppf info
 
-  and operator_scope ppf (Lang.Operator_scope.Operator_scope (_info, bindings, body)) =
+  and operator_scope
+      ppf
+      (Term_syntax.Operator_scope.Operator_scope (_info, bindings, body))
+    =
     let any, list, pf = Fmt.(any, list, pf) in
     let bindings = bindings |> List_model.to_list |> List.map ~f:Pattern_model.out in
     match bindings with
-    | [] -> Nominal.Term.pp ppf body
-    | _ ->
-      pf ppf "%a.@ %a" (list ~sep:(any ".@ ") Pattern.pp) bindings Nominal.Term.pp body
+    | [] -> term ppf body
+    | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") Pattern.pp) bindings term body
   ;;
 end
 
-module Operator_scope = struct
-  let out (Lang.Operator_scope.Operator_scope (_, patterns, tm)) =
+module Value = struct
+  include Value_syntax.Value
+
+  let rec pp ppf =
+    let list, pf, semi = Fmt.(list, pf, semi) in
+    function
+    | VPrimitive (_, tm) -> Primitive.All.pp ppf tm
+    | VOperator (_, (_, tag), subtms) ->
+      let subtms = List_model.to_list subtms in
+      pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi pp) subtms
+    | VLambda (_, ty, (Single_var.{ name; info = _ }, body)) ->
+      pf ppf "@[<hv>\\@[<hv>(%s : %a)@] ->@ %a@]" name Type.pp ty Pp.term body
+  ;;
+end
+
+(*
+module To_nominal = struct
+  open Result.Let_syntax
+
+  let rec term tm =
+    match tm with
+    | Term_syntax.Term.Primitive (info, (_, v)) -> Ok (Nominal.Term.Primitive (info, v))
+    | Operator (info, (_, name), subterms) ->
+      let%map subterms =
+        subterms |> List_model.to_list |> List.map ~f:operator_scope |> Result.all
+      in
+      Nominal.Term.Operator (info, name, subterms)
+    | _ -> Error ("TODO: term_to_nominal", tm)
+
+  and operator_scope (Term_syntax.Operator_scope.Operator_scope (_, patterns, tm)) =
     let patterns = patterns |> List_model.to_list |> List.map ~f:Pattern_model.out in
+    let%map tm = term tm in
     Nominal.Scope.Scope (patterns, tm)
   ;;
+end
+   *)
 
-  let into (Nominal.Scope.Scope (patterns, tm)) =
+module Of_nominal = struct
+  let rec term = function
+    | Nominal.Term.Operator (info, name, scopes) ->
+      let scopes = scopes |> List.map ~f:operator_scope |> List_model.of_list in
+      Term_syntax.Term.Operator (info, (info, name), scopes)
+    | Primitive (info, p) -> Primitive (info, (info, p))
+    | Var (info, name) -> Term_var (info, name)
+
+  and operator_scope (Nominal.Scope.Scope (patterns, tm)) =
     let patterns = patterns |> List.map ~f:Pattern_model.into |> List_model.of_list in
-    Lang.Operator_scope.Operator_scope (Provenance.of_here [%here], patterns, tm)
+    Term_syntax.Operator_scope.Operator_scope
+      (Provenance.of_here [%here], patterns, term tm)
   ;;
 end
 
-let term_to_nominal tm =
-  match tm with
-  | Lang.Term.Primitive (info, (_, v)) -> Ok (Nominal.Term.Primitive (info, v))
-  | Operator (info, (_, name), subterms) ->
-    let subterms = subterms |> List_model.to_list |> List.map ~f:Operator_scope.out in
-    Ok (Nominal.Term.Operator (info, name, subterms))
-  | _ -> Error ("TODO: term_to_nominal", tm)
-;;
-
-let nominal_to_term = function
-  | Nominal.Term.Operator (info, name, scopes) ->
-    let scopes = scopes |> List.map ~f:Operator_scope.into |> List_model.of_list in
-    Lang.Term.Operator (info, (info, name), scopes)
-  | Primitive (info, p) -> Primitive (info, (info, p))
-  | Var _ -> failwith "TODO: nominal_to_term"
-;;
+(* module Operator_scope = struct end *)
 
 module Parse = struct
   open Lvca_parsing
   open C_comment_parser
-  open Lang
+  open Term_syntax
 
   let make_apps : Term.t list -> Term.t = function
     | [] -> Lvca_util.invariant_violation ~here:[%here] "must be a nonempty list"
@@ -324,7 +374,7 @@ module Parse = struct
       ; (braces term >>~ fun range tm -> Term.Quote (Provenance.of_range range, tm))
       ; (var_identifier
         >>~ fun range ident -> Term.Term_var (Provenance.of_range range, ident))
-      ; Nominal.Term.parse' reserved >>| nominal_to_term
+      ; Nominal.Term.parse' reserved >>| Of_nominal.term
       ]
   ;;
 
@@ -464,7 +514,7 @@ module Parse = struct
 end
 
 module Term = struct
-  include Nominal.Convertible.Extend (Lang.Term)
+  include Nominal.Convertible.Extend (Term_syntax.Term)
 
   let parse_concrete = Parse.term
   let pp_concrete = Pp.term
@@ -474,7 +524,7 @@ end
 module Module = struct
   type t =
     { externals : (string * Type.t) list
-    ; defs : (string * Lang.Term.t) list
+    ; defs : (string * Term_syntax.Term.t) list
     }
 
   let pp ppf { externals; defs } =
@@ -506,8 +556,8 @@ module Module = struct
   ;;
 end
 
-type eval_env = Term.t String.Map.t
-type eval_error = string * Lang.Term.t
+type eval_env = Value.t String.Map.t
+type eval_error = string * Term_syntax.Term.t
 
 let preimage _ = failwith "TODO"
 let reverse _tm _cases = failwith "TODO"
@@ -529,7 +579,8 @@ module Check_error' = struct
     | Binding_pattern_check of string
     | Overapplication
     | Message of string
-    | Check_failure of Nominal.Term.check_failure
+    | Pattern_check_failure of Pattern.t Check_failure.t
+    | Binding_pattern_check_failure of Binding_aware_pattern.t Check_failure.t
     | Eval_error of eval_error
 
   let pp tm ppf = function
@@ -537,7 +588,7 @@ module Check_error' = struct
     | Cant_infer_lambda -> Fmt.pf ppf "can't infer lambdas"
     | Var_not_found ->
       (match tm with
-      | Lang.Term.Term_var (_, name) -> Fmt.pf ppf "variable %s not found" name
+      | Term_syntax.Term.Term_var (_, name) -> Fmt.pf ppf "variable %s not found" name
       | _ ->
         Lvca_util.invariant_violation
           ~here:[%here]
@@ -547,13 +598,9 @@ module Check_error' = struct
     | Binding_pattern_check str -> Fmt.pf ppf "%s" str
     | Overapplication -> Fmt.pf ppf "non-function applied to arguments"
     | Message msg -> Fmt.pf ppf "%s" msg
-    | Check_failure err ->
-      let pp ppf term =
-        match term with
-        | Either.First pat -> Fmt.pf ppf "pattern: %a" Pattern.pp pat
-        | Second tm -> Fmt.pf ppf "term: %a" Nominal.Term.pp tm
-      in
-      Check_failure.pp pp ppf err
+    | Pattern_check_failure err -> Check_failure.pp Pattern.pp ppf err
+    | Binding_pattern_check_failure err ->
+      Check_failure.pp Binding_aware_pattern.pp ppf err
     | Eval_error (msg, tm) ->
       Fmt.pf ppf "evaluation error (%s) in term: %a" msg Term.pp tm
   ;;
@@ -562,7 +609,7 @@ end
 module Check_error = struct
   type t =
     { env : check_env
-    ; tm : Lang.Term.t
+    ; tm : Term_syntax.Term.t
     ; ty : Type.t
     ; error : Check_error'.t
     }
@@ -573,7 +620,7 @@ end
 module Infer_error = struct
   type t =
     { env : check_env
-    ; tm : Lang.Term.t
+    ; tm : Term_syntax.Term.t
     ; error : Check_error'.t
     }
 
@@ -589,37 +636,14 @@ let check_binding_pattern
     (sort : Lvca_syntax.Sort.t)
     : (type_env, Check_error'.t) Result.t
   =
-  let lookup_operator = Abstract_syntax.lookup_operator syntax in
-  let here = Provenance.of_here [%here] in
-  let rec check (sort : Lvca_syntax.Sort.t) pat =
-    let sort' = Sort_model.Sort.into sort in
-    match pat with
-    | Binding_aware_pattern.Var (_, name) when Lvca_util.String.is_ignore name ->
-      Ok String.Map.empty
-    | Var (_, name) -> Ok (String.Map.singleton name (Type.Sort (here, sort')))
-    | Primitive prim ->
-      (match Primitive_impl.All.check prim sort with
-      | None -> Ok String.Map.empty
-      | Some msg -> Error (Check_error'.Binding_pattern_check msg))
-    | Operator (_, op_name, subpats) ->
-      let sort_name, sort_args = Lvca_syntax.Sort.split sort in
-      (match lookup_operator sort_name op_name with
-      | Error lookup_err ->
-        Error
-          (Check_error'.Binding_pattern_check
-             (Fmt.str
-                "Pattern.check: failed to find operator %s in sort %s: %a"
-                op_name
-                sort_name
-                Abstract_syntax.Lookup_error.pp
-                lookup_err))
-      | Ok (sort_vars, Operator_def (_, _, arity)) ->
-        (* TODO: kind check *)
-        let sort_vars = List.map sort_vars ~f:Tuple2.get1 in
-        let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
-        check_slots (Arity.instantiate sort_env arity) subpats)
-  and check_slots (Arity (_, _)) _ = failwith "TODO: check_slots" in
-  check sort pat
+  let mk_ty sort = Type.Sort (Provenance.of_here [%here], Sort_model.Sort.into sort) in
+  match Binding_aware_pattern.check Primitive_impl.All.check syntax sort pat with
+  | Ok captures ->
+    Ok
+      (Map.map captures ~f:(function
+          | Bound_var sort | Bound_term sort -> mk_ty sort
+          | Bound_pattern _ -> failwith "TODO: check_binding_pattern Bound_pattern"))
+  | Error check_failure -> Error (Binding_pattern_check_failure check_failure)
 ;;
 
 module Primitive_types = struct
@@ -657,7 +681,8 @@ module Primitive_types = struct
 end
 
 let merge_pattern_context
-    : Nominal.Term.t String.Map.t option list -> Nominal.Term.t String.Map.t option
+    :  Value_syntax.Value.t String.Map.t option list
+    -> Value_syntax.Value.t String.Map.t option
   =
  fun ctxs ->
   if List.for_all ctxs ~f:Option.is_some
@@ -678,128 +703,188 @@ let merge_pattern_context
   else None
 ;;
 
-let rec match_pattern v pat =
+let rec match_pattern pat v =
   match v, pat with
-  | Nominal.Term.Operator (_, tag1, vals), Binding_aware_pattern.Operator (_, tag2, pats)
-    ->
+  | ( Value_syntax.Value.VOperator (_, (_, tag1), vals)
+    , Binding_aware_pattern.Operator (_, tag2, pats) ) ->
+    let vals = List_model.to_list vals in
     if String.(tag1 = tag2)
     then (
       match List.map2 pats vals ~f:match_pattern_scope with
       | Ok results -> merge_pattern_context results
       | Unequal_lengths -> None)
     else None
-  | Primitive l1, Primitive l2 ->
+  | VPrimitive (_, l1), Primitive l2 ->
     if Primitive.All.(l1 = l2) then Some String.Map.empty else None
-  | tm, Var (_, v) -> Some (String.Map.of_alist_exn [ v, tm ])
+  | tm, Var (_, v) -> Some (String.Map.singleton v tm)
   | _ -> None
 
-and match_pattern_scope
-    (Binding_aware_pattern.Scope (_XXXnames, pat))
-    (Nominal.Scope.Scope (_XXXpats, body))
-  =
-  match_pattern body pat
+and match_pattern_scope scope_pat v =
+  match scope_pat with
+  | Binding_aware_pattern.Scope ([], pat) -> match_pattern pat v
+  | _ -> None
 ;;
 
-let find_match (v : Nominal.Term.t)
-    : Lang.Case_scope.t list -> (Term.t * Term.t String.Map.t) option
+let find_match (v : Value.t)
+    : Term_syntax.Case_scope.t list -> (Term.t * Value.t String.Map.t) option
   =
-  List.find_map ~f:(fun (Lang.Case_scope.Case_scope (_, pat, rhs)) ->
+  List.find_map ~f:(fun (Term_syntax.Case_scope.Case_scope (_, pat, rhs)) ->
       let pat = Binding_aware_pattern_model.out pat in
-      match match_pattern v pat with
-      | None -> None
-      | Some bindings ->
-        let bindings = bindings |> Map.map ~f:nominal_to_term in
-        Some (rhs, bindings))
+      match match_pattern pat v with None -> None | Some bindings -> Some (rhs, bindings))
 ;;
 
-let eval_char_bool_fn eval_nominal_in_ctx name f (ctx : eval_env) tm c =
-  let true_tm info = Nominal.Term.Operator (info, "True", []) in
-  let false_tm info = Nominal.Term.Operator (info, "False", []) in
-  let%bind c = eval_nominal_in_ctx ctx c in
+let eval_char_bool_fn name f tm c =
+  let open Value_syntax.Value in
+  let true_tm info = VOperator (info, (info, "True"), List_model.of_list []) in
+  let false_tm info = VOperator (info, (info, "False"), List_model.of_list []) in
   match c with
-  | Nominal.Term.Primitive (info, Char c) ->
+  | VPrimitive (info, (_, Char c)) ->
     let info = Provenance.calculated_here [%here] [ info ] in
     Ok (if f c then true_tm info else false_tm info)
   | _ -> Error (Printf.sprintf "Invalid argument to %s" name, tm)
 ;;
 
-type eval_result = (Nominal.Term.t, string * Term.t) Result.t
+type eval_result = (Value.t, string * Term.t) Result.t
 
 module Quote = struct
-  let rec list f = function
-    | [] -> [%lvca.nominal "Nil()"]
+  let rec list f =
+    let open Value_syntax.Value in
+    let info = Provenance.of_here [%here] in
+    function
+    | [] -> VOperator (info, (info, "Nil"), List_model.List.Nil info)
     | x :: xs ->
-      Operator
-        (Provenance.of_here [%here], "Cons", [ Scope ([], f x); Scope ([], list f xs) ])
+      let vs = List_model.of_list [ f x; list f xs ] in
+      VOperator (Provenance.of_here [%here], (info, "Cons"), vs)
   ;;
 
-  let rec pattern = function
-    | Pattern.Var (info, name) ->
+  let rec value =
+    let open Value_syntax.Value in
+    function
+    | VPrimitive (info, prim) ->
       let info = Provenance.calculated_here [%here] [ info ] in
-      let prim = Nominal.Term.Primitive (info, Primitive_impl.All_plain.String name) in
-      Nominal.Term.Operator (info, "Var", [ Scope ([], prim) ])
-    | Primitive (info, prim) ->
+      let prim = VPrimitive (info, prim) in
+      let vs = List_model.of_list [ prim ] in
+      VOperator (info, (info, "VPrimitive"), vs)
+    | VOperator (info, (_, name), vs) ->
       let info = Provenance.calculated_here [%here] [ info ] in
-      let prim = Nominal.Term.Primitive (info, prim) in
-      Nominal.Term.Operator (info, "Primitive", [ Scope ([], prim) ])
-    | Operator (info, name, pats) ->
+      let name_prim = VPrimitive (info, (info, Primitive_impl.All_plain.String name)) in
+      let vs = vs |> List_model.to_list |> list value in
+      let vs = List_model.of_list [ name_prim; vs ] in
+      VOperator (info, (info, "Operator"), vs)
+    | VLambda _ -> failwith "TODO: quote VLambda"
+  ;;
+end
+
+module Unquote = struct
+  let rec list go = function
+    | Value_syntax.Value.VPrimitive _ | VLambda _ ->
+      Error "VPrimitive and VLambda are invalid arguments to unquote"
+    | VOperator (info, (_, name), vs) ->
+      let vs = List_model.to_list vs in
       let info = Provenance.calculated_here [%here] [ info ] in
-      let name_prim =
-        Nominal.Term.Primitive (info, Primitive_impl.All_plain.String name)
-      in
-      let pats = list pattern pats in
-      Nominal.Term.Operator (info, "Operator", [ Scope ([], name_prim); Scope ([], pats) ])
+      (match name, vs with
+      | "Nil", [] -> Ok (List_model.List.Nil info)
+      | "Nil", _ -> Error "Invalid arguments to Nil in unquote"
+      | "Cons", [ x; xs ] ->
+        let%bind x = go x in
+        let%map xs = list go xs in
+        List_model.List.Cons (info, x, xs)
+      | "Cons", _ -> Error "Invalid arguments to Cons in unquote"
+      | _ -> Error "Invalid operator for list unquote")
   ;;
 
-  let rec term = function
-    | Nominal.Term.Var (info, name) ->
+  let option go = function
+    | Value_syntax.Value.VPrimitive _ | VLambda _ ->
+      Error "VPrimitive and VLambda are invalid arguments to unquote"
+    | VOperator (info, (_, name), vs) ->
+      let vs = List_model.to_list vs in
       let info = Provenance.calculated_here [%here] [ info ] in
-      let prim = Nominal.Term.Primitive (info, Primitive_impl.All_plain.String name) in
-      Nominal.Term.Operator (info, "Var", [ Scope ([], prim) ])
-    | Primitive (info, prim) ->
-      let info = Provenance.calculated_here [%here] [ info ] in
-      let prim = Nominal.Term.Primitive (info, prim) in
-      Nominal.Term.Operator (info, "Primitive", [ Scope ([], prim) ])
-    | Operator (info, name, scopes) ->
-      let info = Provenance.calculated_here [%here] [ info ] in
-      let name_prim =
-        Nominal.Term.Primitive (info, Primitive_impl.All_plain.String name)
-      in
-      let scopes = list scope scopes in
-      Nominal.Term.Operator
-        (info, "Operator", [ Scope ([], name_prim); Scope ([], scopes) ])
+      (match name, vs with
+      | "None", [] -> Ok (Option_model.Option.None info)
+      | "None", _ -> Error "Invalid arguments to None in unquote"
+      | "Some", [ x ] ->
+        let%map x = go x in
+        Option_model.Option.Some (info, x)
+      | "Some", _ -> Error "Invalid arguments to Some in unquote"
+      | _ -> Error "Invalid operator for option unquote")
+  ;;
 
-  and scope (Scope (binders, body)) =
-    Nominal.Term.Operator
-      ( Provenance.of_here [%here]
-      , "Scope"
-      , [ Scope ([], list pattern binders); Scope ([], term body) ] )
+  let ty _ = failwith "TODO: unquote ty"
+  let operator_scope _ = failwith "TODO: unquote operator_scope"
+  let case_scope _ = failwith "TODO: unquote case_scope"
+  let letrec_row _ = failwith "TODO: unquote letrec_row"
+
+  let rec term =
+    let open Term_syntax.Term in
+    function
+    | Value_syntax.Value.VPrimitive _ | VLambda _ ->
+      Error "VPrimitive and VLambda are invalid arguments to unquote"
+    | VOperator (info, (_, name), vs) ->
+      let vs = List_model.to_list vs in
+      let info = Provenance.calculated_here [%here] [ info ] in
+      (match name, vs with
+      | "Primitive", [ VPrimitive (_, p) ] -> Ok (Primitive (info, p))
+      | ( "Operator"
+        , [ VPrimitive (_, (s_info, Primitive_impl.All_plain.String name)); scopes ] ) ->
+        let s_info = Provenance.calculated_here [%here] [ s_info ] in
+        let%map scopes = list operator_scope scopes in
+        Operator (info, (s_info, name), scopes)
+      | "Ap", [ tm; tms ] ->
+        let%bind tm = term tm in
+        let%map tms = list term tms in
+        Ap (info, tm, tms)
+      | "Case", [ tm; scopes ] ->
+        let%bind tm = term tm in
+        let%map scopes = list case_scope scopes in
+        Case (info, tm, scopes)
+      | "Lambda", [ ty'; _ ] ->
+        let%map ty' = ty ty' in
+        Lambda (info, ty', failwith "TODO: unquote lambda")
+      | "Let", [ tm; opt_ty; _ ] ->
+        let%bind tm = term tm in
+        let%map opt_ty = option ty opt_ty in
+        Let (info, tm, opt_ty, failwith "TODO: unquote let")
+      | "Let_rec", [ rows; _ ] ->
+        let%map rows = list letrec_row rows in
+        Let_rec (info, rows, failwith "TODO: unquote let_rec")
+      | "Subst", [ tm; _ ] ->
+        let%map tm = term tm in
+        Subst (info, failwith "TODO: unquote subst", tm)
+      | "Quote", [ tm ] ->
+        let%map tm = term tm in
+        Quote (info, tm)
+      | "Unquote", [ tm ] ->
+        let%map tm = term tm in
+        Quote (info, tm)
+      | ( ( "Primitive" | "Operator" | "Ap" | "Case" | "Lambda" | "Let" | "Let_rec"
+          | "Subst" | "Quote" | "Unquote" )
+        , _ ) ->
+        Error "invalid arguments to an operator"
+      | _ -> Error (Fmt.str "invalid operator name to unquote: %s" name))
   ;;
 end
 
 let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
   match tm with
-  | Lang.Term.Term_var (_, v) ->
+  | Term_syntax.Term.Term_var (_, v) ->
     (match Map.find ctx v with
-    | Some tm -> term_to_nominal tm
+    | Some v -> Ok v
     | None -> Error ("Unbound variable " ^ v, tm))
   | Case (_, tm, branches) ->
     let%bind tm_val = eval_in_ctx ctx tm in
     (match find_match tm_val (List_model.to_list branches) with
-    | None -> Error ("no match found in case", nominal_to_term tm_val)
+    | None -> Error ("no match found in case", failwith "TODO: eval_in_ctx error 1")
     | Some (branch, bindings) ->
       eval_in_ctx (Lvca_util.Map.union_right_biased ctx bindings) branch)
   | Ap (_, Lambda (_, _ty, (Single_var.{ name; info = _ }, body)), Cons (_, arg, Nil _))
     ->
     let%bind arg_val = eval_in_ctx ctx arg in
-    let data = nominal_to_term arg_val in
-    eval_in_ctx (Map.set ctx ~key:name ~data) body
-  | Ap (info, Term_var (_, name), args) ->
+    eval_in_ctx (Map.set ctx ~key:name ~data:arg_val) body
+  | Ap (_info, Term_var (_, name), args) ->
     (match Map.find ctx name with
-    | None -> eval_primitive eval_in_ctx eval_nominal_in_ctx ctx tm name args
-    | Some tm ->
-      let here = Provenance.calculated_here [%here] [ info ] in
-      eval_in_ctx ctx (Ap (here, tm, args)))
+    | None -> eval_primitive eval_in_ctx ctx tm name args
+    | Some (VLambda (_info, _ty, _)) -> failwith "TODO: ap VLambda"
+    | Some _ -> Error ("Expected a lambda", failwith "TODO: eval_in_ctx error 2"))
   | Let_rec (_, rows, (binders, body)) ->
     let binders = List_model.extract_vars_from_empty_pattern binders in
     let rows = List_model.to_list rows in
@@ -810,71 +895,75 @@ let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
         "invalid set of letrec binders (must be the same number of terms)"
     | Ok bound_rows ->
       let ctx =
-        List.fold bound_rows ~init:ctx ~f:(fun ctx (name, Letrec_row (_, _ty, body)) ->
-            Map.set ctx ~key:name ~data:body)
+        List.fold bound_rows ~init:ctx ~f:(fun ctx (name, Letrec_row (_, ty, body)) ->
+            let data =
+              Value_syntax.Value.VLambda
+                ( Provenance.of_here [%here]
+                , ty
+                , (failwith "TODO: eval_in_ctx letrec", body) )
+            in
+            Map.set ctx ~key:name ~data)
       in
       eval_in_ctx ctx body)
   | Let (_info, tm, _, (Single_var.{ name; info = _ }, body))
   | Subst (_info, (Single_var.{ name; _ }, body), tm) ->
-    let%bind tm_val = eval_in_ctx ctx tm in
-    let data = nominal_to_term tm_val in
-    eval_in_ctx (Map.set ctx ~key:name ~data) body
-  | Operator _ -> term_to_nominal tm
-  | Primitive (info, (_, p)) -> Ok (Nominal.Term.Primitive (info, p))
-  | Quote (_, tm) -> eval_in_ctx ctx tm |> Result.map ~f:Quote.term
+    let%bind v = eval_in_ctx ctx tm in
+    eval_in_ctx (Map.set ctx ~key:name ~data:v) body
+  | Operator (info, name, operator_scopes) ->
+    let%map vs =
+      operator_scopes
+      |> List_model.to_list
+      |> List.map ~f:(fun (Operator_scope (_, (* XXX: ignoring binders *) _, tm)) ->
+             eval_in_ctx ctx tm)
+      |> Result.all
+    in
+    let vs = List_model.of_list vs in
+    Value_syntax.Value.VOperator (Provenance.calculated_here [%here] [ info ], name, vs)
+  | Primitive (info, p) ->
+    Ok (Value_syntax.Value.VPrimitive (Provenance.calculated_here [%here] [ info ], p))
+  | Quote (_, tm) -> eval_in_ctx ctx tm |> Result.map ~f:Quote.value
   | Unquote (_, tm) ->
     let%bind tm_val = eval_in_ctx ctx tm in
-    (match Term.of_nominal tm_val with
+    (match Unquote.term tm_val with
     | Ok tm -> eval_in_ctx ctx tm
-    | Error conversion_error ->
-      let msg = Fmt.str "%a" Nominal.Conversion_error.pp conversion_error in
-      Error (msg, tm))
+    | Error msg -> Error (msg, tm))
   | _ -> Error ("Found a term we can't evaluate", tm)
 
-and eval_nominal_in_ctx (ctx : eval_env) tm : eval_result =
-  match tm with
-  | Nominal.Term.Var (_info, v) ->
-    (match Map.find ctx v with
-    | Some tm -> term_to_nominal tm
-    | None -> Error ("Unbound variable " ^ v, nominal_to_term tm))
-  | _ -> Ok tm
-
-and eval_primitive eval_in_ctx eval_nominal_in_ctx (ctx : eval_env) tm name args =
-  let open Nominal.Term in
+and eval_primitive eval_in_ctx (ctx : eval_env) tm name args =
+  let open Value_syntax.Value in
   let%bind args =
     args |> List_model.to_list |> List.map ~f:(eval_in_ctx ctx) |> Result.all
   in
   match name, args with
+  (*
   | "rename", [ v1; v2; tm' ] ->
-    let%bind v1 = eval_nominal_in_ctx ctx v1 in
-    let%bind v2 = eval_nominal_in_ctx ctx v2 in
     let%map v1, v2 =
       match v1, v2 with
-      | Primitive (_info1, String v1), Primitive (_info2, String v2) -> Ok (v1, v2)
+      | VPrimitive (_info1, (_, String v1)), VPrimitive (_info2, (_, String v2)) ->
+        Ok (v1, v2)
       | _ -> Error ("Invalid arguments to rename", tm)
     in
-    Nominal.Term.rename v1 v2 tm'
+  Nominal.Term.rename v1 v2 tm'
+     *)
+  (*
   | "var", [ str_tm ] ->
     (match str_tm with
-    | Primitive (info, String name) -> Ok (Nominal.Term.Var (info, name))
+    | VPrimitive (info, (_, String name)) -> Ok (Nominal.Term.Var (info, name))
     | _ -> Error ("expected a string", tm))
-  (* TODO | "quote", [ tm ] -> Ok (Lang.Term.to_nominal tm) *)
-  (* | "antiquote", [ tm ] -> failwith "TODO" *)
+         *)
   | "add", [ a; b ] ->
-    let%bind a = eval_nominal_in_ctx ctx a in
-    let%bind b = eval_nominal_in_ctx ctx b in
     (match a, b with
-    | Primitive (info, Integer a), Primitive (_binfo, Integer b) ->
-      (* XXX can't reuse info *)
-      Ok (Nominal.Term.Primitive (info, Integer Z.(a + b)))
+    | VPrimitive (ainfo, (_, Integer a)), VPrimitive (binfo, (_, Integer b)) ->
+      let info = Provenance.calculated_here [%here] [ ainfo; binfo ] in
+      Ok (VPrimitive (info, (info, Integer Z.(a + b))))
     | _ -> Error ("Invalid arguments to add", tm))
   | "sub", [ a; b ] ->
-    let%bind a = eval_nominal_in_ctx ctx a in
-    let%bind b = eval_nominal_in_ctx ctx b in
     (match a, b with
-    | Primitive (info, Integer a), Primitive (_binfo, Integer b) ->
-      Ok (Nominal.Term.Primitive (info, Integer Z.(a - b)))
-    | _ -> Error ("Invalid arguments to sub", tm))
+    | VPrimitive (ainfo, (_, Integer a)), VPrimitive (binfo, (_, Integer b)) ->
+      let info = Provenance.calculated_here [%here] [ ainfo; binfo ] in
+      Ok (VPrimitive (info, (info, Integer Z.(a - b))))
+    | _ -> Error ("Invalid arguments to add", tm))
+    (*
   | "string_of_chars", [ char_list ] ->
     (match char_list with
     | Operator (info, "list", chars) ->
@@ -887,24 +976,19 @@ and eval_primitive eval_in_ctx eval_nominal_in_ctx (ctx : eval_env) tm name args
              Nominal.Term.Primitive (info, String (String.of_char_list cs)))
       |> Result.map_error ~f:(fun msg -> msg, tm)
     | _ -> Error ("expected a list of characters", tm))
-  | "is_digit", [ c ] ->
-    eval_char_bool_fn eval_nominal_in_ctx "is_digit" Char.is_digit ctx tm c
-  | "is_lowercase", [ c ] ->
-    eval_char_bool_fn eval_nominal_in_ctx "is_lowercase" Char.is_lowercase ctx tm c
-  | "is_uppercase", [ c ] ->
-    eval_char_bool_fn eval_nominal_in_ctx "is_uppercase" Char.is_uppercase ctx tm c
-  | "is_alpha", [ c ] ->
-    eval_char_bool_fn eval_nominal_in_ctx "is_alpha" Char.is_alpha ctx tm c
-  | "is_alphanum", [ c ] ->
-    eval_char_bool_fn eval_nominal_in_ctx "is_alphanum" Char.is_alphanum ctx tm c
-  | "is_whitespace", [ c ] ->
-    eval_char_bool_fn eval_nominal_in_ctx "is_whitespace" Char.is_whitespace ctx tm c
+       *)
+  | "is_digit", [ c ] -> eval_char_bool_fn "is_digit" Char.is_digit tm c
+  | "is_lowercase", [ c ] -> eval_char_bool_fn "is_lowercase" Char.is_lowercase tm c
+  | "is_uppercase", [ c ] -> eval_char_bool_fn "is_uppercase" Char.is_uppercase tm c
+  | "is_alpha", [ c ] -> eval_char_bool_fn "is_alpha" Char.is_alpha tm c
+  | "is_alphanum", [ c ] -> eval_char_bool_fn "is_alphanum" Char.is_alphanum tm c
+  | "is_whitespace", [ c ] -> eval_char_bool_fn "is_whitespace" Char.is_whitespace tm c
   | _ ->
     Error
       ( Fmt.str
           "Unknown function (%s), or wrong number of arguments (got [%a])"
           name
-          Fmt.(list Nominal.Term.pp)
+          Fmt.(list Value.pp)
           args
       , tm )
 ;;
@@ -918,7 +1002,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
     else Some Check_error.{ env; tm; ty; error = Mismatch (ty, ty') }
   in
   match tm with
-  | Lang.Term.Primitive (_, (_, p)) ->
+  | Term_syntax.Term.Primitive (_, (_, p)) ->
     let open Primitive_types in
     let sort =
       match p with
@@ -929,18 +1013,32 @@ let rec check ({ type_env; syntax } as env) tm ty =
       | Int32 _ -> int32
     in
     check_ty sort
-  | Operator _ ->
+  | Operator (_, (_, operator_name), scopes) ->
     (match ty with
     | Arrow _ ->
       Some Check_error.{ env; tm; ty; error = Message "Expected sort, found arrow" }
-    | Sort (_, sort) ->
-      (match term_to_nominal tm with
-      | Error (msg, tm) -> Some Check_error.{ env; tm; ty; error = Message msg }
-      | Ok nom ->
-        (match Nominal.Term.check syntax (Sort_model.Sort.out sort) nom with
-        | None -> None
-        | Some check_failure ->
-          Some Check_error.{ env; tm; ty; error = Check_failure check_failure })))
+    | Sort (_, expected_sort) ->
+      let expected_sort = Sort_model.Sort.out expected_sort in
+      let lookup_operator = Abstract_syntax.lookup_operator syntax in
+      let sort_name, sort_args = Sort.split expected_sort in
+      (match lookup_operator sort_name operator_name with
+      | Error lookup_err ->
+        let error =
+          Check_error'.Message
+            (Fmt.str
+               "failed to find operator %s in sort %s: %a"
+               operator_name
+               sort_name
+               Abstract_syntax.Lookup_error.pp
+               lookup_err)
+        in
+        Some { env; tm; ty; error }
+      | Ok (sort_vars, Operator_def (_, _, arity)) ->
+        (* TODO: kind check *)
+        let sort_vars = List.map sort_vars ~f:Tuple2.get1 in
+        let sort_env = String.Map.of_alist_exn (List.zip_exn sort_vars sort_args) in
+        let concrete_arity = Arity.instantiate sort_env arity in
+        check_slots env tm ty concrete_arity scopes))
   | Ap (_, f, args) ->
     (match infer env f with
     | Ok f_ty -> check_args env tm f_ty (List_model.to_list args)
@@ -953,7 +1051,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
       let sort = Sort_model.Sort.out sort in
       branches
       |> List_model.to_list
-      |> List.find_map ~f:(fun (Lang.Case_scope.Case_scope (_, pat, rhs)) ->
+      |> List.find_map ~f:(fun (Term_syntax.Case_scope.Case_scope (_, pat, rhs)) ->
              match
                check_binding_pattern syntax (Binding_aware_pattern_model.out pat) sort
              with
@@ -987,18 +1085,93 @@ let rec check ({ type_env; syntax } as env) tm ty =
     (match ty with
     | Arrow _ ->
       Some Check_error.{ env; tm; ty; error = Message "Expected sort, found arrow" }
-    | Sort (_, sort) ->
+    | Sort (_, _sort) ->
       (match eval tm with
-      | Ok nom ->
-        (match Nominal.Term.check syntax (Sort_model.Sort.out sort) nom with
-        | None -> None
-        | Some check_failure ->
-          Some Check_error.{ env; tm; ty; error = Check_failure check_failure })
+      | Ok v ->
+        (match Unquote.term v with
+        | Ok tm -> check env tm ty
+        | Error msg -> Some Check_error.{ env; tm; ty; error = Eval_error (msg, tm) })
       | Error err -> Some Check_error.{ env; tm; ty; error = Eval_error err }))
 
-and infer ({ type_env; syntax = _ } as env) tm =
+and check_slots env tm ty (Arity (_, valences)) scopes =
+  let scopes = List_model.to_list scopes in
+  match List.zip scopes valences with
+  | Unequal_lengths ->
+    let str, list, comma = Fmt.(str, list, comma) in
+    let msg =
+      str
+        "Wrong number of subterms (%u) for this arity (%a)"
+        (List.length scopes)
+        (list ~sep:comma Valence.pp)
+        valences
+    in
+    Some { env; tm; ty; error = Check_error'.Message msg }
+  | Ok scope_valences ->
+    List.find_map scope_valences ~f:(fun (scope, valence) ->
+        check_scope env tm ty valence scope)
+
+and check_scope
+    ({ type_env; syntax } as env)
+    tm
+    ty
+    valence
+    (Operator_scope (_, binders, body))
+  =
+  let binders = List_model.to_list binders in
+  let (Valence (binder_sorts, body_sort)) = valence in
+  match List.zip binder_sorts binders with
+  | Unequal_lengths ->
+    let msg =
+      Fmt.str
+        "Wrong number of binders (%u) for this valence (%a) (expected %u)"
+        (List.length binders)
+        Valence.pp
+        valence
+        (List.length binder_sorts)
+    in
+    Some { env; tm; ty; error = Check_error'.Message msg }
+  | Ok binders ->
+    let convert_err =
+      Result.map_error ~f:(fun err -> Check_error'.Pattern_check_failure err)
+    in
+    let binders_env =
+      List.map binders ~f:(fun (slot, pat) ->
+          let pat = Pattern_model.out pat in
+          match slot, pat with
+          | Sort_binding sort, Var (_, _v) ->
+            Pattern.check syntax ~pattern_sort:sort ~var_sort:sort pat |> convert_err
+          | Sort_binding _sort, _ ->
+            Error
+              (Check_error'.Message "Fixed-valence binders must all be vars (no patterns)")
+          | Sort_pattern { pattern_sort; var_sort }, _ ->
+            Pattern.check syntax ~pattern_sort ~var_sort pat |> convert_err)
+    in
+    (* Check the body with the new binders environment *)
+    (match Result.all binders_env with
+    | Error error -> Some { env; tm; ty; error }
+    | Ok binders_env ->
+      (match String.Map.strict_unions binders_env with
+      | `Ok binders_env (* check every term in body for an error *) ->
+        let mk_ty sort =
+          Type.Sort (Provenance.of_here [%here], Sort_model.Sort.into sort)
+        in
+        let binders_env = Map.map binders_env ~f:mk_ty in
+        let type_env = Map.union_right_biased type_env binders_env in
+        check { type_env; syntax } body (mk_ty body_sort)
+      | `Duplicate_key k ->
+        let error =
+          Check_error'.Message
+            (* TODO: should this definitely not be allowed? Seems okay. *)
+            (Printf.sprintf
+               "Did you mean to bind the same variable (%s) twice in the same set of \
+                patterns? That's not allowed!"
+               k)
+        in
+        Some { env; tm; ty; error }))
+
+and infer ({ type_env; syntax } as env) tm =
   match tm with
-  | Lang.Term.Primitive (_, (_, p)) ->
+  | Term_syntax.Term.Primitive (_, (_, p)) ->
     let open Primitive_types in
     let sort =
       match p with
@@ -1009,7 +1182,28 @@ and infer ({ type_env; syntax = _ } as env) tm =
       | Int32 _ -> int32
     in
     Ok sort
-  | Operator _ -> failwith "TODO: infer Operator"
+  | Operator (_, (_, operator_name), _scopes) ->
+    (match Abstract_syntax.find_operator syntax operator_name with
+    | Error find_err ->
+      let error =
+        Check_error'.Message
+          (Fmt.str
+             "failed to find operator %s: %a"
+             operator_name
+             Abstract_syntax.Find_error.pp
+             find_err)
+      in
+      Error { env; tm; error }
+    | Ok (sort_name, sort_def, _op_def) ->
+      (match sort_def with
+      | Sort_def ([], _) ->
+        let here = Provenance.of_here [%here] in
+        let sort = Sort.Name (here, sort_name) in
+        let ty = Type.Sort (here, Sort_model.Sort.into sort) in
+        (match check env tm ty with
+        | None -> Ok ty
+        | Some { env; tm; ty = _; error } -> Error { env; tm; error })
+      | _ -> failwith "TODO: infer types with sort vars"))
   | Ap (_, f, args) ->
     (match infer env f with
     | Ok f_ty ->
@@ -1040,7 +1234,10 @@ and infer ({ type_env; syntax = _ } as env) tm =
   | Quote _ -> Ok nominal_ty
   | Unquote (_, tm) ->
     (match eval tm with
-    | Ok _nom -> failwith "TODO"
+    | Ok v ->
+      (match Unquote.term v with
+      | Ok tm -> infer env tm
+      | Error msg -> Error Infer_error.{ env; tm; error = Eval_error (msg, tm) })
     | Error err -> Error Infer_error.{ env; tm; error = Eval_error err })
 
 and check_args env tm ty args =
@@ -1064,7 +1261,7 @@ and check_binders ({ type_env; syntax = _ } as env) rows binders =
     List.fold
       defns
       ~init:type_env
-      ~f:(fun type_env (name, Lang.Letrec_row.Letrec_row (_, ty, _)) ->
+      ~f:(fun type_env (name, Term_syntax.Letrec_row.Letrec_row (_, ty, _)) ->
         Map.set type_env ~key:name ~data:ty)
   in
   let defn_check_error =
@@ -1213,8 +1410,8 @@ let%test_module "Core eval" =
     let eval_str str =
       let result =
         match str |> parse_exn |> eval with
-        | Error (msg, tm) -> Fmt.str "%s: %a" msg Lang.Term.pp tm
-        | Ok result -> Fmt.to_to_string Nominal.Term.pp result
+        | Error (msg, tm) -> Fmt.str "%s: %a" msg Term_syntax.Term.pp tm
+        | Ok result -> Fmt.to_to_string Value.pp result
       in
       Stdio.print_string result
     ;;
@@ -1326,17 +1523,17 @@ let%test_module "Core eval" =
 
     let%expect_test _ =
       eval_str "{1}";
-      [%expect {| Primitive(1) |}]
+      [%expect {| VPrimitive(1) |}]
     ;;
 
     let%expect_test _ =
       eval_str "{Some(1)}";
-      [%expect {| Operator("Some"; Cons(Scope(Nil(); Primitive(1)); Nil())) |}]
+      [%expect {| Operator("Some"; Cons(VPrimitive(1); Nil())) |}]
     ;;
 
     let%expect_test _ =
       eval_str "{sub 1 2}";
-      [%expect {| Primitive(-1) |}]
+      [%expect {| VPrimitive(-1) |}]
     ;;
 
     let%expect_test _ =
@@ -1368,7 +1565,6 @@ let%test_module "Core eval" =
   end)
 ;;
 
-(*
 let%test_module "Core pretty" =
   (module struct
     let mk_test parser pp ?(width = 80) str =
@@ -1500,14 +1696,15 @@ let%test_module "Core pretty" =
   end)
 ;;
 
+(*
 let%test_module "Core eval in dynamics" =
   (module struct
-    module Term = Lang.Term
+    module Term = Term_syntax.Term
 
     let eval_in dynamics_str str =
       let defn = parse_exn dynamics_str in
       let core = parse_exn str in
-      let tm = Lang.Term.Ap (here, defn, List_model.of_list [ core ]) in
+      let tm = Term_syntax.Term.Ap (here, defn, List_model.of_list [ core ]) in
       match eval tm with
       | Error (msg, tm) -> Fmt.str "%s: %a" msg Term.pp tm
       | Ok result -> Fmt.to_to_string Nominal.Term.pp result
@@ -1545,10 +1742,11 @@ let%test_module "Core eval in dynamics" =
     ;;
   end)
 ;;
+   *)
 
 let%test_module "Checking / inference" =
   (module struct
-    module Term = Lang.Term
+    module Term = Term_syntax.Term
 
     let parse_type str = Lvca_parsing.parse_string Type.parse str |> Result.ok_or_failwith
     let externals = [ "option", Kind.Kind (here, 2) ]
@@ -1631,7 +1829,7 @@ let%test_module "Checking / inference" =
 
     let%expect_test _ =
       infer "True()";
-      [%expect {| inferred: nominal |}]
+      [%expect {| inferred: bool |}]
     ;;
 
     let%expect_test _ =
@@ -1723,4 +1921,3 @@ let%test_module "Checking / inference" =
     ;;
   end)
 ;;
-*)
