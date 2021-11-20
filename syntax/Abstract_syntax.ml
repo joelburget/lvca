@@ -81,6 +81,36 @@ let lookup_operator { externals = _; sort_defs } sort_name op_name =
   vars, result
 ;;
 
+module Find_error = struct
+  type t =
+    | Ambiguous_operator
+    | Operator_not_found
+
+  let pp ppf = function
+    | Ambiguous_operator -> Fmt.pf ppf "ambiguous operator"
+    | Operator_not_found -> Fmt.pf ppf "operator not found"
+  ;;
+end
+
+let find_operator { externals = _; sort_defs } op_name =
+  let candidates =
+    sort_defs
+    |> List.map ~f:(fun (sort_name, sort_def) ->
+           let (Sort_def.Sort_def (_, operator_defs)) = sort_def in
+           List.filter_map
+             operator_defs
+             ~f:(fun (Operator_def.Operator_def (_, op_def_name, _) as op_def) ->
+               if String.(op_def_name = op_name)
+               then Some (sort_name, sort_def, op_def)
+               else None))
+    |> List.join
+  in
+  match candidates with
+  | [] -> Error Find_error.Operator_not_found
+  | [ x ] -> Ok x
+  | _ -> Error Ambiguous_operator
+;;
+
 let pp ppf { externals; sort_defs } =
   let sep ppf () = Stdlib.Format.pp_force_newline ppf () in
   let pp_externals =

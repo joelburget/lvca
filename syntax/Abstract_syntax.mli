@@ -43,8 +43,21 @@ end
 val lookup_operator
   :  t
   -> string (** sort name *)
-  -> string (** operator_name *)
+  -> string (** operator name *)
   -> ((string * Kind.t option) list * Operator_def.t, Lookup_error.t) Result.t
+
+module Find_error : sig
+  type t =
+    | Ambiguous_operator
+    | Operator_not_found
+
+  val pp : t Fmt.t
+end
+
+val find_operator
+  :  t
+  -> string (** operator name *)
+  -> (string * Sort_def.t * Operator_def.t, Find_error.t) Result.t
 
 val pp : t Fmt.t
 
