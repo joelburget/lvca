@@ -47,9 +47,7 @@ let rec to_tex expr =
   let here = Provenance.of_here [%here] in
   let list = List_model.of_list in
   let go x =
-    match to_tex x with
-    | List_model.List.Cons (_, x, Nil _) -> x
-    | xs -> Grouped (here, xs)
+    match to_tex x with List_model.Cons (_, x, Nil _) -> x | xs -> Grouped (here, xs)
   in
   match expr with
   | Expr.Add (i, x, y) | Sub (i, x, y) | Mul (i, x, y) | Div (i, x, y) ->

@@ -14,7 +14,7 @@ pattern :=
 
 scope := Scope(list string; pattern)
 |}
-, { string = "Primitive.String"; primitive = "Primitive.All"; list = "List_model.List" }]
+, { string = "Primitive.String"; primitive = "Primitive.All"; list = "List_model" }]
 
 val into : Lvca_syntax.Binding_aware_pattern.t -> Pattern.t
 val out : Pattern.t -> Lvca_syntax.Binding_aware_pattern.t

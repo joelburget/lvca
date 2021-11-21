@@ -33,10 +33,9 @@ end
 
 module Core = struct
   let rec list ~loc = function
-    | List_model.List.Nil i -> [%expr Lvca_del.List_model.List.Nil [%e provenance ~loc i]]
+    | List_model.Nil i -> [%expr Lvca_del.List_model.Nil [%e provenance ~loc i]]
     | Cons (i, x, xs) ->
-      [%expr
-        Lvca_del.List_model.List.Cons ([%e provenance ~loc i], [%e x], [%e list ~loc xs])]
+      [%expr Lvca_del.List_model.Cons ([%e provenance ~loc i], [%e x], [%e list ~loc xs])]
   ;;
 
   let option ~loc = function

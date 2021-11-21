@@ -37,7 +37,7 @@ term :=
   | Operator(string; list term)
   | Primitive(primitive)
 |}
-, { string = "Primitive.String"; primitive = "Primitive.All"; list = "List_model.List" }]
+, { string = "Primitive.String"; primitive = "Primitive.All"; list = "List_model" }]
 
 module Pattern_model =
 [%lvca.abstract_syntax_module
@@ -52,7 +52,7 @@ pattern :=
   | Var(string)
   | Ignored(string)
 |}
-, { string = "Primitive.String"; primitive = "Primitive.All"; list = "List_model.List" }]
+, { string = "Primitive.String"; primitive = "Primitive.All"; list = "List_model" }]
 
 module Nominal_model =
 [%lvca.abstract_syntax_module
@@ -69,7 +69,7 @@ term :=
 
 scope := Scope(list pattern; term)
 |}
-, { list = "List_model.List"
+, { list = "List_model"
   ; pattern = "Pattern_model.Pattern"
   ; primitive = "Primitive.All"
   ; string = "Primitive.String"
@@ -95,7 +95,7 @@ scope := Scope(string; term)
 |}
 , { either = "Either_model.Either"
   ; int32 = "Primitive.Int32"
-  ; list = "List_model.List"
+  ; list = "List_model"
   ; primitive = "Primitive.All"
   ; string = "Primitive.String"
   }]
@@ -118,7 +118,7 @@ term :=
 scope := Scope(list pattern; term)
 |}
 , { int32 = "Primitive.Int32"
-  ; list = "List_model.List"
+  ; list = "List_model"
   ; pattern = "Pattern_model.Pattern"
   ; primitive = "Primitive.All"
   ; string = "Primitive.String"

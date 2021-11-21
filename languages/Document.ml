@@ -58,7 +58,7 @@ doc := Doc(list block)
   ; int32 = "Primitive.Int32"
   ; string = "Primitive.String"
   ; option = "Option_model.Option"
-  ; list = "List_model.List"
+  ; list = "List_model"
   }]
 
 module Attrs = struct

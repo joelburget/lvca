@@ -15,7 +15,7 @@ pattern :=
 
 scope := Scope(list string; pattern)
 |}
-  , { string = "Primitive.String"; primitive = "Primitive.All"; list = "List_model.List" }]
+  , { string = "Primitive.String"; primitive = "Primitive.All"; list = "List_model" }]
 
 let rec into tm =
   let info = Provenance.calculated_here [%here] [ Binding_aware_pattern.info tm ] in

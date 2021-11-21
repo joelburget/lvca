@@ -9,14 +9,14 @@ sort :=
   | Ap(string; list sort)
   | Name(string)
 |}
-, { string = "Primitive.String"; list = "List_model.List" }]
+, { string = "Primitive.String"; list = "List_model" }]
 
 include Nominal.Convertible.Extended_s with type t = Kernel.Sort.t
 
 val mk_Ap
   :  info:Lvca_syntax.Provenance.t
   -> Lvca_syntax.Primitive.String.t
-  -> t List_model.List.t
+  -> t List_model.t
   -> t
 
 val mk_Name : info:Lvca_syntax.Provenance.t -> Lvca_syntax.Primitive.String.t -> t

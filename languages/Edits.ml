@@ -15,7 +15,7 @@ edit :=
   | Labeled(edit; string)
   | List(list edit)
 |}
-, { core = "Core.Lang.Term"; string = "Primitive.String"; list = "List_model.List" }]
+, { core = "Core.Lang.Term"; string = "Primitive.String"; list = "List_model" }]
 
 type 'lang t =
   | Atomic of 'lang

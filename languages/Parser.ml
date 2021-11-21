@@ -36,7 +36,7 @@ sequence :=
 |}
 , { char = "Primitive.Char"
   ; string = "Primitive.String"
-  ; list = "List_model.List"
+  ; list = "List_model"
   ; core_term = "Core.Term"
   ; option = "Option_model.Option"
   }]

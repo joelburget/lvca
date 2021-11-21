@@ -16,9 +16,11 @@ module Type = struct
   [%lvca.abstract_syntax_module
   {|
 sort : *
+list : * -> *
 
 ty := Sort(sort) | Arrow(ty; ty)
-  |}, { sort = "Sort_model" }]
+  |}
+  , { sort = "Sort_model"; list = "List_model" }]
 
   include Nominal.Convertible.Extend (Kernel.Ty)
   include Kernel.Ty
@@ -162,7 +164,7 @@ operator_scope := Operator_scope(list pattern; term)
 case_scope := Case_scope(binding_aware_pattern; term)
 |}
     , { ty = "Type"
-      ; list = "List_model.List"
+      ; list = "List_model"
       ; option = "Option_model.Option"
       ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
       ; empty = "Empty"
@@ -201,7 +203,7 @@ neutral :=
   | Ap(neutral; value)  // list?
 |}
     , { ty = "Type"
-      ; list = "List_model.List"
+      ; list = "List_model"
       ; primitive = "Primitive.All"
       ; string = "Primitive.String"
       }]
@@ -760,7 +762,7 @@ module Quote = struct
     let open Value_syntax.Value in
     let info = Provenance.of_here [%here] in
     function
-    | [] -> VOperator (info, (info, "Nil"), List_model.List.Nil info)
+    | [] -> VOperator (info, (info, "Nil"), List_model.Nil info)
     | x :: xs ->
       let vs = List_model.of_list [ f x; list f xs ] in
       VOperator (Provenance.of_here [%here], (info, "Cons"), vs)
@@ -797,12 +799,12 @@ module Unquote = struct
       let vs = List_model.to_list vs in
       let info = Provenance.calculated_here [%here] [ info ] in
       (match name, vs with
-      | "Nil", [] -> Ok (List_model.List.Nil info)
+      | "Nil", [] -> Ok (List_model.Nil info)
       | "Nil", _ -> Error "Invalid arguments to Nil in unquote"
       | "Cons", [ x; xs ] ->
         let%bind x = go x in
         let%map xs = list go xs in
-        List_model.List.Cons (info, x, xs)
+        List_model.Cons (info, x, xs)
       | "Cons", _ -> Error "Invalid arguments to Cons in unquote"
       | _ -> Error "Invalid operator for list unquote")
     | Neutral _ -> failwith "TODO: unquote neutral"

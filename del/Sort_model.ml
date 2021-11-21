@@ -11,7 +11,7 @@ sort :=
   | Ap(string; list sort)
   | Name(string)
 |}
-, { string = "Primitive.String"; list = "List_model.List" }]
+, { string = "Primitive.String"; list = "List_model" }]
 
 let rec into tm =
   let info = Provenance.calculated_here [%here] [ Lvca_syntax.Sort.info tm ] in

@@ -22,7 +22,7 @@ directive :=
   | Sep_by1(directive; list directive)
   | Term(term)
   |}
-, { list = "List_model.List"
+, { list = "List_model"
   ; string = "Primitive.String"
   ; term = "Nominal.Term"
   ; binding_aware_pattern = "Binding_aware_pattern"

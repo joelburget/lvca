@@ -55,7 +55,7 @@ operator_scope := Operator_scope(list pattern; term)
 case_scope := Case_scope(binding_aware_pattern; term)
 |}
 , { ty = "Type"
-  ; list = "List_model.List"
+  ; list = "List_model"
   ; option = "Option_model.Option"
   ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
   ; empty = "Empty"
@@ -88,7 +88,7 @@ neutral :=
   | Ap(neutral; value)  // list?
 |}
 , { ty = "Type"
-  ; list = "List_model.List"
+  ; list = "List_model"
   ; primitive = "Primitive.All"
   ; string = "Primitive.String"
   }]

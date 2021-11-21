@@ -37,7 +37,7 @@ v_type :=
 
 c_type := Computation(v_type; list string)
 |}
-    , { string = "Primitive.String"; list = "List_model.List" }]
+    , { string = "Primitive.String"; list = "List_model" }]
 
   let subst ~body ~var:Single_var.{ name; _ } ~value =
     let value = Value.to_nominal value in
@@ -149,7 +149,7 @@ v_type :=
 c_type := Computation(v_type; list string)
 |}
     , { string = "Primitive.String"
-      ; list = "List_model.List"
+      ; list = "List_model"
       ; nonbinding = "Lvca_syntax.Nonbinding"
       }]
 

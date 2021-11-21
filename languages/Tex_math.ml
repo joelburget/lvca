@@ -19,7 +19,7 @@ tex :=
   | Grouped(list tex)
   | Space()
 |}
-, { string = "Primitive.String"; char = "Primitive.Char"; list = "List_model.List" }]
+, { string = "Primitive.String"; char = "Primitive.Char"; list = "List_model" }]
 
 include Lang
 
@@ -1077,11 +1077,6 @@ let ends_with ~f str =
 
 let is_ascii c = Char.to_int c < 128
 
-let rec to_list = function
-  | List_model.List.Nil _ -> []
-  | Cons (_, x, xs) -> x :: to_list xs
-;;
-
 (* characters with special meaning: & % $ # _ { } ~ ^ \ *)
 let is_special_char c = String.mem {|&%$#_{}~^\|} c
 
@@ -1108,7 +1103,7 @@ let rec pp : Lang.Tex.t Fmt.t =
   | Grouped (_, texs) ->
     (match texs with
     | Cons (_, Grouped (info, texs), Nil _) -> pp ppf (Grouped (info, texs))
-    | _ -> Fmt.pf ppf "{%a}" Fmt.(list pp) (to_list texs))
+    | _ -> Fmt.pf ppf "{%a}" Fmt.(list pp) (List_model.to_list texs))
   | Space _ -> Fmt.string ppf " "
 ;;
 
