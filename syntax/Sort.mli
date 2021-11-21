@@ -5,25 +5,11 @@
 open Lvca_util
 
 type t =
-  | Ap of Provenance.t * string * ap_list (** A higher-kinded sort can be applied *)
+  | Ap of Provenance.t * string * t list (** A higher-kinded sort can be applied *)
   | Name of Provenance.t * string
 
-and ap_list =
-  | Nil of Provenance.t
-  | Cons of Provenance.t * t * ap_list
-
-val mk_Ap : ?provenance:Provenance.t -> string -> ap_list -> t
+val mk_Ap : ?provenance:Provenance.t -> string -> t list -> t
 val mk_Name : ?provenance:Provenance.t -> string -> t
-val mk_Nil : ?provenance:Provenance.t -> unit -> ap_list
-val mk_Cons : ?provenance:Provenance.t -> t -> ap_list -> ap_list
-
-module Ap_list : sig
-  val to_list : ap_list -> t list
-  val of_list : t list -> ap_list
-  val map : f:(t -> t) -> ap_list -> ap_list
-  val info : ap_list -> Provenance.t
-end
-
 val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
 val ( = ) : t -> t -> bool
 val info : t -> Provenance.t

@@ -106,9 +106,10 @@ module View = struct
 
   let rec sort = function
     | Sort.Name (_, name) -> txt' name
-    | Ap (_, name, subsorts) -> div [ txt' name; div (ap_list subsorts) ]
-
-  and ap_list = function Sort.Nil _ -> [] | Cons (_, s, ss) -> sort s :: ap_list ss
+    | Ap (_, name, subsorts) ->
+      let subsorts = List.map subsorts ~f:sort in
+      div [ txt' name; div subsorts ]
+  ;;
 
   let view_check_frame
       : (Pattern.t, Nominal.Term.t) Base.Either.t Check_failure.Frame.t -> El.t

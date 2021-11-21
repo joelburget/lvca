@@ -17,12 +17,12 @@ module Type : sig
 
   (* TODO(24): generate *)
   type t =
-    | Sort of Provenance.t * Sort_model.Sort.t
+    | Sort of Provenance.t * Sort_model.t
     | Arrow of Provenance.t * t * t
 
   include Nominal.Convertible.Extended_s with type t := t
 
-  val mk_Sort : info:Lvca_syntax.Provenance.t -> Sort_model.Sort.t -> t
+  val mk_Sort : info:Lvca_syntax.Provenance.t -> Sort_model.t -> t
   val mk_Arrow : info:Lvca_syntax.Provenance.t -> t -> t -> t
 end
 

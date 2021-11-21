@@ -18,7 +18,7 @@ module Type = struct
 sort : *
 
 ty := Sort(sort) | Arrow(ty; ty)
-  |}, { sort = "Sort_model.Sort" }]
+  |}, { sort = "Sort_model" }]
 
   include Nominal.Convertible.Extend (Kernel.Ty)
   include Kernel.Ty
@@ -32,7 +32,7 @@ ty := Sort(sort) | Arrow(ty; ty)
         t1
         (pp false)
         t2
-    | Sort (_, s) -> Lvca_syntax.Sort.pp ppf (Sort_model.Sort.out s)
+    | Sort (_, s) -> Lvca_syntax.Sort.pp ppf (Sort_model.out s)
   ;;
 
   let pp = pp false
@@ -58,8 +58,8 @@ ty := Sort(sort) | Arrow(ty; ty)
             parens ty
             <|> (Lvca_syntax.Sort.parse reserved
                 >>| fun sort ->
-                let sort = Sort_model.Sort.into sort in
-                Sort (Sort_model.Sort.info sort, sort))
+                let sort = Sort_model.into sort in
+                Sort (Sort_model.info sort, sort))
           in
           sep_by1 (string "->") atom >>| of_list)
       <?> "core type"
@@ -84,7 +84,7 @@ ty := Sort(sort) | Arrow(ty; ty)
     let%test_module "of_list" =
       (module struct
         let here = Provenance.of_here [%here]
-        let s = Sort_model.Sort.mk_Name ~info:here (here, "s")
+        let s = Sort_model.mk_Name ~info:here (here, "s")
         let mk_Sort s = mk_Sort ~info:here s
         let ( = ) = equivalent ~info_eq:(fun _ _ -> true)
 
@@ -647,7 +647,7 @@ let check_binding_pattern
     (sort : Lvca_syntax.Sort.t)
     : (type_env, Check_error'.t) Result.t
   =
-  let mk_ty sort = Type.Sort (Provenance.of_here [%here], Sort_model.Sort.into sort) in
+  let mk_ty sort = Type.Sort (Provenance.of_here [%here], Sort_model.into sort) in
   match Binding_aware_pattern.check Primitive_impl.All.check syntax sort pat with
   | Ok captures ->
     Ok
@@ -659,7 +659,7 @@ let check_binding_pattern
 
 module Primitive_types = struct
   let here = Provenance.of_here [%here]
-  let sort s = Type.Sort (Lvca_syntax.Sort.info s, Sort_model.Sort.into s)
+  let sort s = Type.Sort (Lvca_syntax.Sort.info s, Sort_model.into s)
   let sort' name = sort (Lvca_syntax.Sort.Name (here, name))
   let char_name = Lvca_syntax.Sort.Name (here, "char")
   let bool = sort' "bool"
@@ -671,9 +671,7 @@ module Primitive_types = struct
 
   let funs =
     let arr t1 t2 = Type.Arrow (here, t1, t2) in
-    let list s =
-      sort (Lvca_syntax.Sort.Ap (here, "list", Lvca_syntax.Sort.Ap_list.of_list [ s ]))
-    in
+    let list s = sort (Lvca_syntax.Sort.Ap (here, "list", [ s ])) in
     let binary_integer = arr integer (arr integer integer) in
     String.Map.of_alist_exn
       [ "rename", arr string (arr string (arr nominal_ty nominal_ty))
@@ -1034,7 +1032,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
     | Arrow _ ->
       Some Check_error.{ env; tm; ty; error = Message "Expected sort, found arrow" }
     | Sort (_, expected_sort) ->
-      let expected_sort = Sort_model.Sort.out expected_sort in
+      let expected_sort = Sort_model.out expected_sort in
       let lookup_operator = Abstract_syntax.lookup_operator syntax in
       let sort_name, sort_args = Sort.split expected_sort in
       (match lookup_operator sort_name operator_name with
@@ -1064,7 +1062,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
     | Error { env; tm; error } -> Some { env; tm; ty; error }
     | Ok (Type.Arrow _) -> failwith "TODO: check Case"
     | Ok (Sort (_, sort)) ->
-      let sort = Sort_model.Sort.out sort in
+      let sort = Sort_model.out sort in
       branches
       |> List_model.to_list
       |> List.find_map ~f:(fun (Term_syntax.Case_scope.Case_scope (_, pat, rhs)) ->
@@ -1168,9 +1166,7 @@ and check_scope
     | Ok binders_env ->
       (match String.Map.strict_unions binders_env with
       | `Ok binders_env (* check every term in body for an error *) ->
-        let mk_ty sort =
-          Type.Sort (Provenance.of_here [%here], Sort_model.Sort.into sort)
-        in
+        let mk_ty sort = Type.Sort (Provenance.of_here [%here], Sort_model.into sort) in
         let binders_env = Map.map binders_env ~f:mk_ty in
         let type_env = Map.union_right_biased type_env binders_env in
         check { type_env; syntax } body (mk_ty body_sort)
@@ -1215,7 +1211,7 @@ and infer ({ type_env; syntax } as env) tm =
       | Sort_def ([], _) ->
         let here = Provenance.of_here [%here] in
         let sort = Sort.Name (here, sort_name) in
-        let ty = Type.Sort (here, Sort_model.Sort.into sort) in
+        let ty = Type.Sort (here, Sort_model.into sort) in
         (match check env tm ty with
         | None -> Ok ty
         | Some { env; tm; ty = _; error } -> Error { env; tm; error })
@@ -1769,10 +1765,7 @@ let%test_module "Checking / inference" =
                   , Arity
                       ( here
                       , [ Valence.Valence ([], a)
-                        ; Valence.Valence
-                            ( []
-                            , Lvca_syntax.Sort.Ap
-                                (here, "list", Lvca_syntax.Sort.Ap_list.of_list [ a ]) )
+                        ; Valence.Valence ([], Lvca_syntax.Sort.Ap (here, "list", [ a ]))
                         ] ) )
               ] ) )
       ]
@@ -1859,7 +1852,7 @@ let%test_module "Checking / inference" =
 
     let type_env =
       String.Map.of_alist_exn
-        [ "x", Type.Sort (here, Sort_model.Sort.mk_Name ~info:here (here, "a")) ]
+        [ "x", Type.Sort (here, Sort_model.mk_Name ~info:here (here, "a")) ]
     ;;
 
     let%expect_test _ =

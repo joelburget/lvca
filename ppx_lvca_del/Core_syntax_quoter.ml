@@ -79,43 +79,22 @@ module Core = struct
           Lvca_del.Sort_model.Kernel.Sort.Name
             ([%e provenance ~loc i], [%e Primitive.string ~loc str])]
       | Ap (i, str, lst) ->
+        let lst = lst |> List_model.map ~f:(sort ~loc) |> list ~loc in
         [%expr
           Lvca_del.Sort_model.Kernel.Sort.Ap
-            ([%e provenance ~loc i], [%e Primitive.string ~loc str], [%e ap_list ~loc lst])]
-
-    and ap_list ~loc = function
-      | Sort_model.Kernel.Ap_list.Nil i ->
-        [%expr Lvca_del.Sort_model.Kernel.Ap_list.Nil [%e provenance ~loc i]]
-      | Cons (i, s, lst) ->
-        [%expr
-          Lvca_del.Sort_model.Kernel.Ap_list.Cons
-            ([%e provenance ~loc i], [%e sort ~loc s], [%e ap_list ~loc lst])]
-    ;;
-  end
-
-  module Quantified_ty = struct
-    let rec t ~loc = function
-      | Core.Type.Kernel.Quantified_ty.Sort (info, s) ->
-        [%expr
-          Lvca_del.Core.Type.Kernel.Quantified_ty.Sort
-            ([%e provenance ~loc info], [%e Sort_model.sort ~loc s])]
-      | Arrow (info, t1, t2) ->
-        [%expr
-          Lvca_del.Core.Type.Kernel.Quantified_ty.Arrow
-            ([%e provenance ~loc info], [%e t ~loc t1], [%e t ~loc t2])]
-      | Quantified_ty_var (i, name) ->
-        [%expr
-          Lvca_del.Core.Type.Kernel.Quantified_ty.Quantified_ty_var
-            ([%e provenance ~loc i], [%e string ~loc name])]
+            ([%e provenance ~loc i], [%e Primitive.string ~loc str], [%e lst])]
     ;;
   end
 
   module Ty = struct
-    let t ~loc (Core.Type.Kernel.Ty.Forall (info, (binders, body))) =
-      [%expr
-        Lvca_del.Core.Type.Kernel.Ty.Forall
-          ( [%e provenance ~loc info]
-          , ([%e pattern ~loc binders], [%e Quantified_ty.t ~loc body]) )]
+    let rec t ~loc = function
+      | Core.Type.Sort (info, s) ->
+        [%expr
+          Lvca_del.Core.Type.Sort ([%e provenance ~loc info], [%e Sort_model.sort ~loc s])]
+      | Arrow (info, t1, t2) ->
+        [%expr
+          Lvca_del.Core.Type.Arrow
+            ([%e provenance ~loc info], [%e t ~loc t1], [%e t ~loc t2])]
     ;;
   end
 
