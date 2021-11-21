@@ -75,21 +75,22 @@ module Value_syntax : [%lvca.abstract_syntax_module_sig
 {|
 ty : *
 list : * -> *
-pattern : *
 primitive : *
 string : *
 
 value :=
   | VPrimitive(primitive)
   | VOperator(string; list value)
-  | VLambda(ty; term. term)
+  | VLambda(ty; neutral. value)
+  | Neutral(neutral)
+
+neutral :=
+  | Ap(neutral; value)  // list?
 |}
 , { ty = "Type"
   ; list = "List_model.List"
-  ; pattern = "Pattern_model.Pattern"
   ; primitive = "Primitive.All"
   ; string = "Primitive.String"
-  ; term = "Term_syntax.Term"
   }]
 
 module Parse : sig

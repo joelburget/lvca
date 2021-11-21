@@ -188,21 +188,22 @@ module Value_syntax = struct
     {|
 ty : *
 list : * -> *
-pattern : *
 primitive : *
 string : *
 
 value :=
   | VPrimitive(primitive)
   | VOperator(string; list value)
-  | VLambda(ty; term. term)
+  | VLambda(ty; neutral. value)
+  | Neutral(neutral)
+
+neutral :=
+  | Ap(neutral; value)  // list?
 |}
     , { ty = "Type"
       ; list = "List_model.List"
-      ; pattern = "Pattern_model.Pattern"
       ; primitive = "Primitive.All"
       ; string = "Primitive.String"
-      ; term = "Term_syntax.Term"
       }]
 end
 
@@ -301,21 +302,24 @@ module Pp = struct
     | [] -> term ppf body
     | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") Pattern.pp) bindings term body
   ;;
+
+  let rec value ppf = function
+    | Value_syntax.Value.VPrimitive (_, tm) -> Primitive.All.pp ppf tm
+    | VOperator (_, (_, tag), subtms) ->
+      let subtms = List_model.to_list subtms in
+      pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi value) subtms
+    | VLambda (_, ty, (Single_var.{ name; info = _ }, body)) ->
+      pf ppf "@[<hv>\\@[<hv>(%s : %a)@] ->@ %a@]" name Type.pp ty value body
+    | Neutral (_, n) -> neutral ppf n
+
+  and neutral ppf = function
+    | Value_syntax.Neutral.Ap (_, n, v) -> pf ppf "%a %a" neutral n value v
+    | Neutral_var (_, name) -> pf ppf "%s" name
+  ;;
 end
 
 module Value = struct
   include Value_syntax.Value
-
-  let rec pp ppf =
-    let list, pf, semi = Fmt.(list, pf, semi) in
-    function
-    | VPrimitive (_, tm) -> Primitive.All.pp ppf tm
-    | VOperator (_, (_, tag), subtms) ->
-      let subtms = List_model.to_list subtms in
-      pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi pp) subtms
-    | VLambda (_, ty, (Single_var.{ name; info = _ }, body)) ->
-      pf ppf "@[<hv>\\@[<hv>(%s : %a)@] ->@ %a@]" name Type.pp ty Pp.term body
-  ;;
 end
 
 (*
@@ -779,6 +783,11 @@ module Quote = struct
       let vs = List_model.of_list [ name_prim; vs ] in
       VOperator (info, (info, "Operator"), vs)
     | VLambda _ -> failwith "TODO: quote VLambda"
+    | Neutral (_, n) -> neutral n
+
+  and neutral = function
+    | Ap _ -> failwith "TODO: quote Ap"
+    | Neutral_var _ -> failwith "TODO: quote Ap"
   ;;
 end
 
@@ -798,6 +807,7 @@ module Unquote = struct
         List_model.List.Cons (info, x, xs)
       | "Cons", _ -> Error "Invalid arguments to Cons in unquote"
       | _ -> Error "Invalid operator for list unquote")
+    | Neutral _ -> failwith "TODO: unquote neutral"
   ;;
 
   let option go = function
@@ -814,6 +824,7 @@ module Unquote = struct
         Option_model.Option.Some (info, x)
       | "Some", _ -> Error "Invalid arguments to Some in unquote"
       | _ -> Error "Invalid operator for option unquote")
+    | Neutral _ -> failwith "TODO: unquote neutral"
   ;;
 
   let ty _ = failwith "TODO: unquote ty"
@@ -868,6 +879,7 @@ module Unquote = struct
         , _ ) ->
         Error "invalid arguments to an operator"
       | _ -> Error (Fmt.str "invalid operator name to unquote: %s" name))
+    | Neutral _ -> failwith "TODO: unquote neutral"
   ;;
 end
 
@@ -902,12 +914,10 @@ let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
         "invalid set of letrec binders (must be the same number of terms)"
     | Ok bound_rows ->
       let ctx =
-        List.fold bound_rows ~init:ctx ~f:(fun ctx (name, Letrec_row (_, ty, body)) ->
+        List.fold bound_rows ~init:ctx ~f:(fun ctx (name, Letrec_row (_, ty, _body)) ->
             let data =
               Value_syntax.Value.VLambda
-                ( Provenance.of_here [%here]
-                , ty
-                , (failwith "TODO: eval_in_ctx letrec", body) )
+                (Provenance.of_here [%here], ty, failwith "TODO: eval_in_ctx letrec")
             in
             Map.set ctx ~key:name ~data)
       in
@@ -970,20 +980,19 @@ and eval_primitive eval_in_ctx (ctx : eval_env) tm name args =
       let info = Provenance.calculated_here [%here] [ ainfo; binfo ] in
       Ok (VPrimitive (info, (info, Integer Z.(a - b))))
     | _ -> Error ("Invalid arguments to add", tm))
-    (*
   | "string_of_chars", [ char_list ] ->
     (match char_list with
-    | Operator (info, "list", chars) ->
+    | VOperator (info, (_, "list"), chars) ->
       chars
+      |> List_model.to_list
       |> List.map ~f:(function
-             | Nominal.Scope.Scope ([], Nominal.Term.Primitive (_, Char c)) -> Ok c
-             | tm -> Error (Fmt.str "string_of_chars `list(%a)`" Nominal.Scope.pp tm))
+             | Value_syntax.Value.VPrimitive (_, (_, Char c)) -> Ok c
+             | tm -> Error (Fmt.str "string_of_chars `list(%a)`" Pp.value tm))
       |> Result.all
       |> Result.map ~f:(fun cs ->
-             Nominal.Term.Primitive (info, String (String.of_char_list cs)))
+             Value_syntax.Value.VPrimitive (info, (info, String (String.of_char_list cs))))
       |> Result.map_error ~f:(fun msg -> msg, tm)
     | _ -> Error ("expected a list of characters", tm))
-       *)
   | "is_digit", [ c ] -> eval_char_bool_fn "is_digit" Char.is_digit tm c
   | "is_lowercase", [ c ] -> eval_char_bool_fn "is_lowercase" Char.is_lowercase tm c
   | "is_uppercase", [ c ] -> eval_char_bool_fn "is_uppercase" Char.is_uppercase tm c
@@ -995,7 +1004,7 @@ and eval_primitive eval_in_ctx (ctx : eval_env) tm name args =
       ( Fmt.str
           "Unknown function (%s), or wrong number of arguments (got [%a])"
           name
-          Fmt.(list Value.pp)
+          Fmt.(list Pp.value)
           args
       , tm )
 ;;
@@ -1402,7 +1411,7 @@ let%test_module "Core eval" =
       let result =
         match str |> parse_exn |> eval with
         | Error (msg, tm) -> Fmt.str "%s: %a" msg Term_syntax.Term.pp tm
-        | Ok result -> Fmt.to_to_string Value.pp result
+        | Ok result -> Fmt.to_to_string Pp.value result
       in
       Stdio.print_string result
     ;;
