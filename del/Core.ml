@@ -208,6 +208,7 @@ end
 
 module Pp = struct
   let list, any, pf, sp, semi = Fmt.(list, any, pf, sp, semi)
+  let case_sep = any "@;<1 2>| "
 
   let rec term : Term_syntax.Term.t Fmt.t =
    fun ppf tm ->
@@ -224,15 +225,21 @@ module Pp = struct
     | Ap (_, f, args) ->
       pf ppf "@[<h>%a@ @[<hov>%a@]@]" term f (list ~sep:sp term) (List_model.to_list args)
     | Case (_, arg, cases') ->
-      pf
-        ppf
-        "@[<hv>match %a with {%t%a@ }@]"
-        term
-        arg
-        (* Before `|`, emit a single space if on the same line, or two when broken *)
-        (Format.pp_print_custom_break ~fits:("", 1, "") ~breaks:("", 2, "| "))
-        cases
-        cases'
+      let cases' = List_model.to_list cases' in
+      (match cases' with
+      | [] -> pf ppf "match %a with {}" term arg
+      | [ case ] ->
+        pf
+          ppf
+          "@[<hv 0>match %a with {%t@[<hv 0>%a@]@ }@]"
+          term
+          arg
+          (* Before `|`, emit a single space if on the same line, or two when broken *)
+          (Format.pp_print_custom_break ~fits:("", 1, "") ~breaks:("", 2, "| "))
+          case_scope
+          case
+      (* Always split cases with more than one branch for readability *)
+      | _ -> pf ppf "@[<v 0>match %a with {%a%a@ }@]" term arg case_sep () cases cases')
     | Let (_, tm, ty, (Single_var.{ name; info = _ }, body)) -> let_ ppf tm ty name body
     | Let_rec (_, rows, (binders, rhs)) ->
       let binders = List_model.extract_vars_from_empty_pattern binders in
@@ -248,7 +255,7 @@ module Pp = struct
       | Ok bound_rows ->
         pf
           ppf
-          "@[let rec@ %a@ in@ %a]"
+          "@[let rec@ %a@ in@ %a@]"
           (list pp_bound_row ~sep:(any "@ and@ "))
           bound_rows
           term
@@ -271,7 +278,7 @@ module Pp = struct
     in
     pf ppf "@[let %s%a =@ %a in@ @[%a@]@]" name pp_ty ty term tm term body
 
-  and cases ppf x = list ~sep:(any "@;<1 2>| ") case_scope ppf (List_model.to_list x)
+  and cases ppf = list ~sep:case_sep case_scope ppf
 
   and case_scope ppf (Term_syntax.Case_scope.Case_scope (info, pat, body)) =
     Provenance.open_stag ppf info;
@@ -1277,7 +1284,7 @@ let parse_exn =
 
 let%test_module "Parsing" =
   (module struct
-    let parse_pretty str = str |> parse_exn |> Fmt.pr "%a\n" Pp.term
+    let parse_pretty str = str |> parse_exn |> Fmt.pr "%a@\n" Pp.term
 
     let%expect_test _ =
       parse_pretty "1";
@@ -1307,42 +1314,23 @@ let%test_module "Parsing" =
       Var(str)
       let x = x in x
       let str = string_of_chars chars in str
-
       let str = string_of_chars chars in Var(str)
       \(x : bool) -> x
+      match x with { _ -> 1 }
+      match empty with {}
+      match x with { _ -> 1 }
       match x with {
-                                                                     | _ -> 1
-                                                                   }
-      match empty with {
-                                                                       |
-                                                                     }
-      match x with {
-                                                                         |
-                                                                       _ -> 1
-                                                                       }
-      match x with {
-                                                                          |
-                                                                         True()
-                                                                         ->
-                                                                         False()
-                                                                          |
-                                                                         False()
-                                                                         ->
-                                                                         True()
-                                                                         }
-
+        | True() -> False()
+        | False() -> True()
+      }
       let x = True() in not x
       fail "some reason for failing"
       match c with {
-                                                               | 'c' -> True()
-                                                               | _ -> False()
-                                                             }
+        | 'c' -> True()
+        | _ -> False()
+      }
       Some(1)
-      let x =
-                                                                       let x = 1 in
-                                                                       Some(x) in
-                                                                       Some(x)
-
+      let x = let x = 1 in Some(x) in Some(x)
       (body)[f := reduce arg]
       \(tm : lam) -> (tm)[x := Var("y")]
       |}]
@@ -1396,7 +1384,10 @@ let%test_module "Parsing" =
         | True() -> True()
         | False() -> False()
         | Ite(t1; t2; t3)
-          -> match meaning t1 with { True() -> meaning t2 | False() -> meaning t3 }
+          -> match meaning t1 with {
+               | True() -> meaning t2
+               | False() -> meaning t3
+             }
         | Ap(f; arg) -> meaning f meaning arg
         | Fun(scope) -> Lambda(List(); scope)
       }
@@ -1654,12 +1645,12 @@ let%test_module "Core pretty" =
 
     let%expect_test _ =
       term "let rec x : foo = y in x";
-      [%expect {| let rec x : foo = y in x] |}]
+      [%expect {| let rec x : foo = y in x |}]
     ;;
 
     let%expect_test _ =
       term "let rec x : foo = y and y : foo = x in x";
-      [%expect {| let rec x : foo = y and y : foo = x in x] |}]
+      [%expect {| let rec x : foo = y and y : foo = x in x |}]
     ;;
 
     let%expect_test _ =

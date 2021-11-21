@@ -56,7 +56,7 @@ let rec pp ppf pat =
   match pat with
   | Operator (_, name, pats) ->
     Provenance.open_stag ppf (info pat);
-    pf ppf "@[<2>@{%s@}(%a)@]" name (pp |> list ~sep:semi) pats;
+    pf ppf "@[<2>@{%s@}(%a)@]" name (list ~sep:semi pp) pats;
     Provenance.close_stag ppf (info pat)
   | Var (_, name) ->
     Provenance.open_stag ppf (info pat);
