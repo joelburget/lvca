@@ -23,22 +23,21 @@ let rec equivalent ?(info_eq = fun _ _ -> true) s1 s2 =
 let ( = ) = equivalent ~info_eq:Provenance.( = )
 let info = function Ap (i, _, _) | Name (i, _) -> i
 
-let pp' ppf sort =
-  let rec pp' need_parens ppf = function
-    | Ap (_, name, args) ->
-      if need_parens
-      then Fmt.pf ppf "@[(%s %a)@]" name Fmt.(list (pp' true) ~sep:sp) args
-      else Fmt.pf ppf "@[%s %a@]" name Fmt.(list (pp' true) ~sep:sp) args
-    | Name (_, name) -> Fmt.string ppf name
-  in
-  pp' false ppf sort
-;;
-
 let pp ppf sort =
-  let info = info sort in
-  Provenance.open_stag ppf info;
-  pp' ppf sort;
-  Provenance.close_stag ppf info
+  let open Fmt in
+  let rec pp need_parens ppf sort =
+    let info = info sort in
+    Provenance.open_stag ppf info;
+    (match sort with
+    | Ap (_, name, args) ->
+      let list = list (pp true) ~sep:sp in
+      if need_parens
+      then pf ppf "@[(%s %a)@]" name list args
+      else pf ppf "@[%s %a@]" name list args
+    | Name (_, name) -> string ppf name);
+    Provenance.close_stag ppf info
+  in
+  pp false ppf sort
 ;;
 
 let rec instantiate arg_mapping = function
