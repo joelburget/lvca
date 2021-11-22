@@ -145,9 +145,9 @@ case_scope := Case_scope(binding_aware_pattern; term)
     , { ty = "Type"
       ; list = "List_model"
       ; option = "Option_model.Option"
-      ; binding_aware_pattern = "Binding_aware_pattern_model.Pattern"
+      ; binding_aware_pattern = "Binding_aware_pattern"
       ; empty = "Empty"
-      ; pattern = "Pattern_model.Pattern"
+      ; pattern = "Pattern"
       ; primitive = "Primitive.All"
       ; string = "Primitive.String"
       }]
@@ -264,13 +264,7 @@ module Pp = struct
 
   and case_scope ppf (Term_syntax.Case_scope.Case_scope (info, pat, body)) =
     Provenance.open_stag ppf info;
-    pf
-      ppf
-      "@[%a@ -> %a@]"
-      Binding_aware_pattern.pp
-      (Binding_aware_pattern_model.out pat)
-      term
-      body;
+    pf ppf "@[%a@ -> %a@]" Binding_aware_pattern.pp pat term body;
     Provenance.close_stag ppf info
 
   and operator_scope
@@ -353,11 +347,7 @@ module Parse = struct
     | f :: args -> Ap (Provenance.of_here [%here], f, List_model.of_list args)
   ;;
 
-  let pattern =
-    Binding_aware_pattern.parse reserved
-    >>| Binding_aware_pattern_model.into
-    <?> "pattern"
-  ;;
+  let pattern = Binding_aware_pattern.parse reserved <?> "pattern"
 
   let atomic_term term =
     choice
@@ -719,7 +709,6 @@ let find_match (v : Value.t)
     : Term_syntax.Case_scope.t list -> (Term.t * Value.t String.Map.t) option
   =
   List.find_map ~f:(fun (Term_syntax.Case_scope.Case_scope (_, pat, rhs)) ->
-      let pat = Binding_aware_pattern_model.out pat in
       match match_pattern pat v with None -> None | Some bindings -> Some (rhs, bindings))
 ;;
 
@@ -1047,9 +1036,7 @@ let rec check ({ type_env; syntax } as env) tm ty =
       branches
       |> List_model.to_list
       |> List.find_map ~f:(fun (Term_syntax.Case_scope.Case_scope (_, pat, rhs)) ->
-             match
-               check_binding_pattern syntax (Binding_aware_pattern_model.out pat) sort
-             with
+             match check_binding_pattern syntax pat sort with
              | Ok type_env -> check { env with type_env } rhs ty
              | Error error -> Some { env; tm; ty; error }))
   | Lambda (_, ty', (Single_var.{ name; info = _ }, body)) ->
