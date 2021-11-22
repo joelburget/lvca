@@ -79,9 +79,9 @@ primitive : *
 string : *
 
 value :=
-  | VPrimitive(primitive)
-  | VOperator(string; list value)
-  | VLambda(ty; neutral. value)
+  | Primitive(primitive)
+  | Operator(string; list value)
+  | Lambda(ty; neutral. value)
   | Neutral(neutral)
 
 neutral :=

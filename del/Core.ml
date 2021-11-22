@@ -173,9 +173,9 @@ primitive : *
 string : *
 
 value :=
-  | VPrimitive(primitive)
-  | VOperator(string; list value)
-  | VLambda(ty; neutral. value)
+  | Primitive(primitive)
+  | Operator(string; list value)
+  | Lambda(ty; neutral. value)
   | Neutral(neutral)
 
 neutral :=
@@ -285,11 +285,11 @@ module Pp = struct
   ;;
 
   let rec value ppf = function
-    | Value_syntax.Value.VPrimitive (_, tm) -> Primitive.All.pp ppf tm
-    | VOperator (_, (_, tag), subtms) ->
+    | Value_syntax.Value.Primitive (_, tm) -> Primitive.All.pp ppf tm
+    | Operator (_, (_, tag), subtms) ->
       let subtms = List_model.to_list subtms in
       pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi value) subtms
-    | VLambda (_, ty, (Single_var.{ name; info = _ }, body)) ->
+    | Lambda (_, ty, (Single_var.{ name; info = _ }, body)) ->
       pf ppf "@[<hv>\\@[<hv>(%s : %a)@] ->@ %a@]" name Type.pp ty value body
     | Neutral (_, n) -> neutral ppf n
 
@@ -695,7 +695,7 @@ let merge_pattern_context
 
 let rec match_pattern pat v =
   match v, pat with
-  | ( Value_syntax.Value.VOperator (_, (_, tag1), vals)
+  | ( Value_syntax.Value.Operator (_, (_, tag1), vals)
     , Binding_aware_pattern.Operator (_, tag2, pats) ) ->
     let vals = List_model.to_list vals in
     if String.(tag1 = tag2)
@@ -704,7 +704,7 @@ let rec match_pattern pat v =
       | Ok results -> merge_pattern_context results
       | Unequal_lengths -> None)
     else None
-  | VPrimitive (_, l1), Primitive l2 ->
+  | Primitive (_, l1), Primitive l2 ->
     if Primitive.All.(l1 = l2) then Some String.Map.empty else None
   | tm, Var (_, v) -> Some (String.Map.singleton v tm)
   | _ -> None
@@ -725,10 +725,10 @@ let find_match (v : Value.t)
 
 let eval_char_bool_fn name f tm c =
   let open Value_syntax.Value in
-  let true_tm info = VOperator (info, (info, "True"), List_model.of_list []) in
-  let false_tm info = VOperator (info, (info, "False"), List_model.of_list []) in
+  let true_tm info = Operator (info, (info, "True"), List_model.of_list []) in
+  let false_tm info = Operator (info, (info, "False"), List_model.of_list []) in
   match c with
-  | VPrimitive (info, (_, Char c)) ->
+  | Primitive (info, (_, Char c)) ->
     let info = Provenance.calculated_here [%here] [ info ] in
     Ok (if f c then true_tm info else false_tm info)
   | _ -> Error (Printf.sprintf "Invalid argument to %s" name, tm)
@@ -741,27 +741,27 @@ module Quote = struct
     let open Value_syntax.Value in
     let info = Provenance.of_here [%here] in
     function
-    | [] -> VOperator (info, (info, "Nil"), List_model.Nil info)
+    | [] -> Operator (info, (info, "Nil"), List_model.Nil info)
     | x :: xs ->
       let vs = List_model.of_list [ f x; list f xs ] in
-      VOperator (Provenance.of_here [%here], (info, "Cons"), vs)
+      Operator (Provenance.of_here [%here], (info, "Cons"), vs)
   ;;
 
   let rec value =
     let open Value_syntax.Value in
     function
-    | VPrimitive (info, prim) ->
+    | Primitive (info, prim) ->
       let info = Provenance.calculated_here [%here] [ info ] in
-      let prim = VPrimitive (info, prim) in
+      let prim = Primitive (info, prim) in
       let vs = List_model.of_list [ prim ] in
-      VOperator (info, (info, "VPrimitive"), vs)
-    | VOperator (info, (_, name), vs) ->
+      Operator (info, (info, "Primitive"), vs)
+    | Operator (info, (_, name), vs) ->
       let info = Provenance.calculated_here [%here] [ info ] in
-      let name_prim = VPrimitive (info, (info, Primitive_impl.All_plain.String name)) in
+      let name_prim = Primitive (info, (info, Primitive_impl.All_plain.String name)) in
       let vs = vs |> List_model.to_list |> list value in
       let vs = List_model.of_list [ name_prim; vs ] in
-      VOperator (info, (info, "Operator"), vs)
-    | VLambda _ -> failwith "TODO: quote VLambda"
+      Operator (info, (info, "Operator"), vs)
+    | Lambda _ -> failwith "TODO: quote Lambda"
     | Neutral (_, n) -> neutral n
 
   and neutral = function
@@ -772,9 +772,9 @@ end
 
 module Unquote = struct
   let rec list go = function
-    | Value_syntax.Value.VPrimitive _ | VLambda _ ->
-      Error "VPrimitive and VLambda are invalid arguments to unquote"
-    | VOperator (info, (_, name), vs) ->
+    | Value_syntax.Value.Primitive _ | Lambda _ ->
+      Error "Primitive and Lambda are invalid arguments to unquote"
+    | Operator (info, (_, name), vs) ->
       let vs = List_model.to_list vs in
       let info = Provenance.calculated_here [%here] [ info ] in
       (match name, vs with
@@ -790,9 +790,9 @@ module Unquote = struct
   ;;
 
   let option go = function
-    | Value_syntax.Value.VPrimitive _ | VLambda _ ->
-      Error "VPrimitive and VLambda are invalid arguments to unquote"
-    | VOperator (info, (_, name), vs) ->
+    | Value_syntax.Value.Primitive _ | Lambda _ ->
+      Error "Primitive and Lambda are invalid arguments to unquote"
+    | Operator (info, (_, name), vs) ->
       let vs = List_model.to_list vs in
       let info = Provenance.calculated_here [%here] [ info ] in
       (match name, vs with
@@ -814,15 +814,15 @@ module Unquote = struct
   let rec term =
     let open Term_syntax.Term in
     function
-    | Value_syntax.Value.VPrimitive _ | VLambda _ ->
-      Error "VPrimitive and VLambda are invalid arguments to unquote"
-    | VOperator (info, (_, name), vs) ->
+    | Value_syntax.Value.Primitive _ | Lambda _ ->
+      Error "Primitive and Lambda are invalid arguments to unquote"
+    | Operator (info, (_, name), vs) ->
       let vs = List_model.to_list vs in
       let info = Provenance.calculated_here [%here] [ info ] in
       (match name, vs with
-      | "Primitive", [ VPrimitive (_, p) ] -> Ok (Primitive (info, p))
+      | "Primitive", [ Primitive (_, p) ] -> Ok (Primitive (info, p))
       | ( "Operator"
-        , [ VPrimitive (_, (s_info, Primitive_impl.All_plain.String name)); scopes ] ) ->
+        , [ Primitive (_, (s_info, Primitive_impl.All_plain.String name)); scopes ] ) ->
         let s_info = Provenance.calculated_here [%here] [ s_info ] in
         let%map scopes = list operator_scope scopes in
         Operator (info, (s_info, name), scopes)
@@ -881,7 +881,7 @@ let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
   | Ap (_info, Term_var (_, name), args) ->
     (match Map.find ctx name with
     | None -> eval_primitive eval_in_ctx ctx tm name args
-    | Some (VLambda (_info, _ty, _)) -> failwith "TODO: ap VLambda"
+    | Some (Lambda (_info, _ty, _)) -> failwith "TODO: ap Lambda"
     | Some _ -> Error ("Expected a lambda", failwith "TODO: eval_in_ctx error 2"))
   | Let_rec (_, rows, (binders, body)) ->
     let binders = List_model.extract_vars_from_empty_pattern binders in
@@ -895,7 +895,7 @@ let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
       let ctx =
         List.fold bound_rows ~init:ctx ~f:(fun ctx (name, Letrec_row (_, ty, _body)) ->
             let data =
-              Value_syntax.Value.VLambda
+              Value_syntax.Value.Lambda
                 (Provenance.of_here [%here], ty, failwith "TODO: eval_in_ctx letrec")
             in
             Map.set ctx ~key:name ~data)
@@ -914,9 +914,9 @@ let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
       |> Result.all
     in
     let vs = List_model.of_list vs in
-    Value_syntax.Value.VOperator (Provenance.calculated_here [%here] [ info ], name, vs)
+    Value_syntax.Value.Operator (Provenance.calculated_here [%here] [ info ], name, vs)
   | Primitive (info, p) ->
-    Ok (Value_syntax.Value.VPrimitive (Provenance.calculated_here [%here] [ info ], p))
+    Ok (Value_syntax.Value.Primitive (Provenance.calculated_here [%here] [ info ], p))
   | Quote (_, tm) -> eval_in_ctx ctx tm |> Result.map ~f:Quote.value
   | Unquote (_, tm) ->
     let%bind tm_val = eval_in_ctx ctx tm in
@@ -935,7 +935,7 @@ and eval_primitive eval_in_ctx (ctx : eval_env) tm name args =
   | "rename", [ v1; v2; tm' ] ->
     let%map v1, v2 =
       match v1, v2 with
-      | VPrimitive (_info1, (_, String v1)), VPrimitive (_info2, (_, String v2)) ->
+      | Primitive (_info1, (_, String v1)), Primitive (_info2, (_, String v2)) ->
         Ok (v1, v2)
       | _ -> Error ("Invalid arguments to rename", tm)
     in
@@ -944,32 +944,32 @@ and eval_primitive eval_in_ctx (ctx : eval_env) tm name args =
   (*
   | "var", [ str_tm ] ->
     (match str_tm with
-    | VPrimitive (info, (_, String name)) -> Ok (Nominal.Term.Var (info, name))
+    | Primitive (info, (_, String name)) -> Ok (Nominal.Term.Var (info, name))
     | _ -> Error ("expected a string", tm))
          *)
   | "add", [ a; b ] ->
     (match a, b with
-    | VPrimitive (ainfo, (_, Integer a)), VPrimitive (binfo, (_, Integer b)) ->
+    | Primitive (ainfo, (_, Integer a)), Primitive (binfo, (_, Integer b)) ->
       let info = Provenance.calculated_here [%here] [ ainfo; binfo ] in
-      Ok (VPrimitive (info, (info, Integer Z.(a + b))))
+      Ok (Primitive (info, (info, Integer Z.(a + b))))
     | _ -> Error ("Invalid arguments to add", tm))
   | "sub", [ a; b ] ->
     (match a, b with
-    | VPrimitive (ainfo, (_, Integer a)), VPrimitive (binfo, (_, Integer b)) ->
+    | Primitive (ainfo, (_, Integer a)), Primitive (binfo, (_, Integer b)) ->
       let info = Provenance.calculated_here [%here] [ ainfo; binfo ] in
-      Ok (VPrimitive (info, (info, Integer Z.(a - b))))
+      Ok (Primitive (info, (info, Integer Z.(a - b))))
     | _ -> Error ("Invalid arguments to add", tm))
   | "string_of_chars", [ char_list ] ->
     (match char_list with
-    | VOperator (info, (_, "list"), chars) ->
+    | Operator (info, (_, "list"), chars) ->
       chars
       |> List_model.to_list
       |> List.map ~f:(function
-             | Value_syntax.Value.VPrimitive (_, (_, Char c)) -> Ok c
+             | Value_syntax.Value.Primitive (_, (_, Char c)) -> Ok c
              | tm -> Error (Fmt.str "string_of_chars `list(%a)`" Pp.value tm))
       |> Result.all
       |> Result.map ~f:(fun cs ->
-             Value_syntax.Value.VPrimitive (info, (info, String (String.of_char_list cs))))
+             Value_syntax.Value.Primitive (info, (info, String (String.of_char_list cs))))
       |> Result.map_error ~f:(fun msg -> msg, tm)
     | _ -> Error ("expected a list of characters", tm))
   | "is_digit", [ c ] -> eval_char_bool_fn "is_digit" Char.is_digit tm c
@@ -1500,17 +1500,17 @@ let%test_module "Core eval" =
 
     let%expect_test _ =
       eval_str "{1}";
-      [%expect {| VPrimitive(1) |}]
+      [%expect {| Primitive(1) |}]
     ;;
 
     let%expect_test _ =
       eval_str "{Some(1)}";
-      [%expect {| Operator("Some"; Cons(VPrimitive(1); Nil())) |}]
+      [%expect {| Operator("Some"; Cons(Primitive(1); Nil())) |}]
     ;;
 
     let%expect_test _ =
       eval_str "{sub 1 2}";
-      [%expect {| VPrimitive(-1) |}]
+      [%expect {| Primitive(-1) |}]
     ;;
 
     let%expect_test _ =
