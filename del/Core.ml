@@ -86,37 +86,16 @@ ty := Sort(sort) | Arrow(ty; ty)
     let%test_module "of_list" =
       (module struct
         let here = Provenance.of_here [%here]
-        let s = Sort_model.mk_Name ~info:here (here, "s")
-        let mk_Sort s = mk_Sort ~info:here s
+        let s = mk_Sort ~info:here (Sort_model.mk_Name ~info:here (here, "s"))
         let ( = ) = equivalent ~info_eq:(fun _ _ -> true)
 
-        let%test _ = of_list [ mk_Sort s ] = mk_Sort s
-        let%test _ = of_list [ mk_Sort s; mk_Sort s ] = arrow (mk_Sort s) (mk_Sort s)
-
-        let%test _ =
-          of_list [ mk_Sort s; mk_Sort s; mk_Sort s ]
-          = arrow (mk_Sort s) (arrow (mk_Sort s) (mk_Sort s))
-        ;;
-
-        let%test _ =
-          of_list [ mk_Sort s; mk_Sort s; mk_Sort s; mk_Sort s ]
-          = arrow (mk_Sort s) (arrow (mk_Sort s) (arrow (mk_Sort s) (mk_Sort s)))
-        ;;
-
-        let%test _ =
-          of_list [ of_list [ mk_Sort s; mk_Sort s ]; mk_Sort s ]
-          = arrow (arrow (mk_Sort s) (mk_Sort s)) (mk_Sort s)
-        ;;
-
-        let%test _ =
-          of_list [ mk_Sort s; of_list [ mk_Sort s; mk_Sort s ] ]
-          = arrow (mk_Sort s) (arrow (mk_Sort s) (mk_Sort s))
-        ;;
-
-        let%test _ =
-          of_list [ arrow (mk_Sort s) (mk_Sort s); arrow (mk_Sort s) (mk_Sort s) ]
-          = arrow (arrow (mk_Sort s) (mk_Sort s)) (arrow (mk_Sort s) (mk_Sort s))
-        ;;
+        let%test _ = of_list [ s ] = s
+        let%test _ = of_list [ s; s ] = arrow s s
+        let%test _ = of_list [ s; s; s ] = arrow s (arrow s s)
+        let%test _ = of_list [ s; s; s; s ] = arrow s (arrow s (arrow s s))
+        let%test _ = of_list [ of_list [ s; s ]; s ] = arrow (arrow s s) s
+        let%test _ = of_list [ s; of_list [ s; s ] ] = arrow s (arrow s s)
+        let%test _ = of_list [ arrow s s; arrow s s ] = arrow (arrow s s) (arrow s s)
       end)
     ;;
   end
