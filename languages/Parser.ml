@@ -90,14 +90,14 @@ module Term = struct
         | Fail (_, tm) ->
           let f ppf =
             match tm with
-            | Nominal (_, Primitive (_, String msg)) -> pf ppf {|@[<2>fail "%s"@]|} msg
+            | Primitive (_, (_, String msg)) -> pf ppf {|@[<2>fail "%s"@]|} msg
             | _ -> pf ppf "@[<2>fail {%a}@]" core tm
           in
           f, Prec.app
         | Count (_, p, tm) ->
           let f ppf =
             match tm with
-            | Nominal (_, Primitive (_, Integer n)) ->
+            | Primitive (_, (_, Integer n)) ->
               pf ppf "@[<hv>%a%s@]" (go Prec.quantifier) p (Z.to_string n)
             | _ -> pf ppf "@[<hv>%a{%a}@]" (go Prec.quantifier) p core tm
           in
@@ -229,7 +229,7 @@ module Parse = struct
                   >>~ fun range i ->
                   let i = Z.of_string i in
                   let info = Provenance.of_range range in
-                  Core.Lang.Term.Nominal (info, Primitive (info, Integer i)))
+                  Core.Term_syntax.Term.Primitive (info, (info, Integer i)))
               ; make0 mk_Q_option (Ws.char '?')
               ; make0 mk_Q_many (Ws.char '*')
               ; make0 mk_Q_many1 (Ws.char '+')
@@ -267,7 +267,7 @@ module Parse = struct
                    ; (Ws.string_lit
                      >>~ fun range str ->
                      let info = Provenance.of_range range in
-                     Core.Lang.Term.Nominal (info, Primitive (info, String str)))
+                     Core.Term_syntax.Term.Primitive (info, (info, String str)))
                    ])
             ]
           <|> parse_quantified
@@ -329,9 +329,9 @@ module Parse = struct
 end
 
 module Evaluate = struct
-  type term_ctx = Core.Term.t String.Map.t
+  type term_ctx = Core.Value.t String.Map.t
   type parser_ctx = Lang.Term.t String.Map.t
-  type parse_result = (Nominal.Term.t, string * Core.Term.t option) Result.t
+  type parse_result = (Core.Value.t, string * Core.Term.t option) Result.t
 
   type trace_snapshot =
     { success : bool
@@ -373,15 +373,19 @@ module Evaluate = struct
 
   let input = Provenance.Parse_input.Buffer_name "input"
 
-  let mk_Some tm =
-    let info = Provenance.calculated_here [%here] [ Nominal.Term.info tm ] in
-    Nominal.Term.Operator (info, "Some", [ Scope ([], tm) ])
+  let mk_Some v =
+    let info = Provenance.calculated_here [%here] [ Core.Value.info v ] in
+    Core.Value_syntax.Value.Operator (info, (info, "Some"), List_model.of_list [ v ])
   ;;
 
-  let mk_None = Nominal.Term.Operator (Provenance.of_here [%here], "None", [])
+  let mk_None =
+    let info = Provenance.of_here [%here] in
+    Core.Value_syntax.Value.Operator (info, (info, "None"), List_model.Nil info)
+  ;;
 
   let mk_Char pos c =
-    Nominal.Term.Primitive (Provenance.of_range (Opt_range.mk pos (pos + 1)), Char c)
+    let info = Provenance.of_range (Opt_range.mk pos (pos + 1)) in
+    Core.Value_syntax.Value.Primitive (info, (info, Char c))
   ;;
 
   let mk_Error msg = Error (msg, None)
@@ -416,7 +420,8 @@ module Evaluate = struct
         | Some _str' ->
           let pos' = pos + String.length prefix in
           let rng = Opt_range.mk pos pos' in
-          Ok (pos', Nominal.Term.Primitive (Provenance.of_range ~input rng, String prefix)))
+          let info = Provenance.of_range ~input rng in
+          Ok (pos', Core.Value_syntax.Value.Primitive (info, (info, String prefix))))
   ;;
 
   let satisfy name core_term =
@@ -436,15 +441,16 @@ module Evaluate = struct
             let c = str.[pos] in
             let info = Provenance.of_range ~input (Opt_range.mk pos (pos + 1)) in
             let tm =
-              Core.Lang.Term.Let
+              Core.Term_syntax.Term.Let
                 ( info
-                , Nominal (info, Primitive (info, Char c))
+                , Primitive (info, (info, Char c))
                 , Option_model.Option.None info
                 , (Single_var.{ name; info }, core_term) )
             in
             match Core.eval_in_ctx term_ctx tm with
-            | Ok (Operator (_, "true", [])) -> pos + 1, [], Ok (mk_Char pos c)
-            | Ok (Operator (_, "false", [])) | Ok _ ->
+            | Ok (Operator (_, (_, "true"), List_model.Nil _)) ->
+              pos + 1, [], Ok (mk_Char pos c)
+            | Ok (Operator (_, (_, "false"), List_model.Nil _)) | Ok _ ->
               pos, [], err_msg (* TODO: throw harder error? (type error) *)
             | Error err -> pos, [], Error (Tuple2.map2 ~f:(fun tm -> Some tm) err)))
     }
@@ -454,7 +460,7 @@ module Evaluate = struct
     { run =
         (fun ~of_term:_ ~term_ctx ~parser_ctx:_ ~pos _str ->
           match Core.eval_in_ctx term_ctx c_tm with
-          | Ok (Primitive (_, String msg)) -> pos, [], mk_Error msg
+          | Ok (Primitive (_, (_, String msg))) -> pos, [], mk_Error msg
           | _ -> failwith "TODO: fail")
     }
   ;;
@@ -490,10 +496,9 @@ module Evaluate = struct
   ;;
 
   let mk_list lst =
-    let provs = List.map lst ~f:Nominal.Term.info in
+    let provs = List.map lst ~f:Core.Value.info in
     let info = Provenance.calculated_here [%here] provs in
-    let lst = List.map lst ~f:(fun tm -> Nominal.Scope.Scope ([], tm)) in
-    Nominal.Term.Operator (info, "list", lst)
+    Core.Value_syntax.Value.Operator (info, (info, "list"), List_model.of_list lst)
   ;;
 
   let count n_tm parser =
@@ -524,7 +529,7 @@ module Evaluate = struct
     { run =
         (fun ~of_term ~term_ctx ~parser_ctx ~pos str ->
           match Core.eval_in_ctx term_ctx n_tm with
-          | Ok (Primitive (_, Integer n)) ->
+          | Ok (Primitive (_, (_, Integer n))) ->
             let n = Z.to_int n (* TODO: may raise Overflow *) in
             let results = go ~of_term ~term_ctx ~parser_ctx ~pos n str in
             let pos, rev_snapshots, result =
@@ -671,21 +676,23 @@ module Evaluate = struct
                    (List.length xs))
             | Ok name_vals ->
               let term_ctx =
-                List.fold name_vals ~init:term_ctx ~f:(fun ctx (key_opt, tm) ->
+                List.fold_result name_vals ~init:term_ctx ~f:(fun ctx (key_opt, v) ->
                     match key_opt with
-                    | None -> ctx
+                    | None -> Ok ctx
                     | Some key ->
-                      let info =
-                        Provenance.calculated_here [%here] [ Nominal.Term.info tm ]
-                      in
-                      let data = Core.Lang.Term.Nominal (info, tm) in
-                      Map.set ctx ~key ~data)
+                      v
+                      |> Core.Term.of_value
+                      |> Core.eval
+                      |> Result.map ~f:(fun data -> Map.set ctx ~key ~data))
               in
-              let result =
-                Core.eval_in_ctx term_ctx tm
-                |> Result.map_error ~f:(Tuple2.map2 ~f:(fun tm -> Some tm))
-              in
-              pos, snapshots, result))
+              (match term_ctx with
+              | Error (msg, tm) -> pos, snapshots, Error (msg, Some tm)
+              | Ok term_ctx ->
+                let result =
+                  Core.eval_in_ctx term_ctx tm
+                  |> Result.map_error ~f:(Tuple2.map2 ~f:(fun tm -> Some tm))
+                in
+                pos, snapshots, result)))
     }
   ;;
 

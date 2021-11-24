@@ -64,13 +64,6 @@ case_scope := Case_scope(binding_aware_pattern; term)
   ; string = "Primitive.String"
   }]
 
-module Term : sig
-  include Nominal.Convertible.Extended_s with type t = Term_syntax.Term.t
-
-  val parse_concrete : t Lvca_parsing.t
-  val pp_concrete : t Fmt.t
-end
-
 module Value_syntax : [%lvca.abstract_syntax_module_sig
 {|
 ty : *
@@ -93,6 +86,21 @@ neutral :=
   ; string = "Primitive.String"
   }]
 
+module Value : sig
+  include Nominal.Convertible.Extended_s with type t = Value_syntax.Value.t
+
+  val of_nominal' : Nominal.Term.t -> t
+end
+
+module Term : sig
+  include Nominal.Convertible.Extended_s with type t = Term_syntax.Term.t
+
+  val parse_concrete : t Lvca_parsing.t
+  val pp_concrete : t Fmt.t
+  val of_nominal' : Nominal.Term.t -> t
+  val of_value : Value.t -> t
+end
+
 module Parse : sig
   val term : Term_syntax.Term.t Lvca_parsing.t
 end
@@ -110,15 +118,11 @@ end
 
 (** {1 Evaluation} *)
 
-type eval_env = Value_syntax.Value.t String.Map.t
+type eval_env = Value.t String.Map.t
 type eval_error = string * Term_syntax.Term.t
 
-val eval_in_ctx
-  :  eval_env
-  -> Term_syntax.Term.t
-  -> (Value_syntax.Value.t, eval_error) Base.Result.t
-
-val eval : Term_syntax.Term.t -> (Value_syntax.Value.t, eval_error) Base.Result.t
+val eval_in_ctx : eval_env -> Term_syntax.Term.t -> (Value.t, eval_error) Base.Result.t
+val eval : Term_syntax.Term.t -> (Value.t, eval_error) Base.Result.t
 
 (** {1 Checking} *)
 
@@ -173,13 +177,10 @@ val infer : check_env -> Term_syntax.Term.t -> (Type.t, Infer_error.t) Result.t
 val check : check_env -> Term_syntax.Term.t -> Type.t -> Check_error.t option
 
 (** {1 Patterns} *)
-val match_pattern
-  :  Binding_aware_pattern.t
-  -> Value_syntax.Value.t
-  -> Value_syntax.Value.t String.Map.t option
+val match_pattern : Binding_aware_pattern.t -> Value.t -> Value.t String.Map.t option
 
 val find_match
-  :  Value_syntax.Value.t
+  :  Value.t
   -> Term_syntax.Case_scope.t list
   -> (Term_syntax.Term.t * eval_env) option
 

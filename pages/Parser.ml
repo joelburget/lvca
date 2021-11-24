@@ -540,7 +540,7 @@ module View = struct
         | Ok tm ->
           (match didnt_consume_msg with
           | Some msg -> mk_err msg, E.never
-          | None -> view_term ~highlight_s tm)
+          | None -> tm |> Lvca_del.Core.Value.to_nominal |> view_term ~highlight_s)
       in
       let trace =
         snapshot |> Model.TraceSnapshot.restrict_snapshot |> view_root_snapshot test_str

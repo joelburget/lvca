@@ -147,7 +147,7 @@ case_scope := Case_scope(binding_aware_pattern; term)
       ; option = "Option_model.Option"
       ; binding_aware_pattern = "Binding_aware_pattern"
       ; empty = "Empty"
-      ; pattern = "Pattern"
+      ; pattern = "Pattern_model.Pattern"
       ; primitive = "Primitive.All"
       ; string = "Primitive.String"
       }]
@@ -293,10 +293,6 @@ module Pp = struct
   ;;
 end
 
-module Value = struct
-  include Value_syntax.Value
-end
-
 (*
 module To_nominal = struct
   open Result.Let_syntax
@@ -331,6 +327,17 @@ module Of_nominal = struct
     let patterns = patterns |> List.map ~f:Pattern_model.into |> List_model.of_list in
     Term_syntax.Operator_scope.Operator_scope
       (Provenance.of_here [%here], patterns, term tm)
+  ;;
+
+  let rec value = function
+    | Nominal.Term.Operator (info, name, scopes) ->
+      let scopes = scopes |> List.map ~f:operator_scope |> List_model.of_list in
+      Value_syntax.Value.Operator (info, (info, name), scopes)
+    | Primitive (info, p) -> Primitive (info, (info, p))
+    | Var (info, name) -> Neutral (info, Neutral_var (info, name))
+
+  and operator_scope (Nominal.Scope.Scope (patterns, tm)) =
+    match patterns with [] -> value tm | _ -> failwith "TODO: Of_nominal operator_scope"
   ;;
 end
 
@@ -495,12 +502,43 @@ module Parse = struct
   ;;
 end
 
+module Value = struct
+  include Nominal.Convertible.Extend (Value_syntax.Value)
+
+  let of_nominal' = Of_nominal.value
+end
+
 module Term = struct
   include Nominal.Convertible.Extend (Term_syntax.Term)
 
   let parse_concrete = Parse.term
   let pp_concrete = Pp.term
   let pp_concrete ppf t = pp_concrete ppf t
+  let of_nominal' = Of_nominal.term
+
+  let rec of_value = function
+    | Value_syntax.Value.Primitive (i, p) -> Term_syntax.Term.Primitive (i, p)
+    | Operator (i, name, vals) ->
+      let vals =
+        (* XXX: we allow terms to bind but not values *)
+        List_model.map vals ~f:(fun v ->
+            Term_syntax.Operator_scope.Operator_scope
+              (Provenance.of_here [%here], List_model.of_list [], of_value v))
+      in
+      Operator (Provenance.calculated_here [%here] [ i ], name, vals)
+    | Lambda (i, ty, (binder, v)) ->
+      Lambda (Provenance.calculated_here [%here] [ i ], ty, (binder, of_value v))
+    | Neutral (_, n) -> of_neutral n
+
+  and of_neutral = function
+    | Ap (i, n, v) ->
+      (* XXX: term and value syntax differ on binding one vs many *)
+      Ap
+        ( Provenance.calculated_here [%here] [ i ]
+        , of_neutral n
+        , List_model.of_list [ of_value v ] )
+    | Neutral_var (i, name) -> Term_var (Provenance.calculated_here [%here] [ i ], name)
+  ;;
 end
 
 module Module = struct
@@ -661,8 +699,7 @@ module Primitive_types = struct
 end
 
 let merge_pattern_context
-    :  Value_syntax.Value.t String.Map.t option list
-    -> Value_syntax.Value.t String.Map.t option
+    : Value.t String.Map.t option list -> Value.t String.Map.t option
   =
  fun ctxs ->
   if List.for_all ctxs ~f:Option.is_some

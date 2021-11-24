@@ -15,7 +15,7 @@ edit :=
   | Labeled(edit; string)
   | List(list edit)
 |}
-, { core = "Core.Lang.Term"; string = "Primitive.String"; list = "List_model" }]
+, { core = "Core.Term"; string = "Primitive.String"; list = "List_model" }]
 
 type 'lang t =
   | Atomic of 'lang
@@ -61,7 +61,6 @@ let parse lang_p =
 let%test_module "Parsing" =
   (module struct
     type core = Core.Term.t
-    type nominal = Nominal.Term.t
 
     let parse (str : string) : (core t, string) Result.t =
       Lvca_parsing.(
@@ -75,37 +74,35 @@ let%test_module "Parsing" =
       | Error msg -> print_string msg
    ;;
 
-    let eval_atom : nominal -> core -> (nominal, Core.eval_error) Result.t =
+    let eval_atom : core -> core -> (Core.Value.t, Core.eval_error) Result.t =
      fun tm core ->
       let here = Provenance.of_here [%here] in
-      Core.eval
-        Core.Lang.Term.(Ap (here, core, List_model.of_list [ Nominal (here, tm) ]))
+      Core.eval Core.Term_syntax.Term.(Ap (here, core, List_model.of_list [ tm ]))
    ;;
 
-    (* TODO: don't throw away this information, switch from strings *)
-    let eval_atom' : nominal -> core -> (nominal, string) Result.t =
-     fun tm core -> Result.map_error (eval_atom tm core) ~f:(fun (msg, _tm) -> msg)
-   ;;
-
-    let rec eval : nominal -> core t -> (nominal, string) Result.t =
+    let rec eval : core -> core t -> (Core.Value.t, Core.eval_error) Result.t =
      fun tm edit ->
       match edit with
-      | Atomic core -> eval_atom' tm core
+      | Atomic core -> eval_atom tm core
       | Labeled (edit', _) -> eval tm edit'
-      | List edits -> List.fold_result edits ~init:tm ~f:eval
+      | List edits ->
+        (match Core.eval tm with
+        | Error (msg, tm) -> Error (msg, tm)
+        | Ok init ->
+          List.fold_result edits ~init ~f:(fun v -> eval (Core.Term.of_value v)))
    ;;
 
     let eval_and_print : string -> string -> unit =
      fun tm edit ->
-      let open Result.Let_syntax in
       match
+        let open Result.Let_syntax in
         let%bind edit = parse edit in
-        let%bind tm = Lvca_parsing.parse_string (Nominal.Term.parse' reserved) tm in
-        let%map tm = eval tm edit in
-        Nominal.Term.pp Caml.Format.std_formatter tm
+        let%bind nominal = Lvca_parsing.parse_string (Nominal.Term.parse' reserved) tm in
+        let tm = Core.Term.of_nominal' nominal in
+        eval tm edit |> Result.map_error ~f:(fun (msg, _tm) -> msg)
       with
       | Error msg -> print_string msg
-      | Ok () -> ()
+      | Ok tm -> Core.Value.pp Caml.Format.std_formatter tm
    ;;
 
     let%expect_test _ =

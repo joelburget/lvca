@@ -100,11 +100,11 @@ module Of_omd = struct
    fun f opt -> opt |> Option.map ~f |> Option_model.of_option
  ;;
 
-  let list : ('a -> 'b) -> 'a list -> 'b List_model.List.t =
+  let list : ('a -> 'b) -> 'a list -> 'b List_model.t =
    fun f lst -> lst |> List.map ~f |> List_model.of_list
  ;;
 
-  let attributes : Omd.attributes -> Lang.Attribute.t List_model.List.t = list attribute
+  let attributes : Omd.attributes -> Lang.Attribute.t List_model.t = list attribute
 
   let list_type : Omd.list_type -> Lang.List_type.t = function
     | Ordered (i, c) -> Ordered (here, (here, Int32.of_int_exn i), (here, c))

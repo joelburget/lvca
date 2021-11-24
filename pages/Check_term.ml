@@ -156,7 +156,7 @@ module View = struct
              | _ -> None)
     in
     let info = Provenance.of_here [%here] in
-    let todo_sort = Sort.Ap (info, "term", Nil info) in
+    let todo_sort = Sort.Ap (info, "term", []) in
     let check_result_s =
       model_s
       |> S.map (fun Model.{ language_parsed; term_parsed; _ } ->
