@@ -375,7 +375,12 @@ module Evaluate = struct
 
   let mk_Some v =
     let info = Provenance.calculated_here [%here] [ Core.Value.info v ] in
-    Core.Value_syntax.Value.Operator (info, (info, "Some"), List_model.of_list [ v ])
+    Core.Value_syntax.(
+      Value.Operator
+        ( info
+        , (info, "Some")
+        , List_model.of_list
+            [ Operator_scope.Operator_scope (info, List_model.Nil info, v) ] ))
   ;;
 
   let mk_None =
@@ -496,9 +501,14 @@ module Evaluate = struct
   ;;
 
   let mk_list lst =
+    let open Core.Value_syntax in
     let provs = List.map lst ~f:Core.Value.info in
     let info = Provenance.calculated_here [%here] provs in
-    Core.Value_syntax.Value.Operator (info, (info, "list"), List_model.of_list lst)
+    let lst =
+      List.map lst ~f:(fun v ->
+          Operator_scope.Operator_scope (info, List_model.Nil info, v))
+    in
+    Value.Operator (info, (info, "list"), List_model.of_list lst)
   ;;
 
   let count n_tm parser =

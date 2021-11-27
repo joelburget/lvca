@@ -101,11 +101,10 @@ module Core = struct
       [%expr
         Lvca_del.Core.Term_syntax.Term.Operator
           ([%e provenance ~loc i], [%e Primitive.string ~loc name], [%e scopes])]
-    | Ap (i, tm, tms) ->
-      let tms = tms |> List_model.map ~f:(term ~loc) |> list_model ~loc in
+    | Ap (i, t1, t2) ->
       [%expr
         Lvca_del.Core.Term_syntax.Term.Ap
-          ([%e provenance ~loc i], [%e term ~loc tm], [%e tms])]
+          ([%e provenance ~loc i], [%e term ~loc t1], [%e term ~loc t2])]
     | Case (i, tm, scopes) ->
       let scopes = scopes |> List_model.map ~f:(case_scope ~loc) |> list_model ~loc in
       [%expr

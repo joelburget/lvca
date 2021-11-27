@@ -76,8 +76,7 @@ let%test_module "Parsing" =
 
     let eval_atom : core -> core -> (Core.Value.t, Core.eval_error) Result.t =
      fun tm core ->
-      let here = Provenance.of_here [%here] in
-      Core.eval Core.Term_syntax.Term.(Ap (here, core, List_model.of_list [ tm ]))
+      Core.(eval (Term_syntax.Term.Ap (Provenance.of_here [%here], core, tm)))
    ;;
 
     let rec eval : core -> core t -> (Core.Value.t, Core.eval_error) Result.t =

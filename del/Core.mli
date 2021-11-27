@@ -37,20 +37,20 @@ primitive : *
 string : *
 empty : *
 
-letrec_row := Letrec_row(ty; term)
-
 term :=
   | Primitive(primitive)
   | Operator(string; list operator_scope)
-  | Ap(term; list term)
+  | Ap(term; term)
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
   | Let(term; option ty; term. term)
+  // let rec defines a group (represented as a list but unordered) of definitions at once
   | Let_rec(list letrec_row; (list empty)[term]. term)
   | Subst(term. term; term)
   | Quote(term)
   | Unquote(term)
 
+letrec_row := Letrec_row(ty; term)
 operator_scope := Operator_scope(list pattern; term)
 case_scope := Case_scope(binding_aware_pattern; term)
 |}
@@ -68,20 +68,22 @@ module Value_syntax : [%lvca.abstract_syntax_module_sig
 {|
 ty : *
 list : * -> *
+pattern : *
 primitive : *
 string : *
 
 value :=
   | Primitive(primitive)
-  | Operator(string; list value)
+  | Operator(string; list operator_scope)
   | Lambda(ty; neutral. value)
   | Neutral(neutral)
 
-neutral :=
-  | Ap(neutral; value)  // list?
+neutral := Ap(neutral; value)
+operator_scope := Operator_scope(list pattern; value)
 |}
 , { ty = "Type"
   ; list = "List_model"
+  ; pattern = "Pattern_model.Pattern"
   ; primitive = "Primitive.All"
   ; string = "Primitive.String"
   }]
@@ -99,6 +101,10 @@ module Term : sig
   val pp_concrete : t Fmt.t
   val of_nominal' : Nominal.Term.t -> t
   val of_value : Value.t -> t
+end
+
+module Properties : sig
+  val quote_unquote : Value.t -> Property_result.t
 end
 
 module Parse : sig
