@@ -261,7 +261,7 @@ module Term = struct
             Some
               (Check_failure.err
                  (Fmt.str
-                    "Nominal.check: failed to find operator %s in sort %s: %a"
+                    "Nominal.check:@ failed to find operator %s in sort %s:@;<1 2>@[%a@]"
                     operator_name
                     sort_name
                     Abstract_syntax.Lookup_error.pp
@@ -987,7 +987,8 @@ test := Foo(term[term]. term)
       check_term' "term" "Unit()";
       [%expect
         {|
-      Nominal.check: failed to find operator Unit in sort term
+      Nominal.check: failed to find operator Unit in sort term:
+        operator not found (options: {Alt_lambda, Lambda, Match, Value})
       stack:
       - term: Unit(), sort: term |}]
     ;;

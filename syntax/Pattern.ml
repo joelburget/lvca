@@ -157,7 +157,7 @@ let check lang ~pattern_sort ~var_sort =
           Error
             (Check_failure.err
                (Fmt.str
-                  "Pattern.check: failed to find operator %s in sort %s: %a"
+                  "Pattern.check:@ failed to find operator %s in sort %s:@;<1 2>@[%a@]"
                   op_name
                   sort_name
                   Abstract_syntax.Lookup_error.pp
@@ -514,7 +514,8 @@ test := Foo(term[term]. term)
       print_check_pattern "value" "Foo()";
       [%expect
         {|
-      Pattern.check: failed to find operator Foo in sort value
+      Pattern.check: failed to find operator Foo in sort value:
+        operator not found (options: {List, Lit_int, Lit_str, Unit})
       stack:
       - pattern: Foo(), sort: value |}]
     ;;
