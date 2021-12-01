@@ -2,7 +2,14 @@
  (name lvca_syntax)
  (public_name lvca.syntax)
  (inline_tests)
- (libraries base fmt zarith zarith_stubs_js lvca_util lvca_parsing
-   lvca_provenance)
+ (libraries
+  base
+  fmt
+  zarith
+  zarith_stubs_js
+  lvca_util
+  lvca_parsing
+  lvca_provenance
+  re)
  (preprocess
   (pps ppx_jane)))
