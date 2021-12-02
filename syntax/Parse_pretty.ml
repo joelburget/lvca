@@ -24,6 +24,7 @@ module Sequence_item = struct
       [ (lower_ident >>~ fun range str -> Var (Provenance.of_range range, str))
       ; (string_lit >>~ fun range str -> Literal (Provenance.of_range range, str))
       ]
+    <?> "sequence item"
   ;;
 
   let pp ppf t =
@@ -38,27 +39,32 @@ end
 
 module Syntax = struct
   type t =
-    | Regex of Provenance.t * Re.t
+    | Regex of Provenance.t * Regex.t
     | Sequence of Provenance.t * Sequence_item.t list
 
   let info = function Regex (i, _) | Sequence (i, _) -> i
 
   let parse =
     let open Lvca_parsing in
+    let open C_comment_parser in
     choice
       ~failure_msg:"looking for a regex or sequence"
       [ (many1 Sequence_item.parse
         >>~ fun range items -> Sequence (Provenance.of_range range, items))
-        (* TODO: parse regexes *)
+      ; (char '/' *> of_angstrom Regex.parse
+        <* char '/'
+        >>~ fun range re -> Regex (Provenance.of_range range, re))
       ]
+    <?> "syntax"
   ;;
 
   let pp ppf t =
     let info = info t in
     Provenance.open_stag ppf info;
     (match t with
-    | Regex (_, re) -> Fmt.pf ppf "/%a/" Re.pp re
-    | Sequence (_, sequence_items) -> Fmt.list Sequence_item.pp ppf sequence_items);
+    | Regex (_, re) -> Fmt.pf ppf "/%a/" Regex.pp re
+    | Sequence (_, sequence_items) ->
+      Fmt.(pf ppf "@[%a@]" (list Sequence_item.pp ~sep:sp) sequence_items));
     Provenance.close_stag ppf info
   ;;
 end
@@ -82,6 +88,7 @@ module Operator_syntax = struct
         { info; pattern; syntax })
       (attach_pos' (Pattern.parse reserved_words) <* char '~')
       (attach_pos' Syntax.parse)
+    <?> "operator syntax"
   ;;
 
   let pp ppf { info; pattern; syntax } =
@@ -117,6 +124,7 @@ module Sort_syntax = struct
       (attach_pos' lower_ident)
       (attach_pos' (parens (many (attach_pos' lower_ident)) <* char ':'))
       (attach_pos' (many Operator_syntax.parse))
+    <?> "sort syntax"
   ;;
 
   let pp_name ppf (info, name) =
@@ -143,8 +151,72 @@ end
 
 type t = Sort_syntax.t list
 
-let%test_module _ =
+let parse =
+  let open Lvca_parsing in
+  many Sort_syntax.parse <?> "parse / pretty definition"
+;;
+
+let pp = Fmt.(list Sort_syntax.pp ~sep:cut)
+
+let%test_module "parsing / pretty-printing" =
   (module struct
+    let () = Stdlib.Format.set_tags false
+
+    let%test_module "Sequence_item" =
+      (module struct
+        let parse = Lvca_parsing.parse_string_or_failwith Sequence_item.parse
+        let parse_print str = Fmt.pr "%a" Sequence_item.pp (parse str)
+
+        let%expect_test _ =
+          parse_print "a";
+          [%expect {|a|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print {|"foo"|};
+          [%expect {|"foo"|}]
+        ;;
+      end)
+    ;;
+
+    let%test_module "Syntax" =
+      (module struct
+        let parse = Lvca_parsing.parse_string_or_failwith Syntax.parse
+        let parse_print str = Fmt.pr "%a" Syntax.pp (parse str)
+
+        let%expect_test _ =
+          parse_print {|x "+" y|};
+          [%expect {|x "+" y|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print {|/[a-z][a-zA-Z0-9_]*/|};
+          [%expect {|/[a-z][a-zA-Z0-9_]*/|}]
+        ;;
+      end)
+    ;;
+
+    let%test_module "Operator_syntax" =
+      (module struct
+        let parse = Lvca_parsing.parse_string_or_failwith Operator_syntax.parse
+        let parse_print str = Fmt.pr "%a" Operator_syntax.pp (parse str)
+
+        let%expect_test _ =
+          parse_print {|Add(x; y) ~ x "+" y|};
+          [%expect {|Add(x; y) ~ x "+" y|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print {|x ~ /[a-z][a-zA-Z0-9_]*/|};
+          [%expect {|x ~ /[a-z][a-zA-Z0-9_]*/|}]
+        ;;
+      end)
+    ;;
+
+    (*
+    let parse = Lvca_parsing.parse_string_or_failwith Operator_syntax.parse
+    let parse_print str = Fmt.pr "%a" Operator_syntax.pp (parse str)
+
     let defn =
       {|
 expr(x, y):
@@ -153,5 +225,11 @@ expr(x, y):
   | x         ~ /[a-z][a-zA-Z0-9_]*/
     |}
     ;;
+
+    let%expect_test _ =
+      parse_print defn;
+      [%expect]
+    ;;
+       *)
   end)
 ;;

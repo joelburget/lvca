@@ -390,6 +390,7 @@ let adapt p =
   Angstrom.(p >>= f)
 ;;
 
+let of_angstrom p = adapt (Basic.go p)
 let ( <$> ) f p = p >>| f
 let fail msg = fail msg
 let make1 mk a = a >>~ fun info a -> mk ~info a

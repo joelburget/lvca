@@ -12,6 +12,7 @@ end
 
 type +'a t = 'a Parse_result.t Angstrom.t
 
+val of_angstrom : 'a Angstrom.t -> 'a t
 val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
 val ( >>== ) : 'a t -> ('a Parse_result.t -> 'b t) -> 'b t
 val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
