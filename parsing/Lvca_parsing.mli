@@ -79,6 +79,10 @@ val sep_by1 : _ t -> 'a t -> 'a list t
     ended by [sep]. *)
 val sep_end_by : _ t -> 'a t -> 'a list t
 
+(** [sep_end_by sep p]: Parse one or more occurences of [p], separated and optionally
+    ended by [sep]. *)
+val sep_end_by1 : _ t -> 'a t -> 'a list t
+
 val fail : string -> 'a t
 val whitespace : unit t
 val whitespace1 : unit t

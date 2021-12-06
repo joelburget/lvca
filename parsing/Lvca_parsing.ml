@@ -512,6 +512,12 @@ let sep_end_by s p =
       choice [ seb1; return [] ])
 ;;
 
+let sep_end_by1 s p =
+  p
+  >>= fun x ->
+  choice [ (s >>= fun _ -> sep_end_by s p >>| fun xs -> x :: xs); return [ x ] ]
+;;
+
 module type Junk_parser = sig
   val junk : unit t
   val junk1 : unit t
@@ -797,13 +803,14 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
+      go "";
       go {|"abc"|};
-      [%expect {|{ value = ["abc"]; range = {0,5} }|}]
-    ;;
-
-    let%expect_test _ =
       go {|"abc"; "def"|};
-      [%expect {|{ value = ["abc"; "def"]; range = {0,12} }|}]
+      [%expect
+        {|
+      { value = []; range = _ }
+      { value = ["abc"]; range = {0,5} }
+      { value = ["abc"; "def"]; range = {0,12} }|}]
     ;;
 
     let%expect_test _ =
@@ -816,6 +823,16 @@ let%test_module "Parsing" =
         {|
         { value = ["abc"; "def"]; range = {0,13} }
         { value = ["abc"; "def"]; range = {7,42} }|}]
+    ;;
+
+    let go = parse_print Ws.(whitespace *> sep_end_by1 (char ';') string_lit) pp
+
+    let%expect_test _ =
+      go {|"abc";|};
+      go "";
+      [%expect{|
+        { value = ["abc"]; range = {0,6} }
+        : not enough input |}]
     ;;
 
     let pp ppf = Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") (list ~sep:(any ". ") pp_str)))
