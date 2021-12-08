@@ -24,6 +24,7 @@ module Sequence_item = struct
     | Literal of Provenance.t * string
 
   let info = function Var (i, _) | Literal (i, _) -> i
+  let vars = function Var (_, v) -> [ v ] | Literal _ -> []
 
   let parse =
     let open Lvca_parsing in
@@ -50,6 +51,7 @@ module Operator_concrete_syntax = struct
   type t = Provenance.t * Sequence_item.t list
 
   let info (i, _) = i
+  let vars (_, items) = items |> List.map ~f:Sequence_item.vars |> List.concat
 
   let parse =
     let open Lvca_parsing in
@@ -102,6 +104,8 @@ module Operator_pattern_slot = struct
     ; body_name : string
     }
 
+  let vars { variable_names; body_name; _ } = body_name :: variable_names
+
   let pp ppf { info; variable_names; body_name } =
     Provenance.open_stag ppf info;
     Fmt.(
@@ -128,6 +132,8 @@ module Operator_pattern = struct
     ; name : string
     ; slots : Operator_pattern_slot.t list
     }
+
+  let vars { slots; _ } = slots |> List.map ~f:Operator_pattern_slot.vars |> List.concat
 
   let pp ppf { info; name; slots } =
     Provenance.open_stag ppf info;
@@ -186,11 +192,6 @@ module Operator_syntax_row = struct
       concrete_syntax;
     Provenance.close_stag ppf info
   ;;
-
-  (* Check
-   * - No overlapping variable definitions (on rhs or lhs)
-   * - Variables used 1-1
-   *)
 end
 
 module Operator_syntax = struct
@@ -256,11 +257,11 @@ end
 type ordered_t = Sort_syntax.t list
 type unordered_t = Operator_syntax.t list String.Map.t
 
-let compile unordered =
-  unordered
+let compile ordered =
+  ordered
   |> List.map ~f:(fun Sort_syntax.{ info = _; name = _, name; operators } ->
          name, operators)
-  |> String.Map.of_alist_exn
+  |> String.Map.of_alist
 ;;
 
 let parse =
@@ -269,6 +270,108 @@ let parse =
 ;;
 
 let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
+
+(* Check
+ * [x] No overlapping variable definitions (on rhs or lhs)
+ * [x] Variables used 1-1 (lhs vs rhs)
+ * [x] 1-1 mapping between sorts given an abstract / concrete syntax
+ * [x] every operator in a sort given a concrete syntax
+ * - variable given concrete syntax if allowed
+ *)
+let check sort_defs ordered =
+  let sort = List.sort ~compare:String.compare in
+  let pp_set = Fmt.(list string ~sep:comma) in
+  match compile ordered with
+  | `Duplicate_key k -> Some (Fmt.str "duplicate sort definition for %s" k)
+  | `Ok _compiled ->
+    let operator_syntax_row
+        sort_name
+        Operator_syntax_row.{ info = _; pattern; concrete_syntax }
+      =
+      let lhs_vars = pattern |> Operator_pattern.vars |> sort in
+      let rhs_vars = concrete_syntax |> Operator_concrete_syntax.vars |> sort in
+      match
+        ( List.find_consecutive_duplicate ~equal:String.( = ) lhs_vars
+        , List.find_consecutive_duplicate ~equal:String.( = ) lhs_vars )
+      with
+      | None, None ->
+        if List.equal String.( = ) lhs_vars rhs_vars
+        then None
+        else
+          Some
+            Fmt.(
+              str
+                "LHS and RHS don't bind the same vars ({%a} vs {%a})"
+                pp_set
+                lhs_vars
+                pp_set
+                rhs_vars)
+      | Some (dupe, _), _ ->
+        Some
+          (Fmt.str
+             "Duplicate variable found in abstract pattern for sort %s / operator %s: %s"
+             sort_name
+             pattern.name
+             dupe)
+      | _, Some (dupe, _) ->
+        Some
+          (Fmt.str
+             "Duplicate variable found in concrete pattern for sort %s / operator %s: %s"
+             sort_name
+             pattern.name
+             dupe)
+    in
+    let operator_syntax sort_name = function
+      | Either.First row -> operator_syntax_row sort_name row
+      | Second _ -> None
+      (* TODO *)
+    in
+    let sort_syntax Sort_syntax.{ operators = concrete_ops; name = _, sort_name; _ } =
+      let (Sort_def.Sort_def (_vars, abstract_ops)) = Map.find_exn sort_defs sort_name in
+      let abstract_op_names =
+        abstract_ops
+        |> List.map ~f:(fun (Operator_def.Operator_def (_, name, _)) -> name)
+        |> sort
+      in
+      let concrete_op_names =
+        concrete_ops
+        |> List.filter_map ~f:(function
+               | Either.First Operator_syntax_row.{ pattern = { name; _ }; _ } ->
+                 Some name
+               | Second _ -> None)
+        |> sort
+      in
+      if not (List.equal String.( = ) abstract_op_names concrete_op_names)
+      then
+        Some
+          Fmt.(
+            str
+              "Concrete syntax definition for sort %s doesn't have the same operators \
+               ({%a}) as the abstract syntax ({%a})"
+              sort_name
+              pp_set
+              concrete_op_names
+              pp_set
+              abstract_op_names)
+      else List.find_map concrete_ops ~f:(operator_syntax sort_name)
+    in
+    let abstract_sort_names = sort_defs |> Map.keys |> sort in
+    let concrete_sort_names =
+      ordered |> List.map ~f:(fun Sort_syntax.{ name = _, name; _ } -> name) |> sort
+    in
+    if List.equal String.( = ) abstract_sort_names concrete_sort_names
+    then List.find_map ordered ~f:sort_syntax
+    else
+      Some
+        Fmt.(
+          str
+            "Concrete syntax definition doesn't have the same sorts ({%a}) as abstract \
+             syntax ({%a})"
+            pp_set
+            concrete_sort_names
+            pp_set
+            abstract_sort_names)
+;;
 
 module Pp_term = struct
   let pp_term sorts start_sort ppf tm =
@@ -502,7 +605,12 @@ val:
 
     let%test_module _ =
       (module struct
-        let lang = lang_defn |> parse |> compile
+        let lang =
+          match lang_defn |> parse |> compile with
+          | `Duplicate_key k -> failwith (Fmt.str "Unexpected duplicate key %s" k)
+          | `Ok lang -> lang
+        ;;
+
         let go sort tm = Pp_term.pp_term lang sort Fmt.stdout tm
         let here = Provenance.of_here [%here]
 
