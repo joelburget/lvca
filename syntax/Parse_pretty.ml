@@ -223,20 +223,30 @@ module Sort_syntax = struct
   type t =
     { info : Provenance.t
     ; name : Provenance.t * string
-    ; operators : Operator_syntax.t list
+    ; operators : Operator_syntax_row.t list
+    ; variables : Variable_syntax_row.t option
     }
 
   let parse =
     let open Lvca_parsing in
     let open C_comment_parser in
-    lift2
-      (fun (name_info, name) (ops_info, operators) ->
-        let info = Opt_range.union name_info ops_info |> Provenance.of_range in
-        let name = Provenance.of_range name_info, name in
-        { info; name; operators })
-      (attach_pos' lower_ident <* char ':')
-      (attach_pos' (many (char '|' *> Operator_syntax.parse)))
-    <?> "sort syntax"
+    let p =
+      attach_pos' lower_ident
+      >>= fun (name_info, name) ->
+      char ':'
+      >>= fun _ ->
+      attach_pos' (many (char '|' *> Operator_syntax.parse))
+      >>= fun (ops_info, operators) ->
+      let range = Opt_range.union name_info ops_info in
+      let info = Provenance.of_range range in
+      let name = Provenance.of_range name_info, name in
+      let operators, vars = List.partition_map operators ~f:Fn.id in
+      match vars with
+      | [] -> return ~range { info; name; operators; variables = None }
+      | [ row ] -> return ~range { info; name; operators; variables = Some row }
+      | _ -> fail "Only one variable row is allowed in a sort"
+    in
+    p <?> "sort syntax"
   ;;
 
   let pp_name ppf (info, name) =
@@ -247,8 +257,14 @@ module Sort_syntax = struct
 
   let pp_row ppf = Fmt.pf ppf "| %a" Operator_syntax.pp
 
-  let pp ppf { info; name; operators } =
+  let pp ppf { info; name; operators; variables } =
     let open Fmt in
+    let operators = List.map operators ~f:(fun row -> Either.First row) in
+    let operators =
+      match variables with
+      | None -> operators
+      | Some row -> List.snoc operators (Either.Second row)
+    in
     Provenance.open_stag ppf info;
     pf ppf "@[<v 2>@[<h>%a:@]@;%a@]" pp_name name (list pp_row) operators;
     Provenance.close_stag ppf info
@@ -256,12 +272,14 @@ module Sort_syntax = struct
 end
 
 type ordered_t = Sort_syntax.t list
-type unordered_t = Operator_syntax.t list String.Map.t
+
+type unordered_t =
+  (Operator_syntax_row.t list * Variable_syntax_row.t option) String.Map.t
 
 let compile ordered =
   ordered
-  |> List.map ~f:(fun Sort_syntax.{ info = _; name = _, name; operators } ->
-         name, operators)
+  |> List.map ~f:(fun Sort_syntax.{ info = _; name = _, name; operators; variables } ->
+         name, (operators, variables))
   |> String.Map.of_alist
 ;;
 
@@ -322,11 +340,6 @@ let check sort_defs ordered =
              pattern.name
              dupe)
     in
-    let operator_syntax sort_name = function
-      | Either.First row -> operator_syntax_row sort_name row
-      | Second _ -> None
-      (* TODO *)
-    in
     let sort_syntax Sort_syntax.{ operators = concrete_ops; name = _, sort_name; _ } =
       let (Sort_def.Sort_def (_vars, abstract_ops)) = Map.find_exn sort_defs sort_name in
       let abstract_op_names =
@@ -336,10 +349,7 @@ let check sort_defs ordered =
       in
       let concrete_op_names =
         concrete_ops
-        |> List.filter_map ~f:(function
-               | Either.First Operator_syntax_row.{ pattern = { name; _ }; _ } ->
-                 Some name
-               | Second _ -> None)
+        |> List.map ~f:(function Operator_syntax_row.{ pattern = { name; _ }; _ } -> name)
         |> sort
       in
       if not (List.equal String.( = ) abstract_op_names concrete_op_names)
@@ -354,7 +364,7 @@ let check sort_defs ordered =
               concrete_op_names
               pp_set
               abstract_op_names)
-      else List.find_map concrete_ops ~f:(operator_syntax sort_name)
+      else List.find_map concrete_ops ~f:(operator_syntax_row sort_name)
     in
     let abstract_sort_names = sort_defs |> Map.keys |> sort in
     let concrete_sort_names =
@@ -376,11 +386,6 @@ let check sort_defs ordered =
 
 module Pp_term = struct
   let pp_term sorts start_sort ppf tm =
-    let var_row tm =
-      match tm with
-      | Nominal.Term.Var (_, var_name) -> Ok (Some (Fmt.string ppf var_name))
-      | _ -> Error "TODO"
-    in
     let rec operator_row
         Operator_syntax_row.
           { info = _
@@ -390,7 +395,8 @@ module Pp_term = struct
         tm
       =
       match tm with
-      | Nominal.Term.Var _ -> Error "TODO"
+      | Nominal.Term.Var _ ->
+        Lvca_util.invariant_violation ~here:[%here] "operator_row doesn't handle vars"
       | Primitive prim -> Ok (Some (Primitive.All.pp ppf prim))
       | Operator (_, op_name, scopes) ->
         if String.(name <> op_name)
@@ -427,25 +433,26 @@ module Pp_term = struct
             Ok (Some ())
           | Unequal_lengths -> Error "TODO")
     and go tm =
-      let operator_syntaxes : Operator_syntax.t list =
-        match Map.find sorts start_sort with
-        | Some x -> x
+      match tm with
+      | Nominal.Term.Var (_, var_name) -> Fmt.string ppf var_name
+      | _ ->
+        let operator_syntaxes : Operator_syntax_row.t list =
+          match Map.find sorts start_sort with
+          | Some (operator_syntax_rows, _) -> operator_syntax_rows
+          | None ->
+            Lvca_util.invariant_violation
+              ~here:[%here]
+              (Fmt.str "didn't find expected operator %S" start_sort)
+        in
+        (match
+           List.find_map operator_syntaxes ~f:(fun row ->
+               match operator_row row tm with Error _ -> None | Ok v -> v)
+         with
         | None ->
           Lvca_util.invariant_violation
             ~here:[%here]
-            (Fmt.str "didn't find expected operator %S" start_sort)
-      in
-      match
-        List.find_map operator_syntaxes ~f:(function
-            | Either.First row ->
-              (match operator_row row tm with Error _ -> None | Ok v -> v)
-            | Second _row -> (match var_row tm with Error _ -> None | Ok v -> v))
-      with
-      | None ->
-        Lvca_util.invariant_violation
-          ~here:[%here]
-          (Fmt.str "Didn't find matching operator syntax for `%a`" Nominal.Term.pp tm)
-      | Some () -> ()
+            (Fmt.str "Didn't find matching operator syntax for `%a`" Nominal.Term.pp tm)
+        | Some () -> ())
     in
     go tm
   ;;
