@@ -5,10 +5,11 @@
  * - how to define boxes?
  *
  * TODO:
- * - actually parse / pretty-print with a term
- * - check validity
- * - multiple concrete syntaxes mapping to the same abstract
- * - operator ranking
+ * [ ] actually parse / pretty-print with a term
+ * [x] check validity
+ * [ ] multiple concrete syntaxes mapping to the same abstract
+ * [ ] operator ranking
+ * [ ] whitespace
  *)
 open Base
 open Lvca_provenance
@@ -276,7 +277,7 @@ let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
  * [x] Variables used 1-1 (lhs vs rhs)
  * [x] 1-1 mapping between sorts given an abstract / concrete syntax
  * [x] every operator in a sort given a concrete syntax
- * - variable given concrete syntax if allowed
+ * [ ] variable given concrete syntax if allowed
  *)
 let check sort_defs ordered =
   let sort = List.sort ~compare:String.compare in
@@ -375,6 +376,11 @@ let check sort_defs ordered =
 
 module Pp_term = struct
   let pp_term sorts start_sort ppf tm =
+    let var_row tm =
+      match tm with
+      | Nominal.Term.Var (_, var_name) -> Ok (Some (Fmt.string ppf var_name))
+      | _ -> Error "TODO"
+    in
     let rec operator_row
         Operator_syntax_row.
           { info = _
@@ -433,7 +439,7 @@ module Pp_term = struct
         List.find_map operator_syntaxes ~f:(function
             | Either.First row ->
               (match operator_row row tm with Error _ -> None | Ok v -> v)
-            | Second _ -> None)
+            | Second _row -> (match var_row tm with Error _ -> None | Ok v -> v))
       with
       | None ->
         Lvca_util.invariant_violation
@@ -625,6 +631,12 @@ val:
           in
           go "expr" tm;
           [%expect {|1 + 1|}]
+        ;;
+
+        let%expect_test _ =
+          let tm = Nominal.Term.Var (here, "z") in
+          go "expr" tm;
+          [%expect {|z|}]
         ;;
 
         let%expect_test _ =
