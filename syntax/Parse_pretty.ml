@@ -427,7 +427,7 @@ module Pp_term = struct
             List.iter sequence_items ~f:(function
                 | Var (_, name) ->
                   (match Map.find_exn var_mapping name with
-                  | First _pat -> Fmt.pf ppf "TODO: pp_term pat"
+                  | First pat -> pat |> Nominal.Term.of_pattern |> go
                   | Second tm -> go tm)
                 | Literal (_, str) -> Fmt.string ppf str);
             Ok (Some ())
@@ -594,6 +594,7 @@ let%test_module "parsing / pretty-printing" =
       {|expr:
   | Add(x; y) ~ x "+" y
   | Mul(x; y) ~ x "*" y
+  | Fun(v. e) ~ "fun" v "->" e
   | x         ~ /[a-z][a-zA-Z0-9_]*/
 
 val:
@@ -609,6 +610,7 @@ val:
         expr:
           | Add(x; y) ~ x "+" y
           | Mul(x; y) ~ x "*" y
+          | Fun(v. e) ~ "fun" v "->" e
           | x ~ /[a-z][a-zA-Z0-9_]*/
 
         val:
@@ -638,6 +640,15 @@ val:
           in
           go "expr" tm;
           [%expect {|1 + 1|}]
+        ;;
+
+        let%expect_test _ =
+          let tm =
+            Nominal.Term.Operator
+              (here, "Fun", [ Scope ([ Var (here, "x") ], Var (here, "x")) ])
+          in
+          go "expr" tm;
+          [%expect {|fun x -> x|}]
         ;;
 
         let%expect_test _ =
