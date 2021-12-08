@@ -9,7 +9,7 @@
  * [x] check validity
  * [ ] multiple concrete syntaxes mapping to the same abstract
  * [ ] operator ranking
- * [ ] whitespace
+ * [x] whitespace
  *)
 open Base
 open Lvca_provenance
@@ -23,16 +23,18 @@ module Sequence_item = struct
   type t =
     | Var of Provenance.t * string
     | Literal of Provenance.t * string
+    | Space of Provenance.t
 
-  let info = function Var (i, _) | Literal (i, _) -> i
-  let vars = function Var (_, v) -> [ v ] | Literal _ -> []
+  let info = function Var (i, _) | Literal (i, _) | Space i -> i
+  let vars = function Var (_, v) -> [ v ] | Literal _ | Space _ -> []
 
   let parse =
     let open Lvca_parsing in
     let open C_comment_parser in
     choice
       ~failure_msg:"looking for a variable or literal"
-      [ (lower_ident >>~ fun range str -> Var (Provenance.of_range range, str))
+      [ (char '_' >>~ fun range _ -> Space (Provenance.of_range range))
+      ; (lower_ident >>~ fun range str -> Var (Provenance.of_range range, str))
       ; (string_lit >>~ fun range str -> Literal (Provenance.of_range range, str))
       ]
     <?> "sequence item"
@@ -43,7 +45,8 @@ module Sequence_item = struct
     Provenance.open_stag ppf info;
     (match t with
     | Var (_, name) -> Fmt.string ppf name
-    | Literal (_, str) -> Fmt.pf ppf "%S" str);
+    | Literal (_, str) -> Fmt.pf ppf "%S" str
+    | Space _ -> Fmt.pf ppf "_");
     Provenance.close_stag ppf info
   ;;
 end
@@ -424,12 +427,15 @@ module Pp_term = struct
               |> Result.all
             in
             let var_mapping = String.Map.unions_left_biased var_mappings in
+            Stdlib.Format.pp_open_hvbox ppf 2;
             List.iter sequence_items ~f:(function
                 | Var (_, name) ->
                   (match Map.find_exn var_mapping name with
                   | First pat -> pat |> Nominal.Term.of_pattern |> go
                   | Second tm -> go tm)
-                | Literal (_, str) -> Fmt.string ppf str);
+                | Literal (_, str) -> Fmt.string ppf str
+                | Space _ -> Fmt.sp ppf ());
+            Stdlib.Format.pp_close_box ppf ();
             Ok (Some ())
           | Unequal_lengths -> Error "TODO")
     and go tm =
@@ -592,9 +598,9 @@ let%test_module "parsing / pretty-printing" =
 
     let lang_defn =
       {|expr:
-  | Add(x; y) ~ x "+" y
-  | Mul(x; y) ~ x "*" y
-  | Fun(v. e) ~ "fun" v "->" e
+  | Add(x; y) ~ x _ "+" _ y
+  | Mul(x; y) ~ x _ "*" _ y
+  | Fun(v. e) ~ "fun" _ v _ "->" _ e
   | x         ~ /[a-z][a-zA-Z0-9_]*/
 
 val:
@@ -608,9 +614,9 @@ val:
       [%expect
         {|
         expr:
-          | Add(x; y) ~ x "+" y
-          | Mul(x; y) ~ x "*" y
-          | Fun(v. e) ~ "fun" v "->" e
+          | Add(x; y) ~ x _ "+" _ y
+          | Mul(x; y) ~ x _ "*" _ y
+          | Fun(v. e) ~ "fun" _ v _ "->" _ e
           | x ~ /[a-z][a-zA-Z0-9_]*/
 
         val:
