@@ -20,21 +20,59 @@ let reserved_words = Lvca_util.String.Set.empty
 let lower_ident = Lvca_parsing.C_comment_parser.lower_identifier reserved_words
 let upper_ident = Lvca_parsing.C_comment_parser.upper_identifier reserved_words
 
+module Fixity = struct
+  type t =
+    | Left
+    | None
+    | Right
+end
+
+module Operator_fixity = struct
+  type t = Provenance.t * Fixity.t * string
+
+  let info (i, _, _) = i
+
+  let parse =
+    let open Lvca_parsing in
+    let open C_comment_parser in
+    option' (string "()")
+    >>= fun lparens ->
+    attach_pos' string_lit
+    >>= fun (range, lit) ->
+    option' (string "()")
+    >>= fun rparens ->
+    let info = Provenance.of_range range in
+    match lparens, rparens with
+    | None, None -> return (info, Fixity.None, lit)
+    | Some _, None -> return (info, Fixity.Left, lit)
+    | None, Some _ -> return (info, Fixity.Right, lit)
+    | Some _, Some _ -> fail "operator can't be both left and right-infix"
+  ;;
+
+  let pp ppf (info, fixity, lit) =
+    Provenance.open_stag ppf info;
+    (match fixity with
+    | Fixity.Left -> Fmt.pf ppf "()%S" lit
+    | None -> Fmt.pf ppf "%S" lit
+    | Right -> Fmt.pf ppf "%S()" lit);
+    Provenance.close_stag ppf info
+  ;;
+end
+
 module Operator_ranking = struct
-  type t = Provenance.t * string list
+  type t = Provenance.t * Operator_fixity.t list
 
   let info (i, _) = i
 
   let parse =
     let open Lvca_parsing in
-    let open C_comment_parser in
-    sep_by1 (char '>') string_lit >>~ fun range lits -> Provenance.of_range range, lits
+    sep_by1 (C_comment_parser.char '>') Operator_fixity.parse
+    >>~ fun range lits -> Provenance.of_range range, lits
   ;;
 
   let pp ppf (info, lits) =
-    let string_lit ppf = Fmt.pf ppf "%S" in
     Provenance.open_stag ppf info;
-    Fmt.(hovbox (list string_lit ~sep:(Fmt.any "@ >@ "))) ppf lits;
+    Fmt.(hovbox (list Operator_fixity.pp ~sep:(Fmt.any "@ >@ "))) ppf lits;
     Provenance.close_stag ppf info
   ;;
 end
@@ -658,14 +696,36 @@ let%test_module "parsing / pretty-printing" =
   (module struct
     let () = Stdlib.Format.set_tags false
 
+    let%test_module "Operator_fixity" =
+      (module struct
+        let parse = Lvca_parsing.parse_string_or_failwith Operator_fixity.parse
+        let parse_print = parse >> Operator_fixity.pp Fmt.stdout
+
+        let%expect_test _ =
+          parse_print {|()"+"|};
+          [%expect {|()"+"|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print {|"+"|};
+          [%expect {|"+"|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print {|"+"()|};
+          [%expect {|"+"()|}]
+        ;;
+      end)
+    ;;
+
     let%test_module "Operator_ranking" =
       (module struct
         let parse = Lvca_parsing.parse_string_or_failwith Operator_ranking.parse
         let parse_print = parse >> Operator_ranking.pp Fmt.stdout
 
         let%expect_test _ =
-          parse_print {|"*" > "+"|};
-          [%expect {|"*" > "+"|}]
+          parse_print {|()"*" > ()"+"|};
+          [%expect {|()"*" > ()"+"|}]
         ;;
       end)
     ;;
@@ -779,7 +839,7 @@ let%test_module "parsing / pretty-printing" =
   | Add(x; y) ~ x "+" y
   | Mul(x; y) ~ x "*" y
   | x         ~ /[a-z][a-zA-Z0-9_]*/
-  \ "*" > "+"
+  \ ()"*" > ()"+"
           |}
         ;;
 
@@ -791,7 +851,7 @@ let%test_module "parsing / pretty-printing" =
               | Add(x; y) ~ x "+" y
               | Mul(x; y) ~ x "*" y
               | x ~ /[a-z][a-zA-Z0-9_]*/
-              \ "*" > "+"
+              \ ()"*" > ()"+"
               |}]
         ;;
       end)
@@ -818,7 +878,7 @@ val := True() | False()
   | Fun(v. e) ~ "fun" _ v _ "->" _ e
   | Val(v)    ~ v
   | x         ~ /[a-z][a-zA-Z0-9_]*/
-  \ "*" > "+"
+  \ ()"*" > ()"+"
 
 val:
   | True()  ~ "true"
@@ -837,7 +897,7 @@ val:
           | Fun(v. e) ~ "fun" _ v _ "->" _ e
           | Val(v) ~ v
           | x ~ /[a-z][a-zA-Z0-9_]*/
-          \ "*" > "+"
+          \ ()"*" > ()"+"
 
         val:
           | True() ~ "true"
