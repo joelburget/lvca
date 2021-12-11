@@ -295,7 +295,7 @@ let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
  * [x] Variables used 1-1 (lhs vs rhs)
  * [x] 1-1 mapping between sorts given an abstract / concrete syntax
  * [x] every operator in a sort given a concrete syntax
- * [ ] variable given concrete syntax if allowed
+ * [x] variable given concrete syntax iff allowed
  * [ ] space hygiene:
  *   - no repeated spaces
  *   - no leading / trailing spaces
@@ -342,31 +342,41 @@ let check sort_defs ordered =
              pattern.name
              dupe)
     in
-    let sort_syntax Sort_syntax.{ operators = concrete_ops; name = _, sort_name; _ } =
-      let (Sort_def.Sort_def (_vars, abstract_ops)) = Map.find_exn sort_defs sort_name in
-      let abstract_op_names =
-        abstract_ops
-        |> List.map ~f:(fun (Operator_def.Operator_def (_, name, _)) -> name)
-        |> sort
+    let sort_syntax
+        Sort_syntax.{ info = _; operators = concrete_ops; name = _, sort_name; variables }
+      =
+      let (Sort_def.Sort_def (_vars, abstract_ops, var_names)) =
+        Map.find_exn sort_defs sort_name
       in
-      let concrete_op_names =
-        concrete_ops
-        |> List.map ~f:(function Operator_syntax_row.{ pattern = { name; _ }; _ } -> name)
-        |> sort
-      in
-      if not (List.equal String.( = ) abstract_op_names concrete_op_names)
-      then
-        Some
-          Fmt.(
-            str
-              "Concrete syntax definition for sort %s doesn't have the same operators \
-               (%a) as the abstract syntax (%a)"
-              sort_name
-              pp_set
-              concrete_op_names
-              pp_set
-              abstract_op_names)
-      else List.find_map concrete_ops ~f:(operator_syntax_row sort_name)
+      match variables, var_names with
+      | None, _ :: _ ->
+        Some "Abstract syntax defines variables but concrete syntax doesn't"
+      | Some _, [] -> Some "Concrete syntax defines variables but abstract syntax doesn't"
+      | _ ->
+        let abstract_op_names =
+          abstract_ops
+          |> List.map ~f:(fun (Operator_def.Operator_def (_, name, _)) -> name)
+          |> sort
+        in
+        let concrete_op_names =
+          concrete_ops
+          |> List.map ~f:(function Operator_syntax_row.{ pattern = { name; _ }; _ } ->
+                 name)
+          |> sort
+        in
+        if not (List.equal String.( = ) abstract_op_names concrete_op_names)
+        then
+          Some
+            Fmt.(
+              str
+                "Concrete syntax definition for sort %s doesn't have the same operators \
+                 (%a) as the abstract syntax (%a)"
+                sort_name
+                pp_set
+                concrete_op_names
+                pp_set
+                abstract_op_names)
+        else List.find_map concrete_ops ~f:(operator_syntax_row sort_name)
     in
     let abstract_sort_names = sort_defs |> Map.keys |> sort in
     let concrete_sort_names =
@@ -547,7 +557,7 @@ module Parse_term = struct
       sort_name
       self
       dispatch
-      (Sort_def.Sort_def (_, operator_defs))
+      (Sort_def.Sort_def (_, operator_defs, _vars))
       (operators, variables)
     =
     let operator_names =

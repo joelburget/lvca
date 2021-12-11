@@ -54,7 +54,7 @@ end
 
 let lookup_operator { externals = _; sort_defs } sort_name op_name =
   let open Result.Let_syntax in
-  let%bind (Sort_def (vars, operator_defs)) =
+  let%bind (Sort_def (vars, operator_defs, _vars)) =
     match
       List.find_map sort_defs ~f:(fun (name, def) ->
           if String.(name = sort_name) then Some def else None)
@@ -96,7 +96,7 @@ let find_operator { externals = _; sort_defs } op_name =
   let candidates =
     sort_defs
     |> List.map ~f:(fun (sort_name, sort_def) ->
-           let (Sort_def.Sort_def (_, operator_defs)) = sort_def in
+           let (Sort_def.Sort_def (_, operator_defs, _vars)) = sort_def in
            List.filter_map
              operator_defs
              ~f:(fun (Operator_def.Operator_def (_, op_def_name, _) as op_def) ->
@@ -174,7 +174,8 @@ let%test_module _ =
           ( []
           , [ Operator_def.mk "Add" (Arity.mk [ tm_v; tm_v ])
             ; Operator_def.mk "Lit" (Arity.mk [ integer_v ])
-            ] ) )
+            ]
+          , [] ) )
     ;;
 
     let ( = ) = equivalent
@@ -199,7 +200,7 @@ empty :=
       in
       let expected =
         { externals = [ "integer", Kind.mk 1 ]
-        ; sort_defs = [ tm_def; "empty", Sort_def ([], []) ]
+        ; sort_defs = [ tm_def; "empty", Sort_def ([], [], []) ]
         }
       in
       assert (parsed = expected)
@@ -276,7 +277,8 @@ let%test_module "Parser" =
                         ( Provenance.of_range (Opt_range.mk 17 24)
                         , "False"
                         , Arity (Provenance.of_range (Opt_range.mk 22 24), []) )
-                    ] ) )
+                    ]
+                  , [] ) )
             ]
         }
     ;;
@@ -307,7 +309,8 @@ let%test_module "Parser" =
               ( []
               , [ Operator_def.mk "Bool" (Arity.mk [])
                 ; Operator_def.mk "Arr" (Arity.mk [ ty_valence; ty_valence ])
-                ] ) )
+                ]
+              , [] ) )
         ; ( "tm"
           , Sort_def
               ( []
@@ -315,7 +318,8 @@ let%test_module "Parser" =
                 ; Operator_def.mk
                     "Lam"
                     (Arity.mk [ Valence ([ Sort_binding tm_sort ], tm_sort) ])
-                ] ) )
+                ]
+              , [] ) )
         ; ( "foo"
           , Sort_def
               ( [ "x", Some (Kind.mk 1) ]
@@ -329,7 +333,8 @@ let%test_module "Parser" =
                        ; Valence ([ Sort_binding x_sort ], x_sort)
                        ])
                 ; Operator_def.mk "Bar" (Arity.mk [ Valence ([], x_sort) ])
-                ] ) )
+                ]
+              , [] ) )
         ]
       in
       { externals; sort_defs }
