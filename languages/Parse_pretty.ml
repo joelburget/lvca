@@ -36,6 +36,15 @@ expr:
 
 type:
   | int() <-> "int"
+
+precedence:
+  a "+" b "+" c ->
+    (a "+" b) "+" c
+    add(add(a; b); c)
+
+  a + b + c -> (a + b) + c
+
+  + + -> (+) +
   |}
 ;;
 

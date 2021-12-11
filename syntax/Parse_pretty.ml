@@ -15,6 +15,7 @@ open Base
 open Lvca_provenance
 open Lvca_util
 
+let pp_set = Fmt.(braces (list string ~sep:comma))
 let reserved_words = Lvca_util.String.Set.empty
 let lower_ident = Lvca_parsing.C_comment_parser.lower_identifier reserved_words
 let upper_ident = Lvca_parsing.C_comment_parser.upper_identifier reserved_words
@@ -286,11 +287,7 @@ let compile ordered =
   |> String.Map.of_alist
 ;;
 
-let parse =
-  let open Lvca_parsing in
-  many1 Sort_syntax.parse <?> "parse / pretty definition"
-;;
-
+let parse = Lvca_parsing.(many1 Sort_syntax.parse <?> "parse / pretty definition")
 let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
 
 (* Check
@@ -299,10 +296,12 @@ let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
  * [x] 1-1 mapping between sorts given an abstract / concrete syntax
  * [x] every operator in a sort given a concrete syntax
  * [ ] variable given concrete syntax if allowed
+ * [ ] space hygiene:
+ *   - no repeated spaces
+ *   - no leading / trailing spaces
  *)
 let check sort_defs ordered =
   let sort = List.sort ~compare:String.compare in
-  let pp_set = Fmt.(list string ~sep:comma) in
   match compile ordered with
   | `Duplicate_key k -> Some (Fmt.str "duplicate sort definition for %s" k)
   | `Ok _compiled ->
@@ -323,7 +322,7 @@ let check sort_defs ordered =
           Some
             Fmt.(
               str
-                "LHS and RHS don't bind the same vars ({%a} vs {%a})"
+                "LHS and RHS don't bind the same vars (%a vs %a)"
                 pp_set
                 lhs_vars
                 pp_set
@@ -361,7 +360,7 @@ let check sort_defs ordered =
           Fmt.(
             str
               "Concrete syntax definition for sort %s doesn't have the same operators \
-               ({%a}) as the abstract syntax ({%a})"
+               (%a) as the abstract syntax (%a)"
               sort_name
               pp_set
               concrete_op_names
@@ -379,8 +378,8 @@ let check sort_defs ordered =
       Some
         Fmt.(
           str
-            "Concrete syntax definition doesn't have the same sorts ({%a}) as abstract \
-             syntax ({%a})"
+            "Concrete syntax definition doesn't have the same sorts (%a) as abstract \
+             syntax (%a)"
             pp_set
             concrete_sort_names
             pp_set
@@ -464,6 +463,144 @@ module Pp_term = struct
   ;;
 end
 
+module Parse_term = struct
+  open Lvca_parsing
+
+  let build_slot env Operator_pattern_slot.{ info = _; variable_names; body_name } =
+    let pats =
+      List.map variable_names ~f:(fun name ->
+          match Hashtbl.find_exn env name with
+          | Nominal.Term.Var (info, name) -> Pattern.Var (info, name)
+          | _ -> failwith "TODO build_slot non-var")
+    in
+    Nominal.Scope.Scope (pats, Hashtbl.find_exn env body_name)
+  ;;
+
+  let build_operator ?input rng env Operator_pattern.{ info = _; name; slots } =
+    Nominal.Term.Operator
+      (Provenance.of_range ?input rng, name, List.map slots ~f:(build_slot env))
+  ;;
+
+  let sequence_items ?input var_parsers pattern =
+    let open C_comment_parser in
+    let env = Hashtbl.create (module String) in
+    let rec go rng = function
+      | [] -> return (build_operator ?input rng env pattern)
+      | item :: items ->
+        (match item with
+        | Sequence_item.Space _ -> go rng items
+        | Literal (_, str) ->
+          attach_pos' (string str)
+          >>= fun (rng', _) -> go (Opt_range.union rng rng') items
+        | Var (_, name) ->
+          attach_pos' (Map.find_exn var_parsers name)
+          >>= fun (rng', data) ->
+          Hashtbl.set env ~key:name ~data;
+          go (Opt_range.union rng rng') items)
+    in
+    go None
+  ;;
+
+  type dispatch = { map : (dispatch -> Nominal.Term.t Lvca_parsing.t) String.Map.t }
+
+  let sort
+      sort_name
+      (self : Nominal.Term.t Lvca_parsing.t)
+      (dispatch : dispatch)
+      (sort : Sort.t)
+    =
+    let sort_name', _ = Sort.split sort in
+    if String.(sort_name' = sort_name)
+    then self
+    else Map.find_exn dispatch.map sort_name' dispatch
+  ;;
+
+  let operator_syntax_row
+      ?input
+      sort_name
+      self
+      dispatch
+      (Operator_def.Operator_def (_, name, Arity (_, valences)))
+      Operator_syntax_row.{ info = _; pattern; concrete_syntax = _, items }
+    =
+    let sort = sort sort_name self dispatch in
+    let var_parsers =
+      List.zip_exn pattern.slots valences
+      |> List.bind
+           ~f:(fun
+                ( Operator_pattern_slot.{ info = _; variable_names; body_name }
+                , Valence (sort_slots, sort') )
+              ->
+             let slot_parsers : Nominal.Term.t t list =
+               List.map sort_slots ~f:(function
+                   | Sort_binding s -> sort s
+                   | Sort_pattern _ -> failwith "TODO: operator_syntax_row Sort_pattern")
+             in
+             (body_name, sort sort') :: List.zip_exn variable_names slot_parsers)
+      |> String.Map.of_alist_exn
+    in
+    sequence_items ?input var_parsers pattern items <?> name
+  ;;
+
+  let sort_syntax
+      ?input
+      sort_name
+      self
+      dispatch
+      (Sort_def.Sort_def (_, operator_defs))
+      (operators, variables)
+    =
+    let operator_names =
+      List.map operators ~f:(fun Operator_syntax_row.{ pattern = { name; _ }; _ } -> name)
+    in
+    let failure_msg =
+      match variables with
+      | None ->
+        Fmt.str "looking for an operator from `%s` (%a)" sort_name pp_set operator_names
+      | Some _ ->
+        Fmt.str
+          "looking for an operator from `%s` (%a) or a variable"
+          sort_name
+          pp_set
+          operator_names
+    in
+    let choices =
+      List.zip_exn operator_defs operators
+      |> List.map ~f:(fun (op_def, op) ->
+             operator_syntax_row ?input sort_name self dispatch op_def op)
+    in
+    let choices =
+      match variables with
+      | None -> choices
+      | Some _ ->
+        let var_parser =
+          lower_ident >>~ fun pos name -> Nominal.Term.Var (Provenance.of_range pos, name)
+        in
+        List.snoc choices var_parser
+    in
+    (* Avoid going through `choice` if possible for better error messages *)
+    let p =
+      match choices with
+      | [] -> fail (Fmt.str "no `%s` operators" sort_name)
+      | [ p ] -> p
+      | _ -> choice ~failure_msg choices
+    in
+    p <?> sort_name
+  ;;
+
+  (* TODO: Take input later -- shouldn't rebuild parser when it changes *)
+  let lang ?input abstract_syntax concrete_syntax =
+    let map =
+      Map.mapi abstract_syntax ~f:(fun ~key:sort_name ~data:abstract_sort dispatch ->
+          fix
+          @@ fun self ->
+          let concrete_sort = Map.find_exn concrete_syntax sort_name in
+          sort_syntax ?input sort_name self dispatch abstract_sort concrete_sort)
+    in
+    { map }
+  ;;
+end
+
 let%test_module "parsing / pretty-printing" =
   (module struct
     let () = Stdlib.Format.set_tags false
@@ -471,7 +608,7 @@ let%test_module "parsing / pretty-printing" =
     let%test_module "Sequence_item" =
       (module struct
         let parse = Lvca_parsing.parse_string_or_failwith Sequence_item.parse
-        let parse_print str = Fmt.pr "%a" Sequence_item.pp (parse str)
+        let parse_print = parse >> Sequence_item.pp Fmt.stdout
 
         let%expect_test _ =
           parse_print "a";
@@ -488,7 +625,7 @@ let%test_module "parsing / pretty-printing" =
     let%test_module "Operator_concrete_syntax" =
       (module struct
         let parse = Lvca_parsing.parse_string_or_failwith Operator_concrete_syntax.parse
-        let parse_print str = Fmt.pr "%a" Operator_concrete_syntax.pp (parse str)
+        let parse_print = parse >> Operator_concrete_syntax.pp Fmt.stdout
 
         let%expect_test _ =
           parse_print {|x "+" y|};
@@ -500,7 +637,7 @@ let%test_module "parsing / pretty-printing" =
     let%test_module "Operator_pattern_slot" =
       (module struct
         let parse = Lvca_parsing.parse_string_or_failwith Operator_pattern_slot.parse
-        let parse_print str = Fmt.pr "%a" Operator_pattern_slot.pp (parse str)
+        let parse_print = parse >> Operator_pattern_slot.pp Fmt.stdout
 
         let%expect_test _ =
           parse_print {|x|};
@@ -517,7 +654,7 @@ let%test_module "parsing / pretty-printing" =
     let%test_module "Operator_pattern" =
       (module struct
         let parse = Lvca_parsing.parse_string_or_failwith Operator_pattern.parse
-        let parse_print str = Fmt.pr "%a" Operator_pattern.pp (parse str)
+        let parse_print = parse >> Operator_pattern.pp Fmt.stdout
 
         let%expect_test _ =
           parse_print {|Add(x; y)|};
@@ -529,7 +666,7 @@ let%test_module "parsing / pretty-printing" =
     let%test_module "Operator_syntax_row" =
       (module struct
         let parse = Lvca_parsing.parse_string_or_failwith Operator_syntax_row.parse
-        let parse_print str = Fmt.pr "%a" Operator_syntax_row.pp (parse str)
+        let parse_print = parse >> Operator_syntax_row.pp Fmt.stdout
 
         let%expect_test _ =
           parse_print {|Add(x; y) ~ x "+" y|};
@@ -541,7 +678,7 @@ let%test_module "parsing / pretty-printing" =
     let%test_module "Variable_syntax_row" =
       (module struct
         let parse = Lvca_parsing.parse_string_or_failwith Variable_syntax_row.parse
-        let parse_print str = Fmt.pr "%a" Variable_syntax_row.pp (parse str)
+        let parse_print = parse >> Variable_syntax_row.pp Fmt.stdout
 
         let%expect_test _ =
           parse_print {|x ~ /[a-z][a-zA-Z0-9_]*/|};
@@ -553,7 +690,7 @@ let%test_module "parsing / pretty-printing" =
     let%test_module "Operator_syntax" =
       (module struct
         let parse = Lvca_parsing.parse_string_or_failwith Operator_syntax.parse
-        let parse_print str = Fmt.pr "%a" Operator_syntax.pp (parse str)
+        let parse_print = parse >> Operator_syntax.pp Fmt.stdout
 
         let%expect_test _ =
           parse_print {|Add(x; y) ~ x "+" y|};
@@ -570,7 +707,7 @@ let%test_module "parsing / pretty-printing" =
     let%test_module "Sort_syntax" =
       (module struct
         let parse = Lvca_parsing.parse_string_or_failwith Sort_syntax.parse
-        let parse_print str = Fmt.pr "%a" Sort_syntax.pp (parse str)
+        let parse_print = parse >> Sort_syntax.pp Fmt.stdout
 
         let expr_defn =
           {|expr:
@@ -594,45 +731,61 @@ let%test_module "parsing / pretty-printing" =
     ;;
 
     let parse = Lvca_parsing.parse_string_or_failwith parse
-    let parse_print str = Fmt.pr "%a" pp (parse str)
+    let parse_print str = pp Fmt.stdout (parse str)
 
-    let lang_defn =
+    let lang_abstract_defn =
+      {|expr :=
+  | Add(expr; expr)
+  | Mul(expr; expr)
+  | Fun(val. expr)
+  | Val(val)
+
+val := True() | False()
+      |}
+    ;;
+
+    let lang_concrete_defn =
       {|expr:
-  | Add(x; y) ~ x _ "+" _ y
-  | Mul(x; y) ~ x _ "*" _ y
+  | Add(x; y) ~ "+" _ x _ y
+  | Mul(x; y) ~ "*" _ x _ y
   | Fun(v. e) ~ "fun" _ v _ "->" _ e
+  | Val(v)    ~ v
   | x         ~ /[a-z][a-zA-Z0-9_]*/
 
 val:
   | True()  ~ "true"
   | False() ~ "false"
+  | x       ~ /[a-z][a-zA-Z0-9_]*/
 |}
     ;;
 
     let%expect_test _ =
-      parse_print lang_defn;
+      parse_print lang_concrete_defn;
       [%expect
         {|
         expr:
-          | Add(x; y) ~ x _ "+" _ y
-          | Mul(x; y) ~ x _ "*" _ y
+          | Add(x; y) ~ "+" _ x _ y
+          | Mul(x; y) ~ "*" _ x _ y
           | Fun(v. e) ~ "fun" _ v _ "->" _ e
+          | Val(v) ~ v
           | x ~ /[a-z][a-zA-Z0-9_]*/
 
         val:
           | True() ~ "true"
-          | False() ~ "false" |}]
+          | False() ~ "false"
+          | x ~ /[a-z][a-zA-Z0-9_]*/
+          |}]
     ;;
 
-    let%test_module _ =
-      (module struct
-        let lang =
-          match lang_defn |> parse |> compile with
-          | `Duplicate_key k -> failwith (Fmt.str "Unexpected duplicate key %s" k)
-          | `Ok lang -> lang
-        ;;
+    let lang_concrete =
+      match lang_concrete_defn |> parse |> compile with
+      | `Duplicate_key k -> failwith (Fmt.str "Unexpected duplicate key %s" k)
+      | `Ok lang -> lang
+    ;;
 
-        let go sort tm = Pp_term.pp_term lang sort Fmt.stdout tm
+    let%test_module "pp_term" =
+      (module struct
+        let go sort tm = Pp_term.pp_term lang_concrete sort Fmt.stdout tm
         let here = Provenance.of_here [%here]
 
         let%expect_test _ =
@@ -645,7 +798,7 @@ val:
                 ] )
           in
           go "expr" tm;
-          [%expect {|1 + 1|}]
+          [%expect {|+ 1 1|}]
         ;;
 
         let%expect_test _ =
@@ -658,21 +811,82 @@ val:
         ;;
 
         let%expect_test _ =
-          let tm = Nominal.Term.Var (here, "z") in
-          go "expr" tm;
+          go "expr" (Nominal.Term.Var (here, "z"));
           [%expect {|z|}]
         ;;
 
         let%expect_test _ =
-          let tm = Nominal.Term.Operator (here, "True", []) in
-          go "val" tm;
+          go "val" (Nominal.Term.Operator (here, "True", []));
           [%expect {|true|}]
         ;;
 
         let%expect_test _ =
-          let tm = Nominal.Term.Operator (here, "False", []) in
-          go "val" tm;
+          go "val" (Nominal.Term.Operator (here, "False", []));
           [%expect {|false|}]
+        ;;
+      end)
+    ;;
+
+    let%test_module "Parse_term" =
+      (module struct
+        let lang_abstract =
+          match
+            Lvca_parsing.parse_string_or_failwith Abstract_syntax.parse lang_abstract_defn
+            |> Abstract_syntax.mk_unordered
+          with
+          | `Duplicate_key k -> failwith (Fmt.str "duplicate key %s" k)
+          | `Ok Abstract_syntax.Unordered.{ sort_defs; _ } -> sort_defs
+        ;;
+
+        let parser =
+          Parse_term.lang ~input:(Buffer_name "test") lang_abstract lang_concrete
+        ;;
+
+        let parse sort =
+          Lvca_parsing.parse_string_or_failwith (Map.find_exn parser.map sort parser)
+        ;;
+
+        let parse_print start_sort = parse start_sort >> Nominal.Term.pp Fmt.stdout
+
+        let () =
+          Stdlib.Format.set_formatter_stag_functions Provenance.stag_functions;
+          Stdlib.Format.set_tags true;
+          Stdlib.Format.set_mark_tags true
+        ;;
+
+        let%expect_test _ =
+          parse_print "val" "true";
+          [%expect
+            {|<{ input = Buffer_name "test"; range = {0,4} }>True()</{ input = Buffer_name "test"; range = {0,4} }>|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print "val" "false";
+          [%expect
+            {|<{ input = Buffer_name "test"; range = {0,5} }>False()</{ input = Buffer_name "test"; range = {0,5} }>|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print "expr" "+ x x";
+          [%expect
+            {|<{ input = Buffer_name "test"; range = {0,5} }>Add(<{ input = Buffer_name "test"; range = {2,3} }>Val(<{ input = Input_unknown; range = {2,3} }>x</{ input = Input_unknown; range = {2,3} }>)</{ input = Buffer_name "test"; range = {2,3} }>; <{ input = Buffer_name "test"; range = {4,5} }>Val(<{ input = Input_unknown; range = {4,5} }>x</{ input = Input_unknown; range = {4,5} }>)</{ input = Buffer_name "test"; range = {4,5} }>)</{ input = Buffer_name "test"; range = {0,5} }>|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print "expr" "fun x -> x";
+          [%expect
+            {|<{ input = Buffer_name "test"; range = {0,10} }>Fun(<{ input = Input_unknown; range = {4,5} }>x</{ input = Input_unknown; range = {4,5} }>. <{ input = Buffer_name "test"; range = {9,10} }>Val(<{ input = Input_unknown; range = {9,10} }>x</{ input = Input_unknown; range = {9,10} }>)</{ input = Buffer_name "test"; range = {9,10} }>)</{ input = Buffer_name "test"; range = {0,10} }>|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print "expr" "true";
+          [%expect
+            {|<{ input = Buffer_name "test"; range = {0,4} }>Val(<{ input = Buffer_name "test"; range = {0,4} }>True()</{ input = Buffer_name "test"; range = {0,4} }>)</{ input = Buffer_name "test"; range = {0,4} }>|}]
+        ;;
+
+        let () =
+          Stdlib.Format.set_tags false;
+          Stdlib.Format.set_mark_tags false
         ;;
       end)
     ;;
