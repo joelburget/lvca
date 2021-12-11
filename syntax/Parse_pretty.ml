@@ -8,7 +8,7 @@
  * [ ] actually parse / pretty-print with a term
  * [x] check validity
  * [ ] multiple concrete syntaxes mapping to the same abstract
- * [ ] operator ranking
+ * [x] operator ranking
  * [x] whitespace
  *)
 open Base
@@ -19,6 +19,25 @@ let pp_set = Fmt.(braces (list string ~sep:comma))
 let reserved_words = Lvca_util.String.Set.empty
 let lower_ident = Lvca_parsing.C_comment_parser.lower_identifier reserved_words
 let upper_ident = Lvca_parsing.C_comment_parser.upper_identifier reserved_words
+
+module Operator_ranking = struct
+  type t = Provenance.t * string list
+
+  let info (i, _) = i
+
+  let parse =
+    let open Lvca_parsing in
+    let open C_comment_parser in
+    sep_by1 (char '>') string_lit >>~ fun range lits -> Provenance.of_range range, lits
+  ;;
+
+  let pp ppf (info, lits) =
+    let string_lit ppf = Fmt.pf ppf "%S" in
+    Provenance.open_stag ppf info;
+    Fmt.(hovbox (list string_lit ~sep:(Fmt.any "@ >@ "))) ppf lits;
+    Provenance.close_stag ppf info
+  ;;
+end
 
 module Sequence_item = struct
   type t =
@@ -229,6 +248,7 @@ module Sort_syntax = struct
     ; name : Provenance.t * string
     ; operators : Operator_syntax_row.t list
     ; variables : Variable_syntax_row.t option
+    ; operator_ranking : Operator_ranking.t option
     }
 
   let parse =
@@ -241,13 +261,16 @@ module Sort_syntax = struct
       >>= fun _ ->
       attach_pos' (many (char '|' *> Operator_syntax.parse))
       >>= fun (ops_info, operators) ->
+      option' (char '\\' *> Operator_ranking.parse)
+      >>= fun operator_ranking ->
       let range = Opt_range.union name_info ops_info in
       let info = Provenance.of_range range in
       let name = Provenance.of_range name_info, name in
       let operators, vars = List.partition_map operators ~f:Fn.id in
       match vars with
-      | [] -> return ~range { info; name; operators; variables = None }
-      | [ row ] -> return ~range { info; name; operators; variables = Some row }
+      | [] -> return ~range { info; name; operators; variables = None; operator_ranking }
+      | [ row ] ->
+        return ~range { info; name; operators; variables = Some row; operator_ranking }
       | _ -> fail "Only one variable row is allowed in a sort"
     in
     p <?> "sort syntax"
@@ -261,7 +284,7 @@ module Sort_syntax = struct
 
   let pp_row ppf = Fmt.pf ppf "| %a" Operator_syntax.pp
 
-  let pp ppf { info; name; operators; variables } =
+  let pp ppf { info; name; operators; variables; operator_ranking } =
     let open Fmt in
     let operators = List.map operators ~f:(fun row -> Either.First row) in
     let operators =
@@ -270,7 +293,18 @@ module Sort_syntax = struct
       | Some row -> List.snoc operators (Either.Second row)
     in
     Provenance.open_stag ppf info;
-    pf ppf "@[<v 2>@[<h>%a:@]@;%a@]" pp_name name (list pp_row) operators;
+    (match operator_ranking with
+    | None -> pf ppf "@[<v 2>@[<h>%a:@]@;%a@]" pp_name name (list pp_row) operators
+    | Some ranking ->
+      pf
+        ppf
+        "@[<v 2>@[<h>%a:@]@;%a@;\\ %a@]"
+        pp_name
+        name
+        (list pp_row)
+        operators
+        Operator_ranking.pp
+        ranking);
     Provenance.close_stag ppf info
   ;;
 end
@@ -282,8 +316,11 @@ type unordered_t =
 
 let compile ordered =
   ordered
-  |> List.map ~f:(fun Sort_syntax.{ info = _; name = _, name; operators; variables } ->
-         name, (operators, variables))
+  |> List.map
+       ~f:(fun
+            Sort_syntax.
+              { info = _; name = _, name; operators; variables; operator_ranking = _ }
+          -> name, (operators, variables))
   |> String.Map.of_alist
 ;;
 
@@ -343,7 +380,13 @@ let check sort_defs ordered =
              dupe)
     in
     let sort_syntax
-        Sort_syntax.{ info = _; operators = concrete_ops; name = _, sort_name; variables }
+        Sort_syntax.
+          { info = _
+          ; operators = concrete_ops
+          ; name = _, sort_name
+          ; variables
+          ; operator_ranking = _
+          }
       =
       let (Sort_def.Sort_def (_vars, abstract_ops, var_names)) =
         Map.find_exn sort_defs sort_name
@@ -615,6 +658,18 @@ let%test_module "parsing / pretty-printing" =
   (module struct
     let () = Stdlib.Format.set_tags false
 
+    let%test_module "Operator_ranking" =
+      (module struct
+        let parse = Lvca_parsing.parse_string_or_failwith Operator_ranking.parse
+        let parse_print = parse >> Operator_ranking.pp Fmt.stdout
+
+        let%expect_test _ =
+          parse_print {|"*" > "+"|};
+          [%expect {|"*" > "+"|}]
+        ;;
+      end)
+    ;;
+
     let%test_module "Sequence_item" =
       (module struct
         let parse = Lvca_parsing.parse_string_or_failwith Sequence_item.parse
@@ -724,6 +779,7 @@ let%test_module "parsing / pretty-printing" =
   | Add(x; y) ~ x "+" y
   | Mul(x; y) ~ x "*" y
   | x         ~ /[a-z][a-zA-Z0-9_]*/
+  \ "*" > "+"
           |}
         ;;
 
@@ -735,6 +791,7 @@ let%test_module "parsing / pretty-printing" =
               | Add(x; y) ~ x "+" y
               | Mul(x; y) ~ x "*" y
               | x ~ /[a-z][a-zA-Z0-9_]*/
+              \ "*" > "+"
               |}]
         ;;
       end)
@@ -761,6 +818,7 @@ val := True() | False()
   | Fun(v. e) ~ "fun" _ v _ "->" _ e
   | Val(v)    ~ v
   | x         ~ /[a-z][a-zA-Z0-9_]*/
+  \ "*" > "+"
 
 val:
   | True()  ~ "true"
@@ -779,6 +837,7 @@ val:
           | Fun(v. e) ~ "fun" _ v _ "->" _ e
           | Val(v) ~ v
           | x ~ /[a-z][a-zA-Z0-9_]*/
+          \ "*" > "+"
 
         val:
           | True() ~ "true"
