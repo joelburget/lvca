@@ -656,9 +656,12 @@ module Parse_term = struct
           operator_names
     in
     let choices =
-      List.zip_exn operator_defs operators
-      |> List.map ~f:(fun (op_def, op) ->
-             operator_syntax_row ?input sort_name self dispatch op_def op)
+      List.map operators ~f:(fun op ->
+          let op_def =
+            List.find_exn operator_defs ~f:(fun (Operator_def (_, name, _)) ->
+                String.(name = op.pattern.name))
+          in
+          operator_syntax_row ?input sort_name self dispatch op_def op)
     in
     let choices =
       match variables with
