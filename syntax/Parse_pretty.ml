@@ -374,12 +374,77 @@ let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
  * [ ] space hygiene:
  *   - no repeated spaces
  *   - no leading / trailing spaces
+ * [x] no cycles between sorts
+ * [ ] every operator has a line (?)
  *)
+module Directed_graph = Directed_graph.Make (String)
+
+let find_var_in_pattern
+    (pattern_slots : Operator_pattern_slot.t list)
+    (valences : Valence.t list)
+    (needle : string)
+    : Sort.t
+  =
+  let pairs : (Operator_pattern_slot.t * Valence.t) list =
+    List.zip_exn pattern_slots valences
+  in
+  List.find_map_exn
+    pairs
+    ~f:(fun
+         ( Operator_pattern_slot.{ variable_names; body_name; _ }
+         , Valence (sort_slots, body_sort) )
+       ->
+      if String.(body_name = needle)
+      then Some body_sort
+      else (
+        let binder_pairs : (string * Sort_slot.t) list =
+          List.zip_exn variable_names sort_slots
+        in
+        List.find_map binder_pairs ~f:(fun (name, slot) ->
+            if String.(name = needle)
+            then (
+              match slot with
+              | Sort_binding sort -> Some sort
+              | Sort_pattern _ -> failwith "TODO: Sort_pattern")
+            else None)))
+;;
+
+let leading_sort_graph abstract_syntax concrete_syntax =
+  Map.mapi abstract_syntax ~f:(fun ~key:sort_name ~data:(abstract_sort : Sort_def.t) ->
+      let (rows : Operator_syntax_row.t list), _vars =
+        Map.find_exn concrete_syntax sort_name
+      in
+      let (Sort_def (_, op_defs, _)) = abstract_sort in
+      List.filter_map
+        rows
+        ~f:(fun
+             Operator_syntax_row.
+               { info = _; pattern; concrete_syntax = _, sequence_items }
+           ->
+          let (Operator_def (_, _, Arity (_, valences))) =
+            List.find_exn op_defs ~f:(fun (Operator_def (_, name, _)) ->
+                String.(name = pattern.name))
+          in
+          match sequence_items with
+          | Var (_, name) :: _ ->
+            let sort = find_var_in_pattern pattern.slots valences name in
+            let name, _ = Sort.split sort in
+            Some name
+          | _ -> None))
+;;
+
+let check_sort_graph abstract_syntax concrete_syntax =
+  let graph = leading_sort_graph abstract_syntax concrete_syntax in
+  match Directed_graph.topsort graph with
+  | None -> Some "There is unavoidable left-recursion in this grammar"
+  | Some _ -> None
+;;
+
 let check sort_defs ordered =
   let sort = List.sort ~compare:String.compare in
   match compile ordered with
   | `Duplicate_key k -> Some (Fmt.str "duplicate sort definition for %s" k)
-  | `Ok _compiled ->
+  | `Ok unordered ->
     let operator_syntax_row
         sort_name
         Operator_syntax_row.{ info = _; pattern; concrete_syntax }
@@ -463,18 +528,22 @@ let check sort_defs ordered =
     let concrete_sort_names =
       ordered |> List.map ~f:(fun Sort_syntax.{ name = _, name; _ } -> name) |> sort
     in
-    if List.equal String.( = ) abstract_sort_names concrete_sort_names
-    then List.find_map ordered ~f:sort_syntax
-    else
-      Some
-        Fmt.(
-          str
-            "Concrete syntax definition doesn't have the same sorts (%a) as abstract \
-             syntax (%a)"
-            pp_set
-            concrete_sort_names
-            pp_set
-            abstract_sort_names)
+    let check_same_sorts () =
+      if List.equal String.( = ) abstract_sort_names concrete_sort_names
+      then List.find_map ordered ~f:sort_syntax
+      else
+        Some
+          Fmt.(
+            str
+              "Concrete syntax definition doesn't have the same sorts (%a) as abstract \
+               syntax (%a)"
+              pp_set
+              concrete_sort_names
+              pp_set
+              abstract_sort_names)
+    in
+    [ check_sort_graph sort_defs unordered; check_same_sorts () ]
+    |> List.find_map ~f:Fn.id
 ;;
 
 module Pp_term = struct
@@ -913,6 +982,73 @@ val:
       match lang_concrete_defn |> parse |> compile with
       | `Duplicate_key k -> failwith (Fmt.str "Unexpected duplicate key %s" k)
       | `Ok lang -> lang
+    ;;
+
+    let%test_module "check" =
+      (module struct
+        let mk_abstract str =
+          match
+            Lvca_parsing.parse_string_or_failwith Abstract_syntax.parse str
+            |> Abstract_syntax.mk_unordered
+          with
+          | `Duplicate_key k -> failwith (Fmt.str "duplicate key %s" k)
+          | `Ok Abstract_syntax.Unordered.{ sort_defs; _ } -> sort_defs
+        ;;
+
+        let go abstract concrete =
+          match check abstract concrete with
+          | None -> Fmt.pr "okay"
+          | Some msg -> Fmt.pr "%s" msg
+        ;;
+
+        let%expect_test _ =
+          let abstract = mk_abstract lang_abstract_defn in
+          let concrete = parse lang_concrete_defn in
+          go abstract concrete;
+          [%expect {| Concrete syntax defines variables but abstract syntax doesn't |}]
+        ;;
+
+        let%expect_test _ =
+          let abstract = mk_abstract {|a := A(b)
+b := B(a)|} in
+          let concrete =
+            parse {|a:
+  | A(b) ~ b "b"
+  \ "foo" > "bar"
+
+b:
+  | B(a) ~ a "a"|}
+          in
+          go abstract concrete;
+          [%expect {| There is unavoidable left-recursion in this grammar |}]
+        ;;
+
+        let abstract = mk_abstract "foo := Foo()"
+
+        let%expect_test _ =
+          let concrete =
+            parse {|foo:
+  | Foo() ~ "foo"
+  \ "foo" > "bar"
+
+foo:
+  | Foo() ~ "bar"|}
+          in
+          go abstract concrete;
+          [%expect {| duplicate sort definition for foo |}]
+        ;;
+
+        let%expect_test _ =
+          let concrete =
+            parse {|foo:
+  | Foo() ~ "foo"
+  | Bar() ~ "bar"
+  \ "foo" > "bar"|}
+          in
+          go abstract concrete;
+          [%expect {| `Bar` is not a `foo`-operator |}]
+        ;;
+      end)
     ;;
 
     let%test_module "pp_term" =
