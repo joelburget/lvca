@@ -299,7 +299,9 @@ module Sort_syntax = struct
       >>= fun _ ->
       attach_pos' (many (char '|' *> Operator_syntax.parse))
       >>= fun (ops_info, operators) ->
-      option' (char '\\' *> Operator_ranking.parse)
+      choice
+        ~failure_msg:"Expected a `;` or `\\` operator ranking"
+        [ char ';' *> return None; Option.some <$> char '\\' *> Operator_ranking.parse ]
       >>= fun operator_ranking ->
       let range = Opt_range.union name_info ops_info in
       let info = Provenance.of_range range in
@@ -332,7 +334,7 @@ module Sort_syntax = struct
     in
     Provenance.open_stag ppf info;
     (match operator_ranking with
-    | None -> pf ppf "@[<v 2>@[<h>%a:@]@;%a@]" pp_name name (list pp_row) operators
+    | None -> pf ppf "@[<v 2>@[<h>%a:@]@;%a@;;@]" pp_name name (list pp_row) operators
     | Some ranking ->
       pf
         ppf
@@ -433,7 +435,7 @@ let leading_sort_graph abstract_syntax concrete_syntax =
           | _ -> None))
 ;;
 
-let check_sort_graph abstract_syntax concrete_syntax =
+let check_sort_graph abstract_syntax concrete_syntax () =
   let graph = leading_sort_graph abstract_syntax concrete_syntax in
   match Directed_graph.topsort graph with
   | None -> Some "There is unavoidable left-recursion in this grammar"
@@ -470,14 +472,16 @@ let check sort_defs ordered =
       | Some (dupe, _), _ ->
         Some
           (Fmt.str
-             "Duplicate variable found in abstract pattern for sort %s / operator %s: %s"
+             "Duplicate variable found in abstract pattern for sort `%s` / operator \
+              `%s`: %s"
              sort_name
              pattern.name
              dupe)
       | _, Some (dupe, _) ->
         Some
           (Fmt.str
-             "Duplicate variable found in concrete pattern for sort %s / operator %s: %s"
+             "Duplicate variable found in concrete pattern for sort `%s` / operator \
+              `%s`: %s"
              sort_name
              pattern.name
              dupe)
@@ -513,37 +517,36 @@ let check sort_defs ordered =
         if not (List.equal String.( = ) abstract_op_names concrete_op_names)
         then
           Some
-            Fmt.(
-              str
-                "Concrete syntax definition for sort %s doesn't have the same operators \
-                 (%a) as the abstract syntax (%a)"
-                sort_name
-                pp_set
-                concrete_op_names
-                pp_set
-                abstract_op_names)
+            (Fmt.str
+               "Concrete syntax definition for sort `%s` doesn't have the same operators \
+                (%a) as the abstract syntax (%a)"
+               sort_name
+               pp_set
+               concrete_op_names
+               pp_set
+               abstract_op_names)
         else List.find_map concrete_ops ~f:(operator_syntax_row sort_name)
     in
     let abstract_sort_names = sort_defs |> Map.keys |> sort in
     let concrete_sort_names =
       ordered |> List.map ~f:(fun Sort_syntax.{ name = _, name; _ } -> name) |> sort
     in
+    (* Check that the sorts covered in the concrete / abstract syntax are 1-1 *)
     let check_same_sorts () =
       if List.equal String.( = ) abstract_sort_names concrete_sort_names
       then List.find_map ordered ~f:sort_syntax
       else
         Some
-          Fmt.(
-            str
-              "Concrete syntax definition doesn't have the same sorts (%a) as abstract \
-               syntax (%a)"
-              pp_set
-              concrete_sort_names
-              pp_set
-              abstract_sort_names)
+          (Fmt.str
+             "Concrete syntax definition doesn't have the same sorts (%a) as abstract \
+              syntax (%a)"
+             pp_set
+             concrete_sort_names
+             pp_set
+             abstract_sort_names)
     in
-    [ check_sort_graph sort_defs unordered; check_same_sorts () ]
-    |> List.find_map ~f:Fn.id
+    [ check_same_sorts; check_sort_graph sort_defs unordered ]
+    |> List.find_map ~f:(fun checker -> checker ())
 ;;
 
 module Pp_term = struct
@@ -956,6 +959,7 @@ val:
   | True()  ~ "true"
   | False() ~ "false"
   | x       ~ /[a-z][a-zA-Z0-9_]*/
+  ;
 |}
     ;;
 
@@ -975,6 +979,7 @@ val:
           | True() ~ "true"
           | False() ~ "false"
           | x ~ /[a-z][a-zA-Z0-9_]*/
+          ;
           |}]
     ;;
 
@@ -1017,7 +1022,8 @@ b := B(a)|} in
   \ "foo" > "bar"
 
 b:
-  | B(a) ~ a "a"|}
+  | B(a) ~ a "a"
+  ; |}
           in
           go abstract concrete;
           [%expect {| There is unavoidable left-recursion in this grammar |}]
@@ -1027,12 +1033,14 @@ b:
 
         let%expect_test _ =
           let concrete =
-            parse {|foo:
+            parse
+              {|foo:
   | Foo() ~ "foo"
   \ "foo" > "bar"
 
 foo:
-  | Foo() ~ "bar"|}
+  | Foo() ~ "bar"
+  ; |}
           in
           go abstract concrete;
           [%expect {| duplicate sort definition for foo |}]
@@ -1046,7 +1054,10 @@ foo:
   \ "foo" > "bar"|}
           in
           go abstract concrete;
-          [%expect {| `Bar` is not a `foo`-operator |}]
+          [%expect
+            {|
+            Concrete syntax definition for sort `foo` doesn't have the same operators (
+            {Bar, Foo}) as the abstract syntax ({Foo}) |}]
         ;;
       end)
     ;;
