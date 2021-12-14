@@ -625,6 +625,8 @@ end
 module Parse_term = struct
   open Lvca_parsing
 
+  type dispatch = { map : (dispatch -> Nominal.Term.t Lvca_parsing.t) String.Map.t }
+
   let build_slot env Operator_pattern_slot.{ info = _; variable_names; body_name } =
     let pats =
       List.map variable_names ~f:(fun name ->
@@ -658,8 +660,6 @@ module Parse_term = struct
     in
     go String.Map.empty None
   ;;
-
-  type dispatch = { map : (dispatch -> Nominal.Term.t Lvca_parsing.t) String.Map.t }
 
   let sort
       sort_name
