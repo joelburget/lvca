@@ -351,18 +351,16 @@ end
 
 type ordered_t = Sort_syntax.t list
 
-type unordered_t =
-  (Operator_syntax_row.t list * Variable_syntax_row.t option) String.Map.t
+module Unordered = struct
+  type t = Sort_syntax.t String.Map.t
 
-let compile ordered =
-  ordered
-  |> List.map
-       ~f:(fun
-            Sort_syntax.
-              { info = _; name = _, name; operators; variables; operator_ranking = _ }
-          -> name, (operators, variables))
-  |> String.Map.of_alist
-;;
+  let build ordered =
+    ordered
+    |> List.map ~f:(fun (Sort_syntax.{ name = _, name; _ } as sort_syntax) ->
+           name, sort_syntax)
+    |> String.Map.of_alist
+  ;;
+end
 
 let parse = Lvca_parsing.(many1 Sort_syntax.parse <?> "parse / pretty definition")
 let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
@@ -413,9 +411,7 @@ let find_var_in_pattern
 
 let leading_sort_graph abstract_syntax concrete_syntax =
   Map.mapi abstract_syntax ~f:(fun ~key:sort_name ~data:(abstract_sort : Sort_def.t) ->
-      let (rows : Operator_syntax_row.t list), _vars =
-        Map.find_exn concrete_syntax sort_name
-      in
+      let Sort_syntax.{ operators = rows; _ } = Map.find_exn concrete_syntax sort_name in
       let (Sort_def (_, op_defs, _)) = abstract_sort in
       List.filter_map
         rows
@@ -444,7 +440,7 @@ let check_sort_graph abstract_syntax concrete_syntax () =
 
 let check sort_defs ordered =
   let sort = List.sort ~compare:String.compare in
-  match compile ordered with
+  match Unordered.build ordered with
   | `Duplicate_key k -> Some (Fmt.str "duplicate sort definition for %s" k)
   | `Ok unordered ->
     let operator_syntax_row
@@ -606,7 +602,7 @@ module Pp_term = struct
       | _ ->
         let operator_syntaxes : Operator_syntax_row.t list =
           match Map.find sorts start_sort with
-          | Some (operator_syntax_rows, _) -> operator_syntax_rows
+          | Some Sort_syntax.{ operators; _ } -> operators
           | None ->
             Lvca_util.invariant_violation
               ~here:[%here]
@@ -711,7 +707,7 @@ module Parse_term = struct
       self
       dispatch
       (Sort_def.Sort_def (_, operator_defs, _vars))
-      (operators, variables)
+      Sort_syntax.{ operators; variables; _ }
     =
     let operator_names =
       List.map operators ~f:(fun Operator_syntax_row.{ pattern = { name; _ }; _ } -> name)
@@ -984,7 +980,7 @@ val:
     ;;
 
     let lang_concrete =
-      match lang_concrete_defn |> parse |> compile with
+      match lang_concrete_defn |> parse |> Unordered.build with
       | `Duplicate_key k -> failwith (Fmt.str "Unexpected duplicate key %s" k)
       | `Ok lang -> lang
     ;;
