@@ -628,36 +628,35 @@ module Parse_term = struct
   let build_slot env Operator_pattern_slot.{ info = _; variable_names; body_name } =
     let pats =
       List.map variable_names ~f:(fun name ->
-          match Hashtbl.find_exn env name with
+          match Map.find_exn env name with
           | Nominal.Term.Var (info, name) -> Pattern.Var (info, name)
           | _ -> failwith "TODO build_slot non-var")
     in
-    Nominal.Scope.Scope (pats, Hashtbl.find_exn env body_name)
+    Nominal.Scope.Scope (pats, Map.find_exn env body_name)
   ;;
 
-  let build_operator ?input rng env Operator_pattern.{ info = _; name; slots } =
+  let build_operator ?input range env Operator_pattern.{ info = _; name; slots } =
     Nominal.Term.Operator
-      (Provenance.of_range ?input rng, name, List.map slots ~f:(build_slot env))
+      (Provenance.of_range ?input range, name, List.map slots ~f:(build_slot env))
   ;;
 
   let sequence_items ?input var_parsers pattern =
     let open C_comment_parser in
-    let env = Hashtbl.create (module String) in
-    let rec go rng = function
-      | [] -> return (build_operator ?input rng env pattern)
+    let rec go env range = function
+      | [] -> return (build_operator ?input range env pattern)
       | item :: items ->
         (match item with
-        | Sequence_item.Space _ -> go rng items
+        | Sequence_item.Space _ -> go env range items
         | Literal (_, str) ->
           attach_pos' (string str)
-          >>= fun (rng', _) -> go (Opt_range.union rng rng') items
+          >>= fun (rng', _) -> go env (Opt_range.union range rng') items
         | Var (_, name) ->
           attach_pos' (Map.find_exn var_parsers name)
           >>= fun (rng', data) ->
-          Hashtbl.set env ~key:name ~data;
-          go (Opt_range.union rng rng') items)
+          let env = Map.set env ~key:name ~data in
+          go env (Opt_range.union range rng') items)
     in
-    go None
+    go String.Map.empty None
   ;;
 
   type dispatch = { map : (dispatch -> Nominal.Term.t Lvca_parsing.t) String.Map.t }
