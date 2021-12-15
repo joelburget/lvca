@@ -60,19 +60,22 @@ module Operator_fixity = struct
 end
 
 module Operator_ranking = struct
-  type t = Provenance.t * Operator_fixity.t list
+  type t = Provenance.t * Operator_fixity.t list list
 
   let info (i, _) = i
 
   let parse =
     let open Lvca_parsing in
-    sep_by1 (C_comment_parser.char '>') Operator_fixity.parse
-    >>~ fun range lits -> Provenance.of_range range, lits
+    let open C_comment_parser in
+    let level = sep_by1 (char '=') Operator_fixity.parse in
+    sep_by1 (char '>') level >>~ fun range lits -> Provenance.of_range range, lits
   ;;
+
+  let pp_level = Fmt.(hovbox (list Operator_fixity.pp ~sep:(any "@ =@ ")))
 
   let pp ppf (info, lits) =
     Provenance.open_stag ppf info;
-    Fmt.(hovbox (list Operator_fixity.pp ~sep:(Fmt.any "@ >@ "))) ppf lits;
+    Fmt.(hovbox (list pp_level ~sep:(any "@ >@ "))) ppf lits;
     Provenance.close_stag ppf info
   ;;
 end
@@ -794,8 +797,8 @@ let%test_module "parsing / pretty-printing" =
         let parse_print = parse >> Operator_ranking.pp Fmt.stdout
 
         let%expect_test _ =
-          parse_print {|()"*" > ()"+"|};
-          [%expect {|()"*" > ()"+"|}]
+          parse_print {|()"*" = ()"/" > ()"+" = ()"-"|};
+          [%expect {|()"*" = ()"/" > ()"+" = ()"-"|}]
         ;;
       end)
     ;;
