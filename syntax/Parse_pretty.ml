@@ -774,6 +774,19 @@ module Unordered = struct
   ;;
 end
 
+module Make (Input : sig
+  val abstract : Sort_def.t String.Map.t
+  val concrete : Unordered.t
+  val start_sort : string
+end) =
+struct
+  let pp_term = Unordered.pp_term ~sort:Input.start_sort Input.concrete
+
+  let parse_term input =
+    Unordered.parse_term ~input ~sort:Input.start_sort Input.abstract Input.concrete
+  ;;
+end
+
 let%test_module "parsing / pretty-printing" =
   (module struct
     let () = Stdlib.Format.set_tags false

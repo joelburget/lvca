@@ -143,3 +143,15 @@ module Unordered : sig
     -> t
     -> Nominal.Term.t Lvca_parsing.t
 end
+
+module Make (Input : sig
+  val abstract : Sort_def.t String.Map.t
+  val concrete : Unordered.t
+  val start_sort : string
+end) : sig
+  (** Pretty-print a term using this concrete syntax. *)
+  val pp_term : Nominal.Term.t Fmt.t
+
+  (** Parse a term using this concrete syntax. *)
+  val parse_term : Provenance.Parse_input.t -> Nominal.Term.t Lvca_parsing.t
+end
