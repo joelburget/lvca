@@ -66,16 +66,16 @@ module Operator_ranking = struct
 
   let parse =
     let open Lvca_parsing in
-    let open C_comment_parser in
+    let char = C_comment_parser.char in
     let level = sep_by1 (char '=') Operator_fixity.parse in
-    sep_by1 (char '>') level >>~ fun range lits -> Provenance.of_range range, lits
+    sep_by1 (char '>') level >>~ fun range levels -> Provenance.of_range range, levels
   ;;
 
   let pp_level = Fmt.(hovbox (list Operator_fixity.pp ~sep:(any "@ =@ ")))
 
-  let pp ppf (info, lits) =
+  let pp ppf (info, levels) =
     Provenance.open_stag ppf info;
-    Fmt.(hovbox (list pp_level ~sep:(any "@ >@ "))) ppf lits;
+    Fmt.(hovbox (list pp_level ~sep:(any "@ >@ "))) ppf levels;
     Provenance.close_stag ppf info
   ;;
 end
@@ -112,7 +112,7 @@ module Sequence_item = struct
   ;;
 end
 
-module Operator_concrete_syntax = struct
+module Operator_concrete_syntax_row = struct
   type t = Provenance.t * Sequence_item.t list
 
   let info (i, _) = i
@@ -225,7 +225,7 @@ module Operator_syntax_row = struct
   type t =
     { info : Provenance.t
     ; pattern : Operator_pattern.t
-    ; concrete_syntax : Operator_concrete_syntax.t
+    ; concrete_syntax : Operator_concrete_syntax_row.t
     }
 
   let info t = t.info
@@ -241,7 +241,7 @@ module Operator_syntax_row = struct
           { info; pattern; concrete_syntax })
         (* TODO: don't parse any pattern -- just operator patterns *)
         (attach_pos' Operator_pattern.parse <* char '~')
-        (attach_pos' Operator_concrete_syntax.parse)
+        (attach_pos' Operator_concrete_syntax_row.parse)
     in
     p <?> "operator syntax row"
   ;;
@@ -253,19 +253,14 @@ module Operator_syntax_row = struct
       "%a ~ %a"
       Operator_pattern.pp
       pattern
-      Operator_concrete_syntax.pp
+      Operator_concrete_syntax_row.pp
       concrete_syntax;
     Provenance.close_stag ppf info
   ;;
 end
 
 module Operator_syntax = struct
-  type t = (Operator_syntax_row.t, Variable_syntax_row.t) Either.t
-
-  let info = function
-    | Either.First row -> Operator_syntax_row.info row
-    | Second row -> Variable_syntax_row.info row
-  ;;
+  type t = (Operator_syntax_row.t, Variable_syntax_row.t) Either.t [@@warning "-34"]
 
   let parse =
     let open Lvca_parsing in
@@ -352,18 +347,14 @@ module Sort_syntax = struct
   ;;
 end
 
-type ordered_t = Sort_syntax.t list
+type t = Sort_syntax.t list
 
-module Unordered = struct
-  type t = Sort_syntax.t String.Map.t
-
-  let build ordered =
-    ordered
-    |> List.map ~f:(fun (Sort_syntax.{ name = _, name; _ } as sort_syntax) ->
-           name, sort_syntax)
-    |> String.Map.of_alist
-  ;;
-end
+let build_unordered ordered =
+  ordered
+  |> List.map ~f:(fun (Sort_syntax.{ name = _, name; _ } as sort_syntax) ->
+         name, sort_syntax)
+  |> String.Map.of_alist
+;;
 
 let parse = Lvca_parsing.(many1 Sort_syntax.parse <?> "parse / pretty definition")
 let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
@@ -443,7 +434,7 @@ let check_sort_graph abstract_syntax concrete_syntax () =
 
 let check sort_defs ordered =
   let sort = List.sort ~compare:String.compare in
-  match Unordered.build ordered with
+  match build_unordered ordered with
   | `Duplicate_key k -> Some (Fmt.str "duplicate sort definition for %s" k)
   | `Ok unordered ->
     let operator_syntax_row
@@ -451,7 +442,7 @@ let check sort_defs ordered =
         Operator_syntax_row.{ info = _; pattern; concrete_syntax }
       =
       let lhs_vars = pattern |> Operator_pattern.vars |> sort in
-      let rhs_vars = concrete_syntax |> Operator_concrete_syntax.vars |> sort in
+      let rhs_vars = concrete_syntax |> Operator_concrete_syntax_row.vars |> sort in
       match
         ( List.find_consecutive_duplicate ~equal:String.( = ) lhs_vars
         , List.find_consecutive_duplicate ~equal:String.( = ) lhs_vars )
@@ -765,6 +756,18 @@ module Parse_term = struct
   ;;
 end
 
+module Unordered = struct
+  type t = Sort_syntax.t String.Map.t
+
+  let build = build_unordered
+  let pp_term ~sort lang = Pp_term.pp_term lang sort
+
+  let parse_term ?input ~sort abstract concrete =
+    let parser = Parse_term.lang ?input abstract concrete in
+    Map.find_exn parser.map sort parser
+  ;;
+end
+
 let%test_module "parsing / pretty-printing" =
   (module struct
     let () = Stdlib.Format.set_tags false
@@ -820,10 +823,13 @@ let%test_module "parsing / pretty-printing" =
       end)
     ;;
 
-    let%test_module "Operator_concrete_syntax" =
+    let%test_module "Operator_concrete_syntax_row" =
       (module struct
-        let parse = Lvca_parsing.parse_string_or_failwith Operator_concrete_syntax.parse
-        let parse_print = parse >> Operator_concrete_syntax.pp Fmt.stdout
+        let parse =
+          Lvca_parsing.parse_string_or_failwith Operator_concrete_syntax_row.parse
+        ;;
+
+        let parse_print = parse >> Operator_concrete_syntax_row.pp Fmt.stdout
 
         let%expect_test _ =
           parse_print {|x "+" y|};
@@ -1115,20 +1121,22 @@ foo:
           | `Ok Abstract_syntax.Unordered.{ sort_defs; _ } -> sort_defs
         ;;
 
-        let parser =
-          Parse_term.lang ~input:(Buffer_name "test") lang_abstract lang_concrete
+        let parser ~sort =
+          Unordered.parse_term
+            ~input:(Buffer_name "test")
+            ~sort
+            lang_abstract
+            lang_concrete
         ;;
 
-        let parse sort =
-          Lvca_parsing.parse_string_or_failwith (Map.find_exn parser.map sort parser)
-        ;;
-
+        let parse sort = Lvca_parsing.parse_string_or_failwith (parser ~sort)
         let parse_print start_sort = parse start_sort >> Nominal.Term.pp Fmt.stdout
 
         let () =
-          Stdlib.Format.set_formatter_stag_functions Provenance.stag_functions;
-          Stdlib.Format.set_tags true;
-          Stdlib.Format.set_mark_tags true
+          let open Stdlib.Format in
+          set_formatter_stag_functions Provenance.stag_functions;
+          set_tags true;
+          set_mark_tags true
         ;;
 
         let%expect_test _ =
