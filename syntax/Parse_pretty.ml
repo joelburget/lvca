@@ -619,7 +619,11 @@ end
 module Parse_term = struct
   open Lvca_parsing
 
-  type dispatch = { map : (dispatch -> Nominal.Term.t Lvca_parsing.t) String.Map.t }
+  type dispatch =
+    { map :
+        (Provenance.Parse_input.t -> dispatch -> Nominal.Term.t Lvca_parsing.t)
+        String.Map.t
+    }
 
   let build_slot env Operator_pattern_slot.{ info = _; variable_names; body_name } =
     let pats =
@@ -631,15 +635,15 @@ module Parse_term = struct
     Nominal.Scope.Scope (pats, Map.find_exn env body_name)
   ;;
 
-  let build_operator ?input range env Operator_pattern.{ info = _; name; slots } =
+  let build_operator range env Operator_pattern.{ info = _; name; slots } input =
     Nominal.Term.Operator
-      (Provenance.of_range ?input range, name, List.map slots ~f:(build_slot env))
+      (Provenance.of_range ~input range, name, List.map slots ~f:(build_slot env))
   ;;
 
-  let sequence_items ?input var_parsers pattern =
+  let sequence_items var_parsers pattern items input =
     let open C_comment_parser in
     let rec go env range = function
-      | [] -> return (build_operator ?input range env pattern)
+      | [] -> return (build_operator range env pattern input)
       | item :: items ->
         (match item with
         | Sequence_item.Space _ -> go env range items
@@ -652,7 +656,7 @@ module Parse_term = struct
           let env = Map.set env ~key:name ~data in
           go env (Opt_range.union range rng') items)
     in
-    go String.Map.empty None
+    go String.Map.empty None items
   ;;
 
   let sort
@@ -660,20 +664,21 @@ module Parse_term = struct
       (self : Nominal.Term.t Lvca_parsing.t)
       (dispatch : dispatch)
       (sort : Sort.t)
+      input
     =
     let sort_name', _ = Sort.split sort in
     if String.(sort_name' = sort_name)
     then self
-    else Map.find_exn dispatch.map sort_name' dispatch
+    else Map.find_exn dispatch.map sort_name' input dispatch
   ;;
 
   let operator_syntax_row
-      ?input
       sort_name
       self
       dispatch
       (Operator_def.Operator_def (_, name, Arity (_, valences)))
       Operator_syntax_row.{ info = _; pattern; concrete_syntax = _, items }
+      input
     =
     let sort = sort sort_name self dispatch in
     let var_parsers =
@@ -685,22 +690,22 @@ module Parse_term = struct
               ->
              let slot_parsers : Nominal.Term.t t list =
                List.map sort_slots ~f:(function
-                   | Sort_binding s -> sort s
+                   | Sort_binding s -> sort s input
                    | Sort_pattern _ -> failwith "TODO: operator_syntax_row Sort_pattern")
              in
-             (body_name, sort sort') :: List.zip_exn variable_names slot_parsers)
+             (body_name, sort sort' input) :: List.zip_exn variable_names slot_parsers)
       |> String.Map.of_alist_exn
     in
-    sequence_items ?input var_parsers pattern items <?> name
+    sequence_items var_parsers pattern items input <?> name
   ;;
 
   let sort_syntax
-      ?input
       sort_name
       self
       dispatch
       (Sort_def.Sort_def (_, operator_defs, _vars))
       Sort_syntax.{ operators; variables; _ }
+      input
     =
     let operator_names =
       List.map operators ~f:(fun Operator_syntax_row.{ pattern = { name; _ }; _ } -> name)
@@ -722,7 +727,7 @@ module Parse_term = struct
             List.find_exn operator_defs ~f:(fun (Operator_def (_, name, _)) ->
                 String.(name = op.pattern.name))
           in
-          operator_syntax_row ?input sort_name self dispatch op_def op)
+          operator_syntax_row sort_name self dispatch op_def op input)
     in
     let choices =
       match variables with
@@ -743,14 +748,15 @@ module Parse_term = struct
     p <?> sort_name
   ;;
 
-  (* TODO: Take input later -- shouldn't rebuild parser when it changes *)
-  let lang ?input abstract_syntax concrete_syntax =
+  let lang abstract_syntax concrete_syntax =
     let map =
-      Map.mapi abstract_syntax ~f:(fun ~key:sort_name ~data:abstract_sort dispatch ->
+      Map.mapi
+        abstract_syntax
+        ~f:(fun ~key:sort_name ~data:abstract_sort input dispatch ->
           fix
           @@ fun self ->
           let concrete_sort = Map.find_exn concrete_syntax sort_name in
-          sort_syntax ?input sort_name self dispatch abstract_sort concrete_sort)
+          sort_syntax sort_name self dispatch abstract_sort concrete_sort input)
     in
     { map }
   ;;
@@ -762,9 +768,9 @@ module Unordered = struct
   let build = build_unordered
   let pp_term ~sort lang = Pp_term.pp_term lang sort
 
-  let parse_term ?input ~sort abstract concrete =
-    let parser = Parse_term.lang ?input abstract concrete in
-    Map.find_exn parser.map sort parser
+  let parse_term ?(input = Provenance.Parse_input.Input_unknown) ~sort abstract concrete =
+    let parser = Parse_term.lang abstract concrete in
+    Map.find_exn parser.map sort input parser
   ;;
 end
 
