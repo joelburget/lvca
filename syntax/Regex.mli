@@ -3,7 +3,6 @@ module Class_base : sig
     | Word (** \w / \W *)
     | Whitespace (** \s / \S *)
     | Digit (** \d / \D *)
-    | Boundary (** \b / \B *)
 
   (* val to_re : t -> Re.t *)
   val ( = ) : t -> t -> bool

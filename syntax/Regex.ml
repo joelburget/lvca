@@ -7,13 +7,12 @@ module Class_base = struct
   type t =
     | Word (* \w / \W *)
     | Whitespace (* \s / \S *)
-    | Digit (* \d / \D *)
-    | Boundary
-  (* \b / \B *)
+    | Digit
+  (* \d / \D *)
 
   let ( = ) a b =
     match a, b with
-    | Word, Word | Whitespace, Whitespace | Digit, Digit | Boundary, Boundary -> true
+    | Word, Word | Whitespace, Whitespace | Digit, Digit -> true
     | _ -> false
   ;;
 
@@ -21,7 +20,6 @@ module Class_base = struct
     | Word -> Char.is_alpha
     | Whitespace -> Char.is_whitespace
     | Digit -> Char.is_digit
-    | Boundary -> failwith "to_predicate Boundary not supported"
   ;;
 
   (* TODO: other javascript classes *)
@@ -29,11 +27,7 @@ module Class_base = struct
 
   let to_re =
     let open Re in
-    function
-    | Word -> wordc
-    | Whitespace -> space
-    | Digit -> digit
-    | Boundary -> alt [ start; stop; bow; eow; bol; eol; bow; eos ]
+    function Word -> wordc | Whitespace -> space | Digit -> digit
   ;;
 end
 
@@ -50,11 +44,9 @@ module Class = struct
     | Pos Word -> 'w'
     | Pos Whitespace -> 's'
     | Pos Digit -> 'd'
-    | Pos Boundary -> 'b'
     | Neg Word -> 'W'
     | Neg Whitespace -> 'S'
     | Neg Digit -> 'D'
-    | Neg Boundary -> 'B'
   ;;
 
   let to_predicate = function
@@ -76,8 +68,6 @@ module Class = struct
         ; char 'D' *> return (Neg Digit)
         ; char 's' *> return (Pos Whitespace)
         ; char 'S' *> return (Neg Whitespace)
-        ; char 'b' *> return (Pos Boundary)
-        ; char 'B' *> return (Neg Boundary)
         ]
     in
     p <?> "class"
@@ -257,12 +247,11 @@ let rec debug_pp ?(need_parens = false) ppf t =
 ;;
 
 let rec accepts_empty = function
-  | Class cls -> Class.(cls = Pos Boundary || cls = Neg Boundary)
   | Count (re, _) | Plus re -> accepts_empty re
   | Choice res -> List.exists res ~f:accepts_empty
   | Concat pieces -> List.for_all pieces ~f:accepts_empty
   | Star _ | Option _ -> true
-  | Char _ | Set _ | Any -> false
+  | Class _ | Char _ | Set _ | Any -> false
 ;;
 
 let rec is_literal = function
@@ -383,8 +372,6 @@ let%test_module "accepts_empty" =
       accepts_empty (Concat [ Star (re_str "foo"); Plus (re_str "bar") ]) = false
     ;;
 
-    let%test _ = accepts_empty (Class (Pos Boundary))
-    let%test _ = accepts_empty (Class (Neg Boundary))
     let%test _ = not (accepts_empty (Class (Pos Digit)))
     let%test _ = not (accepts_empty (Class (Neg Digit)))
     let%test _ = not (accepts_empty (Set [ Range ('a', 'z') ]))
@@ -414,8 +401,8 @@ let%test_module "pp" =
     ;;
 
     let%expect_test _ =
-      print (Concat [ Class (Pos Boundary); Class (Neg Boundary) ]);
-      [%expect {|\b\B|}]
+      print (Concat [ Class (Pos Word); Class (Neg Word) ]);
+      [%expect {|\w\W|}]
     ;;
 
     let%expect_test _ =
@@ -463,9 +450,7 @@ let%test_module "matching" =
       print_matches
         (Concat
            [ Plus (Class (Pos Word))
-           ; Class (Pos Boundary)
            ; Plus (Class (Pos Whitespace))
-           ; Class (Pos Boundary)
            ; Plus (Class (Pos Word))
            ])
         "hello world";
@@ -481,13 +466,6 @@ let%test_module "matching" =
       print_matches (Plus (Class (Neg Whitespace))) "hello world";
       [%expect {| (Group (hello (0 5))) |}]
     ;;
-
-    (* TODO
-        let%expect_test _ =
-          print_matches (Class (Neg Boundary)) "hello\n           world";
-          [%expect {| (Group (h (0 1))) |}]
-        ;;
-        *)
   end)
 ;;
 
@@ -509,8 +487,6 @@ let%test_module "parsing" =
         let%test _ = parse {|\S|} = Neg Whitespace
         let%test _ = parse {|\d|} = Pos Digit
         let%test _ = parse {|\D|} = Neg Digit
-        let%test _ = parse {|\b|} = Pos Boundary
-        let%test _ = parse {|\B|} = Neg Boundary
       end)
     ;;
 
@@ -540,7 +516,6 @@ let%test_module "parsing" =
     let parse = parse_exn parse
 
     let%test _ = parse "c" = Char 'c'
-    let%test _ = parse {|\b|} = Class (Pos Boundary)
     let%test _ = parse "[ab]" = Set [ Single_char 'a'; Single_char 'b' ]
     let%test _ = parse "a*" = Star (Char 'a')
     let%test _ = parse "a+" = Plus (Char 'a')
