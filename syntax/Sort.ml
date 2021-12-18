@@ -63,6 +63,8 @@ let rec kind_check env sort =
 (** Split a sort into a name and its arguments. *)
 let split = function Name (_, name) -> name, [] | Ap (_, name, ts) -> name, ts
 
+let name = split >> fst
+
 let parse reserved_word =
   let open Lvca_parsing in
   let open C_comment_parser in
