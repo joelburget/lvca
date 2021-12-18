@@ -927,14 +927,21 @@ module Parse_term = struct
       higher_prec
       >>= fun init ->
       many op_rhs_pair
-      >>| fun pairs ->
-      match fixity with
-      | Fixity.Left ->
-        List.fold pairs ~init ~f:(fun t1 ((pattern, v1_name, v2_name), t2) ->
+      >>= fun pairs ->
+      let fold_pairs =
+        List.fold ~init ~f:(fun t1 ((pattern, v1_name, v2_name), t2) ->
             let env = String.Map.of_alist_exn [ v1_name, t1; v2_name, t2 ] in
             Operator_pattern.build_exn env pattern)
-      | None -> failwith "TODO: mk_level_parser None"
-      | Right -> failwith "TODO: mk_level_parser Right"
+      in
+      match fixity with
+      | Fixity.Left -> pairs |> fold_pairs |> return
+      | None ->
+        (match pairs with
+        | [ ((pattern, v1_name, v2_name), t2) ] ->
+          let env = String.Map.of_alist_exn [ v1_name, init; v2_name, t2 ] in
+          return (Operator_pattern.build_exn env pattern)
+        | _ -> fail "Don't know how to parse operators with no fixity")
+      | Right -> pairs |> List.rev |> fold_pairs |> return
     in
     let highest_prec =
       match prefix_parser with
