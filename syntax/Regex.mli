@@ -7,6 +7,7 @@ module Class_base : sig
 
   (* val to_re : t -> Re.t *)
   val ( = ) : t -> t -> bool
+  val to_predicate : t -> char -> bool
 end
 
 module Class : sig
@@ -18,6 +19,7 @@ module Class : sig
   val ( = ) : t -> t -> bool
   val pp : t Fmt.t
   val parse : t Angstrom.t
+  val to_predicate : t -> char -> bool
 end
 
 module Set_member : sig
@@ -29,6 +31,7 @@ module Set_member : sig
   val debug_pp : t Fmt.t
   val pp : t Fmt.t
   val parse : t Angstrom.t
+  val to_angstrom : t -> char Angstrom.t
 end
 
 module Set : sig
@@ -37,6 +40,7 @@ module Set : sig
   val debug_pp : t Fmt.t
   val pp : t Fmt.t
   val parse : t Angstrom.t
+  val to_angstrom : t -> char Angstrom.t
 end
 
 (** A regular expression used for lexical analysis. *)
@@ -56,6 +60,7 @@ type t =
   | Concat of t list
 
 val to_re : t -> Re.t
+val to_angstrom : t -> string Angstrom.t
 val accepts_empty : t -> bool
 val is_literal : t -> string option
 val to_nonbinding : t -> Nonbinding.t

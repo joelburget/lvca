@@ -17,6 +17,13 @@ module Class_base = struct
     | _ -> false
   ;;
 
+  let to_predicate = function
+    | Word -> Char.is_alpha
+    | Whitespace -> Char.is_whitespace
+    | Digit -> Char.is_digit
+    | Boundary -> failwith "to_predicate Boundary not supported"
+  ;;
+
   (* TODO: other javascript classes *)
   (* TODO: unicode categories *)
 
@@ -48,6 +55,11 @@ module Class = struct
     | Neg Whitespace -> 'S'
     | Neg Digit -> 'D'
     | Neg Boundary -> 'B'
+  ;;
+
+  let to_predicate = function
+    | Pos base -> Class_base.to_predicate base
+    | Neg base -> Lvca_util.(not << Class_base.to_predicate base)
   ;;
 
   let pp ppf cls = Fmt.pf ppf {|\%c|} (to_char cls)
@@ -94,6 +106,13 @@ module Set_member = struct
     | Range (r1, r2) -> Fmt.pf ppf "%c-%c" r1 r2
   ;;
 
+  let to_angstrom =
+    let open Angstrom in
+    function
+    | Single_char c -> char c
+    | Range (c1, c2) -> Angstrom.satisfy Char.(fun c -> c >= c1 && c <= c2)
+  ;;
+
   let parse =
     let open Angstrom in
     let p =
@@ -116,6 +135,12 @@ module Set = struct
   let parse =
     let open Angstrom in
     char '[' *> many Set_member.parse <* char ']' <?> "set"
+  ;;
+
+  let to_angstrom members =
+    Angstrom.choice
+      ~failure_msg:(Fmt.str "to_angstrom %a" pp members)
+      (List.map members ~f:Set_member.to_angstrom)
   ;;
 end
 
@@ -304,6 +329,27 @@ let rec pp' precedence ppf =
 
     This has no delimiters, ie it returns "abc", not "/abc/". *)
 let pp = pp' 0
+
+let rec to_angstrom t =
+  let open Angstrom in
+  match t with
+  | Char c -> char c >>| String.of_char
+  | Class cls -> satisfy (Class.to_predicate cls) >>| String.of_char
+  | Set set -> Set.to_angstrom set >>| String.of_char
+  | Star t -> many (to_angstrom t) >>| String.concat
+  | Plus t -> many1 (to_angstrom t) >>| String.concat
+  | Count (t, n) -> count n (to_angstrom t) >>| String.concat
+  | Option t -> option "" (to_angstrom t)
+  | Choice ts ->
+    choice ~failure_msg:(Fmt.str "to_angstrom %a" pp t) (List.map ts ~f:to_angstrom)
+  | Any -> any_char >>| String.of_char
+  | Concat ts ->
+    (match List.map ~f:to_angstrom ts with
+    | [] -> fail "empty regex"
+    | [ p ] -> p
+    | p :: ps ->
+      List.fold ps ~init:p ~f:(fun p1 p2 -> p1 >>= fun r1 -> p2 >>| fun r2 -> r1 ^ r2))
+;;
 
 (* TODO: is this okay? *)
 let to_nonbinding re =
