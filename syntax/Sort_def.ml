@@ -19,6 +19,10 @@ let equivalent
 let ( = ) = equivalent ~info_eq:Provenance.( = )
 let binds_vars (Sort_def (_, _, vs)) = match vs with [] -> false | _ -> true
 
+let find_operator_def (Sort_def (_, op_defs, _)) name =
+  List.find op_defs ~f:(fun (Operator_def (_, name', _)) -> String.(name' = name))
+;;
+
 let kind_check env sort_name (Sort_def (vars, operators, _var_names)) =
   let update_env env name n =
     Map.update env name ~f:(function
