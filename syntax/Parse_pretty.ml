@@ -5,11 +5,13 @@
  * - how to define boxes?
  *
  * TODO:
- * [ ] actually parse / pretty-print with a term
+ * [x] actually parse / pretty-print with a term
  * [x] check validity
  * [ ] multiple concrete syntaxes mapping to the same abstract
  * [x] operator ranking
- * [x] whitespace
+ * [ ] whitespace
+ * [ ] variables colliding with keywords
+ * [ ] do all operators in the same level have to have the same fixity?
  *)
 open Base
 open Lvca_provenance
@@ -25,6 +27,14 @@ module Fixity = struct
     | Left
     | None
     | Right
+
+  (*
+  let pp ppf = function
+    | Left -> Fmt.pf ppf "Left"
+    | None -> Fmt.pf ppf "None"
+    | Right -> Fmt.pf ppf "Right"
+  ;;
+     *)
 end
 
 module Operator_fixity = struct
@@ -43,8 +53,8 @@ module Operator_fixity = struct
     >>= fun rparens ->
     let info = Provenance.of_range range in
     match lparens, rparens with
-    | None, None -> return (info, Fixity.None, lit)
     | Some _, None -> return (info, Fixity.Left, lit)
+    | None, None -> return (info, Fixity.None, lit)
     | None, Some _ -> return (info, Fixity.Right, lit)
     | Some _, Some _ -> fail "operator can't be both left and right-infix"
   ;;
@@ -88,6 +98,7 @@ module Sequence_item = struct
 
   let info = function Var (i, _) | Literal (i, _) | Space i -> i
   let vars = function Var (_, v) -> [ v ] | Literal _ | Space _ -> []
+  let is_space = function Space _ -> true | _ -> false
 
   let parse =
     let open Lvca_parsing in
@@ -117,6 +128,20 @@ module Operator_concrete_syntax_row = struct
 
   let info (i, _) = i
   let vars (_, items) = items |> List.map ~f:Sequence_item.vars |> List.concat
+
+  let get_binary_operator var_sort_mapping sort_name (_, items) =
+    match List.filter items ~f:(not << Sequence_item.is_space) with
+    | [ Var (_, v1); Literal (_, l); Var (_, v2) ]
+      when String.(
+             Base.Map.find_exn var_sort_mapping v1 = sort_name
+             && Base.Map.find_exn var_sort_mapping v2 = sort_name) ->
+      Some (v1, l, v2)
+    | _ -> None
+  ;;
+
+  let is_prefix_row (_, items) =
+    match items with Sequence_item.Literal _ :: _ -> true | _ -> false
+  ;;
 
   let parse =
     let open Lvca_parsing in
@@ -229,6 +254,30 @@ module Operator_syntax_row = struct
     }
 
   let info t = t.info
+  let name { pattern = { name; _ }; _ } = name
+
+  let get_binary_operator var_sort_mapping sort_name { concrete_syntax; _ } =
+    Operator_concrete_syntax_row.get_binary_operator
+      var_sort_mapping
+      sort_name
+      concrete_syntax
+  ;;
+
+  let is_prefix_row { concrete_syntax; _ } =
+    Operator_concrete_syntax_row.is_prefix_row concrete_syntax
+  ;;
+
+  let defers_to_another_sort
+      var_sort_mapping
+      sort_name
+      { concrete_syntax = _, sequence_items; _ }
+    =
+    match sequence_items with
+    | Var (_, name) :: _ ->
+      let sort_name' = Map.find_exn var_sort_mapping name in
+      String.(sort_name' <> sort_name)
+    | _ -> false
+  ;;
 
   let parse =
     let open Lvca_parsing in
@@ -286,6 +335,81 @@ module Sort_syntax = struct
     ; variables : Variable_syntax_row.t option
     ; operator_ranking : Operator_ranking.t option
     }
+
+  type partition =
+    { binary_operators : (Operator_pattern.t * string * string * string) list
+    ; prefix_rows : Operator_syntax_row.t list
+    }
+
+  let partition_operator_rows sort_name operator_rows sort_def =
+    let binary_operators, prefix_rows =
+      List.partition_map operator_rows ~f:(fun row ->
+          let (Operator_def (_, _, Arity (_, valences))) =
+            Sort_def.find_operator_def sort_def (Operator_syntax_row.name row)
+            |> Option.get_invariant ~here:[%here] (fun () ->
+                   "TODO: partition_operator_rows")
+          in
+          let var_sort_mapping =
+            List.zip_exn row.pattern.slots valences
+            |> List.bind
+                 ~f:(fun
+                      ( Operator_pattern_slot.{ info = _; variable_names; body_name }
+                      , Valence (sort_slots, sort') )
+                    ->
+                   let slot_sorts =
+                     List.map sort_slots ~f:(function
+                         | Sort_binding s -> Sort.name s
+                         | Sort_pattern _ ->
+                           failwith "TODO: prefix_operator_syntax_row Sort_pattern")
+                   in
+                   (body_name, Sort.name sort') :: List.zip_exn variable_names slot_sorts)
+            |> String.Map.of_alist_exn
+          in
+          match
+            ( Operator_syntax_row.get_binary_operator var_sort_mapping sort_name row
+            , Operator_syntax_row.is_prefix_row row
+              || Operator_syntax_row.defers_to_another_sort var_sort_mapping sort_name row
+            )
+          with
+          | Some (v1, l, v2), _ -> Either.First (row.pattern, v1, l, v2)
+          | _, true -> Either.Second row
+          | _, _ ->
+            Lvca_util.invariant_violation
+              ~here:[%here]
+              (Fmt.str
+                 "we don't know how to parse rows that are neither binary operators nor \
+                  prefixed by a literal (%a)"
+                 Operator_syntax_row.pp
+                 row))
+    in
+    { binary_operators; prefix_rows }
+  ;;
+
+  let level_operator_rows
+      (operator_ranking : Operator_fixity.t list list)
+      (binary_operators : (Operator_pattern.t * string * string * string) list)
+      : (Fixity.t * Operator_pattern.t * string * string * string) list list
+    =
+    List.map operator_ranking ~f:(fun operator_fixities ->
+        let operator_fixities =
+          operator_fixities
+          |> List.map ~f:(fun (_, fixity, name) -> name, fixity)
+          |> String.Map.of_alist_exn
+        in
+        List.filter_map binary_operators ~f:(fun (pattern, v1, lit, v2) ->
+            (*
+            Fmt.(
+              pr
+                "looking for operator %s -> %a (%a)\n"
+                lit
+                (option ~none:(any "None") Fixity.pp)
+                (Map.find operator_fixities pattern.Operator_pattern.name)
+                pp_set
+                (Map.keys operator_fixities));
+               *)
+            Map.find operator_fixities lit
+            |> Option.map ~f:(fun fixity -> fixity, pattern, v1, lit, v2)))
+  ;;
 
   let parse =
     let open Lvca_parsing in
@@ -370,6 +494,8 @@ let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
  *   - no leading / trailing spaces
  * [x] no cycles between sorts
  * [ ] every operator has a line (?)
+ * [ ] will var parser be clobbered by left-recursion deferring to a var parser
+   from another sort? Is this a grammar problem?
  *)
 module Directed_graph = Directed_graph.Make (String)
 
@@ -570,7 +696,7 @@ module Pp_term = struct
                          variable_names
                          (List.map pats ~f:(fun p -> Either.First p))
                      with
-                     | Unequal_lengths -> Error "TODO"
+                     | Unequal_lengths -> Error "TODO: pp_term 1"
                      | Ok varpats ->
                        Ok
                          (varpats
@@ -589,7 +715,7 @@ module Pp_term = struct
                 | Space _ -> Fmt.sp ppf ());
             Stdlib.Format.pp_close_box ppf ();
             Ok (Some ())
-          | Unequal_lengths -> Error "TODO")
+          | Unequal_lengths -> Error "TODO: pp_term 2")
     and go tm =
       match tm with
       | Nominal.Term.Var (_, var_name) -> Fmt.string ppf var_name
@@ -663,54 +789,121 @@ module Parse_term = struct
       sort_name
       (self : Nominal.Term.t Lvca_parsing.t)
       (dispatch : dispatch)
-      (sort : Sort.t)
       input
+      (sort : Sort.t)
     =
-    let sort_name', _ = Sort.split sort in
+    let sort_name' = Sort.name sort in
     if String.(sort_name' = sort_name)
     then self
     else Map.find_exn dispatch.map sort_name' input dispatch
   ;;
 
-  let operator_syntax_row
-      sort_name
-      self
-      dispatch
+  let sort_mapping slots valences =
+    List.zip_exn slots valences
+    |> List.bind
+         ~f:(fun
+              ( Operator_pattern_slot.{ info = _; variable_names; body_name }
+              , Valence.Valence (sort_slots, sort') )
+            ->
+           let slot_sorts =
+             List.map sort_slots ~f:(function
+                 | Sort_binding s -> s
+                 | Sort_pattern _ ->
+                   failwith "TODO: prefix_operator_syntax_row Sort_pattern")
+           in
+           (body_name, sort') :: List.zip_exn variable_names slot_sorts)
+    |> String.Map.of_alist_exn
+  ;;
+
+  let prefix_operator_syntax_row
+      sort
       (Operator_def.Operator_def (_, name, Arity (_, valences)))
       Operator_syntax_row.{ info = _; pattern; concrete_syntax = _, items }
       input
     =
-    let sort = sort sort_name self dispatch in
-    let var_parsers =
-      List.zip_exn pattern.slots valences
-      |> List.bind
-           ~f:(fun
-                ( Operator_pattern_slot.{ info = _; variable_names; body_name }
-                , Valence (sort_slots, sort') )
-              ->
-             let slot_parsers : Nominal.Term.t t list =
-               List.map sort_slots ~f:(function
-                   | Sort_binding s -> sort s input
-                   | Sort_pattern _ -> failwith "TODO: operator_syntax_row Sort_pattern")
-             in
-             (body_name, sort sort' input) :: List.zip_exn variable_names slot_parsers)
-      |> String.Map.of_alist_exn
-    in
+    let f = sort input in
+    let var_parsers = sort_mapping pattern.slots valences |> Map.map ~f in
     sequence_items var_parsers pattern items input <?> name
+  ;;
+
+  type prec_relation =
+    | Same_sort_higher_prec
+    | Same_sort_same_prec
+    | Different_sort
+
+  (*
+  let pp_prec_relation ppf = function
+    | Same_sort_higher_prec -> Fmt.pf ppf "Same_sort_higher_prec"
+    | Same_sort_same_prec -> Fmt.pf ppf "Same_sort_same_prec"
+    | Different_sort -> Fmt.pf ppf "Different_sort"
+  ;;
+     *)
+
+  let infix_operator_syntax_row
+      sort_name
+      sort
+      higher_prec
+      current_prec
+      (Operator_def.Operator_def (_, op_name, Arity (_, valences)))
+      (fixity, pattern, v1, lit, v2)
+      input
+    =
+    let sort_parser s = function
+      | Same_sort_higher_prec -> higher_prec
+      | Same_sort_same_prec -> current_prec
+      | Different_sort -> sort input s
+    in
+    let sort_mapping = sort_mapping pattern.Operator_pattern.slots valences in
+    let var_parsers = Map.map sort_mapping ~f:sort_parser in
+    let var_sort_mapping = Map.map sort_mapping ~f:Sort.name in
+    let go p sort_name' same_sort_rel =
+      if String.(sort_name = sort_name') then p same_sort_rel else p Different_sort
+    in
+    let p1 = Map.find_exn var_parsers v1 in
+    let p2 = Map.find_exn var_parsers v2 in
+    let prec_rel1, prec_rel2 =
+      match fixity with
+      | Fixity.Left -> Same_sort_higher_prec, Same_sort_same_prec
+      | None -> Same_sort_higher_prec, Same_sort_higher_prec
+      | Right -> Same_sort_same_prec (* XXX left-recursion? *), Same_sort_higher_prec
+    in
+    (*
+    Fmt.pr
+      "infix operator %s -> %a, %a@."
+      op_name
+      pp_prec_relation
+      prec_rel1
+      pp_prec_relation
+      prec_rel2;
+       *)
+    let p1, p2 =
+      ( go p1 (Map.find_exn var_sort_mapping v1) prec_rel1
+      , go p2 (Map.find_exn var_sort_mapping v2) prec_rel2 )
+    in
+    let p =
+      attach_pos' p1
+      >>= fun (l_range, l) ->
+      C_comment_parser.string lit
+      >>= fun _ ->
+      p2
+      >>~ fun r_range r ->
+      let range = Opt_range.union l_range r_range in
+      let env = String.Map.of_alist_exn [ v1, l; v2, r ] in
+      build_operator range env pattern input
+    in
+    p <?> op_name
   ;;
 
   let sort_syntax
       sort_name
       self
       dispatch
-      (Sort_def.Sort_def (_, operator_defs, _vars))
-      Sort_syntax.{ operators; variables; _ }
+      sort_def
+      Sort_syntax.{ operators; operator_ranking; variables; _ }
       input
     =
-    let operator_names =
-      List.map operators ~f:(fun Operator_syntax_row.{ pattern = { name; _ }; _ } -> name)
-    in
     let failure_msg =
+      let operator_names = List.map operators ~f:Operator_syntax_row.name in
       match variables with
       | None ->
         Fmt.str "looking for an operator from `%s` (%a)" sort_name pp_set operator_names
@@ -721,31 +914,80 @@ module Parse_term = struct
           pp_set
           operator_names
     in
-    let choices =
-      List.map operators ~f:(fun op ->
-          let op_def =
-            List.find_exn operator_defs ~f:(fun (Operator_def (_, name, _)) ->
-                String.(name = op.pattern.name))
-          in
-          operator_syntax_row sort_name self dispatch op_def op input)
+    let Sort_syntax.{ binary_operators; prefix_rows } =
+      Sort_syntax.partition_operator_rows sort_name operators sort_def
     in
-    let choices =
-      match variables with
-      | None -> choices
-      | Some _ ->
-        let var_parser =
-          lower_ident >>~ fun pos name -> Nominal.Term.Var (Provenance.of_range pos, name)
-        in
-        List.snoc choices var_parser
+    let operator_ranking =
+      match operator_ranking with Some (_, ranking) -> ranking | None -> []
     in
-    (* Avoid going through `choice` if possible for better error messages *)
-    let p =
-      match choices with
-      | [] -> fail (Fmt.str "no `%s` operators" sort_name)
-      | [ p ] -> p
-      | _ -> choice ~failure_msg choices
+    let operator_levels =
+      Sort_syntax.level_operator_rows operator_ranking binary_operators
     in
-    p <?> sort_name
+    let var_parser re =
+      Lvca_parsing.(of_angstrom (Regex.to_angstrom re) <* whitespace)
+      >>~ fun pos name -> Nominal.Term.Var (Provenance.of_range pos, name)
+    in
+    let sort = sort sort_name self dispatch in
+    let find_op_def_exn op_name =
+      Sort_def.find_operator_def sort_def op_name
+      |> Option.get_invariant ~here:[%here] (fun () -> "TODO: find_op_def_exn")
+    in
+    let mk_op_parser op =
+      let op_def = find_op_def_exn (Operator_syntax_row.name op) in
+      prefix_operator_syntax_row sort op_def op input
+    in
+    let prefix_rows = List.map prefix_rows ~f:mk_op_parser in
+    let prefix_parser =
+      match variables, prefix_rows with
+      | None, [] -> None
+      | None, _ -> Some (choice ~failure_msg prefix_rows)
+      | Some Variable_syntax_row.{ re; _ }, _ ->
+        Some (choice ~failure_msg (var_parser re :: prefix_rows))
+    in
+    let mk_operator_parser higher_prec current_prec ((_, pattern, _, _, _) as op_info) =
+      let op_def = find_op_def_exn pattern.Operator_pattern.name in
+      infix_operator_syntax_row
+        sort_name
+        sort
+        higher_prec
+        current_prec
+        op_def
+        op_info
+        input
+    in
+    let mk_level_parser higher_prec rows =
+      let op_names = List.map rows ~f:(fun (_, _, _, op_name, _) -> op_name) in
+      fix (fun current_prec ->
+          rows
+          |> List.map ~f:(mk_operator_parser higher_prec current_prec)
+          |> Fn.flip List.snoc higher_prec
+          |> choice ~failure_msg:(Fmt.str "Looking for operators %a" pp_set op_names))
+    in
+    (*
+    let pp_tuple ppf (fixity, op_pat, v1, lit, v2) =
+      Fmt.pf
+        ppf
+        "(@[<hov>%a, %a, %S, %S, %S@])"
+        Fixity.pp
+        fixity
+        Operator_pattern.pp
+        op_pat
+        v1
+        lit
+        v2
+    in
+    let pp_level = Fmt.(brackets (list ~sep:semi pp_tuple)) in
+    Fmt.(pr "operator levels: [@[<hov>%a@]]\n" (list ~sep:semi pp_level)) operator_levels;
+    *)
+    let highest_prec =
+      match prefix_parser with
+      | Some p ->
+        choice
+          ~failure_msg:(Fmt.str "parenthesized %s, or with a literal prefix" sort_name)
+          [ C_comment_parser.parens self; p ]
+      | None -> C_comment_parser.parens self
+    in
+    List.fold operator_levels ~init:highest_prec ~f:mk_level_parser <?> sort_name
   ;;
 
   let lang abstract_syntax concrete_syntax =
@@ -971,8 +1213,8 @@ val := True() | False()
 
     let lang_concrete_defn =
       {|expr:
-  | Add(x; y) ~ "+" _ x _ y
-  | Mul(x; y) ~ "*" _ x _ y
+  | Add(x; y) ~ x _ "+" _ y
+  | Mul(x; y) ~ x _ "*" _ y
   | Fun(v. e) ~ "fun" _ v _ "->" _ e
   | Val(v)    ~ v
   | x         ~ /[a-z][a-zA-Z0-9_]*/
@@ -981,7 +1223,6 @@ val := True() | False()
 val:
   | True()  ~ "true"
   | False() ~ "false"
-  | x       ~ /[a-z][a-zA-Z0-9_]*/
   ;
 |}
     ;;
@@ -991,8 +1232,8 @@ val:
       [%expect
         {|
         expr:
-          | Add(x; y) ~ "+" _ x _ y
-          | Mul(x; y) ~ "*" _ x _ y
+          | Add(x; y) ~ x _ "+" _ y
+          | Mul(x; y) ~ x _ "*" _ y
           | Fun(v. e) ~ "fun" _ v _ "->" _ e
           | Val(v) ~ v
           | x ~ /[a-z][a-zA-Z0-9_]*/
@@ -1001,7 +1242,6 @@ val:
         val:
           | True() ~ "true"
           | False() ~ "false"
-          | x ~ /[a-z][a-zA-Z0-9_]*/
           ;
           |}]
     ;;
@@ -1087,43 +1327,37 @@ foo:
 
     let%test_module "pp_term" =
       (module struct
-        let go sort tm = Pp_term.pp_term lang_concrete sort Fmt.stdout tm
-        let here = Provenance.of_here [%here]
-
-        let%expect_test _ =
+        let go sort tm =
           let tm =
-            Nominal.Term.Operator
-              ( here
-              , "Add"
-              , [ Scope ([], Primitive (here, Integer Z.one))
-                ; Scope ([], Primitive (here, Integer Z.one))
-                ] )
+            Lvca_parsing.parse_string_or_failwith
+              (Nominal.Term.parse' String.Set.empty)
+              tm
           in
-          go "expr" tm;
-          [%expect {|+ 1 1|}]
+          Pp_term.pp_term lang_concrete sort Fmt.stdout tm
         ;;
 
         let%expect_test _ =
-          let tm =
-            Nominal.Term.Operator
-              (here, "Fun", [ Scope ([ Var (here, "x") ], Var (here, "x")) ])
-          in
-          go "expr" tm;
+          go "expr" "Add(1; 1)";
+          [%expect {|1 + 1|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Fun(x. x)";
           [%expect {|fun x -> x|}]
         ;;
 
         let%expect_test _ =
-          go "expr" (Nominal.Term.Var (here, "z"));
+          go "expr" "z";
           [%expect {|z|}]
         ;;
 
         let%expect_test _ =
-          go "val" (Nominal.Term.Operator (here, "True", []));
+          go "val" "True()";
           [%expect {|true|}]
         ;;
 
         let%expect_test _ =
-          go "val" (Nominal.Term.Operator (here, "False", []));
+          go "val" "False()";
           [%expect {|false|}]
         ;;
       end)
@@ -1151,36 +1385,37 @@ foo:
         let parse sort = Lvca_parsing.parse_string_or_failwith (parser ~sort)
         let parse_print start_sort = parse start_sort >> Nominal.Term.pp Fmt.stdout
 
+        (*
         let () =
           let open Stdlib.Format in
           set_formatter_stag_functions Provenance.stag_functions;
           set_tags true;
           set_mark_tags true
         ;;
+           *)
 
         let%expect_test _ =
           parse_print "val" "true";
-          [%expect
-            {|<{ input = Buffer_name "test"; range = {0,4} }>True()</{ input = Buffer_name "test"; range = {0,4} }>|}]
+          [%expect {|True()|}]
         ;;
 
         let%expect_test _ =
           parse_print "val" "false";
-          [%expect
-            {|<{ input = Buffer_name "test"; range = {0,5} }>False()</{ input = Buffer_name "test"; range = {0,5} }>|}]
+          [%expect {|False()|}]
         ;;
 
         let%expect_test _ =
-          parse_print "expr" "+ x x";
-          [%expect
-            {|<{ input = Buffer_name "test"; range = {0,5} }>Add(<{ input = Buffer_name "test"; range = {2,3} }>Val(<{ input = Input_unknown; range = {2,3} }>x</{ input = Input_unknown; range = {2,3} }>)</{ input = Buffer_name "test"; range = {2,3} }>; <{ input = Buffer_name "test"; range = {4,5} }>Val(<{ input = Input_unknown; range = {4,5} }>x</{ input = Input_unknown; range = {4,5} }>)</{ input = Buffer_name "test"; range = {4,5} }>)</{ input = Buffer_name "test"; range = {0,5} }>|}]
+          parse_print "expr" "x + x";
+          [%expect {|Add(x; x)|}]
         ;;
 
+        (* TODO
         let%expect_test _ =
           parse_print "expr" "fun x -> x";
           [%expect
             {|<{ input = Buffer_name "test"; range = {0,10} }>Fun(<{ input = Input_unknown; range = {4,5} }>x</{ input = Input_unknown; range = {4,5} }>. <{ input = Buffer_name "test"; range = {9,10} }>Val(<{ input = Input_unknown; range = {9,10} }>x</{ input = Input_unknown; range = {9,10} }>)</{ input = Buffer_name "test"; range = {9,10} }>)</{ input = Buffer_name "test"; range = {0,10} }>|}]
         ;;
+        *)
 
         let%expect_test _ =
           parse_print "expr" "true";
@@ -1191,6 +1426,41 @@ foo:
         let () =
           Stdlib.Format.set_tags false;
           Stdlib.Format.set_mark_tags false
+        ;;
+
+        let%expect_test _ =
+          parse_print "expr" "x";
+          [%expect {|x|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print "expr" "x + y + z";
+          [%expect {|Add(Add(x; y); z)|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print "expr" "x + (y + z)";
+          [%expect {|Add(x; Add(y; z))|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print "expr" "x + y * z";
+          [%expect {|Add(x; Mul(y; z))|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print "expr" "x * y + z";
+          [%expect {|Add(Mul(x; y); z)|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print "expr" "x * y * z";
+          [%expect {|Mul(Mul(x; y); z)|}]
+        ;;
+
+        let%expect_test _ =
+          parse_print "expr" "x * (y * z)";
+          [%expect {|Mul(x; Mul(y; z))|}]
         ;;
       end)
     ;;
