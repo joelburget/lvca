@@ -196,6 +196,15 @@ module Operator_pattern_slot = struct
 
   let vars { variable_names; body_name; _ } = body_name :: variable_names
 
+  let build_exn env { info = _; variable_names; body_name } =
+    Nominal.Scope.Scope
+      ( List.map variable_names ~f:(fun name ->
+            match Map.find_exn env name |> Nominal.Term.to_pattern with
+            | Ok pat -> pat
+            | Error _scope -> failwith "TODO: Operator_pattern_slot.build_exn Error")
+      , Map.find_exn env body_name )
+  ;;
+
   let pp ppf { info; variable_names; body_name } =
     Provenance.open_stag ppf info;
     Fmt.(
@@ -224,6 +233,13 @@ module Operator_pattern = struct
     }
 
   let vars { slots; _ } = slots |> List.map ~f:Operator_pattern_slot.vars |> List.concat
+
+  let build_exn env { info; name; slots } =
+    Nominal.Term.Operator
+      ( Provenance.calculated_here [%here] [ info ]
+      , name
+      , List.map slots ~f:(Operator_pattern_slot.build_exn env) )
+  ;;
 
   let pp ppf { info; name; slots } =
     Provenance.open_stag ppf info;
@@ -826,74 +842,6 @@ module Parse_term = struct
     sequence_items var_parsers pattern items input <?> name
   ;;
 
-  type prec_relation =
-    | Same_sort_higher_prec
-    | Same_sort_same_prec
-    | Different_sort
-
-  (*
-  let pp_prec_relation ppf = function
-    | Same_sort_higher_prec -> Fmt.pf ppf "Same_sort_higher_prec"
-    | Same_sort_same_prec -> Fmt.pf ppf "Same_sort_same_prec"
-    | Different_sort -> Fmt.pf ppf "Different_sort"
-  ;;
-     *)
-
-  let infix_operator_syntax_row
-      sort_name
-      sort
-      higher_prec
-      current_prec
-      (Operator_def.Operator_def (_, op_name, Arity (_, valences)))
-      (fixity, pattern, v1, lit, v2)
-      input
-    =
-    let sort_parser s = function
-      | Same_sort_higher_prec -> higher_prec
-      | Same_sort_same_prec -> current_prec
-      | Different_sort -> sort input s
-    in
-    let sort_mapping = sort_mapping pattern.Operator_pattern.slots valences in
-    let var_parsers = Map.map sort_mapping ~f:sort_parser in
-    let var_sort_mapping = Map.map sort_mapping ~f:Sort.name in
-    let go p sort_name' same_sort_rel =
-      if String.(sort_name = sort_name') then p same_sort_rel else p Different_sort
-    in
-    let p1 = Map.find_exn var_parsers v1 in
-    let p2 = Map.find_exn var_parsers v2 in
-    let prec_rel1, prec_rel2 =
-      match fixity with
-      | Fixity.Left -> Same_sort_higher_prec, Same_sort_same_prec
-      | None -> Same_sort_higher_prec, Same_sort_higher_prec
-      | Right -> Same_sort_same_prec (* XXX left-recursion? *), Same_sort_higher_prec
-    in
-    (*
-    Fmt.pr
-      "infix operator %s -> %a, %a@."
-      op_name
-      pp_prec_relation
-      prec_rel1
-      pp_prec_relation
-      prec_rel2;
-       *)
-    let p1, p2 =
-      ( go p1 (Map.find_exn var_sort_mapping v1) prec_rel1
-      , go p2 (Map.find_exn var_sort_mapping v2) prec_rel2 )
-    in
-    let p =
-      attach_pos' p1
-      >>= fun (l_range, l) ->
-      C_comment_parser.string lit
-      >>= fun _ ->
-      p2
-      >>~ fun r_range r ->
-      let range = Opt_range.union l_range r_range in
-      let env = String.Map.of_alist_exn [ v1, l; v2, r ] in
-      build_operator range env pattern input
-    in
-    p <?> op_name
-  ;;
-
   let sort_syntax
       sort_name
       self
@@ -944,41 +892,29 @@ module Parse_term = struct
       | Some Variable_syntax_row.{ re; _ }, _ ->
         Some (choice ~failure_msg (var_parser re :: prefix_rows))
     in
-    let mk_operator_parser higher_prec current_prec ((_, pattern, _, _, _) as op_info) =
-      let op_def = find_op_def_exn pattern.Operator_pattern.name in
-      infix_operator_syntax_row
-        sort_name
-        sort
-        higher_prec
-        current_prec
-        op_def
-        op_info
-        input
-    in
     let mk_level_parser higher_prec rows =
-      let op_names = List.map rows ~f:(fun (_, _, _, op_name, _) -> op_name) in
-      fix (fun current_prec ->
-          rows
-          |> List.map ~f:(mk_operator_parser higher_prec current_prec)
-          |> Fn.flip List.snoc higher_prec
-          |> choice ~failure_msg:(Fmt.str "Looking for operators %a" pp_set op_names))
+      let op_name =
+        rows
+        |> List.map ~f:(fun (_fixity, pat, v1_name, op_name, v2_name) ->
+               C_comment_parser.string op_name >>| fun _ -> pat, v1_name, v2_name)
+        |> choice ~failure_msg:"operator name"
+      in
+      let fixity, _, _, _, _ (* XXX what if different fixities *) = List.hd_exn rows in
+      let op_rhs_pair =
+        op_name >>= fun op_info -> higher_prec >>| fun tm -> op_info, tm
+      in
+      higher_prec
+      >>= fun init ->
+      many op_rhs_pair
+      >>| fun pairs ->
+      match fixity with
+      | Fixity.Left ->
+        List.fold pairs ~init ~f:(fun t1 ((pattern, v1_name, v2_name), t2) ->
+            let env = String.Map.of_alist_exn [ v1_name, t1; v2_name, t2 ] in
+            Operator_pattern.build_exn env pattern)
+      | None -> failwith "TODO: mk_level_parser None"
+      | Right -> failwith "TODO: mk_level_parser Right"
     in
-    (*
-    let pp_tuple ppf (fixity, op_pat, v1, lit, v2) =
-      Fmt.pf
-        ppf
-        "(@[<hov>%a, %a, %S, %S, %S@])"
-        Fixity.pp
-        fixity
-        Operator_pattern.pp
-        op_pat
-        v1
-        lit
-        v2
-    in
-    let pp_level = Fmt.(brackets (list ~sep:semi pp_tuple)) in
-    Fmt.(pr "operator levels: [@[<hov>%a@]]\n" (list ~sep:semi pp_level)) operator_levels;
-    *)
     let highest_prec =
       match prefix_parser with
       | Some p ->
