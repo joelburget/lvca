@@ -10,7 +10,7 @@
  * [ ] multiple concrete syntaxes mapping to the same abstract
  * [x] operator ranking
  * [ ] whitespace
- * [ ] variables colliding with keywords
+ * [x] variables colliding with keywords
  * [ ] do all operators in the same level have to have the same fixity?
  *)
 open Base
@@ -100,6 +100,11 @@ module Sequence_item = struct
   let vars = function Var (_, v) -> [ v ] | Literal _ | Space _ -> []
   let is_space = function Space _ -> true | _ -> false
 
+  let keywords = function
+    | Var _ | Space _ -> String.Set.empty
+    | Literal (_, kw) -> String.Set.singleton kw
+  ;;
+
   let parse =
     let open Lvca_parsing in
     let open C_comment_parser in
@@ -128,6 +133,10 @@ module Operator_concrete_syntax_row = struct
 
   let info (i, _) = i
   let vars (_, items) = items |> List.map ~f:Sequence_item.vars |> List.concat
+
+  let keywords (_, sequence_items) =
+    sequence_items |> List.map ~f:Sequence_item.keywords |> Set.union_list (module String)
+  ;;
 
   let get_binary_operator var_sort_mapping sort_name (_, items) =
     match List.filter items ~f:(not << Sequence_item.is_space) with
@@ -272,6 +281,10 @@ module Operator_syntax_row = struct
   let info t = t.info
   let name { pattern = { name; _ }; _ } = name
 
+  let keywords { concrete_syntax; _ } =
+    Operator_concrete_syntax_row.keywords concrete_syntax
+  ;;
+
   let get_binary_operator var_sort_mapping sort_name { concrete_syntax; _ } =
     Operator_concrete_syntax_row.get_binary_operator
       var_sort_mapping
@@ -351,6 +364,12 @@ module Sort_syntax = struct
     ; variables : Variable_syntax_row.t option
     ; operator_ranking : Operator_ranking.t option
     }
+
+  let keywords { operators; _ } =
+    operators
+    |> List.map ~f:Operator_syntax_row.keywords
+    |> Set.union_list (module String)
+  ;;
 
   type partition =
     { binary_operators : (Operator_pattern.t * string * string * string) list
@@ -488,6 +507,12 @@ module Sort_syntax = struct
 end
 
 type t = Sort_syntax.t list
+
+let keywords t = t |> List.map ~f:Sort_syntax.keywords |> Set.union_list (module String)
+
+let unordered_keywords t =
+  t |> Map.data |> List.map ~f:Sort_syntax.keywords |> Set.union_list (module String)
+;;
 
 let build_unordered ordered =
   ordered
@@ -801,13 +826,7 @@ module Parse_term = struct
     go String.Map.empty None items
   ;;
 
-  let sort
-      sort_name
-      (self : Nominal.Term.t Lvca_parsing.t)
-      (dispatch : dispatch)
-      input
-      (sort : Sort.t)
-    =
+  let sort sort_name self dispatch input sort =
     let sort_name' = Sort.name sort in
     if String.(sort_name' = sort_name)
     then self
@@ -842,7 +861,16 @@ module Parse_term = struct
     sequence_items var_parsers pattern items input <?> name
   ;;
 
+  let var_parser keywords re =
+    Lvca_parsing.(attach_pos' (of_angstrom (Regex.to_angstrom re)) <* whitespace)
+    >>= fun (pos, name) ->
+    if Set.mem keywords name
+    then fail (Fmt.str "%S is a keyword" name)
+    else return (Nominal.Term.Var (Provenance.of_range pos, name))
+  ;;
+
   let sort_syntax
+      keywords
       sort_name
       self
       dispatch
@@ -868,13 +896,6 @@ module Parse_term = struct
     let operator_ranking =
       match operator_ranking with Some (_, ranking) -> ranking | None -> []
     in
-    let operator_levels =
-      Sort_syntax.level_operator_rows operator_ranking binary_operators
-    in
-    let var_parser re =
-      Lvca_parsing.(of_angstrom (Regex.to_angstrom re) <* whitespace)
-      >>~ fun pos name -> Nominal.Term.Var (Provenance.of_range pos, name)
-    in
     let sort = sort sort_name self dispatch in
     let find_op_def_exn op_name =
       Sort_def.find_operator_def sort_def op_name
@@ -890,7 +911,7 @@ module Parse_term = struct
       | None, [] -> None
       | None, _ -> Some (choice ~failure_msg prefix_rows)
       | Some Variable_syntax_row.{ re; _ }, _ ->
-        Some (choice ~failure_msg (var_parser re :: prefix_rows))
+        Some (choice ~failure_msg (var_parser keywords re :: prefix_rows))
     in
     let mk_level_parser higher_prec rows =
       let op_name =
@@ -923,10 +944,14 @@ module Parse_term = struct
           [ C_comment_parser.parens self; p ]
       | None -> C_comment_parser.parens self
     in
+    let operator_levels =
+      Sort_syntax.level_operator_rows operator_ranking binary_operators
+    in
     List.fold operator_levels ~init:highest_prec ~f:mk_level_parser <?> sort_name
   ;;
 
   let lang abstract_syntax concrete_syntax =
+    let keywords = unordered_keywords concrete_syntax in
     let map =
       Map.mapi
         abstract_syntax
@@ -934,7 +959,7 @@ module Parse_term = struct
           fix
           @@ fun self ->
           let concrete_sort = Map.find_exn concrete_syntax sort_name in
-          sort_syntax sort_name self dispatch abstract_sort concrete_sort input)
+          sort_syntax keywords sort_name self dispatch abstract_sort concrete_sort input)
     in
     { map }
   ;;
@@ -944,6 +969,7 @@ module Unordered = struct
   type t = Sort_syntax.t String.Map.t
 
   let build = build_unordered
+  let keywords = unordered_keywords
   let pp_term ~sort lang = Pp_term.pp_term lang sort
 
   let parse_term ?(input = Provenance.Parse_input.Input_unknown) ~sort abstract concrete =
@@ -1355,8 +1381,7 @@ foo:
 
         let%expect_test _ =
           parse_print "expr" "true";
-          [%expect
-            {|<{ input = Buffer_name "test"; range = {0,4} }>Val(<{ input = Buffer_name "test"; range = {0,4} }>True()</{ input = Buffer_name "test"; range = {0,4} }>)</{ input = Buffer_name "test"; range = {0,4} }>|}]
+          [%expect {|Val(True())|}]
         ;;
 
         let () =

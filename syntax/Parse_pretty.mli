@@ -125,12 +125,14 @@ type t = Sort_syntax.t list
 val parse : t Lvca_parsing.t
 val pp : t Fmt.t
 val check : Sort_def.t String.Map.t -> t -> string option
+val keywords : t -> String.Set.t
 
 (** How to parse / print a language. Also see the ordered form [t]. *)
 module Unordered : sig
   type t = Sort_syntax.t String.Map.t
 
   val build : Sort_syntax.t list -> [ `Duplicate_key of string | `Ok of t ]
+  val keywords : t -> String.Set.t
 
   (** Pretty-print a term using this concrete syntax. *)
   val pp_term : sort:string -> t -> Nominal.Term.t Fmt.t
