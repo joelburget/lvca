@@ -707,61 +707,69 @@ let check sort_defs ordered =
 
 module Pp_term = struct
   let pp_term sorts start_sort ppf tm =
-    let rec operator_row
-        Operator_syntax_row.
-          { info = _
-          ; pattern = { info = _; name; slots }
-          ; concrete_syntax = _, sequence_items
-          }
-        tm
-      =
+    let rec operator_row sort env_prec prec_level row tm =
       match tm with
       | Nominal.Term.Var _ ->
         Lvca_util.invariant_violation [%here] "operator_row doesn't handle vars"
       | Primitive prim -> Ok (Some (Primitive.All.pp ppf prim))
       | Operator (_, op_name, scopes) ->
-        if String.(name <> op_name)
+        if String.(row.Operator_syntax_row.pattern.name <> op_name)
         then Ok None
-        else (
-          match List.zip slots scopes with
-          | Ok slotscopes ->
-            let open Result.Let_syntax in
-            let%bind var_mappings =
-              slotscopes
-              |> List.map
-                   ~f:(fun ({ info = _; variable_names; body_name }, Scope (pats, body))
-                      ->
-                     match
-                       List.zip
-                         variable_names
-                         (List.map pats ~f:(fun p -> Either.First p))
-                     with
-                     | Unequal_lengths -> Error "TODO: pp_term 1"
-                     | Ok varpats ->
-                       Ok
-                         (varpats
-                         |> String.Map.of_alist_exn
-                         |> Map.set ~key:body_name ~data:(Either.Second body)))
-              |> Result.all
-            in
-            let var_mapping = String.Map.unions_left_biased var_mappings in
-            Stdlib.Format.pp_open_hvbox ppf 2;
-            List.iter sequence_items ~f:(function
-                | Var (_, name) ->
-                  (match Map.find_exn var_mapping name with
-                  | First pat -> pat |> Nominal.Term.of_pattern |> go
-                  | Second tm -> go tm)
-                | Literal (_, str) -> Fmt.string ppf str
-                | Space _ -> Fmt.sp ppf ());
-            Stdlib.Format.pp_close_box ppf ();
-            Ok (Some ())
-          | Unequal_lengths -> Error "TODO: pp_term 2")
-    and go tm =
+        else pp_operator sort row scopes prec_level env_prec
+    and pp_operator sort row scopes prec_level env_prec =
+      let Operator_syntax_row.
+            { info = _; pattern = { slots; _ }; concrete_syntax = _, sequence_items }
+        =
+        row
+      in
+      match List.zip slots scopes with
+      | Ok slotscopes ->
+        let open Result.Let_syntax in
+        let%bind var_mappings =
+          slotscopes
+          |> List.map
+               ~f:(fun
+                    ( Operator_pattern_slot.{ info = _; variable_names; body_name }
+                    , Nominal.Scope.Scope (pats, body) )
+                  ->
+                 match
+                   List.zip variable_names (List.map pats ~f:(fun p -> Either.First p))
+                 with
+                 | Unequal_lengths -> Error "TODO: pp_term 1"
+                 | Ok varpats ->
+                   Ok
+                     (varpats
+                     |> String.Map.of_alist_exn
+                     |> Map.set ~key:body_name ~data:(Either.Second body)))
+          |> Result.all
+        in
+        let var_mapping = String.Map.unions_left_biased var_mappings in
+        let pp_sequence_items () =
+          List.iter sequence_items ~f:(function
+              | Sequence_item.Var (_, name) ->
+                (match Map.find_exn var_mapping name with
+                | First pat -> pat |> Nominal.Term.of_pattern |> go sort prec_level
+                | Second tm -> go sort prec_level tm)
+              | Literal (_, str) -> Fmt.string ppf str
+              | Space _ -> Fmt.sp ppf ())
+        in
+        Stdlib.Format.pp_open_hvbox ppf 2;
+        (* XXX account for fixity too *)
+        (match Operator_syntax_row.get_binary_operator var_sort_mapping sort row with
+        | Some (v1, _, v2) ->
+          if prec_level > env_prec then Fmt.pf ppf "(";
+          failwith "TODO";
+          if prec_level > env_prec then Fmt.pf ppf ")"
+        | None -> pp_sequence_items ());
+        Stdlib.Format.pp_close_box ppf ();
+        Ok (Some ())
+      | Unequal_lengths -> Error "TODO: pp_term 2"
+    and go sort env_prec tm =
       match tm with
       | Nominal.Term.Var (_, var_name) -> Fmt.string ppf var_name
       | _ ->
         let operator_syntaxes : Operator_syntax_row.t list =
-          match Map.find sorts start_sort with
+          match Map.find sorts start_sort (* XXX need to change sort *) with
           | Some Sort_syntax.{ operators; _ } -> operators
           | None ->
             Lvca_util.invariant_violation
@@ -769,8 +777,10 @@ module Pp_term = struct
               (Fmt.str "didn't find expected operator %S" start_sort)
         in
         (match
-           List.find_map operator_syntaxes ~f:(fun row ->
-               match operator_row row tm with Error _ -> None | Ok v -> v)
+           List.find_mapi operator_syntaxes ~f:(fun i row ->
+               match operator_row sort env_prec i row tm with
+               | Error _ -> None
+               | Ok v -> v)
          with
         | None ->
           Lvca_util.invariant_violation
@@ -778,7 +788,7 @@ module Pp_term = struct
             (Fmt.str "Didn't find matching operator syntax for `%a`" Nominal.Term.pp tm)
         | Some () -> ())
     in
-    go tm
+    go start_sort Base.Int.max_value tm
   ;;
 end
 
