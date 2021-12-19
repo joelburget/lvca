@@ -1306,18 +1306,48 @@ foo:
         ;;
 
         let%expect_test _ =
+          go "expr" "z";
+          [%expect {|z|}]
+        ;;
+
+        let%expect_test _ =
           go "expr" "Add(1; 1)";
           [%expect {|1 + 1|}]
         ;;
 
         let%expect_test _ =
-          go "expr" "Fun(x. x)";
-          [%expect {|fun x -> x|}]
+          go "expr" "Add(Add(x; y); z)";
+          [%expect {|x + y + z|}]
         ;;
 
         let%expect_test _ =
-          go "expr" "z";
-          [%expect {|z|}]
+          go "expr" "Add(x; Add(y; z))";
+          [%expect {|x + (y + z)|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Add(x; Mul(y; z))";
+          [%expect {|x + y * z|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Add(Mul(x; y); z)";
+          [%expect {|x * y + z|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Mul(Mul(x; y); z)";
+          [%expect {|x * y * z|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Mul(x; Mul(y; z))";
+          [%expect {|x * (y * z)|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Fun(x. x)";
+          [%expect {|fun x -> x|}]
         ;;
 
         let%expect_test _ =
