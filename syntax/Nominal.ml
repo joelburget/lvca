@@ -182,7 +182,7 @@ module Term = struct
         | Ok zipped ->
           (match String.Map.join_helper zipped with
           | `Ok result -> result
-          | `Duplicate_key k -> invariant_violation ~here:[%here] ("duplicate key: " ^ k))
+          | `Duplicate_key k -> invariant_violation [%here] ("duplicate key: " ^ k))
         | Unequal_lengths -> None)
       else None
     | _ -> None

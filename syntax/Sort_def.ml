@@ -106,7 +106,7 @@ let parse =
     let op_defs =
       List.map op_defs ~f:(function
           | Either.First op_def -> op_def
-          | _ -> Lvca_util.invariant_violation ~here:[%here] "Must be all Firsts")
+          | _ -> Lvca_util.invariant_violation [%here] "Must be all Firsts")
     in
     match var_names with
     | ([] as var_names) | [ Either.Second var_names ] ->

@@ -51,7 +51,7 @@ c_type := Computation(v_type; list string)
     | Ok v -> v
     | Error err ->
       Lvca_util.invariant_violation
-        ~here:[%here]
+        [%here]
         (Fmt.to_to_string Nominal.Conversion_error.pp err)
   ;;
 

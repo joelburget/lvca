@@ -371,7 +371,7 @@ module Mk_render (Index : Index_s) = struct
       let loc =
         match p |> Primitive.All.info |> Index.lookup with
         | Loc_ix loc -> loc
-        | _ -> invariant_violation ~here:[%here] "Expected Loc_ix"
+        | _ -> invariant_violation [%here] "Expected Loc_ix"
       in
       let str = Fmt.str "%a%s" Primitive.All.pp p suffix in
       Queue.enqueue queue (grid_tmpl ~render_params [ padded_text depth str ] loc)
@@ -424,7 +424,7 @@ module Mk_render (Index : Index_s) = struct
       let loc =
         match p |> Primitive.All.info |> Index.lookup with
         | Loc_ix loc -> loc
-        | _ -> invariant_violation ~here:[%here] "Expected Loc_ix"
+        | _ -> invariant_violation [%here] "Expected Loc_ix"
       in
       Queue.enqueue queue (grid_tmpl ~render_params [ padded_text depth str ] loc)
     | Var (info, name) ->

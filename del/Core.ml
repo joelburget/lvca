@@ -48,7 +48,7 @@ ty := Sort(sort) | Arrow(ty; ty)
     let rec of_list = function
       | [] ->
         Lvca_util.invariant_violation
-          ~here:[%here]
+          [%here]
           "of_list must be called with a non-empty list"
       | [ sort ] -> sort
       | sort :: sorts -> arrow sort (of_list sorts)
@@ -191,7 +191,7 @@ module Pp = struct
         let f, args = go t1 in
         f, t2 :: args
       | Ap (_, f, t2) -> f, [ t2 ]
-      | _ -> Lvca_util.invariant_violation ~here:[%here] "Expected an Ap"
+      | _ -> Lvca_util.invariant_violation [%here] "Expected an Ap"
     in
     let f, args = go tm in
     f, List.rev args
@@ -238,7 +238,7 @@ module Pp = struct
       (match List.zip binders rows with
       | Unequal_lengths ->
         Lvca_util.invariant_violation
-          ~here:[%here]
+          [%here]
           "invalid set of letrec binders (must be the same number of terms)"
       | Ok bound_rows ->
         pf
@@ -367,7 +367,7 @@ module Parse = struct
   open Term_syntax
 
   let make_aps : Term.t list -> Term.t = function
-    | [] -> Lvca_util.invariant_violation ~here:[%here] "must be a nonempty list"
+    | [] -> Lvca_util.invariant_violation [%here] "must be a nonempty list"
     | [ x ] -> x
     | f :: args ->
       List.fold_left args ~init:f ~f:(fun f arg ->
@@ -627,9 +627,7 @@ module Check_error' = struct
       (match tm with
       | Term_syntax.Term.Term_var (_, name) -> Fmt.pf ppf "variable %s not found" name
       | _ ->
-        Lvca_util.invariant_violation
-          ~here:[%here]
-          Fmt.(str "expected Var (got %a)" Pp.term tm))
+        Lvca_util.invariant_violation [%here] Fmt.(str "expected Var (got %a)" Pp.term tm))
     | Operator_not_found -> Fmt.pf ppf "operator not found"
     | Mismatch (ty, ty') -> Fmt.pf ppf "%a != %a" Type.pp ty' Type.pp ty
     | Binding_pattern_check str -> Fmt.pf ppf "%s" str
@@ -725,13 +723,13 @@ let merge_pattern_context
       (ctxs
       |> List.map
            ~f:
-             (Lvca_util.Option.get_invariant ~here:[%here] (fun () ->
+             (Lvca_util.Option.get_invariant [%here] (fun () ->
                   "we just checked all is_some"))
       |> String.Map.strict_unions
       |> function
       | `Duplicate_key k ->
         Lvca_util.invariant_violation
-          ~here:[%here]
+          [%here]
           (Printf.sprintf "multiple variables with the same name (%s) in one pattern" k)
       | `Ok m -> m)
   else None
@@ -980,7 +978,7 @@ let rec eval_in_ctx (ctx : eval_env) tm : eval_result =
     (match List.zip binders rows with
     | Unequal_lengths ->
       Lvca_util.invariant_violation
-        ~here:[%here]
+        [%here]
         "invalid set of letrec binders (must be the same number of terms)"
     | Ok bound_rows ->
       let ctx =
@@ -1354,8 +1352,7 @@ and check_binders ({ type_env; syntax = _ } as env) rows binders =
   let rows = List_model.to_list rows in
   let defns =
     match List.zip binders rows with
-    | Unequal_lengths ->
-      Lvca_util.invariant_violation ~here:[%here] "Binder / row mismatch"
+    | Unequal_lengths -> Lvca_util.invariant_violation [%here] "Binder / row mismatch"
     | Ok defns -> defns
   in
   let type_env =

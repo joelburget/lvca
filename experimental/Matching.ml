@@ -70,7 +70,7 @@ let rec match_pattern tm pat =
         |> Option.all
         (* Assumption: valid patterns with no repeated variable names *)
         |> Option.map ~f:SMap.unions_right_biased
-      else invariant_violation ~here:[%here] "mismatched subterms / patterns"
+      else invariant_violation [%here] "mismatched subterms / patterns"
     else None
   | Primitive pl, Primitive pr ->
     if Primitive.All.equal ~info_eq:(fun _ _ -> true) pl pr then Some SMap.empty else None
@@ -106,20 +106,20 @@ let produce_sort_env lang sort =
      with
     | Some _, Some _ ->
       invariant_violation
-        ~here:[%here]
+        [%here]
         (Printf.sprintf "sort %s both in externals and defined" sort_name)
     | Some (Kind _), _ ->
       invariant_violation
-        ~here:[%here]
+        [%here]
         (Printf.sprintf "sort (%s) must be defined, not in externals" sort_name)
     | _, Some (Abstract_syntax.Sort_def.Sort_def (ty_vars, _op_defs)) ->
       let ty_vars = ty_vars |> List.map ~f:(fun (name, _kind) -> name) in
       (match List.zip ty_vars (Sort.Ap_list.to_list args) with
       | List.Or_unequal_lengths.Unequal_lengths ->
-        invariant_violation ~here:[%here] "sort / args unequal lengths"
+        invariant_violation [%here] "sort / args unequal lengths"
       | Ok alist -> SMap.of_alist_exn alist)
     | None, None ->
-      invariant_violation ~here:[%here] (Printf.sprintf "sort %s not found" sort_name))
+      invariant_violation [%here] (Printf.sprintf "sort %s not found" sort_name))
 ;;
 
 (* Given a sort, produce a mapping from operator name to a list of the concrete
@@ -144,7 +144,7 @@ let get_children_concrete_sorts lang sort =
                if not (List.is_empty binders)
                then
                  invariant_violation
-                   ~here:[%here]
+                   [%here]
                    (Fmt.str
                       "valence is not a simple sort: %a"
                       Abstract_syntax.Valence.pp
@@ -317,7 +317,7 @@ let rec compile_matrix lang sorts matrix =
               not (List.for_all column ~f:(fun { pattern; _ } -> is_wildcard pattern)))
         in
         match col_no with
-        | None -> invariant_violation ~here:[%here] "no column which is not all wildcards"
+        | None -> invariant_violation [%here] "no column which is not all wildcards"
         | Some (i, _) -> i
       in
       (* the first column is a non-wildcard *)
@@ -408,7 +408,7 @@ let run_matches tms tree =
         | `Ok env -> env
         | `Duplicate_key name ->
           invariant_violation
-            ~here:[%here]
+            [%here]
             Fmt.(
               str
                 "duplicate key: %s (instrs: [%a], terms: (%a)"
@@ -419,7 +419,7 @@ let run_matches tms tree =
                 tms)
       in
       Some (rhs, env)
-    | [], _ -> invariant_violation ~here:[%here] "empty pattern but not matched"
+    | [], _ -> invariant_violation [%here] "empty pattern but not matched"
     | Nonbinding.Operator (_, op_name, subtms) :: tms', Operator_cases (branches, default)
       ->
       let branch =
@@ -429,7 +429,7 @@ let run_matches tms tree =
         | _, _ ->
           let op_names = branches |> Map.keys |> String.concat ~sep:", " in
           invariant_violation
-            ~here:[%here]
+            [%here]
             (Printf.sprintf
                "expected branch %s (found [%s]) (no default)"
                op_name
@@ -437,7 +437,7 @@ let run_matches tms tree =
       in
       go (subtms @ tms') branch
     | _, Operator_cases _ ->
-      invariant_violation ~here:[%here] "Operator_cases matched with non-operator"
+      invariant_violation [%here] "Operator_cases matched with non-operator"
     | Nonbinding.Primitive prim :: tms', Prim_cases branches ->
       let found =
         branches
@@ -450,9 +450,7 @@ let run_matches tms tree =
       | None -> None (* failwith "TODO: error -- no matching primitive" *)
       | Some (_, branch) -> go tms' branch)
     | _, Prim_cases _ ->
-      invariant_violation
-        ~here:[%here]
-        "decision_tree.Prim_cases paired with non-Primitive"
+      invariant_violation [%here] "decision_tree.Prim_cases paired with non-Primitive"
     | _, Swap (i, tree) -> go (List.swap tms' ~i ~j:0) tree
   in
   go tms tree

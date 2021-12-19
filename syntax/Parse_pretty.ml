@@ -381,8 +381,7 @@ module Sort_syntax = struct
       List.partition_map operator_rows ~f:(fun row ->
           let (Operator_def (_, _, Arity (_, valences))) =
             Sort_def.find_operator_def sort_def (Operator_syntax_row.name row)
-            |> Option.get_invariant ~here:[%here] (fun () ->
-                   "TODO: partition_operator_rows")
+            |> Option.get_invariant [%here] (fun () -> "TODO: partition_operator_rows")
           in
           let var_sort_mapping =
             List.zip_exn row.pattern.slots valences
@@ -410,7 +409,7 @@ module Sort_syntax = struct
           | _, true -> Either.Second row
           | _, _ ->
             Lvca_util.invariant_violation
-              ~here:[%here]
+              [%here]
               (Fmt.str
                  "we don't know how to parse rows that are neither binary operators nor \
                   prefixed by a literal (%a)"
@@ -718,7 +717,7 @@ module Pp_term = struct
       =
       match tm with
       | Nominal.Term.Var _ ->
-        Lvca_util.invariant_violation ~here:[%here] "operator_row doesn't handle vars"
+        Lvca_util.invariant_violation [%here] "operator_row doesn't handle vars"
       | Primitive prim -> Ok (Some (Primitive.All.pp ppf prim))
       | Operator (_, op_name, scopes) ->
         if String.(name <> op_name)
@@ -766,7 +765,7 @@ module Pp_term = struct
           | Some Sort_syntax.{ operators; _ } -> operators
           | None ->
             Lvca_util.invariant_violation
-              ~here:[%here]
+              [%here]
               (Fmt.str "didn't find expected operator %S" start_sort)
         in
         (match
@@ -775,7 +774,7 @@ module Pp_term = struct
          with
         | None ->
           Lvca_util.invariant_violation
-            ~here:[%here]
+            [%here]
             (Fmt.str "Didn't find matching operator syntax for `%a`" Nominal.Term.pp tm)
         | Some () -> ())
     in
@@ -899,7 +898,7 @@ module Parse_term = struct
     let sort = sort sort_name self dispatch in
     let find_op_def_exn op_name =
       Sort_def.find_operator_def sort_def op_name
-      |> Option.get_invariant ~here:[%here] (fun () -> "TODO: find_op_def_exn")
+      |> Option.get_invariant [%here] (fun () -> "TODO: find_op_def_exn")
     in
     let mk_op_parser op =
       let op_def = find_op_def_exn (Operator_syntax_row.name op) in

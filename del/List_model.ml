@@ -18,7 +18,7 @@ let rec extract_vars_from_empty_pattern = function
   | Pattern.Operator (_, "Nil", []) -> []
   | Operator (_, "Cons", [ Var (_, name); pats ]) ->
     name :: extract_vars_from_empty_pattern pats
-  | _ -> Lvca_util.invariant_violation ~here:[%here] "Invalid empty list pattern"
+  | _ -> Lvca_util.invariant_violation [%here] "Invalid empty list pattern"
 ;;
 
 let rec make_empty_pattern vars =

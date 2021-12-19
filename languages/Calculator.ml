@@ -57,7 +57,7 @@ let rec to_tex expr =
       | Sub _ -> '-'
       | Mul _ -> '*'
       | Div _ -> '/'
-      | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected constructor"
+      | _ -> Lvca_util.invariant_violation [%here] "unexpected constructor"
     in
     list [ go x; Token (i, (here, c)); go y ]
   | Max (_, x, y) -> list [ Control_seq (here, (here, "\\max")); go x; go y ]
@@ -85,7 +85,7 @@ let rec to_tex expr =
       | Asin _ -> "\\asin"
       | Acos _ -> "\\acos"
       | Atan _ -> "\\atan"
-      | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected constructor"
+      | _ -> Lvca_util.invariant_violation [%here] "unexpected constructor"
     in
     list [ Control_seq (here, (here, control_seq)); go x ]
   | Pi i -> list [ Control_seq (i, (here, "\\pi")) ]
@@ -129,7 +129,7 @@ module Parse = struct
     match name with
     | "pi" -> Expr.Pi range
     | "e" -> E range
-    | _ -> Lvca_util.invariant_violation ~here:[%here] "Unexpected constant"
+    | _ -> Lvca_util.invariant_violation [%here] "Unexpected constant"
   ;;
 
   let mk_binary range name x y =
@@ -140,7 +140,7 @@ module Parse = struct
     | "div" -> Div (range, x, y)
     | "max" -> Max (range, x, y)
     | "min" -> Min (range, x, y)
-    | _ -> Lvca_util.invariant_violation ~here:[%here] "Unexpected binary operator"
+    | _ -> Lvca_util.invariant_violation [%here] "Unexpected binary operator"
   ;;
 
   let mk_unary range name x =
@@ -156,7 +156,7 @@ module Parse = struct
     | "asin" -> Asin (range, x)
     | "acos" -> Acos (range, x)
     | "atan" -> Atan (range, x)
-    | _ -> Lvca_util.invariant_violation ~here:[%here] "Unexpected unary operator"
+    | _ -> Lvca_util.invariant_violation [%here] "Unexpected unary operator"
   ;;
 
   let const =
@@ -267,7 +267,7 @@ let rec interpret : Expr.t -> Constructive_real.t =
         | Div _ -> ( / )
         | Min _ -> min
         | Max _ -> max
-        | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected term")
+        | _ -> Lvca_util.invariant_violation [%here] "unexpected term")
     in
     f (interpret l) (interpret r)
   | Negate (_, x)
@@ -295,7 +295,7 @@ let rec interpret : Expr.t -> Constructive_real.t =
         | Asin _ -> asin
         | Acos _ -> acos
         | Atan _ -> atan
-        | _ -> Lvca_util.invariant_violation ~here:[%here] "unexpected term")
+        | _ -> Lvca_util.invariant_violation [%here] "unexpected term")
     in
     f (interpret x)
 ;;
