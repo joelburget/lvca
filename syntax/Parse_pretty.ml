@@ -28,13 +28,11 @@ module Fixity = struct
     | None
     | Right
 
-  (*
   let pp ppf = function
     | Left -> Fmt.pf ppf "Left"
     | None -> Fmt.pf ppf "None"
     | Right -> Fmt.pf ppf "Right"
   ;;
-     *)
 end
 
 module Operator_fixity = struct

@@ -7,6 +7,8 @@ module Fixity : sig
     | Left
     | None
     | Right
+
+  val pp : t Fmt.t
 end
 
 (** An operator has a name and a fixity. *)
