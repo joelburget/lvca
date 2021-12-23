@@ -424,10 +424,10 @@ module Sort_syntax = struct
           in
           match
             (* TODO: Just replace with a check for operator in operator_ranking? *)
-            ( Operator_syntax_row.is_binary_operator operator_names row
-            , Operator_syntax_row.is_prefix_row row
-              || Operator_syntax_row.defers_to_another_sort var_sort_mapping sort_name row
-            )
+            Operator_syntax_row.(
+              ( is_binary_operator operator_names row
+              , is_prefix_row row || defers_to_another_sort var_sort_mapping sort_name row
+              ))
           with
           | Some (v1, l, v2), _ ->
             Either.First { pattern = row.pattern; v1; op_name = l; v2 }
