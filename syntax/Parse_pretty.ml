@@ -138,12 +138,9 @@ module Operator_concrete_syntax_row = struct
     sequence_items |> List.map ~f:Sequence_item.keywords |> Set.union_list (module String)
   ;;
 
-  let get_binary_operator var_sort_mapping sort_name (_, items) =
+  let is_binary_operator operator_names (_, items) =
     match List.filter items ~f:(not << Sequence_item.is_space) with
-    | [ Var (_, v1); Literal (_, l); Var (_, v2) ]
-      when String.(
-             Base.Map.find_exn var_sort_mapping v1 = sort_name
-             && Base.Map.find_exn var_sort_mapping v2 = sort_name) ->
+    | [ Var (_, v1); Literal (_, l); Var (_, v2) ] when Set.mem operator_names l ->
       Some (v1, l, v2)
     | _ -> None
   ;;
@@ -285,11 +282,8 @@ module Operator_syntax_row = struct
     Operator_concrete_syntax_row.keywords concrete_syntax
   ;;
 
-  let get_binary_operator var_sort_mapping sort_name { concrete_syntax; _ } =
-    Operator_concrete_syntax_row.get_binary_operator
-      var_sort_mapping
-      sort_name
-      concrete_syntax
+  let is_binary_operator operator_names { concrete_syntax; _ } =
+    Operator_concrete_syntax_row.is_binary_operator operator_names concrete_syntax
   ;;
 
   let is_prefix_row { concrete_syntax; _ } =
@@ -371,12 +365,25 @@ module Sort_syntax = struct
     |> Set.union_list (module String)
   ;;
 
+  let operator_infos { operator_ranking; _ } =
+    match operator_ranking with
+    | None -> String.Map.empty
+    | Some (_, fixity_levels) ->
+      fixity_levels
+      |> List.mapi ~f:(fun i level ->
+             List.map level ~f:(fun (_, fixity, name) -> name, (i, fixity)))
+      |> List.join
+      |> String.Map.of_alist_exn
+  ;;
+
+  let operator_names operator_infos = operator_infos |> Map.keys |> String.Set.of_list
+
   type partition =
     { binary_operators : (Operator_pattern.t * string * string * string) list
     ; prefix_rows : Operator_syntax_row.t list
     }
 
-  let partition_operator_rows sort_name operator_rows sort_def =
+  let partition_operator_rows sort_name operator_rows sort_def operator_names =
     let binary_operators, prefix_rows =
       List.partition_map operator_rows ~f:(fun row ->
           let (Operator_def (_, _, Arity (_, valences))) =
@@ -400,12 +407,15 @@ module Sort_syntax = struct
             |> String.Map.of_alist_exn
           in
           match
-            ( Operator_syntax_row.get_binary_operator var_sort_mapping sort_name row
+            (* TODO: Just replace with a check for operator in operator_ranking? *)
+            ( Operator_syntax_row.is_binary_operator operator_names row
             , Operator_syntax_row.is_prefix_row row
               || Operator_syntax_row.defers_to_another_sort var_sort_mapping sort_name row
             )
           with
-          | Some (v1, l, v2), _ -> Either.First (row.pattern, v1, l, v2)
+          | Some (v1, l, v2), _ ->
+            Either.First (row.pattern, v1, l, v2)
+            (* TODO: Just use everything which is not a binary operator? *)
           | _, true -> Either.Second row
           | _, _ ->
             Lvca_util.invariant_violation
@@ -706,8 +716,21 @@ let check sort_defs ordered =
 ;;
 
 module Pp_term = struct
-  let pp_term sorts start_sort ppf tm =
-    let rec operator_row sort env_prec prec_level row tm =
+  (* Precedence levels
+     - Starting from 0 (highest precedence), counting up to Base.Int.max_value
+       (lowest precedence)
+     - We compare two precedence levels -- the environment's level and the
+       current expression's level. If the environment has higher (or equal)
+       precedence (a lower number), we must include parens.
+   *)
+  let pp_term
+      (concrete_syntax : Sort_syntax.t String.Map.t)
+      (start_sort : string)
+      ppf
+      (tm : Nominal.Term.t)
+    =
+    let operator_infos = Map.map concrete_syntax ~f:Sort_syntax.operator_infos in
+    let rec operator_row (sort_name : string) ~env_prec row tm =
       match tm with
       | Nominal.Term.Var _ ->
         Lvca_util.invariant_violation [%here] "operator_row doesn't handle vars"
@@ -715,13 +738,15 @@ module Pp_term = struct
       | Operator (_, op_name, scopes) ->
         if String.(row.Operator_syntax_row.pattern.name <> op_name)
         then Ok None
-        else pp_operator sort row scopes prec_level env_prec
-    and pp_operator sort row scopes prec_level env_prec =
+        else pp_operator sort_name row scopes ~env_prec
+    and pp_operator sort_name row scopes ~env_prec =
       let Operator_syntax_row.
             { info = _; pattern = { slots; _ }; concrete_syntax = _, sequence_items }
         =
         row
       in
+      let operator_infos = Map.find_exn operator_infos sort_name in
+      let operator_names = Sort_syntax.operator_names operator_infos in
       match List.zip slots scopes with
       | Ok slotscopes ->
         let open Result.Let_syntax in
@@ -744,32 +769,50 @@ module Pp_term = struct
           |> Result.all
         in
         let var_mapping = String.Map.unions_left_biased var_mappings in
-        let pp_sequence_items () =
+        let pp_sequence_items ppf get_env_prec =
           List.iter sequence_items ~f:(function
               | Sequence_item.Var (_, name) ->
                 (match Map.find_exn var_mapping name with
-                | First pat -> pat |> Nominal.Term.of_pattern |> go sort prec_level
-                | Second tm -> go sort prec_level tm)
+                | First pat ->
+                  pat |> Nominal.Term.of_pattern |> go sort_name (get_env_prec ())
+                | Second tm -> go sort_name (get_env_prec ()) tm)
               | Literal (_, str) -> Fmt.string ppf str
               | Space _ -> Fmt.sp ppf ())
         in
-        Stdlib.Format.pp_open_hvbox ppf 2;
-        (* XXX account for fixity too *)
-        (match Operator_syntax_row.get_binary_operator var_sort_mapping sort row with
-        | Some (v1, _, v2) ->
-          if prec_level > env_prec then Fmt.pf ppf "(";
-          failwith "TODO";
-          if prec_level > env_prec then Fmt.pf ppf ")"
-        | None -> pp_sequence_items ());
-        Stdlib.Format.pp_close_box ppf ();
-        Ok (Some ())
+        let print_it ppf () =
+          match Operator_syntax_row.is_binary_operator operator_names row with
+          | Some (_, op_name, _) ->
+            let op_prec, fixity = Map.find_exn operator_infos op_name in
+            let initial_prec_level, final_prec_level =
+              (* New environment prec levels for left / right sides. Higher
+                 number means lower precedence means won't show parens for same
+                 level. Same number will show parens for the same level. *)
+              match fixity with
+              | Left -> op_prec + 1, op_prec
+              | None -> op_prec, op_prec
+              | Right -> op_prec, op_prec + 1
+            in
+            let prec_level_ref = ref initial_prec_level in
+            let get_env_prec () =
+              let result = !prec_level_ref in
+              prec_level_ref := final_prec_level;
+              result
+            in
+            (* Include parens when we have lower precedence than the
+               environment (higher number) *)
+            if op_prec >= env_prec
+            then Fmt.parens pp_sequence_items ppf get_env_prec
+            else pp_sequence_items ppf get_env_prec
+          | None -> pp_sequence_items ppf (fun () -> Base.Int.max_value)
+        in
+        Ok (Some Fmt.((hovbox ~indent:2 print_it) ppf ()))
       | Unequal_lengths -> Error "TODO: pp_term 2"
-    and go sort env_prec tm =
+    and go sort_name env_prec tm =
       match tm with
       | Nominal.Term.Var (_, var_name) -> Fmt.string ppf var_name
       | _ ->
         let operator_syntaxes : Operator_syntax_row.t list =
-          match Map.find sorts start_sort (* XXX need to change sort *) with
+          match Map.find concrete_syntax start_sort (* XXX need to change sort *) with
           | Some Sort_syntax.{ operators; _ } -> operators
           | None ->
             Lvca_util.invariant_violation
@@ -777,8 +820,8 @@ module Pp_term = struct
               (Fmt.str "didn't find expected operator %S" start_sort)
         in
         (match
-           List.find_mapi operator_syntaxes ~f:(fun i row ->
-               match operator_row sort env_prec i row tm with
+           List.find_map operator_syntaxes ~f:(fun row ->
+               match operator_row sort_name ~env_prec row tm with
                | Error _ -> None
                | Ok v -> v)
          with
@@ -878,15 +921,8 @@ module Parse_term = struct
     else return (Nominal.Term.Var (Provenance.of_range pos, name))
   ;;
 
-  let sort_syntax
-      keywords
-      sort_name
-      self
-      dispatch
-      sort_def
-      Sort_syntax.{ operators; operator_ranking; variables; _ }
-      input
-    =
+  let sort_syntax keywords (sort_name, sort_def, sort_syntax) self dispatch input =
+    let Sort_syntax.{ operators; operator_ranking; variables; _ } = sort_syntax in
     let failure_msg =
       let operator_names = List.map operators ~f:Operator_syntax_row.name in
       match variables with
@@ -899,8 +935,11 @@ module Parse_term = struct
           pp_set
           operator_names
     in
+    let operator_names =
+      sort_syntax |> Sort_syntax.operator_infos |> Sort_syntax.operator_names
+    in
     let Sort_syntax.{ binary_operators; prefix_rows } =
-      Sort_syntax.partition_operator_rows sort_name operators sort_def
+      Sort_syntax.partition_operator_rows sort_name operators sort_def operator_names
     in
     let operator_ranking =
       match operator_ranking with Some (_, ranking) -> ranking | None -> []
@@ -975,7 +1014,12 @@ module Parse_term = struct
           fix
           @@ fun self ->
           let concrete_sort = Map.find_exn concrete_syntax sort_name in
-          sort_syntax keywords sort_name self dispatch abstract_sort concrete_sort input)
+          sort_syntax
+            keywords
+            (sort_name, abstract_sort, concrete_sort)
+            self
+            dispatch
+            input)
     in
     { map }
   ;;
