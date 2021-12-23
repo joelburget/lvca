@@ -63,6 +63,7 @@ type Stdlib.Format.stag += Stag of t
 
 let open_stag ppf rng = Stdlib.Format.pp_open_stag ppf (Stag rng)
 let close_stag ppf _ = Stdlib.Format.pp_close_stag ppf ()
+let fmt_stag prov = Lvca_util.Format.fmt_stag (Stag prov)
 let calculated_here here provs = Calculated (Located.Source_located here, provs)
 let of_here here = Located (Located.Source_located here)
 

@@ -44,14 +44,10 @@ module Pp = struct
   let rec term ppf tm =
     let list, string, semi, pf = Fmt.(list, string, semi, pf) in
     match tm with
-    | Types.Operator (_, tag, subtms) ->
-      Provenance.open_stag ppf (info tm);
-      pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi scope) subtms;
-      Provenance.close_stag ppf (info tm)
-    | Var (_, v) ->
-      Provenance.open_stag ppf (info tm);
-      string ppf v;
-      Provenance.close_stag ppf (info tm)
+    | Types.Operator (info, tag, subtms) ->
+      let pp' ppf () = pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi scope) subtms in
+      Provenance.fmt_stag info pp' ppf ()
+    | Var (info, v) -> Provenance.fmt_stag info string ppf v
     | Primitive p -> Primitive_impl.All.pp ppf p
 
   and scope ppf (Scope (bindings, body)) =

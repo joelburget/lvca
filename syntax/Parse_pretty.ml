@@ -60,12 +60,12 @@ module Operator_fixity = struct
   ;;
 
   let pp ppf (info, fixity, lit) =
-    Provenance.open_stag ppf info;
-    (match fixity with
-    | Fixity.Left -> Fmt.pf ppf "()%S" lit
-    | None -> Fmt.pf ppf "%S" lit
-    | Right -> Fmt.pf ppf "%S()" lit);
-    Provenance.close_stag ppf info
+    let pp' ppf = function
+      | Fixity.Left -> Fmt.pf ppf "()%S" lit
+      | None -> Fmt.pf ppf "%S" lit
+      | Right -> Fmt.pf ppf "%S()" lit
+    in
+    Provenance.fmt_stag info pp' ppf fixity
   ;;
 end
 
@@ -84,9 +84,7 @@ module Operator_ranking = struct
   let pp_level = Fmt.(hovbox (list Operator_fixity.pp ~sep:(any "@ =@ ")))
 
   let pp ppf (info, levels) =
-    Provenance.open_stag ppf info;
-    Fmt.(hovbox (list pp_level ~sep:(any "@ >@ "))) ppf levels;
-    Provenance.close_stag ppf info
+    Provenance.fmt_stag info Fmt.(hovbox (list pp_level ~sep:(any "@ >@ "))) ppf levels
   ;;
 end
 
@@ -118,13 +116,12 @@ module Sequence_item = struct
   ;;
 
   let pp ppf t =
-    let info = info t in
-    Provenance.open_stag ppf info;
-    (match t with
-    | Var (_, name) -> Fmt.string ppf name
-    | Literal (_, str) -> Fmt.pf ppf "%S" str
-    | Space _ -> Fmt.pf ppf "_");
-    Provenance.close_stag ppf info
+    let pp' ppf = function
+      | Var (_, name) -> Fmt.string ppf name
+      | Literal (_, str) -> Fmt.pf ppf "%S" str
+      | Space _ -> Fmt.pf ppf "_"
+    in
+    Provenance.fmt_stag (info t) pp' ppf t
   ;;
 end
 
@@ -157,9 +154,7 @@ module Operator_concrete_syntax_row = struct
   ;;
 
   let pp ppf (info, sequence_items) =
-    Provenance.open_stag ppf info;
-    Fmt.(pf ppf "@[%a@]" (list Sequence_item.pp ~sep:sp) sequence_items);
-    Provenance.close_stag ppf info
+    Provenance.fmt_stag info Fmt.(box (list Sequence_item.pp ~sep:sp)) ppf sequence_items
   ;;
 end
 
@@ -187,9 +182,8 @@ module Variable_syntax_row = struct
   ;;
 
   let pp ppf { info; var_name; re } =
-    Provenance.open_stag ppf info;
-    Fmt.pf ppf "%s ~ /%a/" var_name Regex.pp re;
-    Provenance.close_stag ppf info
+    let pp' ppf () = Fmt.pf ppf "%s ~ /%a/" var_name Regex.pp re in
+    Provenance.fmt_stag info pp' ppf ()
   ;;
 end
 
@@ -212,10 +206,11 @@ module Operator_pattern_slot = struct
   ;;
 
   let pp ppf { info; variable_names; body_name } =
-    Provenance.open_stag ppf info;
-    Fmt.(
-      pf ppf "@[%a@]" (list string ~sep:(any ".@ ")) (List.snoc variable_names body_name));
-    Provenance.close_stag ppf info
+    Provenance.fmt_stag
+      info
+      Fmt.(box (list string ~sep:(any ".@ ")))
+      ppf
+      (List.snoc variable_names body_name)
   ;;
 
   let parse =
@@ -248,9 +243,10 @@ module Operator_pattern = struct
   ;;
 
   let pp ppf { info; name; slots } =
-    Provenance.open_stag ppf info;
-    Fmt.(pf ppf "@[%s(%a)@]" name (list Operator_pattern_slot.pp ~sep:semi) slots);
-    Provenance.close_stag ppf info
+    let pp' ppf () =
+      Fmt.(pf ppf "@[%s(%a)@]" name (list Operator_pattern_slot.pp ~sep:semi) slots)
+    in
+    Provenance.fmt_stag info pp' ppf ()
   ;;
 
   let parse =
@@ -319,15 +315,16 @@ module Operator_syntax_row = struct
   ;;
 
   let pp ppf { info; pattern; concrete_syntax } =
-    Provenance.open_stag ppf info;
-    Fmt.pf
-      ppf
-      "%a ~ %a"
-      Operator_pattern.pp
-      pattern
-      Operator_concrete_syntax_row.pp
-      concrete_syntax;
-    Provenance.close_stag ppf info
+    let pp' ppf () =
+      Fmt.pf
+        ppf
+        "%a ~ %a"
+        Operator_pattern.pp
+        pattern
+        Operator_concrete_syntax_row.pp
+        concrete_syntax
+    in
+    Provenance.fmt_stag info pp' ppf ()
   ;;
 end
 
@@ -400,6 +397,10 @@ module Sort_syntax = struct
     ; prefix_rows : Operator_syntax_row.t list
     }
 
+  (* Partition the rows of this sort into:
+     a. Binary operators
+     b. "Prefix rows", which begin with a literal
+   *)
   let partition_operator_rows sort_name operator_rows sort_def operator_names =
     let binary_operators, prefix_rows =
       List.partition_map operator_rows ~f:(fun row ->
@@ -490,12 +491,7 @@ module Sort_syntax = struct
     p <?> "sort syntax"
   ;;
 
-  let pp_name ppf (info, name) =
-    Provenance.open_stag ppf info;
-    Fmt.string ppf name;
-    Provenance.close_stag ppf info
-  ;;
-
+  let pp_name ppf (info, name) = Provenance.fmt_stag info Fmt.string ppf name
   let pp_row ppf = Fmt.pf ppf "| %a" Operator_syntax.pp
 
   let pp ppf { info; name; operators; variables; operator_ranking } =
@@ -506,20 +502,21 @@ module Sort_syntax = struct
       | None -> operators
       | Some row -> List.snoc operators (Either.Second row)
     in
-    Provenance.open_stag ppf info;
-    (match operator_ranking with
-    | None -> pf ppf "@[<v 2>@[<h>%a:@]@;%a@;;@]" pp_name name (list pp_row) operators
-    | Some ranking ->
-      pf
-        ppf
-        "@[<v 2>@[<h>%a:@]@;%a@;\\ %a@]"
-        pp_name
-        name
-        (list pp_row)
-        operators
-        Operator_ranking.pp
-        ranking);
-    Provenance.close_stag ppf info
+    let pp' ppf () =
+      match operator_ranking with
+      | None -> pf ppf "@[<v 2>@[<h>%a:@]@;%a@;;@]" pp_name name (list pp_row) operators
+      | Some ranking ->
+        pf
+          ppf
+          "@[<v 2>@[<h>%a:@]@;%a@;\\ %a@]"
+          pp_name
+          name
+          (list pp_row)
+          operators
+          Operator_ranking.pp
+          ranking
+    in
+    Provenance.fmt_stag info pp' ppf ()
   ;;
 end
 

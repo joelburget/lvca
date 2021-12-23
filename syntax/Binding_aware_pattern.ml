@@ -136,22 +136,14 @@ let any, list, string, semi, pf = Fmt.(any, list, string, semi, pf)
 
 let rec pp ppf tm =
   match tm with
-  | Operator (_, tag, subtms) ->
-    Provenance.open_stag ppf (info tm);
-    pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi pp_scope) subtms;
-    Provenance.close_stag ppf (info tm)
-  | Var (_, v) ->
-    Provenance.open_stag ppf (info tm);
-    string ppf v;
-    Provenance.close_stag ppf (info tm)
+  | Operator (info, tag, subtms) ->
+    let pp' ppf () = pf ppf "@[<hv>%s(%a)@]" tag (list ~sep:semi pp_scope) subtms in
+    Provenance.fmt_stag info pp' ppf ()
+  | Var (info, v) -> Provenance.fmt_stag info string ppf v
   | Primitive p -> Primitive.All.pp ppf p
 
 and pp_scope ppf (Scope (bindings, body)) =
-  let pp_binding ppf (info, name) =
-    Provenance.open_stag ppf info;
-    string ppf name;
-    Provenance.close_stag ppf info
-  in
+  let pp_binding ppf (info, name) = Provenance.fmt_stag info string ppf name in
   match bindings with
   | [] -> pp ppf body
   | _ -> pf ppf "%a.@ %a" (list ~sep:(any ".@ ") pp_binding) bindings pp body

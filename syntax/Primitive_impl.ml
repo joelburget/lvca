@@ -31,13 +31,7 @@ end = struct
   ;;
 
   let ( = ) = equivalent ~info_eq:Provenance.( = )
-
-  let pp ppf (i, x) =
-    Provenance.open_stag ppf i;
-    Base_plain.pp ppf x;
-    Provenance.close_stag ppf i
-  ;;
-
+  let pp ppf (i, x) = Provenance.fmt_stag i Base_plain.pp ppf x
   let jsonify (_, plain) = Base_plain.jsonify plain
 
   let unjsonify json =

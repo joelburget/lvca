@@ -5,9 +5,7 @@ type t = Arity of Provenance.t * Valence.t list
 let mk ?(provenance = Provenance.of_here [%here]) valences = Arity (provenance, valences)
 
 let pp ppf (Arity (info, valences)) =
-  Provenance.open_stag ppf info;
-  Fmt.(parens (list ~sep:semi Valence.pp)) ppf valences;
-  Provenance.close_stag ppf info
+  Provenance.fmt_stag info Fmt.(parens (list ~sep:semi Valence.pp)) ppf valences
 ;;
 
 let equivalent

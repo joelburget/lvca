@@ -27,15 +27,16 @@ let pp ppf sort =
   let open Fmt in
   let rec pp need_parens ppf sort =
     let info = info sort in
-    Provenance.open_stag ppf info;
-    (match sort with
-    | Ap (_, name, args) ->
-      let list = list (pp true) ~sep:sp in
-      if need_parens
-      then pf ppf "@[(%s %a)@]" name list args
-      else pf ppf "@[%s %a@]" name list args
-    | Name (_, name) -> string ppf name);
-    Provenance.close_stag ppf info
+    let pp' ppf () =
+      match sort with
+      | Ap (_, name, args) ->
+        let list = list (pp true) ~sep:sp in
+        if need_parens
+        then pf ppf "@[(%s %a)@]" name list args
+        else pf ppf "@[%s %a@]" name list args
+      | Name (_, name) -> string ppf name
+    in
+    Provenance.fmt_stag info pp' ppf ()
   in
   pp false ppf sort
 ;;

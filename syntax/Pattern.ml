@@ -54,14 +54,10 @@ let info = function
 let rec pp ppf pat =
   let list, pf, semi = Fmt.(list, pf, semi) in
   match pat with
-  | Operator (_, name, pats) ->
-    Provenance.open_stag ppf (info pat);
-    pf ppf "@[<2>@{%s@}(%a)@]" name (list ~sep:semi pp) pats;
-    Provenance.close_stag ppf (info pat)
-  | Var (_, name) ->
-    Provenance.open_stag ppf (info pat);
-    Fmt.string ppf name;
-    Provenance.close_stag ppf (info pat)
+  | Operator (info, name, pats) ->
+    let pp' ppf () = pf ppf "@[<2>@{%s@}(%a)@]" name (list ~sep:semi pp) pats in
+    Provenance.fmt_stag info pp' ppf ()
+  | Var (info, name) -> Provenance.fmt_stag info Fmt.string ppf name
   | Primitive prim -> Primitive_impl.All.pp ppf prim
 ;;
 

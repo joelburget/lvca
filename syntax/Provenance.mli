@@ -51,6 +51,7 @@ val ( = ) : t -> t -> bool
 val pp : t Fmt.t
 val open_stag : Stdlib.Format.formatter -> t -> unit
 val close_stag : Stdlib.Format.formatter -> t -> unit
+val fmt_stag : t -> 'a Fmt.t -> 'a Fmt.t
 
 (** For testing only: used to enable outputting of the [Stag] semantic tag. *)
 val stag_functions : Stdlib.Format.formatter_stag_functions

@@ -22,9 +22,8 @@ let kind_check env (Operator_def (_info, _name, Arity (_, valences))) =
 ;;
 
 let pp ppf (Operator_def (info, name, arity)) =
-  Provenance.open_stag ppf info;
-  Fmt.pf ppf "%s%a" name Arity.pp arity;
-  Provenance.close_stag ppf info
+  let pp' ppf () = Fmt.pf ppf "%s%a" name Arity.pp arity in
+  Provenance.fmt_stag info pp' ppf ()
 ;;
 
 let parse =

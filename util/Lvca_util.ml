@@ -529,3 +529,11 @@ module Unique = struct
     end)
   ;;
 end
+
+module Format = struct
+  let fmt_stag stag formatter ppf a =
+    Stdlib.Format.pp_open_stag ppf stag;
+    formatter ppf a;
+    Stdlib.Format.pp_close_stag ppf ()
+  ;;
+end

@@ -12,9 +12,11 @@ let ( = ) = equivalent ~info_eq:Provenance.( = )
 let info (Kind (i, _)) = i
 
 let pp ppf (Kind (info, k)) =
-  Provenance.open_stag ppf info;
-  Fmt.(list ~sep:(any " -> ") (any "*")) ppf (List.init k ~f:(Fn.const ()));
-  Provenance.close_stag ppf info
+  Provenance.fmt_stag
+    info
+    Fmt.(list ~sep:(any " -> ") (any "*"))
+    ppf
+    (List.init k ~f:(Fn.const ()))
 ;;
 
 module Parse = struct
