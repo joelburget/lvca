@@ -350,6 +350,16 @@ module Operator_syntax = struct
   ;;
 end
 
+module Binary_operator_info = struct
+  type t =
+    { pattern : Operator_pattern.t
+    ; v1 : string
+    ; op_name : string
+    ; v2 : string
+    ; fixity : Fixity.t
+    }
+end
+
 module Sort_syntax = struct
   type t =
     { info : Provenance.t
@@ -378,8 +388,15 @@ module Sort_syntax = struct
 
   let operator_names operator_infos = operator_infos |> Map.keys |> String.Set.of_list
 
+  type pre_binary_operator_info =
+    { pattern : Operator_pattern.t
+    ; v1 : string
+    ; op_name : string
+    ; v2 : string
+    }
+
   type partition =
-    { binary_operators : (Operator_pattern.t * string * string * string) list
+    { binary_operators : pre_binary_operator_info list
     ; prefix_rows : Operator_syntax_row.t list
     }
 
@@ -414,7 +431,7 @@ module Sort_syntax = struct
             )
           with
           | Some (v1, l, v2), _ ->
-            Either.First (row.pattern, v1, l, v2)
+            Either.First { pattern = row.pattern; v1; op_name = l; v2 }
             (* TODO: Just use everything which is not a binary operator? *)
           | _, true -> Either.Second row
           | _, _ ->
@@ -431,8 +448,8 @@ module Sort_syntax = struct
 
   let level_operator_rows
       (operator_ranking : Operator_fixity.t list list)
-      (binary_operators : (Operator_pattern.t * string * string * string) list)
-      : (Fixity.t * Operator_pattern.t * string * string * string) list list
+      (binary_operators : pre_binary_operator_info list)
+      : Binary_operator_info.t list list
     =
     List.map operator_ranking ~f:(fun operator_fixities ->
         let operator_fixities =
@@ -440,19 +457,10 @@ module Sort_syntax = struct
           |> List.map ~f:(fun (_, fixity, name) -> name, fixity)
           |> String.Map.of_alist_exn
         in
-        List.filter_map binary_operators ~f:(fun (pattern, v1, lit, v2) ->
-            (*
-            Fmt.(
-              pr
-                "looking for operator %s -> %a (%a)\n"
-                lit
-                (option ~none:(any "None") Fixity.pp)
-                (Map.find operator_fixities pattern.Operator_pattern.name)
-                pp_set
-                (Map.keys operator_fixities));
-               *)
-            Map.find operator_fixities lit
-            |> Option.map ~f:(fun fixity -> fixity, pattern, v1, lit, v2)))
+        List.filter_map binary_operators ~f:(fun { pattern; v1; op_name; v2 } ->
+            Map.find operator_fixities op_name
+            |> Option.map ~f:(fun fixity ->
+                   Binary_operator_info.{ fixity; pattern; v1; op_name; v2 })))
   ;;
 
   let parse =
@@ -964,11 +972,14 @@ module Parse_term = struct
     let mk_level_parser higher_prec rows =
       let op_name =
         rows
-        |> List.map ~f:(fun (_fixity, pat, v1_name, op_name, v2_name) ->
-               C_comment_parser.string op_name >>| fun _ -> pat, v1_name, v2_name)
+        |> List.map
+             ~f:(fun Binary_operator_info.{ pattern; v1; op_name; v2; fixity = _ } ->
+               C_comment_parser.string op_name >>| fun _ -> pattern, v1, v2)
         |> choice ~failure_msg:"operator name"
       in
-      let fixity, _, _, _, _ (* XXX what if different fixities *) = List.hd_exn rows in
+      let Binary_operator_info.{ fixity; _ } (* XXX what if different fixities *) =
+        List.hd_exn rows
+      in
       let op_rhs_pair =
         op_name >>= fun op_info -> higher_prec >>| fun tm -> op_info, tm
       in
