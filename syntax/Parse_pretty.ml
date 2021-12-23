@@ -338,8 +338,8 @@ module Operator_syntax = struct
     let open Lvca_parsing in
     choice
       ~failure_msg:"looking for an operator or variable syntax row"
-      [ (Variable_syntax_row.parse >>| fun row -> Either.Second row)
-      ; (Operator_syntax_row.parse >>| fun row -> Either.First row)
+      [ Variable_syntax_row.parse >>| Either.Second.return
+      ; Operator_syntax_row.parse >>| Either.First.return
       ]
     <?> "operator syntax"
   ;;
@@ -500,7 +500,7 @@ module Sort_syntax = struct
 
   let pp ppf { info; name; operators; variables; operator_ranking } =
     let open Fmt in
-    let operators = List.map operators ~f:(fun row -> Either.First row) in
+    let operators = List.map operators ~f:Either.First.return in
     let operators =
       match variables with
       | None -> operators
@@ -775,9 +775,7 @@ module Pp_term = struct
                     ( Operator_pattern_slot.{ info = _; variable_names; body_name }
                     , Nominal.Scope.Scope (pats, body) )
                   ->
-                 match
-                   List.zip variable_names (List.map pats ~f:(fun p -> Either.First p))
-                 with
+                 match List.zip variable_names (List.map pats ~f:Either.First.return) with
                  | Unequal_lengths -> Error "TODO: pp_term 1"
                  | Ok varpats ->
                    Ok
