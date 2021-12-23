@@ -624,7 +624,7 @@ let check sort_defs ordered =
       let rhs_vars = concrete_syntax |> Operator_concrete_syntax_row.vars |> sort in
       match
         ( List.find_consecutive_duplicate ~equal:String.( = ) lhs_vars
-        , List.find_consecutive_duplicate ~equal:String.( = ) lhs_vars )
+        , List.find_consecutive_duplicate ~equal:String.( = ) rhs_vars )
       with
       | None, None ->
         if List.equal String.( = ) lhs_vars rhs_vars
@@ -1359,6 +1359,32 @@ foo:
             {|
             Concrete syntax definition for sort `foo` doesn't have the same operators (
             {Bar, Foo}) as the abstract syntax ({Foo}) |}]
+        ;;
+
+        let abstract = mk_abstract {|a := A(a. a)|}
+
+        let%expect_test _ =
+          let concrete = parse {|a:
+  | A(x. y) ~ "x" x "y" z
+  ; |} in
+          go abstract concrete;
+          [%expect {| LHS and RHS don't bind the same vars ({x, y} vs {x, z}) |}]
+        ;;
+
+        let%expect_test _ =
+          let concrete = parse {|a:
+  | A(x. x) ~ "x" x "y" z
+  ; |} in
+          go abstract concrete;
+          [%expect {| Duplicate variable found in abstract pattern for sort `a` / operator `A`: x |}]
+        ;;
+
+        let%expect_test _ =
+          let concrete = parse {|a:
+  | A(x. y) ~ "x" x "y" x
+  ; |} in
+          go abstract concrete;
+          [%expect {| Duplicate variable found in concrete pattern for sort `a` / operator `A`: x |}]
         ;;
       end)
     ;;
