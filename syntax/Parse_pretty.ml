@@ -738,7 +738,12 @@ module Pp_term = struct
       (tm : Nominal.Term.t)
     =
     let operator_infos = Map.map concrete_syntax ~f:Sort_syntax.operator_infos in
-    let rec operator_row (sort_name : string) ~env_prec row tm =
+    let rec operator_row
+        ~sort_name
+        ~env_prec
+        (row : Operator_syntax_row.t)
+        (tm : Nominal.Term.t)
+      =
       match tm with
       | Nominal.Term.Var _ ->
         Lvca_util.invariant_violation [%here] "operator_row doesn't handle vars"
@@ -746,8 +751,13 @@ module Pp_term = struct
       | Operator (_, op_name, scopes) ->
         if String.(row.Operator_syntax_row.pattern.name <> op_name)
         then Ok None
-        else pp_operator sort_name row scopes ~env_prec
-    and pp_operator sort_name row scopes ~env_prec =
+        else pp_operator ~env_prec ~sort_name row scopes
+    and pp_operator
+        ~env_prec
+        ~sort_name
+        (row : Operator_syntax_row.t)
+        (scopes : Nominal.Scope.t list)
+      =
       let Operator_syntax_row.
             { info = _; pattern = { slots; _ }; concrete_syntax = _, sequence_items }
         =
@@ -780,10 +790,12 @@ module Pp_term = struct
         let pp_sequence_items ppf get_env_prec =
           List.iter sequence_items ~f:(function
               | Sequence_item.Var (_, name) ->
-                (match Map.find_exn var_mapping name with
-                | First pat ->
-                  pat |> Nominal.Term.of_pattern |> go sort_name (get_env_prec ())
-                | Second tm -> go sort_name (get_env_prec ()) tm)
+                let tm =
+                  match Map.find_exn var_mapping name with
+                  | First pat -> Nominal.Term.of_pattern pat
+                  | Second tm -> tm
+                in
+                go ~env_prec:(get_env_prec ()) ~sort_name tm
               | Literal (_, str) -> Fmt.string ppf str
               | Space _ -> Fmt.sp ppf ())
         in
@@ -815,7 +827,7 @@ module Pp_term = struct
         in
         Ok (Some Fmt.((hovbox ~indent:2 print_it) ppf ()))
       | Unequal_lengths -> Error "TODO: pp_term 2"
-    and go sort_name env_prec tm =
+    and go ~env_prec ~sort_name tm =
       match tm with
       | Nominal.Term.Var (_, var_name) -> Fmt.string ppf var_name
       | _ ->
@@ -829,7 +841,7 @@ module Pp_term = struct
         in
         (match
            List.find_map operator_syntaxes ~f:(fun row ->
-               match operator_row sort_name ~env_prec row tm with
+               match operator_row ~sort_name ~env_prec row tm with
                | Error _ -> None
                | Ok v -> v)
          with
@@ -839,7 +851,7 @@ module Pp_term = struct
             (Fmt.str "Didn't find matching operator syntax for `%a`" Nominal.Term.pp tm)
         | Some () -> ())
     in
-    go start_sort Base.Int.max_value tm
+    go ~env_prec:Base.Int.max_value ~sort_name:start_sort tm
   ;;
 end
 
