@@ -140,9 +140,11 @@ module Operator_concrete_syntax_row = struct
     | _ -> None
   ;;
 
+  (*
   let is_prefix_row (_, items) =
     match items with Sequence_item.Literal _ :: _ -> true | _ -> false
   ;;
+     *)
 
   let parse =
     let open Lvca_parsing in
@@ -195,12 +197,13 @@ module Operator_pattern_slot = struct
   let vars { variable_names; body_name; _ } = body_name :: variable_names
 
   let build_exn env { info = _; variable_names; body_name } =
-    Nominal.Scope.Scope
-      ( List.map variable_names ~f:(fun name ->
-            match Map.find_exn env name |> Nominal.Term.to_pattern with
-            | Ok pat -> pat
-            | Error _scope -> failwith "TODO: Operator_pattern_slot.build_exn Error")
-      , Map.find_exn env body_name )
+    let pats =
+      List.map variable_names ~f:(fun name ->
+          match Map.find_exn env name |> Nominal.Term.to_pattern with
+          | Ok pat -> pat
+          | Error _scope -> failwith "TODO: Operator_pattern_slot.build_exn Error")
+    in
+    Nominal.Scope.Scope (pats, Map.find_exn env body_name)
   ;;
 
   let pp ppf { info; variable_names; body_name } =
@@ -280,6 +283,7 @@ module Operator_syntax_row = struct
     Operator_concrete_syntax_row.is_binary_operator operator_names concrete_syntax
   ;;
 
+  (*
   let is_prefix_row { concrete_syntax; _ } =
     Operator_concrete_syntax_row.is_prefix_row concrete_syntax
   ;;
@@ -295,6 +299,7 @@ module Operator_syntax_row = struct
       String.(sort_name' <> sort_name)
     | _ -> false
   ;;
+     *)
 
   let parse =
     let open Lvca_parsing in
@@ -399,48 +404,17 @@ module Sort_syntax = struct
      a. Binary operators
      b. "Prefix rows", which begin with a literal
    *)
-  let partition_operator_rows sort_name operator_rows sort_def operator_names =
+  let partition_operator_rows operator_rows operator_names =
     let binary_operators, prefix_rows =
       List.partition_map operator_rows ~f:(fun row ->
-          let (Operator_def (_, _, Arity (_, valences))) =
-            Sort_def.find_operator_def sort_def (Operator_syntax_row.name row)
-            |> Option.get_invariant [%here] (fun () -> "TODO: partition_operator_rows")
-          in
-          let var_sort_mapping =
-            List.zip_exn row.pattern.slots valences
-            |> List.bind
-                 ~f:(fun
-                      ( Operator_pattern_slot.{ info = _; variable_names; body_name }
-                      , Valence (sort_slots, sort') )
-                    ->
-                   let slot_sorts =
-                     List.map sort_slots ~f:(function
-                         | Sort_binding s -> Sort.name s
-                         | Sort_pattern _ ->
-                           failwith "TODO: prefix_operator_syntax_row Sort_pattern")
-                   in
-                   (body_name, Sort.name sort') :: List.zip_exn variable_names slot_sorts)
-            |> String.Map.of_alist_exn
-          in
           match
             (* TODO: Just replace with a check for operator in operator_ranking? *)
-            Operator_syntax_row.(
-              ( is_binary_operator operator_names row
-              , is_prefix_row row || defers_to_another_sort var_sort_mapping sort_name row
-              ))
+            Operator_syntax_row.is_binary_operator operator_names row
           with
-          | Some (v1, l, v2), _ ->
+          | Some (v1, l, v2) ->
             Either.First { pattern = row.pattern; v1; op_name = l; v2 }
             (* TODO: Just use everything which is not a binary operator? *)
-          | _, true -> Either.Second row
-          | _, _ ->
-            Lvca_util.invariant_violation
-              [%here]
-              (Fmt.str
-                 "we don't know how to parse rows that are neither binary operators nor \
-                  prefixed by a literal (%a)"
-                 Operator_syntax_row.pp
-                 row))
+          | None -> Either.Second row)
     in
     { binary_operators; prefix_rows }
   ;;
@@ -536,20 +510,6 @@ let build_unordered ordered =
 let parse = Lvca_parsing.(many1 Sort_syntax.parse <?> "parse / pretty definition")
 let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
 
-(* Check
- * [x] No overlapping variable definitions (on rhs or lhs)
- * [x] Variables used 1-1 (lhs vs rhs)
- * [x] 1-1 mapping between sorts given an abstract / concrete syntax
- * [x] every operator in a sort given a concrete syntax
- * [x] variable given concrete syntax iff allowed
- * [ ] space hygiene:
- *   - no repeated spaces
- *   - no leading / trailing spaces
- * [x] no cycles between sorts
- * [ ] every operator has a line (?)
- * [ ] will var parser be clobbered by left-recursion deferring to a var parser
-   from another sort? Is this a grammar problem?
- *)
 module Directed_graph = Directed_graph.Make (String)
 
 let find_var_in_pattern
@@ -611,22 +571,54 @@ let check_sort_graph abstract_syntax concrete_syntax () =
   | Some _ -> None
 ;;
 
+(* Check
+ * [x] No overlapping variable definitions (on rhs or lhs)
+ * [x] Variables used 1-1 (lhs vs rhs)
+ * [x] 1-1 mapping between sorts given an abstract / concrete syntax
+ * [x] every operator in a sort given a concrete syntax
+ * [x] variable given concrete syntax iff allowed
+ * [ ] space hygiene:
+ *   - no repeated spaces
+ *   - no leading / trailing spaces
+ * [x] no cycles between sorts
+ * [ ] every operator has a line (?)
+ * [ ] will var parser be clobbered by left-recursion deferring to a var parser
+   from another sort? Is this a grammar problem?
+ * [ ] every line is either a binary operator or prefix row
+ *)
 let check sort_defs ordered =
   let sort = List.sort ~compare:String.compare in
   match build_unordered ordered with
   | `Duplicate_key k -> Some (Fmt.str "duplicate sort definition for %s" k)
   | `Ok unordered ->
-    let operator_syntax_row
-        sort_name
-        Operator_syntax_row.{ info = _; pattern; concrete_syntax }
-      =
+    let operator_syntax_row sort_name row =
+      let Operator_syntax_row.{ info = _; pattern; concrete_syntax } = row in
       let lhs_vars = pattern |> Operator_pattern.vars |> sort in
       let rhs_vars = concrete_syntax |> Operator_concrete_syntax_row.vars |> sort in
-      match
-        ( List.find_consecutive_duplicate ~equal:String.( = ) lhs_vars
-        , List.find_consecutive_duplicate ~equal:String.( = ) rhs_vars )
-      with
-      | None, None ->
+      let check_1 () =
+        match
+          ( List.find_consecutive_duplicate ~equal:String.( = ) lhs_vars
+          , List.find_consecutive_duplicate ~equal:String.( = ) rhs_vars )
+        with
+        | None, None -> None
+        | Some (dupe, _), _ ->
+          Some
+            (Fmt.str
+               "Duplicate variable found in abstract pattern for sort `%s` / operator \
+                `%s`: %s"
+               sort_name
+               pattern.name
+               dupe)
+        | _, Some (dupe, _) ->
+          Some
+            (Fmt.str
+               "Duplicate variable found in concrete pattern for sort `%s` / operator \
+                `%s`: %s"
+               sort_name
+               pattern.name
+               dupe)
+      in
+      let check_2 () =
         if List.equal String.( = ) lhs_vars rhs_vars
         then None
         else
@@ -638,22 +630,19 @@ let check sort_defs ordered =
                 lhs_vars
                 pp_set
                 rhs_vars)
-      | Some (dupe, _), _ ->
-        Some
-          (Fmt.str
-             "Duplicate variable found in abstract pattern for sort `%s` / operator \
-              `%s`: %s"
-             sort_name
-             pattern.name
-             dupe)
-      | _, Some (dupe, _) ->
-        Some
-          (Fmt.str
-             "Duplicate variable found in concrete pattern for sort `%s` / operator \
-              `%s`: %s"
-             sort_name
-             pattern.name
-             dupe)
+      in
+      (* TODO
+      let check_3 () =
+        match
+          Operator_syntax_row.(
+            ( is_binary_operator operator_names row
+            , is_prefix_row row || defers_to_another_sort var_sort_mapping sort_name row ))
+        with
+        | true, false | false, true -> None
+        | _ -> Some "TODO"
+      in
+      *)
+      List.find_map [ check_1; check_2 ] ~f:(fun check -> check ())
     in
     let sort_syntax
         Sort_syntax.
@@ -952,7 +941,7 @@ module Parse_term = struct
       sort_syntax |> Sort_syntax.operator_infos |> Sort_syntax.operator_names
     in
     let Sort_syntax.{ binary_operators; prefix_rows } =
-      Sort_syntax.partition_operator_rows sort_name operators sort_def operator_names
+      Sort_syntax.partition_operator_rows operators operator_names
     in
     let operator_ranking =
       match operator_ranking with Some (_, ranking) -> ranking | None -> []
@@ -1376,7 +1365,8 @@ foo:
   | A(x. x) ~ "x" x "y" z
   ; |} in
           go abstract concrete;
-          [%expect {| Duplicate variable found in abstract pattern for sort `a` / operator `A`: x |}]
+          [%expect
+            {| Duplicate variable found in abstract pattern for sort `a` / operator `A`: x |}]
         ;;
 
         let%expect_test _ =
@@ -1384,7 +1374,8 @@ foo:
   | A(x. y) ~ "x" x "y" x
   ; |} in
           go abstract concrete;
-          [%expect {| Duplicate variable found in concrete pattern for sort `a` / operator `A`: x |}]
+          [%expect
+            {| Duplicate variable found in concrete pattern for sort `a` / operator `A`: x |}]
         ;;
       end)
     ;;
