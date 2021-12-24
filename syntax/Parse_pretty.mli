@@ -93,7 +93,7 @@ module Operator_pattern : sig
   val parse : t Lvca_parsing.t
 end
 
-(** One way to parse / print an operator. *)
+(** One way to parse, print, and check an operator. *)
 module Operator_syntax_row : sig
   type t =
     { info : Provenance.t
@@ -104,10 +104,16 @@ module Operator_syntax_row : sig
   val info : t -> Provenance.t
   val parse : t Lvca_parsing.t
   val pp : t Fmt.t
-  val check : sort_name:string -> t -> string option
+
+  val check
+    :  sort_name:string
+    -> sort_def:Sort_def.t
+    -> operator_names:String.Set.t
+    -> t
+    -> string option
 end
 
-(** How to parse / print a sort. *)
+(** How to parse, print, and check a sort. *)
 module Sort_syntax : sig
   type t =
     { info : Provenance.t
@@ -122,8 +128,8 @@ module Sort_syntax : sig
   val check : sort_defs:Sort_def.t String.Map.t -> t -> string option
 end
 
-(** How to parse / print a language. This is a list so we can print back a language in the
-    same order it was parsed. See [Unordered.t] for another useful form. *)
+(** How to parse, print, and check a language. This is a list so we can print back a
+    language in the same order it was parsed. See [Unordered.t] for another useful form. *)
 type t = Sort_syntax.t list
 
 val parse : t Lvca_parsing.t

@@ -141,11 +141,9 @@ module Operator_concrete_syntax_row = struct
     | _ -> None
   ;;
 
-  (*
   let is_prefix_row (_, items) =
     match items with Sequence_item.Literal _ :: _ -> true | _ -> false
   ;;
-     *)
 
   let parse =
     let open Lvca_parsing in
@@ -284,14 +282,13 @@ module Operator_syntax_row = struct
     Operator_concrete_syntax_row.is_binary_operator operator_names concrete_syntax
   ;;
 
-  (*
   let is_prefix_row { concrete_syntax; _ } =
     Operator_concrete_syntax_row.is_prefix_row concrete_syntax
   ;;
 
   let defers_to_another_sort
-      var_sort_mapping
-      sort_name
+      ~sort_name
+      ~var_sort_mapping
       { concrete_syntax = _, sequence_items; _ }
     =
     match sequence_items with
@@ -300,13 +297,12 @@ module Operator_syntax_row = struct
       String.(sort_name' <> sort_name)
     | _ -> false
   ;;
-     *)
 
-  let check ~sort_name row =
+  let check ~sort_name ~sort_def ~operator_names row =
     let { info = _; pattern; concrete_syntax } = row in
     let lhs_vars = pattern |> Operator_pattern.vars |> string_sort in
     let rhs_vars = concrete_syntax |> Operator_concrete_syntax_row.vars |> string_sort in
-    let check_1 () =
+    let check_duplicate_vars () =
       match
         ( List.find_consecutive_duplicate ~equal:String.( = ) lhs_vars
         , List.find_consecutive_duplicate ~equal:String.( = ) rhs_vars )
@@ -329,7 +325,7 @@ module Operator_syntax_row = struct
              pattern.name
              dupe)
     in
-    let check_2 () =
+    let check_same_vars () =
       if List.equal String.( = ) lhs_vars rhs_vars
       then None
       else
@@ -342,17 +338,46 @@ module Operator_syntax_row = struct
               pp_set
               rhs_vars)
     in
-    (* TODO
-      let check_3 () =
-        match
-          ( is_binary_operator operator_names row
-          , is_prefix_row row || defers_to_another_sort var_sort_mapping sort_name row )
-        with
-        | true, false | false, true -> None
-        | _ -> Some "TODO"
+    let check_known_form () =
+      let (Operator_def (_, _, Arity (_, valences))) =
+        Sort_def.find_operator_def sort_def pattern.name
+        |> Option.get_invariant [%here] (fun () ->
+               Fmt.str
+                 "Expected operator named %s in %a"
+                 pattern.name
+                 (Sort_def.pp ~name:sort_name)
+                 sort_def)
       in
-      *)
-    List.find_map [ check_1; check_2 ] ~f:(fun check -> check ())
+      let var_sort_mapping =
+        List.zip_exn row.pattern.slots valences
+        |> List.bind
+             ~f:(fun
+                  ( Operator_pattern_slot.{ info = _; variable_names; body_name }
+                  , Valence (sort_slots, sort') )
+                ->
+               let slot_sorts =
+                 List.map sort_slots ~f:(function
+                     | Sort_binding s -> Sort.name s
+                     | Sort_pattern _ -> failwith "TODO: check_known_form Sort_pattern")
+               in
+               (body_name, Sort.name sort') :: List.zip_exn variable_names slot_sorts)
+        |> String.Map.of_alist_exn
+      in
+      match
+        ( is_binary_operator operator_names row
+        , is_prefix_row row || defers_to_another_sort ~sort_name ~var_sort_mapping row )
+      with
+      | Some _, false | None, true -> None
+      | _ ->
+        Some
+          (Fmt.str
+             "`%a` is neither a binary operator, prefix row, nor defers to another sort"
+             Operator_concrete_syntax_row.pp
+             concrete_syntax)
+    in
+    List.find_map
+      [ check_duplicate_vars; check_same_vars; check_known_form ]
+      ~f:(fun check -> check ())
   ;;
 
   let parse =
@@ -545,18 +570,19 @@ module Sort_syntax = struct
     Provenance.fmt_stag info pp' ppf ()
   ;;
 
-  let check
-      ~sort_defs
-      { info = _
-      ; operators = concrete_ops
-      ; name = _, sort_name
-      ; variables
-      ; operator_ranking = _
-      }
-    =
-    let (Sort_def.Sort_def (_vars, abstract_ops, var_names)) =
-      Map.find_exn sort_defs sort_name
+  let check ~sort_defs t =
+    let { info = _
+        ; operators = concrete_ops
+        ; name = _, sort_name
+        ; variables
+        ; operator_ranking = _
+        }
+      =
+      t
     in
+    let sort_def = Map.find_exn sort_defs sort_name in
+    let (Sort_def.Sort_def (_vars, abstract_ops, var_names)) = sort_def in
+    let operator_names = t |> operator_infos |> operator_names in
     match variables, var_names with
     | None, _ :: _ -> Some "Abstract syntax defines variables but concrete syntax doesn't"
     | Some _, [] -> Some "Concrete syntax defines variables but abstract syntax doesn't"
@@ -582,7 +608,10 @@ module Sort_syntax = struct
              concrete_op_names
              pp_set
              abstract_op_names)
-      else List.find_map concrete_ops ~f:(Operator_syntax_row.check ~sort_name)
+      else
+        List.find_map
+          concrete_ops
+          ~f:(Operator_syntax_row.check ~sort_name ~sort_def ~operator_names)
   ;;
 end
 
@@ -1376,6 +1405,15 @@ foo:
           go abstract concrete;
           [%expect
             {| Duplicate variable found in concrete pattern for sort `a` / operator `A`: x |}]
+        ;;
+
+        let%expect_test _ =
+          let concrete = parse {|a:
+  | A(x. y) ~ x "a" y
+  ; |} in
+          go abstract concrete;
+          [%expect
+            {|`x "a" y` is neither a binary operator, prefix row, nor defers to another sort|}]
         ;;
       end)
     ;;
