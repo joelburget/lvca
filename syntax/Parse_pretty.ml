@@ -21,6 +21,7 @@ let pp_set = Fmt.(braces (list string ~sep:comma))
 let reserved_words = Lvca_util.String.Set.empty
 let lower_ident = Lvca_parsing.C_comment_parser.lower_identifier reserved_words
 let upper_ident = Lvca_parsing.C_comment_parser.upper_identifier reserved_words
+let string_sort = List.sort ~compare:String.compare
 
 module Fixity = struct
   type t =
@@ -301,6 +302,59 @@ module Operator_syntax_row = struct
   ;;
      *)
 
+  let check ~sort_name row =
+    let { info = _; pattern; concrete_syntax } = row in
+    let lhs_vars = pattern |> Operator_pattern.vars |> string_sort in
+    let rhs_vars = concrete_syntax |> Operator_concrete_syntax_row.vars |> string_sort in
+    let check_1 () =
+      match
+        ( List.find_consecutive_duplicate ~equal:String.( = ) lhs_vars
+        , List.find_consecutive_duplicate ~equal:String.( = ) rhs_vars )
+      with
+      | None, None -> None
+      | Some (dupe, _), _ ->
+        Some
+          (Fmt.str
+             "Duplicate variable found in abstract pattern for sort `%s` / operator \
+              `%s`: %s"
+             sort_name
+             pattern.name
+             dupe)
+      | _, Some (dupe, _) ->
+        Some
+          (Fmt.str
+             "Duplicate variable found in concrete pattern for sort `%s` / operator \
+              `%s`: %s"
+             sort_name
+             pattern.name
+             dupe)
+    in
+    let check_2 () =
+      if List.equal String.( = ) lhs_vars rhs_vars
+      then None
+      else
+        Some
+          Fmt.(
+            str
+              "LHS and RHS don't bind the same vars (%a vs %a)"
+              pp_set
+              lhs_vars
+              pp_set
+              rhs_vars)
+    in
+    (* TODO
+      let check_3 () =
+        match
+          ( is_binary_operator operator_names row
+          , is_prefix_row row || defers_to_another_sort var_sort_mapping sort_name row )
+        with
+        | true, false | false, true -> None
+        | _ -> Some "TODO"
+      in
+      *)
+    List.find_map [ check_1; check_2 ] ~f:(fun check -> check ())
+  ;;
+
   let parse =
     let open Lvca_parsing in
     let open C_comment_parser in
@@ -490,6 +544,46 @@ module Sort_syntax = struct
     in
     Provenance.fmt_stag info pp' ppf ()
   ;;
+
+  let check
+      ~sort_defs
+      { info = _
+      ; operators = concrete_ops
+      ; name = _, sort_name
+      ; variables
+      ; operator_ranking = _
+      }
+    =
+    let (Sort_def.Sort_def (_vars, abstract_ops, var_names)) =
+      Map.find_exn sort_defs sort_name
+    in
+    match variables, var_names with
+    | None, _ :: _ -> Some "Abstract syntax defines variables but concrete syntax doesn't"
+    | Some _, [] -> Some "Concrete syntax defines variables but abstract syntax doesn't"
+    | _ ->
+      let abstract_op_names =
+        abstract_ops
+        |> List.map ~f:(fun (Operator_def.Operator_def (_, name, _)) -> name)
+        |> string_sort
+      in
+      let concrete_op_names =
+        concrete_ops
+        |> List.map ~f:(function Operator_syntax_row.{ pattern = { name; _ }; _ } -> name)
+        |> string_sort
+      in
+      if not (List.equal String.( = ) abstract_op_names concrete_op_names)
+      then
+        Some
+          (Fmt.str
+             "Concrete syntax definition for sort `%s` doesn't have the same operators \
+              (%a) as the abstract syntax (%a)"
+             sort_name
+             pp_set
+             concrete_op_names
+             pp_set
+             abstract_op_names)
+      else List.find_map concrete_ops ~f:(Operator_syntax_row.check ~sort_name)
+  ;;
 end
 
 type t = Sort_syntax.t list
@@ -571,6 +665,25 @@ let check_sort_graph abstract_syntax concrete_syntax () =
   | Some _ -> None
 ;;
 
+(* Check that the sorts covered in the concrete / abstract syntax are 1-1 *)
+let check_same_sorts sort_defs ordered () =
+  let abstract_sort_names = sort_defs |> Map.keys |> string_sort in
+  let concrete_sort_names =
+    ordered |> List.map ~f:(fun Sort_syntax.{ name = _, name; _ } -> name) |> string_sort
+  in
+  if List.equal String.( = ) abstract_sort_names concrete_sort_names
+  then List.find_map ordered ~f:(Sort_syntax.check ~sort_defs)
+  else
+    Some
+      (Fmt.str
+         "Concrete syntax definition doesn't have the same sorts (%a) as abstract syntax \
+          (%a)"
+         pp_set
+         concrete_sort_names
+         pp_set
+         abstract_sort_names)
+;;
+
 (* Check
  * [x] No overlapping variable definitions (on rhs or lhs)
  * [x] Variables used 1-1 (lhs vs rhs)
@@ -587,123 +700,10 @@ let check_sort_graph abstract_syntax concrete_syntax () =
  * [ ] every line is either a binary operator or prefix row
  *)
 let check sort_defs ordered =
-  let sort = List.sort ~compare:String.compare in
   match build_unordered ordered with
   | `Duplicate_key k -> Some (Fmt.str "duplicate sort definition for %s" k)
   | `Ok unordered ->
-    let operator_syntax_row sort_name row =
-      let Operator_syntax_row.{ info = _; pattern; concrete_syntax } = row in
-      let lhs_vars = pattern |> Operator_pattern.vars |> sort in
-      let rhs_vars = concrete_syntax |> Operator_concrete_syntax_row.vars |> sort in
-      let check_1 () =
-        match
-          ( List.find_consecutive_duplicate ~equal:String.( = ) lhs_vars
-          , List.find_consecutive_duplicate ~equal:String.( = ) rhs_vars )
-        with
-        | None, None -> None
-        | Some (dupe, _), _ ->
-          Some
-            (Fmt.str
-               "Duplicate variable found in abstract pattern for sort `%s` / operator \
-                `%s`: %s"
-               sort_name
-               pattern.name
-               dupe)
-        | _, Some (dupe, _) ->
-          Some
-            (Fmt.str
-               "Duplicate variable found in concrete pattern for sort `%s` / operator \
-                `%s`: %s"
-               sort_name
-               pattern.name
-               dupe)
-      in
-      let check_2 () =
-        if List.equal String.( = ) lhs_vars rhs_vars
-        then None
-        else
-          Some
-            Fmt.(
-              str
-                "LHS and RHS don't bind the same vars (%a vs %a)"
-                pp_set
-                lhs_vars
-                pp_set
-                rhs_vars)
-      in
-      (* TODO
-      let check_3 () =
-        match
-          Operator_syntax_row.(
-            ( is_binary_operator operator_names row
-            , is_prefix_row row || defers_to_another_sort var_sort_mapping sort_name row ))
-        with
-        | true, false | false, true -> None
-        | _ -> Some "TODO"
-      in
-      *)
-      List.find_map [ check_1; check_2 ] ~f:(fun check -> check ())
-    in
-    let sort_syntax
-        Sort_syntax.
-          { info = _
-          ; operators = concrete_ops
-          ; name = _, sort_name
-          ; variables
-          ; operator_ranking = _
-          }
-      =
-      let (Sort_def.Sort_def (_vars, abstract_ops, var_names)) =
-        Map.find_exn sort_defs sort_name
-      in
-      match variables, var_names with
-      | None, _ :: _ ->
-        Some "Abstract syntax defines variables but concrete syntax doesn't"
-      | Some _, [] -> Some "Concrete syntax defines variables but abstract syntax doesn't"
-      | _ ->
-        let abstract_op_names =
-          abstract_ops
-          |> List.map ~f:(fun (Operator_def.Operator_def (_, name, _)) -> name)
-          |> sort
-        in
-        let concrete_op_names =
-          concrete_ops
-          |> List.map ~f:(function Operator_syntax_row.{ pattern = { name; _ }; _ } ->
-                 name)
-          |> sort
-        in
-        if not (List.equal String.( = ) abstract_op_names concrete_op_names)
-        then
-          Some
-            (Fmt.str
-               "Concrete syntax definition for sort `%s` doesn't have the same operators \
-                (%a) as the abstract syntax (%a)"
-               sort_name
-               pp_set
-               concrete_op_names
-               pp_set
-               abstract_op_names)
-        else List.find_map concrete_ops ~f:(operator_syntax_row sort_name)
-    in
-    let abstract_sort_names = sort_defs |> Map.keys |> sort in
-    let concrete_sort_names =
-      ordered |> List.map ~f:(fun Sort_syntax.{ name = _, name; _ } -> name) |> sort
-    in
-    (* Check that the sorts covered in the concrete / abstract syntax are 1-1 *)
-    let check_same_sorts () =
-      if List.equal String.( = ) abstract_sort_names concrete_sort_names
-      then List.find_map ordered ~f:sort_syntax
-      else
-        Some
-          (Fmt.str
-             "Concrete syntax definition doesn't have the same sorts (%a) as abstract \
-              syntax (%a)"
-             pp_set
-             concrete_sort_names
-             pp_set
-             abstract_sort_names)
-    in
-    [ check_same_sorts; check_sort_graph sort_defs unordered ]
+    [ check_same_sorts sort_defs ordered; check_sort_graph sort_defs unordered ]
     |> List.find_map ~f:(fun checker -> checker ())
 ;;
 

@@ -104,6 +104,7 @@ module Operator_syntax_row : sig
   val info : t -> Provenance.t
   val parse : t Lvca_parsing.t
   val pp : t Fmt.t
+  val check : sort_name:string -> t -> string option
 end
 
 (** How to parse / print a sort. *)
@@ -118,6 +119,7 @@ module Sort_syntax : sig
 
   val parse : t Lvca_parsing.t
   val pp : t Fmt.t
+  val check : sort_defs:Sort_def.t String.Map.t -> t -> string option
 end
 
 (** How to parse / print a language. This is a list so we can print back a language in the
