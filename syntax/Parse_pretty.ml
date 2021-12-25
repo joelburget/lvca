@@ -16,6 +16,7 @@
 open Base
 open Lvca_provenance
 open Lvca_util
+module Directed_graph = Directed_graph.Make (String)
 
 let pp_set = Fmt.(braces (list string ~sep:comma))
 let reserved_words = Lvca_util.String.Set.empty
@@ -633,36 +634,31 @@ let build_unordered ordered =
 let parse = Lvca_parsing.(many1 Sort_syntax.parse <?> "parse / pretty definition")
 let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
 
-module Directed_graph = Directed_graph.Make (String)
-
-let find_var_in_pattern
+(* Find the sort of a variable in a pattern. *)
+let find_var_in_pattern_slots
     (pattern_slots : Operator_pattern_slot.t list)
     (valences : Valence.t list)
     (needle : string)
     : Sort.t
   =
-  let pairs : (Operator_pattern_slot.t * Valence.t) list =
-    List.zip_exn pattern_slots valences
-  in
-  List.find_map_exn
-    pairs
-    ~f:(fun
-         ( Operator_pattern_slot.{ variable_names; body_name; _ }
-         , Valence (sort_slots, body_sort) )
-       ->
-      if String.(body_name = needle)
-      then Some body_sort
-      else (
-        let binder_pairs : (string * Sort_slot.t) list =
-          List.zip_exn variable_names sort_slots
-        in
-        List.find_map binder_pairs ~f:(fun (name, slot) ->
-            if String.(name = needle)
-            then (
-              match slot with
-              | Sort_binding sort -> Some sort
-              | Sort_pattern _ -> failwith "TODO: Sort_pattern")
-            else None)))
+  List.zip_exn pattern_slots valences
+  |> List.find_map_exn
+       ~f:(fun
+            ( Operator_pattern_slot.{ variable_names; body_name; _ }
+            , Valence (sort_slots, body_sort) )
+          ->
+         if String.(body_name = needle)
+         then Some body_sort
+         else
+           List.zip_exn variable_names sort_slots
+           |> List.find_map ~f:(fun (name, slot) ->
+                  if String.(name = needle)
+                  then (
+                    match slot with
+                    | Sort_binding sort -> Some sort
+                    | Sort_pattern _ ->
+                      failwith "TODO: find_var_in_pattern_slots Sort_pattern")
+                  else None))
 ;;
 
 let leading_sort_graph abstract_syntax concrete_syntax =
@@ -681,9 +677,8 @@ let leading_sort_graph abstract_syntax concrete_syntax =
           in
           match sequence_items with
           | Var (_, name) :: _ ->
-            let sort = find_var_in_pattern pattern.slots valences name in
-            let name, _ = Sort.split sort in
-            Some name
+            let sort = find_var_in_pattern_slots pattern.slots valences name in
+            Some (Sort.name sort)
           | _ -> None))
 ;;
 
