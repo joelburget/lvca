@@ -44,7 +44,7 @@ term :=
   | Case(term; list case_scope)
   | Lambda(ty; term. term)
   | Let(term; option ty; term. term)
-  // let rec defines a group (represented as a list but unordered) of definitions at once
+  // let rec defines a group (represented as a list but conceptually unordered) of definitions at once
   | Let_rec(list letrec_row; (list empty)[term]. term)
   | Subst(term. term; term)
   | Quote(term)
