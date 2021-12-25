@@ -639,7 +639,7 @@ let find_var_in_pattern_slots
     (pattern_slots : Operator_pattern_slot.t list)
     (valences : Valence.t list)
     (needle : string)
-    : Sort.t
+    : Sort_slot.t
   =
   List.zip_exn pattern_slots valences
   |> List.find_map_exn
@@ -648,17 +648,11 @@ let find_var_in_pattern_slots
             , Valence (sort_slots, body_sort) )
           ->
          if String.(body_name = needle)
-         then Some body_sort
+         then Some (Sort_slot.Sort_binding body_sort)
          else
            List.zip_exn variable_names sort_slots
            |> List.find_map ~f:(fun (name, slot) ->
-                  if String.(name = needle)
-                  then (
-                    match slot with
-                    | Sort_binding sort -> Some sort
-                    | Sort_pattern _ ->
-                      failwith "TODO: find_var_in_pattern_slots Sort_pattern")
-                  else None))
+                  if String.(name = needle) then Some slot else None))
 ;;
 
 let leading_sort_graph abstract_syntax concrete_syntax =
@@ -677,7 +671,12 @@ let leading_sort_graph abstract_syntax concrete_syntax =
           in
           match sequence_items with
           | Var (_, name) :: _ ->
-            let sort = find_var_in_pattern_slots pattern.slots valences name in
+            let sort_slot = find_var_in_pattern_slots pattern.slots valences name in
+            let sort =
+              match sort_slot with
+              | Sort_binding sort -> sort
+              | Sort_pattern { var_sort; _ } -> var_sort
+            in
             Some (Sort.name sort)
           | _ -> None))
 ;;
@@ -934,8 +933,7 @@ module Parse_term = struct
       Operator_syntax_row.{ info = _; pattern; concrete_syntax = _, items }
       input
     =
-    let f = sort input in
-    let var_parsers = sort_mapping pattern.slots valences |> Map.map ~f in
+    let var_parsers = sort_mapping pattern.slots valences |> Map.map ~f:(sort input) in
     sequence_items var_parsers pattern items input <?> name
   ;;
 
