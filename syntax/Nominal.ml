@@ -375,8 +375,8 @@ module Term = struct
         choice
           ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
           [ parse_prim
-          ; (lower_identifier reserved_words
-            >>~ fun range name -> Var (Provenance.of_range range, name))
+          ; (let%map range, name = attach_pos' (lower_identifier reserved_words) in
+             Var (Provenance.of_range range, name))
           ; make2
               (fun ~info ident slots ->
                 mk_Operator ~provenance:(Provenance.of_range info) ident slots)

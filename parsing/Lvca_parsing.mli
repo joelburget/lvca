@@ -15,8 +15,6 @@ type +'a t = 'a Parse_result.t Angstrom.t
 val of_angstrom : 'a Angstrom.t -> 'a t
 val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
 val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
-val ( >>~ ) : 'a t -> (Opt_range.t -> 'a -> 'b) -> 'b t
-val ( >>|| ) : 'a t -> ('a Parse_result.t -> 'b Parse_result.t) -> 'b t
 val ( <$> ) : ('a -> 'b) -> 'a t -> 'b t
 val ( <*> ) : ('a -> 'b) t -> 'a t -> 'b t
 val ( *> ) : 'a t -> 'b t -> 'b t

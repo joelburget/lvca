@@ -30,8 +30,8 @@ let parse =
   let open Lvca_parsing in
   let p =
     let%bind ident = C_comment_parser.upper_identifier Lvca_util.String.Set.empty in
-    Arity.parse
-    >>~ fun location arity -> Operator_def (Provenance.of_range location, ident, arity)
+    let%map location, arity = attach_pos' Arity.parse in
+    Operator_def (Provenance.of_range location, ident, arity)
   in
   p <?> "operator definition"
 ;;

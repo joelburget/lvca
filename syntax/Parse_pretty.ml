@@ -79,7 +79,8 @@ module Operator_ranking = struct
     let open Lvca_parsing in
     let char = C_comment_parser.char in
     let level = sep_by1 (char '=') Operator_fixity.parse in
-    sep_by1 (char '>') level >>~ fun range levels -> Provenance.of_range range, levels
+    let%map range, levels = attach_pos' (sep_by1 (char '>') level) in
+    Provenance.of_range range, levels
   ;;
 
   let pp_level = Fmt.(hovbox (list Operator_fixity.pp ~sep:(any "@ =@ ")))
@@ -131,9 +132,12 @@ module Sequence_item = struct
     let open C_comment_parser in
     choice
       ~failure_msg:"looking for a variable or literal"
-      [ (char '_' >>~ fun range _ -> Space (Provenance.of_range range))
-      ; (lower_ident >>~ fun range str -> Var (Provenance.of_range range, str))
-      ; (string_lit >>~ fun range str -> Literal (Provenance.of_range range, str))
+      [ (let%map range, _ = attach_pos' (char '_') in
+         Space (Provenance.of_range range))
+      ; (let%map range, str = attach_pos' lower_ident in
+         Var (Provenance.of_range range, str))
+      ; (let%map range, str = attach_pos' string_lit in
+         Literal (Provenance.of_range range, str))
       ]
     <?> "sequence item"
   ;;
@@ -171,9 +175,11 @@ module Operator_concrete_syntax_row = struct
 
   let parse =
     let open Lvca_parsing in
-    many1 Sequence_item.parse
-    >>~ (fun range items -> Provenance.of_range range, items)
-    <?> "operator concrete syntax"
+    let p =
+      let%map range, items = attach_pos' (many1 Sequence_item.parse) in
+      Provenance.of_range range, items
+    in
+    p <?> "operator concrete syntax"
   ;;
 
   let pp ppf (info, sequence_items) =

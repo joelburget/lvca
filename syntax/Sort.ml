@@ -74,8 +74,8 @@ let parse reserved_word =
         choice
           ~failure_msg:"looking for parens or an identifier"
           [ parens sort
-          ; (lower_identifier reserved_word
-            >>~ fun loc value -> Name (Provenance.of_range loc, value))
+          ; (let%map loc, value = attach_pos' (lower_identifier reserved_word) in
+             Name (Provenance.of_range loc, value))
           ]
       in
       let%bind range, atoms = attach_pos' (many1 atomic_sort) in

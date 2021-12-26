@@ -337,8 +337,8 @@ let parse reserved_words =
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive.All.parse >>| fun prim -> Primitive prim)
-        ; (lower_identifier reserved_words
-          >>~ fun range ident -> Var (Provenance.of_range range, ident))
+        ; (let%map range, ident = attach_pos' (lower_identifier reserved_words) in
+           Var (Provenance.of_range range, ident))
         ; (let%bind range, ident = attach_pos' (upper_identifier reserved_words) in
            let%map range', slots = attach_pos' (parens (sep_end_by (char ';') slot)) in
            let range = Opt_range.union range range' in

@@ -24,9 +24,11 @@ module Parse = struct
   open C_comment_parser
 
   let t =
-    sep_by1 (string "->") (char '*')
-    >>~ (fun location stars -> Kind (Provenance.of_range location, List.length stars))
-    <?> "kind"
+    let p =
+      let%map location, stars = attach_pos' (sep_by1 (string "->") (char '*')) in
+      Kind (Provenance.of_range location, List.length stars)
+    in
+    p <?> "kind"
   ;;
 
   let decl =
