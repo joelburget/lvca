@@ -1297,7 +1297,7 @@ and infer ({ type_env; syntax } as env) tm =
       Error { env; tm; error }
     | Ok (sort_name, sort_def, _op_def) ->
       (match sort_def with
-      | Sort_def ([], _) ->
+      | Sort_def ([], _, _) ->
         let here = Provenance.of_here [%here] in
         let sort = Sort.Name (here, sort_name) in
         let ty = Type.Sort (here, Sort_model.into sort) in
@@ -1839,7 +1839,8 @@ let%test_module "Checking / inference" =
             ( []
             , [ Operator_def.Operator_def (here, "True", Arity (here, []))
               ; Operator_def.Operator_def (here, "False", Arity (here, []))
-              ] ) )
+              ]
+            , [ "x" ] ) )
       ; ( "list"
         , let a = Lvca_syntax.Sort.Name (here, "a") in
           Sort_def.Sort_def
@@ -1853,7 +1854,8 @@ let%test_module "Checking / inference" =
                       , [ Valence.Valence ([], a)
                         ; Valence.Valence ([], Lvca_syntax.Sort.Ap (here, "list", [ a ]))
                         ] ) )
-              ] ) )
+              ]
+            , [ "x" ] ) )
       ]
     ;;
 

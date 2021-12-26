@@ -269,7 +269,7 @@ let get_sort_ref_info ~prims ~sort_defs =
   let known_sorts_2 = prims |> Map.keys |> SSet.of_list in
   let known_sorts = Set.union known_sorts_1 known_sorts_2 in
   let sort_deps =
-    List.map sort_defs ~f:(fun (sort_name, Sort_def.Sort_def (vars, op_defs)) ->
+    List.map sort_defs ~f:(fun (sort_name, Sort_def.Sort_def (vars, op_defs, _)) ->
         let vars = vars |> List.map ~f:fst |> SSet.of_list in
         let sort_deps =
           op_defs
@@ -304,7 +304,7 @@ let make_binding_status sort_defs =
     |> List.map ~f:(fun (name, _def) -> name, Unbound)
     |> Hashtbl.of_alist_exn (module String)
   in
-  List.iter sort_defs ~f:(fun (_sort_name, Sort_def.Sort_def (_vars, op_defs)) ->
+  List.iter sort_defs ~f:(fun (_sort_name, Sort_def.Sort_def (_vars, op_defs, _)) ->
       List.iter
         op_defs
         ~f:(fun (Operator_def.Operator_def (_info, _name, Arity (_, arity))) ->
@@ -348,7 +348,7 @@ module Helpers (Context : Builder_context) = struct
     then Variable
     else (
       match Map.find mutual_sorts sort_name with
-      | Some (Sort_def.Sort_def (vars, _op_defs)) ->
+      | Some (Sort_def.Sort_def (vars, _op_defs, _)) ->
         (if List.(Int.(length vars <> length sort_args))
         then
           Location.Error.(
@@ -566,7 +566,7 @@ module Type_decls (Context : Builder_context) = struct
       ~prims
       ~sort_name
       ~sort_binding_status
-      (Sort_def.Sort_def (vars, op_defs))
+      (Sort_def.Sort_def (vars, op_defs, _))
     =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let op_ctors =
@@ -593,7 +593,7 @@ module Type_decls (Context : Builder_context) = struct
         |> Set.to_list
         |> List.map ~f:(fun sort_name ->
                let sort_def = Map.find_exn sort_def_map sort_name in
-               let (Sort_def.Sort_def (vars, _op_defs)) = sort_def in
+               let (Sort_def.Sort_def (vars, _op_defs, _)) = sort_def in
                let params = vars |> List.map ~f:fst |> List.map ~f:plain_typ_var in
                let op_ctors =
                  mk_op_ctors
@@ -718,7 +718,7 @@ module To_nominal (Context : Builder_context) = struct
       ~sort_binding_status
       sort_defs
       sort_name
-      (Sort_def.Sort_def (vars, op_defs))
+      (Sort_def.Sort_def (vars, op_defs, _))
     =
     let type_vars = List.map vars ~f:fst in
     let var_names = SSet.of_list type_vars in
@@ -862,7 +862,7 @@ module Of_nominal (Context : Builder_context) = struct
       ~sort_binding_status
       sort_defs
       sort_name
-      (Sort_def.Sort_def (vars, op_defs))
+      (Sort_def.Sort_def (vars, op_defs, _))
     =
     let var_names = vars |> List.map ~f:fst |> SSet.of_list in
     let f op_def =
@@ -953,7 +953,7 @@ module Equivalent (Context : Builder_context) = struct
       ~sort_binding_status
       sort_defs
       sort_name
-      (Sort_def.Sort_def (vars, op_defs))
+      (Sort_def.Sort_def (vars, op_defs, _))
     =
     let type_vars = List.map vars ~f:fst in
     let var_names = SSet.of_list type_vars in
@@ -1065,7 +1065,7 @@ module Info (Context : Builder_context) = struct
       ~sort_binding_status
       _sort_defs
       sort_name
-      (Sort_def.Sort_def (vars, op_defs))
+      (Sort_def.Sort_def (vars, op_defs, _))
     =
     let type_vars = List.map vars ~f:fst in
     let mk_case op_def =
@@ -1200,7 +1200,7 @@ module Individual_type_sig (Context : Builder_context) = struct
   module Type_decls = Type_decls (Context)
 
   let mk ~prims ~sort_def_map ~sort_binding_status sort_name sort_def =
-    let (Sort_def.Sort_def (vars, _op_defs)) = sort_def in
+    let (Sort_def.Sort_def (vars, _op_defs, _)) = sort_def in
     let var_names = List.map vars ~f:fst in
     let params = List.map var_names ~f:plain_typ_var in
     let op_ctors =
@@ -1237,7 +1237,7 @@ module Individual_type_module (Context : Builder_context) = struct
   module Type_decls = Type_decls (Context)
 
   let mk ~prims ~sort_def_map ~sort_binding_status sort_name sort_def =
-    let (Sort_def.Sort_def (vars, op_defs)) = sort_def in
+    let (Sort_def.Sort_def (vars, op_defs, _)) = sort_def in
     let var_names = List.map vars ~f:fst in
     let type_vars = List.map var_names ~f:ptyp_var in
     let params = List.map var_names ~f:plain_typ_var in
@@ -1396,7 +1396,7 @@ module Sig (Context : Builder_context) = struct
     let type_sigs =
       List.map
         sort_defs
-        ~f:(fun (sort_name, (Sort_def.Sort_def (vars, op_defs) as sort_def)) ->
+        ~f:(fun (sort_name, (Sort_def.Sort_def (vars, op_defs, _) as sort_def)) ->
           let var_names = List.map vars ~f:fst in
           let taken = SSet.of_list var_names in
           let taken, unique_var_names =

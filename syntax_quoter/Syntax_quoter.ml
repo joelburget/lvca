@@ -198,13 +198,14 @@ module Exp = struct
     [%expr Lvca_syntax.Kind.Kind ([%e provenance ~loc pos], [%e int ~loc n])]
   ;;
 
-  let sort_def ~loc (Sort_def.Sort_def (vars, op_defs)) =
+  let sort_def ~loc (Sort_def.Sort_def (vars, op_defs, var_names)) =
     let f (name, kind_opt) =
       [%expr [%e string ~loc name], [%e option ~loc kind kind_opt]]
     in
     let vars = vars |> List.map ~f |> list ~loc in
     let op_defs = op_defs |> List.map ~f:(operator_def ~loc) |> list ~loc in
-    [%expr Lvca_syntax.Sort_def.Sort_def ([%e vars], [%e op_defs])]
+    let var_names = var_names |> List.map ~f:(string ~loc) |> list ~loc in
+    [%expr Lvca_syntax.Sort_def.Sort_def ([%e vars], [%e op_defs], [%e var_names])]
   ;;
 
   let language ~loc { externals; sort_defs } =
