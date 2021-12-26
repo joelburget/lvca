@@ -470,13 +470,6 @@ let make6 mk a b c d e f =
   { value = mk ~info a_val b_val c_val d_val e_val f_val; range = info }
 ;;
 
-let attach_pos p =
-  Angstrom.(
-    p
-    >>| fun ({ value; range } as parse_result) ->
-    { parse_result with value = value, range })
-;;
-
 let attach_pos' p =
   Angstrom.(
     p

@@ -28,8 +28,6 @@ val fix : ('a t -> 'a t) -> 'a t
 val option : 'a -> 'a t -> 'a t
 val option' : 'a t -> 'a option t
 val return : ?range:Opt_range.t -> 'a -> 'a t
-val attach_pos : 'a t -> ('a * Opt_range.t) t (* TODO: remove? *)
-
 val attach_pos' : 'a t -> (Opt_range.t * 'a) t (* TODO: remove? *)
 
 val count : int -> 'a t -> 'a list t
