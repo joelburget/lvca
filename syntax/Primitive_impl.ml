@@ -154,14 +154,14 @@ module All_plain = struct
 
   let parse =
     let open Lvca_parsing in
-    let module Ws = C_comment_parser in
+    let open C_comment_parser in
     choice
       ~failure_msg:"looking for an integer, float, string, or character literal"
-      [ (Ws.integer_or_float_lit
+      [ (integer_or_float_lit
         >>| function First i -> Integer (Z.of_string i) | Second f -> Float f)
         (* Note: all ints parse to Integer *)
-      ; (Ws.string_lit >>| fun s -> String s)
-      ; (Ws.char_lit >>| fun c -> Char c)
+      ; (string_lit >>| fun s -> String s)
+      ; (char_lit >>| fun c -> Char c)
       ]
     <?> "primitive"
   ;;

@@ -98,17 +98,17 @@ let rec select_path ~path tm =
 
 let parse =
   let open Lvca_parsing in
-  let module Ws = C_comment_parser in
+  let open C_comment_parser in
   fix (fun term ->
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive.All.parse >>| fun prim -> Primitive prim)
         ; (let p =
              let%bind start, ident =
-               attach_pos' (Ws.upper_identifier Lvca_util.String.Set.empty)
+               attach_pos' (upper_identifier Lvca_util.String.Set.empty)
              in
              let%bind finish, children =
-               attach_pos' (Ws.parens (sep_end_by (Ws.char ';') term))
+               attach_pos' (parens (sep_end_by (char ';') term))
              in
              let range = Opt_range.union start finish in
              return ~range (Operator (Provenance.of_range range, ident, children))

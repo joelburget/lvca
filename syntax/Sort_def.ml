@@ -73,27 +73,27 @@ let pp ~name ppf (Sort_def (sort_vars, operator_defs, var_names)) =
 
 let parse =
   let open Lvca_parsing in
-  let module Ws = C_comment_parser in
-  let bar = Ws.char '|' in
+  let open C_comment_parser in
+  let bar = char '|' in
   let sort_var_decl =
     choice
       ~failure_msg:"looking for a (lower-case) identifier or parens"
-      [ (Ws.lower_identifier String.Set.empty >>| fun name -> name, None)
-      ; (Ws.parens Kind.Parse.decl >>| fun (name, kind) -> name, Some kind)
+      [ (lower_identifier String.Set.empty >>| fun name -> name, None)
+      ; (parens Kind.Parse.decl >>| fun (name, kind) -> name, Some kind)
       ]
     <?> "sort variable declaration"
   in
   let p =
-    let%bind name = Ws.lower_identifier String.Set.empty in
+    let%bind name = lower_identifier String.Set.empty in
     let%bind vars = many sort_var_decl in
-    let%bind _ = Ws.string ":=" in
+    let%bind _ = string ":=" in
     let%bind op_defs = option '|' bar *> sep_by bar Operator_def.parse in
     let%bind var_names =
       choice
         ~failure_msg:"Expected a `;` or `\\` variables list"
-        [ Ws.char ';' *> return None
+        [ char ';' *> return None
         ; Option.some
-          <$> Ws.char '\\' *> sep_by (Ws.char ',') (Ws.lower_identifier String.Set.empty)
+          <$> char '\\' *> sep_by (char ',') (lower_identifier String.Set.empty)
         ]
     in
     let var_names = match var_names with None -> [] | Some vs -> vs in
