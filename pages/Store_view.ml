@@ -19,6 +19,7 @@ t :=
   | Selected_hash(string)
   | Selected_filter(string)
   | No_selection()
+  ;
     |}
   , { string = "Lvca_syntax.Primitive.String" }]
 

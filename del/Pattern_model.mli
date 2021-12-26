@@ -11,6 +11,7 @@ pattern :=
   | Operator(string; list pattern)
   | Primitive(primitive)
   | Var(string)
+  ;
 |}
 , { string = "Primitive.String"; primitive = "Primitive.All"; list = "List_model" }]
 

@@ -28,11 +28,13 @@ term :=
   | Sequence(sequence)
   | Let(term; term. term)
   | Fix(term. term)
+  ;
 
 sequence :=
   | Empty_sequence(core_term)
   | Binding(term; term. sequence)
   | Non_binding(term; sequence)
+  ;
 |}
 , { char = "Primitive.Char"
   ; string = "Primitive.String"
@@ -165,10 +167,12 @@ module Parse = struct
       | Q_option()
       | Q_many()
       | Q_many1()
+      ;
 
     sequence_elem :=
       | Bound(single_var; term)
       | Unbound(term)
+      ;
     |}
   , { count = "Core.Term"; term = "Lang.Term"; single_var = "Single_var" }]
 

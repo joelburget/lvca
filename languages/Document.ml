@@ -14,19 +14,20 @@ string : *
 option : * -> *
 list : * -> *
 
-attribute := Attribute(string; string)
+attribute := Attribute(string; string);
 
 link := Link_def(
   inline;
   string;
   option string
-)
+);
 
 list_type :=
   | Ordered(int32; char)
   | Bullet(char)
+  ;
 
-list_spacing := Loose() | Tight()
+list_spacing := Loose() | Tight();
 
 inline :=
   | Concat(list attribute; list inline)
@@ -39,8 +40,9 @@ inline :=
   | Link(list attribute; link)
   | Image(list attribute; link)
   | Html(list attribute; string)
+  ;
 
-def_elt := Def_elt(inline; list inline)
+def_elt := Def_elt(inline; list inline);
 
 block :=
   | Paragraph(list attribute; inline)
@@ -51,8 +53,9 @@ block :=
   | Code_block(list attribute; string; string)
   | Html_block(list attribute; string)
   | Definition_list(list attribute; list def_elt)
+  ;
 
-doc := Doc(list block)
+doc := Doc(list block);
 |}
 , { char = "Primitive.Char"
   ; int32 = "Primitive.Int32"

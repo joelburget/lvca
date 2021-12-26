@@ -1,5 +1,5 @@
 open Lvca_syntax
-include [%lvca.abstract_syntax_module "option a := None() | Some(a)"]
+include [%lvca.abstract_syntax_module "option a := None() | Some(a);"]
 
 let of_option x =
   let info = Provenance.of_here [%here] in

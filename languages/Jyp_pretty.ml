@@ -20,6 +20,7 @@ doc :=
   | Nest(int32; doc)
   | Align(doc)
   | Alt(doc; doc)
+  ;
 |}
 , { int32 = "Primitive.Int32"; string = "Primitive.String" }]
 

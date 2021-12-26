@@ -1,7 +1,7 @@
 open Lvca_syntax
 module Option_model = Lvca_del.Option_model
 module List_model = Lvca_del.List_model
-module Either_model = [%lvca.abstract_syntax_module "either a b := Left(a) | Right(b)"]
+module Either_model = [%lvca.abstract_syntax_module "either a b := Left(a) | Right(b);"]
 
 module Primitive_model =
 [%lvca.abstract_syntax_module
@@ -18,6 +18,7 @@ primitive :=
   | String(string)
   | Float(float)
   | Char(char)
+  ;
 |}
 , { integer = "Primitive.Integer"
   ; int32 = "Primitive.Int32"
@@ -36,6 +37,7 @@ list : * -> *
 term :=
   | Operator(string; list term)
   | Primitive(primitive)
+  ;
 |}
 , { string = "Primitive.String"; primitive = "Primitive.All"; list = "List_model" }]
 
@@ -51,6 +53,7 @@ pattern :=
   | Primitive(primitive)
   | Var(string)
   | Ignored(string)
+  ;
 |}
 , { string = "Primitive.String"; primitive = "Primitive.All"; list = "List_model" }]
 
@@ -66,8 +69,9 @@ term :=
   | Operator(string; list scope)
   | Var(string)
   | Primitive(primitive)
+  ;
 
-scope := Scope(list pattern; term)
+scope := Scope(list pattern; term);
 |}
 , { list = "List_model"
   ; pattern = "Pattern_model.Pattern"
@@ -90,8 +94,9 @@ term :=
   | FreeVar(string)
   | Primitive(primitive)
   | Operator(string; list (either scope term))
+  ;
 
-scope := Scope(string; term)
+scope := Scope(string; term);
 |}
 , { either = "Either_model.Either"
   ; int32 = "Primitive.Int32"
@@ -114,8 +119,9 @@ term :=
   | BoundVar(int32)
   | FreeVar(string)
   | Primitive(primitive)
+  ;
 
-scope := Scope(list pattern; term)
+scope := Scope(list pattern; term);
 |}
 , { int32 = "Primitive.Int32"
   ; list = "List_model"

@@ -49,10 +49,11 @@ term :=
   | Subst(term. term; term)
   | Quote(term)
   | Unquote(term)
+  ;
 
-letrec_row := Letrec_row(ty; term)
-operator_scope := Operator_scope(list pattern; term)
-case_scope := Case_scope(binding_aware_pattern; term)
+letrec_row := Letrec_row(ty; term);
+operator_scope := Operator_scope(list pattern; term);
+case_scope := Case_scope(binding_aware_pattern; term);
 |}
 , { ty = "Type"
   ; list = "List_model"
@@ -77,9 +78,10 @@ value :=
   | Operator(string; list operator_scope)
   | Lambda(ty; neutral. value)
   | Neutral(neutral)
+  ;
 
-neutral := Ap(neutral; value)
-operator_scope := Operator_scope(list pattern; value)
+neutral := Ap(neutral; value);
+operator_scope := Operator_scope(list pattern; value);
 |}
 , { ty = "Type"
   ; list = "List_model"

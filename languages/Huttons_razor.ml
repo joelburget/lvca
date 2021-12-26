@@ -10,8 +10,9 @@ module Description = struct
      expr :=
      | Lit(integer)
      | Add(expr; expr)
+     ;
 
-     type := Int()  |}]
+     type := Int();  |}]
   ;;
 
   let parser_str =

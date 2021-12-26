@@ -12,7 +12,7 @@ module Model = struct
   {|
   int32 : *
 
-  date := Date(int32; int32; int32)
+  date := Date(int32; int32; int32);
 
   page :=
     | Term_and_concrete()
@@ -68,6 +68,7 @@ module Model = struct
     | Progress_november_7_2020()
     | Progress_october_8_2020()
     | Progress_september_23_2020()
+    ;
     |}
   , { int32 = "Lvca_syntax.Primitive.Int32" }]
 

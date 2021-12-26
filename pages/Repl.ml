@@ -14,7 +14,7 @@ module Evaluation = struct
 string : *
 nominal : *
 
-evaluation := Evaluation(string; nominal)
+evaluation := Evaluation(string; nominal);
     |}
   , { string = "Primitive.String"; nominal = "Nominal.Term" }]
 

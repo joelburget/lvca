@@ -11,7 +11,7 @@ module Lang =
 integer : *
 float : *
 
-either a b := Left(a) | Right(b)
+either a b := Left(a) | Right(b);
 
 expr :=
   | Add(expr; expr)
@@ -37,6 +37,7 @@ expr :=
   | E()
 
   | Lit(either integer float)
+  ;
 |}
 , { integer = "Primitive.Integer"; float = "Primitive.Float" }]
 

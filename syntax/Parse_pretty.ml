@@ -1255,8 +1255,9 @@ let%test_module "parsing / pretty-printing" =
   | Mul(expr; expr)
   | Fun(val. expr)
   | Val(val)
+  ;
 
-val := True() | False()
+val := True() | False();
       |}
     ;;
 
@@ -1295,12 +1296,6 @@ val:
           |}]
     ;;
 
-    let lang_concrete =
-      match lang_concrete_defn |> parse |> Unordered.build with
-      | `Duplicate_key k -> failwith (Fmt.str "Unexpected duplicate key %s" k)
-      | `Ok lang -> lang
-    ;;
-
     let%test_module "check" =
       (module struct
         let mk_abstract str =
@@ -1326,8 +1321,8 @@ val:
         ;;
 
         let%expect_test _ =
-          let abstract = mk_abstract {|a := A(b)
-b := B(a)|} in
+          let abstract = mk_abstract {|a := A(b);
+b := B(a);|} in
           let concrete =
             parse {|a:
   | A(b) ~ b "b"
@@ -1341,7 +1336,7 @@ b:
           [%expect {| There is unavoidable left-recursion in this grammar |}]
         ;;
 
-        let abstract = mk_abstract "foo := Foo()"
+        let abstract = mk_abstract "foo := Foo();"
 
         let%expect_test _ =
           let concrete =
@@ -1372,7 +1367,7 @@ foo:
             {Bar, Foo}) as the abstract syntax ({Foo}) |}]
         ;;
 
-        let abstract = mk_abstract {|a := A(a. a)|}
+        let abstract = mk_abstract "a := A(a. a);"
 
         let%expect_test _ =
           let concrete = parse {|a:
@@ -1409,6 +1404,12 @@ foo:
             {|`x "a" y` is neither a binary operator, prefix row, nor defers to another sort|}]
         ;;
       end)
+    ;;
+
+    let lang_concrete =
+      match lang_concrete_defn |> parse |> Unordered.build with
+      | `Duplicate_key k -> failwith (Fmt.str "Unexpected duplicate key %s" k)
+      | `Ok lang -> lang
     ;;
 
     let%test_module "pp_term" =

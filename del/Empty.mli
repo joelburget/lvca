@@ -1,4 +1,4 @@
-include [%lvca.abstract_syntax_module_sig "empty :="]
+include [%lvca.abstract_syntax_module_sig "empty := ;"]
 
 type t = Empty.t
 

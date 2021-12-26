@@ -10,6 +10,7 @@ list : * -> *
 sort :=
   | Ap(string; list sort)
   | Name(string)
+  ;
 |}
 , { string = "Primitive.String"; list = "List_model" }]
 

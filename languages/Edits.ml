@@ -14,6 +14,7 @@ edit :=
   | Atomic(core)
   | Labeled(edit; string)
   | List(list edit)
+  ;
 |}
 , { core = "Core.Term"; string = "Primitive.String"; list = "List_model" }]
 

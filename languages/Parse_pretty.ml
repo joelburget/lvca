@@ -10,9 +10,9 @@ string : *
 term : *
 binding_aware_pattern : *
 
-lang := Rows(list row)
+lang := Rows(list row);
 
-row := Row(binding_aware_pattern; directive)
+row := Row(binding_aware_pattern; directive);
 
 directive :=
   | Literal(string)
@@ -21,6 +21,7 @@ directive :=
   | Sep_by(directive; list directive)
   | Sep_by1(directive; list directive)
   | Term(term)
+  ;
   |}
 , { list = "List_model"
   ; string = "Primitive.String"

@@ -15,12 +15,14 @@ value :=
   | False()
   | Fun(value. computation)
   | Handler_val(handler)
+  ;
 
 handler_clause :=
   | Return_clause(value. computation)
   | Op_clause(string; value. value. computation)
+  ;
 
-handler := Handler(list handler_clause)
+handler := Handler(list handler_clause);
 
 computation :=
   | Return(value)
@@ -29,13 +31,15 @@ computation :=
   | If(value; computation; computation)
   | App(value; value)
   | With_handle(value; computation)
+  ;
 
 v_type :=
   | Bool()
   | Fun_ty(v_type; c_type)
   | Handler_ty(c_type; c_type)
+  ;
 
-c_type := Computation(v_type; list string)
+c_type := Computation(v_type; list string);
 |}
     , { string = "Primitive.String"; list = "List_model" }]
 
@@ -126,12 +130,14 @@ value :=
   | Adt(nonbinding)
   | Fun(value. computation)
   | Handler_val(handler)
+  ;
 
 handler_clause :=
   | Return_clause(value. computation)
   | Op_clause(string; value. value. computation)
+  ;
 
-handler := Handler(list handler_clause)
+handler := Handler(list handler_clause);
 
 computation :=
   | Return(value)
@@ -140,13 +146,15 @@ computation :=
   | If(value; computation; computation)
   | App(value; value)
   | With_handle(value; computation)
+  ;
 
 v_type :=
   | Bool()
   | Fun_ty(v_type; c_type)
   | Handler_ty(c_type; c_type)
+  ;
 
-c_type := Computation(v_type; list string)
+c_type := Computation(v_type; list string);
 |}
     , { string = "Primitive.String"
       ; list = "List_model"

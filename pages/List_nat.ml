@@ -1,6 +1,6 @@
 module Language = struct
-  let nat = [%lvca.abstract_syntax "nat := Z() | S(nat)"]
-  let list = [%lvca.abstract_syntax "list a := Nil() | Cons(a; list a)"]
+  let nat = [%lvca.abstract_syntax "nat := Z() | S(nat);"]
+  let list = [%lvca.abstract_syntax "list a := Nil() | Cons(a; list a);"]
 
   (*
   let rec nat_to_list = function

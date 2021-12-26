@@ -7,9 +7,9 @@ module Lang =
 {|
 string : *
 
-nat := Z() | S(nat)
+nat := Z() | S(nat);
 
-list := Nil() | Cons(string; list)
+list := Nil() | Cons(string; list);
 |}
 , { string = "Primitive.String" }]
 

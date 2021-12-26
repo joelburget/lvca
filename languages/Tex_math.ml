@@ -18,6 +18,7 @@ tex :=
   | Token(char)
   | Grouped(list tex)
   | Space()
+  ;
 |}
 , { string = "Primitive.String"; char = "Primitive.Char"; list = "List_model" }]
 

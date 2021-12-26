@@ -1,5 +1,5 @@
 open Lvca_syntax
-module Kernel = [%lvca.abstract_syntax_module "list a := Nil() | Cons(a; list a)"]
+module Kernel = [%lvca.abstract_syntax_module "list a := Nil() | Cons(a; list a);"]
 include Kernel.List
 
 type 'a t = 'a Kernel.List.t =

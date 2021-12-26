@@ -192,9 +192,10 @@ tm :=
   | Add(tm; // comment
   tm)
   | Lit(integer)
+  ;
 
 // comment
-empty :=
+empty := ;
 // comment
       |}
       in
@@ -225,7 +226,7 @@ empty :=
     ;;
 
     let%expect_test _ =
-      kind_check {|tm a := Foo(a)|};
+      kind_check {|tm a := Foo(a);|};
       [%expect {|
         okay
         a: 0
@@ -233,14 +234,14 @@ empty :=
     ;;
 
     let%expect_test _ =
-      kind_check {|tm a := Foo(a) | Bar(a b)|};
+      kind_check {|tm a := Foo(a) | Bar(a b);|};
       [%expect {|
         failed
         a: 0, 1 |}]
     ;;
 
     let%expect_test _ =
-      kind_check {|tm := Foo(a) | Bar(a b)|};
+      kind_check {|tm := Foo(a) | Bar(a b);|};
       [%expect {|
         failed
         a: 0, 1 |}]
@@ -262,7 +263,7 @@ let%test_module "Parser" =
     let ( = ) = equivalent
 
     let%test _ =
-      parse "bool := True() | False()"
+      parse "bool := True() | False();"
       (*     0123456789012345678901234 *)
       = { externals = []
         ; sort_defs =
@@ -292,14 +293,17 @@ let%test_module "Parser" =
       ty :=
         | Bool()
         | Arr(ty; ty)
+        ;
 
       tm :=
         | App(tm; tm)
         | Lam(tm. tm)
+        ;
 
       foo (x : *) :=
         | Foo(foo[x]. x; x. x)
         | Bar(x)
+        ;
       |}
       =
       let externals = [ "integer", Kind.mk 1; "list", Kind.mk 2 ] in
@@ -348,7 +352,7 @@ let%test_module "Parser" =
       integer : *
       list : * -> *
 
-      foo := Foo()
+      foo := Foo();
       |}
       in
       lang.externals
@@ -370,15 +374,18 @@ value :=
   | Unit()
   | Lit_int(integer)
   | Lit_str(string)
+  ;
 
 match_line :=
   | Match_line(value[value]. term)
+  ;
 
 term :=
   | Lambda(value. term)
   | Alt_lambda(term. term)
   | Match(list match_line)
   | Value(value)
+  ;
    |};
       [%expect
         {|
@@ -390,20 +397,34 @@ value :=
   | Unit()
   | Lit_int(integer)
   | Lit_str(string)
+  ;
 
-match_line := Match_line(value[value]. term)
+match_line := Match_line(value[value]. term);
 
 term :=
   | Lambda(value. term)
   | Alt_lambda(term. term)
   | Match(list match_line)
   | Value(value)
+  ;
    |}]
     ;;
 
     let%expect_test _ =
-      parse_print "empty :=";
-      [%expect "empty :="]
+      parse_print "empty := ;";
+      [%expect "empty := ;"]
+    ;;
+
+    let%expect_test _ =
+      parse_print {|
+      empty := ;
+      foo := Foo();
+      |};
+      [%expect {|
+      empty := ;
+
+      foo := Foo();
+      |}]
     ;;
   end)
 ;;

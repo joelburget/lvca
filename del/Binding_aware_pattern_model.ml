@@ -12,8 +12,9 @@ pattern :=
   | Operator(string; list scope)
   | Primitive(primitive)
   | Var(string)
+  ;
 
-scope := Scope(list string; pattern)
+scope := Scope(list string; pattern);
 |}
   , { string = "Primitive.String"; primitive = "Primitive.All"; list = "List_model" }]
 

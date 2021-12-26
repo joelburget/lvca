@@ -15,6 +15,7 @@ exp :=
   | Fun(exp. exp)
   | Ap(exp; exp)
   | Fix(exp. exp)
+  ;
 |}
 , { integer = "Primitive.Integer" }]
 

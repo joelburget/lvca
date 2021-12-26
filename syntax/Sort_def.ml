@@ -45,14 +45,14 @@ let pp ~name ppf (Sort_def (sort_vars, operator_defs, var_names)) =
   in
   let pp_var_names = hovbox (list string ~sep:comma) in
   match operator_defs, var_names with
-  | [], [] -> pf ppf "%s%a :=" name pp_sort_vars sort_vars
-  | [], _ -> pf ppf "%s%a := %a" name pp_sort_vars sort_vars pp_var_names var_names
+  | [], [] -> pf ppf "%s%a := ;" name pp_sort_vars sort_vars
+  | [], _ -> pf ppf "%s%a :=@;  \\ %a" name pp_sort_vars sort_vars pp_var_names var_names
   | [ single_def ], [] ->
-    pf ppf "%s%a := @[%a@]" name pp_sort_vars sort_vars Operator_def.pp single_def
+    pf ppf "%s%a := @[%a@];" name pp_sort_vars sort_vars Operator_def.pp single_def
   | _, [] ->
     pf
       ppf
-      "%s%a :=@,@[<v 2>  | %a@]"
+      "%s%a :=@,@[<v 2>  | %a@,;@]"
       name
       pp_sort_vars
       sort_vars
@@ -61,7 +61,7 @@ let pp ~name ppf (Sort_def (sort_vars, operator_defs, var_names)) =
   | _ ->
     pf
       ppf
-      "%s%a :=@,@[<v 2>  | %a@,| %a@]"
+      "%s%a :=@,@[<v 2>  | %a@,\\ %a@]"
       name
       pp_sort_vars
       sort_vars
@@ -78,40 +78,29 @@ let parse =
   let sort_var_decl =
     choice
       ~failure_msg:"looking for a (lower-case) identifier or parens"
-      [ (Ws.lower_identifier Lvca_util.String.Set.empty >>| fun name -> name, None)
+      [ (Ws.lower_identifier String.Set.empty >>| fun name -> name, None)
       ; (Ws.parens Kind.Parse.decl >>| fun (name, kind) -> name, Some kind)
       ]
     <?> "sort variable declaration"
   in
-  let parse_row =
-    choice
-      ~failure_msg:"looking for an operator definition or variables"
-      [ Either.First.return <$> Operator_def.parse
-      ; Either.Second.return
-        <$> sep_by (Ws.char ',') (Ws.lower_identifier String.Set.empty)
-      ]
-  in
   let p =
-    Ws.lower_identifier Lvca_util.String.Set.empty
+    Ws.lower_identifier String.Set.empty
     >>= fun name ->
     many sort_var_decl
     >>= fun vars ->
     Ws.string ":="
     >>= fun _ ->
-    option '|' bar *> sep_by bar parse_row
-    >>= fun rows ->
-    let op_defs, var_names =
-      List.split_while rows ~f:(function Either.First _ -> true | _ -> false)
-    in
-    let op_defs =
-      List.map op_defs ~f:(function
-          | Either.First op_def -> op_def
-          | _ -> Lvca_util.invariant_violation [%here] "Must be all Firsts")
-    in
-    match var_names with
-    | ([] as var_names) | [ Either.Second var_names ] ->
-      return (name, Sort_def (vars, op_defs, var_names))
-    | _ -> fail "Vars must be listed in the last row only"
+    option '|' bar *> sep_by bar Operator_def.parse
+    >>= fun op_defs ->
+    choice
+      ~failure_msg:"Expected a `;` or `\\` variables list"
+      [ Ws.char ';' *> return None
+      ; Option.some
+        <$> Ws.char '\\' *> sep_by (Ws.char ',') (Ws.lower_identifier String.Set.empty)
+      ]
+    >>= fun var_names ->
+    let var_names = match var_names with None -> [] | Some vs -> vs in
+    return (name, Sort_def (vars, op_defs, var_names))
   in
   p <?> "sort definition"
 ;;
@@ -128,13 +117,13 @@ let%test_module _ =
     ;;
 
     let%expect_test _ =
-      parse_print {|foo := Foo() // comment|};
-      [%expect "foo := Foo()"]
+      parse_print {|foo := Foo(); // comment|};
+      [%expect "foo := Foo();"]
     ;;
 
     let%expect_test _ =
-      parse_print {|foo x := Foo()|};
-      [%expect {|foo x := Foo()|}]
+      parse_print {|foo x := Foo();|};
+      [%expect {|foo x := Foo();|}]
     ;;
 
     let%expect_test _ =
@@ -144,13 +133,13 @@ let%test_module _ =
 tm :=  // comment
   | Add(tm; tm)  // comment
   | Lit(integer)  // comment
-  | x, y
+  \ x, y
     |};
       [%expect {|
     tm :=
       | Add(tm; tm)
       | Lit(integer)
-      | x, y
+      \ x, y
     |}]
     ;;
 
@@ -178,7 +167,7 @@ tm :=  // comment
         foo :=
           | Foo(integer)
           | Bar(foo[foo]. foo. foo)
-          | x, y |}]
+          \ x, y |}]
     ;;
 
     let%expect_test _ =
@@ -189,7 +178,7 @@ tm :=  // comment
           , [] )
       in
       Fmt.pr "%a" (pp ~name:"foo") sort_def;
-      [%expect {| foo := Foo(integer) |}]
+      [%expect {| foo := Foo(integer); |}]
     ;;
 
     let%expect_test _ =
@@ -200,13 +189,13 @@ tm :=  // comment
           , [] )
       in
       Fmt.pr "%a" (pp ~name:"foo") sort_def;
-      [%expect {| foo a := Foo(integer) |}]
+      [%expect {| foo a := Foo(integer); |}]
     ;;
 
     let%expect_test _ =
       let sort_def = Sort_def ([ "a", Some (Kind.mk 2) ], [], []) in
       Fmt.pr "%a" (pp ~name:"foo") sort_def;
-      [%expect {| foo (a : * -> *) := |}]
+      [%expect {| foo (a : * -> *) := ; |}]
     ;;
   end)
 ;;

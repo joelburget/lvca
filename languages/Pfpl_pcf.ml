@@ -5,7 +5,7 @@ open Result.Let_syntax
 module Lang =
 [%lvca.abstract_syntax_module
 {|
-typ := Nat() | Parr(typ; typ)
+typ := Nat() | Parr(typ; typ);
 
 exp :=
   | Zero()
@@ -14,6 +14,7 @@ exp :=
   | Fun(typ; exp. exp)
   | Ap(exp; exp)
   | Fix(typ; exp. exp)
+  ;
 |}]
 
 module Exp = Nominal.Convertible.Extend (Lang.Exp)

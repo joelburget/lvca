@@ -15,13 +15,14 @@ module Model = struct
 term : *
 string : *
 
-lang := Lambda() | Term()
+lang := Lambda() | Term();
 
 result a b :=
   | Ok(a)
   | Error(b)
+  ;
 
-model := Model(string; result term string; lang; result term string)
+model := Model(string; result term string; lang; result term string);
 |}
   , { term = "Nominal.Term"; string = "Primitive.String" }]
 

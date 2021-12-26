@@ -475,21 +475,25 @@ value :=
   | Lit_int(integer)
   | Lit_str(string)
   | List(list value)
+  ;
 
 list a :=
   | Nil()
   | Cons(a; list a)
+  ;
 
 match_line :=
   | Match_line(value[value]. term)
+  ;
 
 term :=
   | Lambda(value. term)
   | Alt_lambda(term. term)
   | Match(match_line)
   | Value(value)
+  ;
 
-test := Foo(term[term]. term)
+test := Foo(term[term]. term);
       |}
     ;;
 
@@ -557,8 +561,8 @@ test := Foo(term[term]. term)
       print_check_pattern "term" "Lambda(x. body)";
       [%expect
         {|
-      body: <{ input = Input_unknown; range = {201,205} }>term</{ input = Input_unknown; range = {201,205} }>
-      x: <{ input = Input_unknown; range = {194,199} }>value</{ input = Input_unknown; range = {194,199} }>
+      body: <{ input = Input_unknown; range = {213,217} }>term</{ input = Input_unknown; range = {213,217} }>
+      x: <{ input = Input_unknown; range = {206,211} }>value</{ input = Input_unknown; range = {206,211} }>
       |}]
     ;;
 
@@ -566,8 +570,8 @@ test := Foo(term[term]. term)
       print_check_pattern "match_line" "Match_line(pattern. body)";
       [%expect
         {|
-      body: <{ input = Input_unknown; range = {168,172} }>term</{ input = Input_unknown; range = {168,172} }>
-      pattern: <{ input = Input_unknown; range = {154,159} }>value</{ input = Input_unknown; range = {154,159} }>[<{ input = Input_unknown; range = {160,165} }>value</{ input = Input_unknown; range = {160,165} }>]
+      body: <{ input = Input_unknown; range = {176,180} }>term</{ input = Input_unknown; range = {176,180} }>
+      pattern: <{ input = Input_unknown; range = {162,167} }>value</{ input = Input_unknown; range = {162,167} }>[<{ input = Input_unknown; range = {168,173} }>value</{ input = Input_unknown; range = {168,173} }>]
       |}]
     ;;
 

@@ -940,21 +940,25 @@ value :=
   | Lit_int(integer)
   | Lit_str(string)
   | List(list value)
+  ;
 
 list a :=
   | Nil()
   | Cons(a; list a)
+  ;
 
 match_line :=
   | Match_line(value[value]. term)
+  ;
 
 term :=
   | Lambda(value. term)
   | Alt_lambda(term. term)
   | Match(match_line)
   | Value(value)
+  ;
 
-test := Foo(term[term]. term)
+test := Foo(term[term]. term);
       |}
     ;;
 

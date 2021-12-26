@@ -12,6 +12,7 @@ syntax :=
   | Variable(string; int32)
   | Lambda(string; syntax)
   | Apply(syntax; syntax)
+  ;
 |}
 , { int32 = "Primitive.Int32"; string = "Primitive.String" }]
 
