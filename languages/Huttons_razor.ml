@@ -56,10 +56,10 @@ end
 (* Write by hand first, later assert the generated parser is equivalent *)
 module Parse = struct
   open Lvca_parsing
-  module Ws = C_comment_parser
+  open C_comment_parser
 
   let lit : Nonbinding.t Lvca_parsing.t =
-    Ws.integer_lit
+    integer_lit
     >>~ fun range str ->
     let range = Provenance.of_range range in
     Nonbinding.Operator (range, "Lit", [ Primitive (range, Integer (Z.of_string str)) ])
@@ -67,15 +67,15 @@ module Parse = struct
 
   let t : Nonbinding.t Lvca_parsing.t =
     fix (fun t ->
-        let atom = attach_pos (lit <|> Ws.parens t) in
-        let plus = Ws.char '+' in
-        let f (l, rng1) (r, rng2) =
+        let atom = attach_pos' (lit <|> parens t) in
+        let plus = char '+' in
+        let f (rng1, l) (rng2, r) =
           let rng = Opt_range.union rng1 rng2 in
           let info = Provenance.of_range rng in
-          Nonbinding.Operator (info, "Add", [ l; r ]), rng
+          rng, Nonbinding.Operator (info, "Add", [ l; r ])
         in
-        atom
-        >>= fun init -> many (plus *> atom) >>| fun lst -> List.fold lst ~init ~f |> fst)
+        let%bind init = atom in
+        many (plus *> atom) >>| fun lst -> List.fold lst ~init ~f |> snd)
   ;;
 end
 

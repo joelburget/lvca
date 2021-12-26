@@ -152,7 +152,7 @@ end
 
 module Parse = struct
   open Lvca_parsing
-  module Ws = C_comment_parser
+  open C_comment_parser
   open Lang.Term
 
   module Parse_helpers =
@@ -200,24 +200,22 @@ module Parse = struct
     | Unbound (info, tm) :: binders -> Non_binding (info, tm, mk_sequence binders rhs)
   ;;
 
-  let arrow = Ws.string "->"
+  let arrow = string "->"
   let attach_pos' p = attach_pos' p >>| fun (range, a) -> Provenance.of_range range, a
   let make0, make1, make2 = Provenance.(make0, make1, make2)
   let input = Provenance.Parse_input.Buffer_name "input"
-  let identifier = Ws.lower_identifier String.Set.empty
+  let identifier = lower_identifier String.Set.empty
 
   let t c_term =
     fix (fun parser ->
         (* prec 6 *)
         let parse_atom =
           choice
-            [ make1
-                mk_Char
-                (attach_pos' Ws.char_lit : (Provenance.t * char) Lvca_parsing.t)
-            ; make1 mk_String (attach_pos' Ws.string_lit)
-            ; make0 mk_Any_char (Ws.char '.')
+            [ make1 mk_Char (attach_pos' char_lit : (Provenance.t * char) Lvca_parsing.t)
+            ; make1 mk_String (attach_pos' string_lit)
+            ; make0 mk_Any_char (char '.')
             ; make1 mk_Term_var identifier
-            ; Ws.parens parser
+            ; parens parser
             ]
         in
         (* prec 5 *)
@@ -225,17 +223,17 @@ module Parse = struct
           let%bind tm = parse_atom in
           let quantifier =
             choice
-              [ make1 mk_Q_count (Ws.braces c_term)
+              [ make1 mk_Q_count (braces c_term)
               ; make1
                   mk_Q_count
-                  (Ws.integer_lit
+                  (integer_lit
                   >>~ fun range i ->
                   let i = Z.of_string i in
                   let info = Provenance.of_range range in
                   Core.Term_syntax.Term.Primitive (info, (info, Integer i)))
-              ; make0 mk_Q_option (Ws.char '?')
-              ; make0 mk_Q_many (Ws.char '*')
-              ; make0 mk_Q_many1 (Ws.char '+')
+              ; make0 mk_Q_option (char '?')
+              ; make0 mk_Q_many (char '*')
+              ; make0 mk_Q_many1 (char '+')
               ]
           in
           many quantifier >>| apply_quantifiers tm
@@ -245,8 +243,8 @@ module Parse = struct
           choice
             [ make2
                 (fun ~info _ body -> mk_Fix ~info body)
-                (Ws.string "fix")
-                (Ws.parens
+                (string "fix")
+                (parens
                    (lift3
                       (fun v _arr body -> v, body)
                       (make1 Single_var.mk identifier)
@@ -254,20 +252,20 @@ module Parse = struct
                       parser))
             ; make2
                 (fun ~info _ (name, tm) -> mk_Satisfy ~info name tm)
-                (Ws.string "satisfy")
-                (Ws.parens
+                (string "satisfy")
+                (parens
                    (lift3
                       (fun name _arr tm -> name, tm)
                       (identifier
                       >>~ fun range ident -> Provenance.of_range ~input range, ident)
                       arrow
-                      (Ws.braces c_term)))
+                      (braces c_term)))
             ; make2
                 (fun ~info _ tm -> mk_Fail ~info tm)
-                (Ws.string "fail")
+                (string "fail")
                 (choice
-                   [ Ws.braces c_term
-                   ; (Ws.string_lit
+                   [ braces c_term
+                   ; (string_lit
                      >>~ fun range str ->
                      let info = Provenance.of_range range in
                      Core.Term_syntax.Term.Primitive (info, (info, String str)))
@@ -283,7 +281,7 @@ module Parse = struct
                   let info = Provenance.of_range info in
                   mk_Bound ~info ident tm)
                 (make1 Single_var.mk identifier)
-                (Ws.char '=')
+                (char '=')
                 parse_app
             ; make1 mk_Unbound parse_app
             ]
@@ -297,7 +295,7 @@ module Parse = struct
                   mk_Sequence ~info (mk_sequence bindings rhs))
                 (many parse_eq)
                 arrow
-                (Ws.braces c_term)
+                (braces c_term)
             ; parse_app
             ]
         in
@@ -308,7 +306,7 @@ module Parse = struct
             | [] -> tm
             | _ -> mk_Choice ~info (List_model.of_list (tm :: tms))
           in
-          make2 f parse_arr (many (Ws.char '|' *> parse_arr))
+          make2 f parse_arr (many (char '|' *> parse_arr))
         in
         (* prec 0 *)
         let parse_let =
@@ -317,11 +315,11 @@ module Parse = struct
                 (fun ~info _let name _eq tm _in rhs ->
                   let info = Provenance.of_range info in
                   mk_Let ~info tm (name, rhs))
-                (Ws.string "let")
+                (string "let")
                 (make1 Single_var.mk identifier)
-                (Ws.char '=')
+                (char '=')
                 parser
-                (Ws.string "in")
+                (string "in")
                 parser
             ; parse_alt
             ]

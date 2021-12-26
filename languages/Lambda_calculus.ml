@@ -62,17 +62,17 @@ module Parse = struct
             (string "->")
             t
         in
-        let f (x, rng1) (y, rng2) =
+        let f (rng1, x) (rng2, y) =
           let range = Opt_range.union rng1 rng2 in
           let tm =
             Nominal.Term.Operator
               (Provenance.of_range range, "App", [ Scope ([], x); Scope ([], y) ])
           in
-          tm, range
+          range, tm
         in
-        let atom_or_lam = attach_pos (atom <|> lam) in
+        let atom_or_lam = attach_pos' (atom <|> lam) in
         let%bind init = atom_or_lam in
-        many atom_or_lam >>| fun atoms -> List.fold atoms ~init ~f |> fst)
+        many atom_or_lam >>| fun atoms -> List.fold atoms ~init ~f |> snd)
   ;;
 end
 

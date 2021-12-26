@@ -390,11 +390,10 @@ module Parse = struct
   ;;
 
   let atomic_term' term =
-    atomic_term term
-    >>== fun { range = body_range; value = body } ->
+    let%bind body_range, body = attach_pos' (atomic_term term) in
     choice
       [ (brackets
-           (let%bind name, range = attach_pos var_identifier in
+           (let%bind range, name = attach_pos' var_identifier in
             let name = Single_var.{ info = Provenance.of_range range; name } in
             let%bind _ = string ":=" in
             term >>| fun arg -> name, arg)
@@ -418,68 +417,68 @@ module Parse = struct
 
   let letrec_row term =
     lift4
-      (fun (var, var_pos) ty _ (rhs, rhs_pos) ->
+      (fun (var_pos, var) ty _ (rhs_pos, rhs) ->
         let range = Opt_range.union var_pos rhs_pos in
         ( (Provenance.of_range var_pos, var)
         , Letrec_row.Letrec_row (Provenance.of_range range, ty, rhs) ))
-      (attach_pos var_identifier)
+      (attach_pos' var_identifier)
       (char ':' *> Type.parse)
       (char '=')
-      (attach_pos term)
+      (attach_pos' term)
     <?> "letrec row"
   ;;
 
   let parse_let term =
-    keyword "let"
-    >>== (fun { range = let_pos; _ } ->
-           option' (keyword "rec")
-           >>= function
-           | Some _rec ->
-             lift3
-               (fun (rows, rows_pos) _ (rhs, rhs_pos) ->
-                 let info = Provenance.of_range (Opt_range.union rows_pos rhs_pos) in
-                 let binders, rows = List.unzip rows in
-                 let rows = List_model.of_list rows in
-                 let binders = List_model.make_empty_pattern binders in
-                 Term.Let_rec (info, rows, (binders, rhs)))
-               (attach_pos (sep_by1 (keyword "and") (letrec_row term)))
-               (keyword "in")
-               (attach_pos term)
-           | None ->
-             lift4
-               (fun (name, name_pos) ty _eq tm _in (body, body_pos) ->
-                 let info = Provenance.of_range (Opt_range.union let_pos body_pos) in
-                 Term.Let
-                   ( info
-                   , tm
-                   , ty
-                   , (Single_var.{ name; info = Provenance.of_range name_pos }, body) ))
-               (attach_pos var_identifier)
-               (option
-                  (Option_model.Option.None (Provenance.of_here [%here]))
-                  (char ':' *> Type.parse
-                  >>| fun tm -> Option_model.Option.Some (Provenance.of_here [%here], tm)
-                  ))
-               (char '=')
-               term
-             <*> keyword "in"
-             <*> attach_pos term)
-    <?> "let"
+    let p =
+      let%bind let_pos, _ = attach_pos' (keyword "let") in
+      option' (keyword "rec")
+      >>= function
+      | Some _rec ->
+        lift3
+          (fun (rows_pos, rows) _ (rhs_pos, rhs) ->
+            let info = Provenance.of_range (Opt_range.union rows_pos rhs_pos) in
+            let binders, rows = List.unzip rows in
+            let rows = List_model.of_list rows in
+            let binders = List_model.make_empty_pattern binders in
+            Term.Let_rec (info, rows, (binders, rhs)))
+          (attach_pos' (sep_by1 (keyword "and") (letrec_row term)))
+          (keyword "in")
+          (attach_pos' term)
+      | None ->
+        lift4
+          (fun (name_pos, name) ty _eq tm _in (body_pos, body) ->
+            let info = Provenance.of_range (Opt_range.union let_pos body_pos) in
+            Term.Let
+              ( info
+              , tm
+              , ty
+              , (Single_var.{ name; info = Provenance.of_range name_pos }, body) ))
+          (attach_pos' var_identifier)
+          (option
+             (Option_model.Option.None (Provenance.of_here [%here]))
+             (char ':' *> Type.parse
+             >>| fun tm -> Option_model.Option.Some (Provenance.of_here [%here], tm)))
+          (char '=')
+          term
+        <*> keyword "in"
+        <*> attach_pos' term
+    in
+    p <?> "let"
   ;;
 
   let parse_lambda term =
     lift4
-      (fun (_, lam_loc) (((name, name_loc), ty), parens_loc) _ body ->
+      (fun (lam_loc, _) (parens_loc, ((name_loc, name), ty)) _ body ->
         let range = Opt_range.union lam_loc parens_loc in
         let info = Provenance.of_range range in
         Term.Lambda
           (info, ty, (Single_var.{ info = Provenance.of_range name_loc; name }, body)))
-      (attach_pos (char '\\'))
-      (attach_pos
+      (attach_pos' (char '\\'))
+      (attach_pos'
          (parens
             (lift3
                (fun ident _ ty -> ident, ty)
-               (attach_pos var_identifier)
+               (attach_pos' var_identifier)
                (char ':')
                Type.parse)))
       (string "->")
@@ -489,13 +488,13 @@ module Parse = struct
 
   let parse_match term =
     lift4
-      (fun (_, match_pos) tm _with (lines, lines_pos) ->
+      (fun (match_pos, _) tm _with (lines_pos, lines) ->
         let pos = Opt_range.union match_pos lines_pos in
         Term.Case (Provenance.of_range pos, tm, lines))
-      (attach_pos (keyword "match"))
+      (attach_pos' (keyword "match"))
       term
       (keyword "with")
-      (attach_pos
+      (attach_pos'
          (braces (option '|' (char '|') *> sep_by (char '|') (case_line term))
          >>| List_model.of_list))
     <?> "match"
@@ -503,11 +502,11 @@ module Parse = struct
 
   let parse_unquote term =
     lift2
-      (fun (_, unquote_pos) (tm, tm_pos) ->
+      (fun (unquote_pos, _) (tm_pos, tm) ->
         let pos = Opt_range.union unquote_pos tm_pos in
         Term.Unquote (Provenance.of_range pos, tm))
-      (attach_pos (keyword "unquote"))
-      (attach_pos term)
+      (attach_pos' (keyword "unquote"))
+      (attach_pos' term)
   ;;
 
   let term =

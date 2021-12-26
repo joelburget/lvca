@@ -445,16 +445,15 @@ c_type := Computation(v_type; list string);
           let c_type = mk_c_type atomic_v_type in
           choice
             [ make2 mk_Handler_ty (c_type <* string "=>") c_type
-            ; (atomic_v_type
-              >>== fun { value; range } ->
-              choice
-                [ Lvca_parsing.make1
-                    (fun ~info c_type ->
-                      let info = Opt_range.union range info |> Provenance.of_range in
-                      mk_Fun_ty ~info value c_type)
-                    (string "->" *> c_type)
-                ; return ~range value
-                ])
+            ; (let%bind range, value = attach_pos' atomic_v_type in
+               choice
+                 [ Lvca_parsing.make1
+                     (fun ~info c_type ->
+                       let info = Opt_range.union range info |> Provenance.of_range in
+                       mk_Fun_ty ~info value c_type)
+                     (string "->" *> c_type)
+                 ; return ~range value
+                 ])
             ])
       <?> "value type"
     ;;

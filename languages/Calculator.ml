@@ -108,11 +108,11 @@ let constants = [ "pi"; "e" ]
 
 module Parse = struct
   open Lvca_parsing
-  module Ws = C_comment_parser
+  open C_comment_parser
 
   let lit : Expr.t Lvca_parsing.t =
     (* TODO: this fails on too-large float lits *)
-    Ws.integer_or_float_lit
+    integer_or_float_lit
     >>~ fun range lit ->
     let lit =
       match lit with
@@ -162,7 +162,7 @@ module Parse = struct
 
   let const =
     constants
-    |> List.map ~f:Ws.string
+    |> List.map ~f:string
     |> choice ~failure_msg:"looking for a constant name"
     >>~ mk_const
   ;;
@@ -177,14 +177,13 @@ module Parse = struct
         let atom : Expr.t Lvca_parsing.t =
           choice
             ~failure_msg:"looking for a literal, constant, or parenthesized expression"
-            [ lit; const; Ws.parens t ]
+            [ lit; const; parens t ]
         in
         (* TODO: rename negate to - *)
         let unary_op : Expr.t Lvca_parsing.t =
           unary_operators
           |> List.map ~f:(fun name ->
-                 Ws.string name
-                 >>== fun { value = name; range = p1 } ->
+                 let%bind p1, name = attach_pos' (string name) in
                  atom
                  >>~ fun p2 body ->
                  let pos = Opt_range.union p1 p2 |> Provenance.of_range in
@@ -193,10 +192,12 @@ module Parse = struct
         in
         let application =
           let min_max =
-            choice
-              [ Ws.string "min"; Ws.string "max" ]
-              ~failure_msg:"looking for min or max"
-            >>== fun { value = name; range = p1 } ->
+            let%bind p1, name =
+              attach_pos'
+                (choice
+                   [ string "min"; string "max" ]
+                   ~failure_msg:"looking for min or max")
+            in
             lift2
               (fun atom1 (p2, atom2) ->
                 let pos = Opt_range.union p1 p2 |> Provenance.of_range in
@@ -208,8 +209,8 @@ module Parse = struct
         in
         let pair p1 p2 = lift2 (fun x y -> x, y) p1 p2 in
         let mul_div : Expr.t Lvca_parsing.t =
-          let op = Ws.char '*' <|> Ws.char '/' in
-          let f (l, l_range) (op, (r, r_range)) =
+          let op = char '*' <|> char '/' in
+          let f (l_range, l) (op, (r_range, r)) =
             let range = Opt_range.union l_range r_range in
             let info = Provenance.of_range range in
             let tm =
@@ -218,14 +219,14 @@ module Parse = struct
               | '/' -> Div (info, l, r)
               | _ -> failwith "error: impossible operator"
             in
-            tm, range
+            range, tm
           in
-          let%bind init = attach_pos application in
-          many (pair op (attach_pos application)) >>| (List.fold ~init ~f >> fst)
+          let%bind init = attach_pos' application in
+          many (pair op (attach_pos' application)) >>| (List.fold ~init ~f >> snd)
         in
         let add_sub : Expr.t Lvca_parsing.t =
-          let op = Ws.char '+' <|> Ws.char '-' in
-          let f (l, l_range) (op, (r, r_range)) =
+          let op = char '+' <|> char '-' in
+          let f (l_range, l) (op, (r_range, r)) =
             let range = Opt_range.union l_range r_range in
             let info = Provenance.of_range range in
             let tm =
@@ -234,10 +235,10 @@ module Parse = struct
               | '-' -> Sub (info, l, r)
               | _ -> failwith "error: impossible operator"
             in
-            tm, range
+            range, tm
           in
-          let%bind init = attach_pos mul_div in
-          many (pair op (attach_pos mul_div)) >>| (List.fold ~init ~f >> fst)
+          let%bind init = attach_pos' mul_div in
+          many (pair op (attach_pos' mul_div)) >>| (List.fold ~init ~f >> snd)
         in
         add_sub)
     <?> "parser"
