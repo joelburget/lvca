@@ -25,9 +25,11 @@ let instantiate env (Arity (info, valences)) =
 let parse =
   let open Lvca_parsing in
   let open C_comment_parser in
-  parens (sep_by (char ';') Valence.parse)
-  >>| (fun valences -> Arity (Provenance.of_here [%here], valences))
-  <?> "arity"
+  let p =
+    let%map _, valences = parens (sep_by (char ';') Valence.parse) in
+    Arity (Provenance.of_here [%here], valences)
+  in
+  p <?> "arity"
 ;;
 
 let%test_module "parsing" =

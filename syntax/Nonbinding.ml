@@ -104,12 +104,8 @@ let parse =
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive.All.parse >>| fun prim -> Primitive prim)
         ; (let p =
-             let%bind start, ident =
-               attach_pos' (upper_identifier Lvca_util.String.Set.empty)
-             in
-             let%bind finish, children =
-               attach_pos' (parens (sep_end_by (char ';') term))
-             in
+             let%bind start, ident = upper_identifier Lvca_util.String.Set.empty in
+             let%bind finish, children = parens (sep_end_by (char ';') term) in
              let range = Opt_range.union start finish in
              return ~range (Operator (Provenance.of_range range, ident, children))
            in

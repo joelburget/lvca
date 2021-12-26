@@ -156,7 +156,7 @@ let kind_check { externals; sort_defs } =
 let parse =
   let open Lvca_parsing in
   lift2
-    (fun externals sort_defs -> { externals; sort_defs })
+    (fun (_, externals) (_, sort_defs) -> { externals; sort_defs })
     (many Kind.Parse.decl)
     (many1 Sort_def.parse)
   <?> "abstract syntax"

@@ -311,8 +311,7 @@ c_type := Computation(v_type; list string);
     let ident = make1 Single_var.mk identifier
 
     let op_name =
-      No_junk.char '#' *> attach_pos' identifier
-      >>| fun (range, str) -> Provenance.of_range range, str
+      No_junk.char '#' *> identifier >>~ fun range str -> Provenance.of_range range, str
     ;;
 
     let of_list xs = List_model.of_list xs
@@ -329,7 +328,7 @@ c_type := Computation(v_type; list string);
         ; make4
             (fun ~info op_name (x, k) _ c -> mk_Op_clause ~info op_name (x, k, c))
             op_name
-            (parens (lift3 (fun x _semi k -> x, k) ident (char ';') ident))
+            (parens (lift3 (fun (_, x) _semi (_, k) -> x, k) ident (char ';') ident))
             (string "->")
             computation
         ]
@@ -376,7 +375,7 @@ c_type := Computation(v_type; list string);
               op_name
               (parens
                  (lift3
-                    (fun v y body -> v, (y, body))
+                    (fun (_, v) (_, y) (_, body) -> v, (y, body))
                     (value <* char ';')
                     (ident <* char '.')
                     computation))
@@ -445,7 +444,7 @@ c_type := Computation(v_type; list string);
           let c_type = mk_c_type atomic_v_type in
           choice
             [ make2 mk_Handler_ty (c_type <* string "=>") c_type
-            ; (let%bind range, value = attach_pos' atomic_v_type in
+            ; (let%bind range, value = atomic_v_type in
                choice
                  [ Lvca_parsing.make1
                      (fun ~info c_type ->

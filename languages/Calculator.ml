@@ -183,7 +183,7 @@ module Parse = struct
         let unary_op : Expr.t Lvca_parsing.t =
           unary_operators
           |> List.map ~f:(fun name ->
-                 let%bind p1, name = attach_pos' (string name) in
+                 let%bind p1, name = string name in
                  atom
                  >>~ fun p2 body ->
                  let pos = Opt_range.union p1 p2 |> Provenance.of_range in
@@ -193,24 +193,21 @@ module Parse = struct
         let application =
           let min_max =
             let%bind p1, name =
-              attach_pos'
-                (choice
-                   [ string "min"; string "max" ]
-                   ~failure_msg:"looking for min or max")
+              choice [ string "min"; string "max" ] ~failure_msg:"looking for min or max"
             in
             lift2
-              (fun atom1 (p2, atom2) ->
+              (fun (_, atom1) (p2, atom2) ->
                 let pos = Opt_range.union p1 p2 |> Provenance.of_range in
                 mk_binary pos name atom1 atom2)
               atom
-              (attach_pos' atom)
+              atom
           in
           atom <|> unary_op <|> min_max
         in
         let pair p1 p2 = lift2 (fun x y -> x, y) p1 p2 in
         let mul_div : Expr.t Lvca_parsing.t =
           let op = char '*' <|> char '/' in
-          let f (l_range, l) (op, (r_range, r)) =
+          let f ((l_range, l) : Opt_range.t * Expr.t) (op, r_range, r) =
             let range = Opt_range.union l_range r_range in
             let info = Provenance.of_range range in
             let tm =
@@ -221,12 +218,16 @@ module Parse = struct
             in
             range, tm
           in
-          let%bind init = attach_pos' application in
-          many (pair op (attach_pos' application)) >>| (List.fold ~init ~f >> snd)
+          let%bind init = application in
+          let%map _, list = many (pair op application) in
+          list
+          |> List.map ~f:(fun ((_, op), (r_range, r)) -> op, r_range, r)
+          |> List.fold ~init ~f
+          |> snd
         in
         let add_sub : Expr.t Lvca_parsing.t =
           let op = char '+' <|> char '-' in
-          let f (l_range, l) (op, (r_range, r)) =
+          let f (l_range, l) (op, r_range, r) =
             let range = Opt_range.union l_range r_range in
             let info = Provenance.of_range range in
             let tm =
@@ -237,8 +238,12 @@ module Parse = struct
             in
             range, tm
           in
-          let%bind init = attach_pos' mul_div in
-          many (pair op (attach_pos' mul_div)) >>| (List.fold ~init ~f >> snd)
+          let%bind init = mul_div in
+          let%map _, list = many (pair op mul_div) in
+          list
+          |> List.map ~f:(fun ((_, op), (r_range, r)) -> op, r_range, r)
+          |> List.fold ~init ~f
+          |> snd
         in
         add_sub)
     <?> "parser"

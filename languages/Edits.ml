@@ -50,7 +50,7 @@ let parse lang_p =
         [ lang_p >>| (fun core -> Atomic core) <?> "core term"
         ; brackets (sep_by (char ',') t) >>| (fun ts -> List ts) <?> "list"
         ; lift3
-            (fun name _colon edit -> Labeled (edit, name))
+            (fun (_, name) _colon (_, edit) -> Labeled (edit, name))
             (lower_identifier reserved)
             (char ':')
             t

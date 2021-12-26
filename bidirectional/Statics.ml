@@ -50,7 +50,7 @@ module Typing_clause = struct
 
     let t =
       lift3
-        (fun tm dir ty ->
+        (fun (_, tm) (_, dir) (_, ty) ->
           match dir with
           | Left_arr -> Checking_rule { tm; ty }
           | Right_arr -> Inference_rule { tm; ty })
@@ -119,7 +119,7 @@ module Hypothesis = struct
 
     let typed_term =
       lift3
-        (fun ident _ tm -> ident, tm)
+        (fun (_, ident) _ (_, tm) -> ident, tm)
         (lower_identifier reserved)
         (char ':')
         (Binding_aware_pattern.parse reserved)
@@ -130,7 +130,7 @@ module Hypothesis = struct
       string "ctx"
       *> choice
            [ (let%bind _ = char ',' in
-              let%bind ctx_entries = sep_by1 (char ',') typed_term in
+              let%bind _, ctx_entries = sep_by1 (char ',') typed_term in
               match String.Map.of_alist ctx_entries with
               | `Ok context -> return context
               | `Duplicate_key str ->
@@ -142,7 +142,11 @@ module Hypothesis = struct
     ;;
 
     let t =
-      lift3 (fun ctx _ clause -> ctx, clause) context (string ">>") Typing_clause.Parse.t
+      lift3
+        (fun (_, ctx) _ (_, clause) -> ctx, clause)
+        context
+        (string ">>")
+        Typing_clause.Parse.t
       <?> "hypothesis"
     ;;
   end
@@ -200,7 +204,7 @@ module Rule = struct
 
     let line : string option Lvca_parsing.t =
       lift3
-        (fun _ _ ident -> ident)
+        (fun _ _ (_, ident) -> ident)
         (string "--")
         (many (char '-'))
         (option None ((fun ident -> Some ident) <$> parens (lower_identifier reserved)))
@@ -209,7 +213,8 @@ module Rule = struct
 
     let t =
       lift3
-        (fun hypotheses name conclusion -> { hypotheses; name; conclusion })
+        (fun (_, hypotheses) (_, name) (_, conclusion) ->
+          { hypotheses; name; conclusion })
         (many Hypothesis.Parse.t)
         line
         Hypothesis.Parse.t

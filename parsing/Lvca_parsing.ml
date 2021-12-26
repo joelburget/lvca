@@ -183,29 +183,10 @@ module AngstromStr = struct
   ;;
 end
 
-module Parse_result = struct
-  type 'a t =
-    { value : 'a
-    ; range : Opt_range.t
-    }
-
-  let equal a_eq r1 r2 = a_eq r1.value r2.value && Opt_range.(r1.range = r2.range)
-
-  let pp pp_a ppf { value; range } =
-    Fmt.pf ppf "{ value = %a; range = %a }" pp_a value Opt_range.pp range
-  ;;
-end
-
-open Parse_result
-
-type +'a t = 'a Parse_result.t Angstrom.t
+type +'a t = (Opt_range.t * 'a) Angstrom.t
 
 let parse_string_pos p str = Angstrom.parse_string ~consume:All p str
-
-let parse_string p str =
-  parse_string_pos p str |> Result.map ~f:(fun { value; range = _ } -> value)
-;;
-
+let parse_string p str = parse_string_pos p str |> Result.map ~f:snd
 let parse_string_or_failwith p str = parse_string p str |> Result.ok_or_failwith
 
 (** Helpers that may call pos. *)
@@ -213,7 +194,7 @@ module Basic = struct
   open Angstrom
 
   let go p =
-    lift3 (fun start result finish -> result, Some Range.{ start; finish }) pos p pos
+    lift3 (fun start result finish -> Some Range.{ start; finish }, result) pos p pos
   ;;
 
   let integer_lit_no_range = take_while1 Char.is_digit
@@ -317,10 +298,10 @@ module Basic = struct
            (take_while is_continue))
     in
     p
-    >>= fun (ident, range) ->
+    >>= fun (range, ident) ->
     if Set.mem reserved_words ident
     then fail (Printf.sprintf "identifier: reserved word (%s)" ident)
-    else return (ident, range)
+    else return (range, ident)
   ;;
 
   let upper_identifier reserved_words =
@@ -359,148 +340,158 @@ let ( ( >>|| )
 ;;
 
 let ( <*> ) f_p a_p =
-  f_p
-  >>== fun { value = f; range = range1 } ->
-  a_p
-  >>|| fun { value = a; range = range2 } ->
-  { value = f a; range = Opt_range.union range1 range2 }
+  f_p >>== fun (range1, f) -> a_p >>|| fun a -> Opt_range.union range1 (fst a), f a
 ;;
 
-let ( >>| ) p f = p >>| fun { range; value } -> { range; value = f value }
-let ( >>~ ) p f = p >>|| fun { range; value } -> { range; value = f range value }
+let ( >>| ) p f = p >>| Lvca_util.Tuple2.map2 ~f
+let ( >>~ ) p f = p >>|| fun (range, value) -> range, f range value
 
 let ( >>= ) p f =
   p
-  >>= fun { value; range = range1 } ->
-  f value
-  >>= fun ({ range = range2; _ } as result) ->
-  return { result with range = Opt_range.union range1 range2 }
+  >>= fun (range1, value) ->
+  f value >>= fun (range2, value2) -> return (Opt_range.union range1 range2, value2)
 ;;
 
-let whitespace =
-  Angstrom.take_while Char.is_whitespace >>|| fun _ -> { value = (); range = None }
-;;
-
-let whitespace1 =
-  Angstrom.take_while1 Char.is_whitespace >>|| fun _ -> { value = (); range = None }
-;;
-
-let adapt p =
-  let f (value, range) = return { value; range } in
-  Angstrom.(p >>= f)
-;;
-
+let whitespace = Angstrom.take_while Char.is_whitespace >>|| fun _ -> None, ()
+let whitespace1 = Angstrom.take_while1 Char.is_whitespace >>|| fun _ -> None, ()
+let adapt p = Angstrom.(p >>= return)
 let of_angstrom p = adapt (Basic.go p)
 let ( <$> ) f p = p >>| f
 let fail msg = fail msg
 let make1 mk a = a >>~ fun info a -> mk ~info a
 let make0 mk a = make1 (fun ~info _ -> mk ~info) a
-let lift mk a = make1 (fun ~info:_ -> mk) a
+let lift mk a = a >>~ fun info a -> mk (info, a)
 
 let make2 mk a b =
   a
-  >>== fun { value = a_val; range = a_range } ->
+  >>== fun (a_range, a_val) ->
   b
-  >>|| fun { value = b_val; range = b_range } ->
+  >>|| fun (b_range, b_val) ->
   let info = Opt_range.union a_range b_range in
-  { value = mk ~info a_val b_val; range = info }
+  info, mk ~info a_val b_val
 ;;
 
-let lift2 mk a b = make2 (fun ~info:_ -> mk) a b
+let lift2 mk a b =
+  a
+  >>== fun a ->
+  b
+  >>|| fun b ->
+  let info = Opt_range.union (fst a) (fst b) in
+  info, mk a b
+;;
 
 let make3 mk a b c =
   a
-  >>== fun { value = a_val; range = a_range } ->
+  >>== fun (a_range, a_val) ->
   b
-  >>== fun { value = b_val; range = b_range } ->
+  >>== fun (b_range, b_val) ->
   c
-  >>|| fun { value = c_val; range = c_range } ->
+  >>|| fun (c_range, c_val) ->
   let info = Opt_range.list_range [ a_range; b_range; c_range ] in
-  { value = mk ~info a_val b_val c_val; range = info }
+  info, mk ~info a_val b_val c_val
 ;;
 
-let lift3 mk a b c = make3 (fun ~info:_ -> mk) a b c
+let lift3 mk a b c =
+  a
+  >>== fun a ->
+  b
+  >>== fun b ->
+  c
+  >>|| fun c ->
+  let info = Opt_range.list_range [ fst a; fst b; fst c ] in
+  info, mk a b c
+;;
 
 let make4 mk a b c d =
   a
-  >>== fun { value = a_val; range = a_range } ->
+  >>== fun (a_range, a_val) ->
   b
-  >>== fun { value = b_val; range = b_range } ->
+  >>== fun (b_range, b_val) ->
   c
-  >>== fun { value = c_val; range = c_range } ->
+  >>== fun (c_range, c_val) ->
   d
-  >>|| fun { value = d_val; range = d_range } ->
+  >>|| fun (d_range, d_val) ->
   let info = Opt_range.list_range [ a_range; b_range; c_range; d_range ] in
-  { value = mk ~info a_val b_val c_val d_val; range = info }
+  info, mk ~info a_val b_val c_val d_val
 ;;
 
-let lift4 mk a b c d = make4 (fun ~info:_ -> mk) a b c d
+let lift4 mk a b c d =
+  a
+  >>== fun a ->
+  b
+  >>== fun b ->
+  c
+  >>== fun c ->
+  d
+  >>|| fun d ->
+  let info = Opt_range.list_range [ fst a; fst b; fst c; fst d ] in
+  info, mk a b c d
+;;
 
 let make5 mk a b c d e =
   a
-  >>== fun { value = a_val; range = a_range } ->
+  >>== fun (a_range, a_val) ->
   b
-  >>== fun { value = b_val; range = b_range } ->
+  >>== fun (b_range, b_val) ->
   c
-  >>== fun { value = c_val; range = c_range } ->
+  >>== fun (c_range, c_val) ->
   d
-  >>== fun { value = d_val; range = d_range } ->
+  >>== fun (d_range, d_val) ->
   e
-  >>|| fun { value = e_val; range = e_range } ->
+  >>|| fun (e_range, e_val) ->
   let info = Opt_range.list_range [ a_range; b_range; c_range; d_range; e_range ] in
-  { value = mk ~info a_val b_val c_val d_val e_val; range = info }
+  info, mk ~info a_val b_val c_val d_val e_val
 ;;
 
 let make6 mk a b c d e f =
   a
-  >>== fun { value = a_val; range = a_range } ->
+  >>== fun (a_range, a_val) ->
   b
-  >>== fun { value = b_val; range = b_range } ->
+  >>== fun (b_range, b_val) ->
   c
-  >>== fun { value = c_val; range = c_range } ->
+  >>== fun (c_range, c_val) ->
   d
-  >>== fun { value = d_val; range = d_range } ->
+  >>== fun (d_range, d_val) ->
   e
-  >>== fun { value = e_val; range = e_range } ->
+  >>== fun (e_range, e_val) ->
   f
-  >>|| fun { value = f_val; range = f_range } ->
+  >>|| fun (f_range, f_val) ->
   let info =
     Opt_range.list_range [ a_range; b_range; c_range; d_range; e_range; f_range ]
   in
-  { value = mk ~info a_val b_val c_val d_val e_val f_val; range = info }
+  info, mk ~info a_val b_val c_val d_val e_val f_val
 ;;
 
-let attach_pos' p =
-  Angstrom.(
-    p
-    >>| fun ({ value; range } as parse_result) ->
-    { parse_result with value = range, value })
-;;
-
-let return ?(range = None) value = return { value; range }
-let option value p = Angstrom.option { value; range = None } p
+let return ?(range = None) value = return (range, value)
+let option ?(range = None) value p = Angstrom.option (range, value) p
 let option' p = option None (p >>| Option.return)
 let choice ?failure_msg ps = Angstrom.choice ?failure_msg ps
 
 let handle_list lst =
   match List.hd lst, List.last lst with
-  | Some head, Some last ->
-    { value = List.map lst ~f:(fun elem -> elem.value)
-    ; range = Opt_range.union head.range last.range
-    }
-  | _, _ -> { value = []; range = None }
+  | Some (head_range, _), Some (last_range, _) ->
+    Opt_range.union head_range last_range, List.map lst ~f:snd
+  | _, _ -> None, []
+;;
+
+let handle_list' = function
+  | [] -> Lvca_util.invariant_violation [%here] "must be a non-empty list"
+  | x :: xs -> x, xs
 ;;
 
 let many p = Angstrom.many p >>|| handle_list
 let many1 p = Angstrom.many1 p >>|| handle_list
+let many1' p = many1 p >>| handle_list'
 let sep_by s p = Angstrom.sep_by s p >>|| handle_list
 let sep_by1 s p = Angstrom.sep_by1 s p >>|| handle_list
+let sep_by1' s p = sep_by1 s p >>| handle_list'
 let count n p = Angstrom.count n p >>|| handle_list
+let attach_pos p = Angstrom.(p >>| fun (rng, a) -> rng, (rng, a))
 
 let sep_end_by s p =
   fix (fun seb ->
       let seb1 =
-        p >>= fun x -> choice [ lift2 (fun _ xs -> x :: xs) s seb; return [ x ] ]
+        p >>= fun x -> choice [ lift2 (fun _ (_, xs) -> x :: xs) s seb; return [ x ] ]
       in
       choice [ seb1; return [] ])
 ;;
@@ -510,6 +501,8 @@ let sep_end_by1 s p =
   >>= fun x ->
   choice [ (s >>= fun _ -> sep_end_by s p >>| fun xs -> x :: xs); return [ x ] ]
 ;;
+
+let sep_end_by1' s p = sep_end_by1 s p >>| handle_list'
 
 module type Junk_parser = sig
   val junk : unit t
@@ -571,7 +564,7 @@ module No_junk : Character_parser = struct
   let keyword str = adapt (Basic.string str) <?> Fmt.str "keyword %S" str
 
   let mk_bracket_parser open_c close_c p =
-    lift3 (fun _ v _ -> v) (char open_c <* whitespace) p (whitespace *> char close_c)
+    lift3 (fun _ (_, v) _ -> v) (char open_c <* whitespace) p (whitespace *> char close_c)
   ;;
 
   let parens p = mk_bracket_parser '(' ')' p
@@ -628,13 +621,13 @@ module C_comment_parser : Character_parser = Mk_character_parser (struct
 end)
 
 module Let_syntax = struct
-  let return x = return x
-  let map a ~f = f <$> a
-  let bind a ~f = a >>= f
-  let both a b = lift2 (fun a b -> a, b) a b
-  let map2 a b ~f = lift2 f a b
-  let map3 a b c ~f = lift3 f a b c
-  let map4 a b c d ~f = lift4 f a b c d
+  let return x = Angstrom.return x
+  let map a ~f = lift f a
+  let bind a ~f = Angstrom.(a >>= f)
+  let both a b = lift2 (fun (_, a) (_, b) -> a, b) a b
+  let map2 a b ~f = lift2 (fun (_, a) (_, b) -> f a b) a b
+  let map3 a b c ~f = lift3 (fun (_, a) (_, b) (_, c) -> f a b c) a b c
+  let map4 a b c d ~f = lift4 (fun (_, a) (_, b) (_, c) (_, d) -> f a b c d) a b c d
 end
 
 let ( let+ ) a f = f <$> a
@@ -648,7 +641,7 @@ let%test_module "Parsing" =
     let parse_print p pp str =
       match parse_string_pos p str with
       | Error msg -> Fmt.pr "%s" msg
-      | Ok value -> Fmt.pr "%a\n" (Parse_result.pp pp) value
+      | Ok (range, value) -> Fmt.pr "@[(%a, %a)@]\n" Opt_range.pp range pp value
     ;;
 
     let%expect_test _ =
@@ -879,7 +872,7 @@ let%test_module "Parsing" =
           <* string "foo")
       in
       match parse str with
-      | Ok { range; value = _ } -> Fmt.pr "%a\n" Opt_range.pp range
+      | Ok (range, _) -> Fmt.pr "%a\n" Opt_range.pp range
       | _ -> Fmt.pr "not okay\n"
     ;;
 

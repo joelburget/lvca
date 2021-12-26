@@ -25,7 +25,7 @@ module Parse = struct
 
   let t =
     let p =
-      let%map location, stars = attach_pos' (sep_by1 (string "->") (char '*')) in
+      let%map location, stars = sep_by1 (string "->") (char '*') in
       Kind (Provenance.of_range location, List.length stars)
     in
     p <?> "kind"
@@ -33,7 +33,7 @@ module Parse = struct
 
   let decl =
     lift3
-      (fun ident _colon kind -> ident, kind)
+      (fun (_, ident) _colon (_, kind) -> ident, kind)
       (lower_identifier Lvca_util.String.Set.empty)
       (char ':')
       t

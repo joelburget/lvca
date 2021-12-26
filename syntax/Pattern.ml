@@ -206,12 +206,10 @@ let parse reserved_word =
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive_impl.All.parse >>| fun prim -> Primitive prim)
-        ; (let%map range, ident = attach_pos' (lower_identifier reserved_word) in
+        ; (let%map range, ident = lower_identifier reserved_word in
            Var (Provenance.of_range range, ident))
-        ; (let%bind range, ident = attach_pos' (upper_identifier reserved_word) in
-           let%map range', children =
-             attach_pos' (parens (sep_end_by (char ';' <* whitespace) pat))
-           in
+        ; (let%bind range, ident = upper_identifier reserved_word in
+           let%map range', children = parens (sep_end_by (char ';' <* whitespace) pat) in
            let range = Opt_range.union range range' in
            Operator (Provenance.of_range range, ident, children))
         ])

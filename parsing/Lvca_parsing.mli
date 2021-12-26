@@ -1,39 +1,42 @@
 open Lvca_provenance
 
-module Parse_result : sig
-  type 'a t =
-    { value : 'a
-    ; range : Opt_range.t
-    }
-
-  val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-  val pp : 'a Fmt.t -> 'a t Fmt.t
-end
-
-type +'a t = 'a Parse_result.t Angstrom.t
+type +'a t = (Opt_range.t * 'a) Angstrom.t
 
 val of_angstrom : 'a Angstrom.t -> 'a t
 val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
 val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
 val ( >>~ ) : 'a t -> (Opt_range.t -> 'a -> 'b) -> 'b t
 val ( <$> ) : ('a -> 'b) -> 'a t -> 'b t
-val ( <*> ) : ('a -> 'b) t -> 'a t -> 'b t
+val ( <*> ) : (Opt_range.t * 'a -> 'b) t -> 'a t -> 'b t
 val ( *> ) : 'a t -> 'b t -> 'b t
 val ( <* ) : 'a t -> 'b t -> 'a t
 val ( <|> ) : 'a t -> 'a t -> 'a t
 val ( <?> ) : 'a t -> string -> 'a t
 val choice : ?failure_msg:string -> 'a t list -> 'a t
 val fix : ('a t -> 'a t) -> 'a t
-val option : 'a -> 'a t -> 'a t
+val option : ?range:Opt_range.t -> 'a -> 'a t -> 'a t
 val option' : 'a t -> 'a option t
 val return : ?range:Opt_range.t -> 'a -> 'a t
-val attach_pos' : 'a t -> (Opt_range.t * 'a) t (* TODO: remove? *)
-
 val count : int -> 'a t -> 'a list t
-val lift : ('a -> 'b) -> 'a t -> 'b t
-val lift2 : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
-val lift3 : ('a -> 'b -> 'c -> 'd) -> 'a t -> 'b t -> 'c t -> 'd t
-val lift4 : ('a -> 'b -> 'c -> 'd -> 'e) -> 'a t -> 'b t -> 'c t -> 'd t -> 'e t
+val attach_pos : 'a t -> (Opt_range.t * 'a) t
+val lift : (Opt_range.t * 'a -> 'b) -> 'a t -> 'b t
+val lift2 : (Opt_range.t * 'a -> Opt_range.t * 'b -> 'c) -> 'a t -> 'b t -> 'c t
+
+val lift3
+  :  (Opt_range.t * 'a -> Opt_range.t * 'b -> Opt_range.t * 'c -> 'd)
+  -> 'a t
+  -> 'b t
+  -> 'c t
+  -> 'd t
+
+val lift4
+  :  (Opt_range.t * 'a -> Opt_range.t * 'b -> Opt_range.t * 'c -> Opt_range.t * 'd -> 'e)
+  -> 'a t
+  -> 'b t
+  -> 'c t
+  -> 'd t
+  -> 'e t
+
 val make0 : (info:Opt_range.t -> 'b) -> _ t -> 'b t
 val make1 : (info:Opt_range.t -> 'a -> 'b) -> 'a t -> 'b t
 val make2 : (info:Opt_range.t -> 'a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
@@ -68,8 +71,10 @@ val make6
 
 val many : 'a t -> 'a list t
 val many1 : 'a t -> 'a list t
+val many1' : 'a t -> ('a * 'a list) t
 val sep_by : _ t -> 'a t -> 'a list t
 val sep_by1 : _ t -> 'a t -> 'a list t
+val sep_by1' : _ t -> 'a t -> ('a * 'a list) t
 
 (** [sep_end_by sep p]: Parse zero or more occurences of [p], separated and optionally
     ended by [sep]. *)
@@ -79,6 +84,7 @@ val sep_end_by : _ t -> 'a t -> 'a list t
     ended by [sep]. *)
 val sep_end_by1 : _ t -> 'a t -> 'a list t
 
+val sep_end_by1' : _ t -> 'a t -> ('a * 'a list) t
 val fail : string -> 'a t
 val whitespace : unit t
 val whitespace1 : unit t
@@ -123,14 +129,14 @@ module No_junk : Character_parser
 module C_comment_parser : Character_parser
 module Whitespace_parser : Character_parser
 
-val parse_string_pos : 'a t -> string -> ('a Parse_result.t, string) Base.Result.t
+val parse_string_pos : 'a t -> string -> (Opt_range.t * 'a, string) Base.Result.t
 val parse_string : 'a t -> string -> ('a, string) Base.Result.t
 val parse_string_or_failwith : 'a t -> string -> 'a
 
 module Let_syntax : sig
-  val return : 'a -> 'a t
-  val map : 'a t -> f:('a -> 'b) -> 'b t
-  val bind : 'a t -> f:('a -> 'b t) -> 'b t
+  val return : Opt_range.t * 'a -> 'a t
+  val map : 'a t -> f:(Opt_range.t * 'a -> 'b) -> 'b t
+  val bind : 'a t -> f:(Opt_range.t * 'a -> 'b t) -> 'b t
   val both : 'a t -> 'b t -> ('a * 'b) t
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
   val map3 : 'a t -> 'b t -> 'c t -> f:('a -> 'b -> 'c -> 'd) -> 'd t

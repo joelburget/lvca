@@ -390,10 +390,10 @@ module Parse = struct
   ;;
 
   let atomic_term' term =
-    let%bind body_range, body = attach_pos' (atomic_term term) in
+    let%bind body_range, body = atomic_term term in
     choice
       [ (brackets
-           (let%bind range, name = attach_pos' var_identifier in
+           (let%bind range, name = var_identifier in
             let name = Single_var.{ info = Provenance.of_range range; name } in
             let%bind _ = string ":=" in
             term >>| fun arg -> name, arg)
@@ -417,20 +417,20 @@ module Parse = struct
 
   let letrec_row term =
     lift4
-      (fun (var_pos, var) ty _ (rhs_pos, rhs) ->
+      (fun (var_pos, var) (_, ty) _ (rhs_pos, rhs) ->
         let range = Opt_range.union var_pos rhs_pos in
         ( (Provenance.of_range var_pos, var)
         , Letrec_row.Letrec_row (Provenance.of_range range, ty, rhs) ))
-      (attach_pos' var_identifier)
+      var_identifier
       (char ':' *> Type.parse)
       (char '=')
-      (attach_pos' term)
+      term
     <?> "letrec row"
   ;;
 
   let parse_let term =
     let p =
-      let%bind let_pos, _ = attach_pos' (keyword "let") in
+      let%bind let_pos, _ = keyword "let" in
       option' (keyword "rec")
       >>= function
       | Some _rec ->
@@ -441,19 +441,19 @@ module Parse = struct
             let rows = List_model.of_list rows in
             let binders = List_model.make_empty_pattern binders in
             Term.Let_rec (info, rows, (binders, rhs)))
-          (attach_pos' (sep_by1 (keyword "and") (letrec_row term)))
+          (sep_by1 (keyword "and") (letrec_row term))
           (keyword "in")
-          (attach_pos' term)
+          term
       | None ->
         lift4
-          (fun (name_pos, name) ty _eq tm _in (body_pos, body) ->
+          (fun (name_pos, name) (_, ty) _eq (_, tm) _in (body_pos, body) ->
             let info = Provenance.of_range (Opt_range.union let_pos body_pos) in
             Term.Let
               ( info
               , tm
               , ty
               , (Single_var.{ name; info = Provenance.of_range name_pos }, body) ))
-          (attach_pos' var_identifier)
+          var_identifier
           (option
              (Option_model.Option.None (Provenance.of_here [%here]))
              (char ':' *> Type.parse
@@ -461,26 +461,21 @@ module Parse = struct
           (char '=')
           term
         <*> keyword "in"
-        <*> attach_pos' term
+        <*> term
     in
     p <?> "let"
   ;;
 
   let parse_lambda term =
     lift4
-      (fun (lam_loc, _) (parens_loc, ((name_loc, name), ty)) _ body ->
+      (fun (lam_loc, _) (parens_loc, ((name_loc, name), ty)) _ (_, body) ->
         let range = Opt_range.union lam_loc parens_loc in
         let info = Provenance.of_range range in
         Term.Lambda
           (info, ty, (Single_var.{ info = Provenance.of_range name_loc; name }, body)))
-      (attach_pos' (char '\\'))
-      (attach_pos'
-         (parens
-            (lift3
-               (fun ident _ ty -> ident, ty)
-               (attach_pos' var_identifier)
-               (char ':')
-               Type.parse)))
+      (char '\\')
+      (parens
+         (lift3 (fun ident _ (_, ty) -> ident, ty) var_identifier (char ':') Type.parse))
       (string "->")
       term
     <?> "lambda"
@@ -488,15 +483,14 @@ module Parse = struct
 
   let parse_match term =
     lift4
-      (fun (match_pos, _) tm _with (lines_pos, lines) ->
+      (fun (match_pos, _) (_, tm) _with (lines_pos, lines) ->
         let pos = Opt_range.union match_pos lines_pos in
         Term.Case (Provenance.of_range pos, tm, lines))
-      (attach_pos' (keyword "match"))
+      (keyword "match")
       term
       (keyword "with")
-      (attach_pos'
-         (braces (option '|' (char '|') *> sep_by (char '|') (case_line term))
-         >>| List_model.of_list))
+      (braces (option '|' (char '|') *> sep_by (char '|') (case_line term))
+      >>| List_model.of_list)
     <?> "match"
   ;;
 
@@ -505,8 +499,8 @@ module Parse = struct
       (fun (unquote_pos, _) (tm_pos, tm) ->
         let pos = Opt_range.union unquote_pos tm_pos in
         Term.Unquote (Provenance.of_range pos, tm))
-      (attach_pos' (keyword "unquote"))
-      (attach_pos' term)
+      (keyword "unquote")
+      term
   ;;
 
   let term =
@@ -581,16 +575,23 @@ module Module = struct
     let open C_comment_parser in
     let external_decl =
       lift4
-        (fun ident _ ty _ -> ident, ty)
+        (fun (_, ident) _ (_, ty) _ -> ident, ty)
         var_identifier
         (string ":")
         Type.parse
         (string ";")
     in
     let def =
-      lift3 (fun ident _ tm -> ident, tm) var_identifier (string ":=") Parse.term
+      lift3
+        (fun (_, ident) _ (_, tm) -> ident, tm)
+        var_identifier
+        (string ":=")
+        Parse.term
     in
-    lift2 (fun externals defs -> { externals; defs }) (many external_decl) (many1 def)
+    lift2
+      (fun (_, externals) (_, defs) -> { externals; defs })
+      (many external_decl)
+      (many1 def)
   ;;
 end
 

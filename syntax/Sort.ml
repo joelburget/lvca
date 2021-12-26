@@ -74,11 +74,11 @@ let parse reserved_word =
         choice
           ~failure_msg:"looking for parens or an identifier"
           [ parens sort
-          ; (let%map loc, value = attach_pos' (lower_identifier reserved_word) in
+          ; (let%map loc, value = lower_identifier reserved_word in
              Name (Provenance.of_range loc, value))
           ]
       in
-      let%bind range, atoms = attach_pos' (many1 atomic_sort) in
+      let%bind range, atoms = many1 atomic_sort in
       match atoms with
       (* A single ap is just parenthesized. An ap applied to things is a problem. *)
       | [ (Ap _ as atom) ] -> return ~range atom

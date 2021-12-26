@@ -49,9 +49,9 @@ module Operator_fixity = struct
   let parse =
     let open Lvca_parsing in
     let open C_comment_parser in
-    let%bind lparens = option' (string "()") in
-    let%bind range, lit = attach_pos' string_lit in
-    let%bind rparens = option' (string "()") in
+    let%bind _, lparens = option' (string "()") in
+    let%bind range, lit = string_lit in
+    let%bind _, rparens = option' (string "()") in
     let info = Provenance.of_range range in
     match lparens, rparens with
     | Some _, None -> return (info, Fixity.Left, lit)
@@ -79,7 +79,7 @@ module Operator_ranking = struct
     let open Lvca_parsing in
     let char = C_comment_parser.char in
     let level = sep_by1 (char '=') Operator_fixity.parse in
-    let%map range, levels = attach_pos' (sep_by1 (char '>') level) in
+    let%map range, levels = sep_by1 (char '>') level in
     Provenance.of_range range, levels
   ;;
 
@@ -132,11 +132,11 @@ module Sequence_item = struct
     let open C_comment_parser in
     choice
       ~failure_msg:"looking for a variable or literal"
-      [ (let%map range, _ = attach_pos' (char '_') in
+      [ (let%map range, _ = char '_' in
          Space (Provenance.of_range range))
-      ; (let%map range, str = attach_pos' lower_ident in
+      ; (let%map range, str = lower_ident in
          Var (Provenance.of_range range, str))
-      ; (let%map range, str = attach_pos' string_lit in
+      ; (let%map range, str = string_lit in
          Literal (Provenance.of_range range, str))
       ]
     <?> "sequence item"
@@ -176,7 +176,7 @@ module Operator_concrete_syntax_row = struct
   let parse =
     let open Lvca_parsing in
     let p =
-      let%map range, items = attach_pos' (many1 Sequence_item.parse) in
+      let%map range, items = many1 Sequence_item.parse in
       Provenance.of_range range, items
     in
     p <?> "operator concrete syntax"
@@ -204,8 +204,8 @@ module Variable_syntax_row = struct
         (fun (ident_range, var_name) (re_range, re) ->
           let info = Opt_range.union ident_range re_range |> Provenance.of_range in
           { info; var_name; re })
-        (attach_pos' lower_ident <* char '~')
-        (attach_pos' (char '/' *> of_angstrom Regex.parse <* char '/'))
+        (lower_ident <* char '~')
+        (char '/' *> of_angstrom Regex.parse <* char '/')
     in
     p <?> "variable regex"
   ;;
@@ -247,8 +247,7 @@ module Operator_pattern_slot = struct
     let open Lvca_parsing in
     let open C_comment_parser in
     let p =
-      attach_pos' (sep_end_by1 (char '.') lower_ident)
-      >>| fun (pos, idents) ->
+      let%map pos, idents = sep_end_by1 (char '.') lower_ident in
       let variable_names, body_name = List.unsnoc idents in
       { info = Provenance.of_range pos; variable_names; body_name }
     in
@@ -287,8 +286,8 @@ module Operator_pattern = struct
         (fun (name_range, name) (slots_range, slots) ->
           let info = Opt_range.union name_range slots_range |> Provenance.of_range in
           { info; name; slots })
-        (attach_pos' upper_ident)
-        (attach_pos' (parens (sep_by (char ';') Operator_pattern_slot.parse)))
+        upper_ident
+        (parens (sep_by (char ';') Operator_pattern_slot.parse))
     in
     p <?> "operator pattern"
   ;;
@@ -420,8 +419,8 @@ module Operator_syntax_row = struct
           let info = Provenance.of_range range in
           { info; pattern; concrete_syntax })
         (* TODO: don't parse any pattern -- just operator patterns *)
-        (attach_pos' Operator_pattern.parse <* char '~')
-        (attach_pos' Operator_concrete_syntax_row.parse)
+        (Operator_pattern.parse <* char '~')
+        Operator_concrete_syntax_row.parse
     in
     p <?> "operator syntax row"
   ;;
@@ -549,12 +548,10 @@ module Sort_syntax = struct
     let open Lvca_parsing in
     let open C_comment_parser in
     let p =
-      let%bind name_info, name = attach_pos' lower_ident in
+      let%bind name_info, name = lower_ident in
       let%bind _ = char ':' in
-      let%bind ops_info, operators =
-        attach_pos' (many (char '|' *> Operator_syntax.parse))
-      in
-      let%bind operator_ranking =
+      let%bind ops_info, operators = many (char '|' *> Operator_syntax.parse) in
+      let%bind _, operator_ranking =
         choice
           ~failure_msg:"Expected a `;` or `\\` operator ranking"
           [ char ';' *> return None; Option.some <$> char '\\' *> Operator_ranking.parse ]
@@ -929,10 +926,10 @@ module Parse_term = struct
         (match item with
         | Sequence_item.Space _ -> go env range items
         | Literal (_, str) ->
-          let%bind rng', _ = attach_pos' (string str) in
+          let%bind rng', _ = string str in
           go env (Opt_range.union range rng') items
         | Var (_, name) ->
-          let%bind rng', data = attach_pos' (Map.find_exn var_parsers name) in
+          let%bind rng', data = Map.find_exn var_parsers name in
           let env = Map.set env ~key:name ~data in
           go env (Opt_range.union range rng') items)
     in
@@ -975,7 +972,7 @@ module Parse_term = struct
 
   let var_parser keywords re =
     let%bind pos, name =
-      Lvca_parsing.(attach_pos' (of_angstrom (Regex.to_angstrom re)) <* whitespace)
+      Lvca_parsing.(of_angstrom (Regex.to_angstrom re) <* whitespace)
     in
     if Set.mem keywords name
     then fail (Fmt.str "%S is a keyword" name)
@@ -1036,8 +1033,8 @@ module Parse_term = struct
       let op_rhs_pair =
         op_name >>= fun op_info -> higher_prec >>| fun tm -> op_info, tm
       in
-      let%bind init = higher_prec in
-      let%bind pairs = many op_rhs_pair in
+      let%bind _, init = higher_prec in
+      let%bind _, pairs = many op_rhs_pair in
       let fold_pairs =
         List.fold ~init ~f:(fun t1 ((pattern, v1_name, v2_name), t2) ->
             let env = String.Map.of_alist_exn [ v1_name, t1; v2_name, t2 ] in

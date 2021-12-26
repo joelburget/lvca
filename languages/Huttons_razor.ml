@@ -67,7 +67,7 @@ module Parse = struct
 
   let t : Nonbinding.t Lvca_parsing.t =
     fix (fun t ->
-        let atom = attach_pos' (lit <|> parens t) in
+        let atom = lit <|> parens t in
         let plus = char '+' in
         let f (rng1, l) (rng2, r) =
           let rng = Opt_range.union rng1 rng2 in
@@ -75,7 +75,8 @@ module Parse = struct
           rng, Nonbinding.Operator (info, "Add", [ l; r ])
         in
         let%bind init = atom in
-        many (plus *> atom) >>| fun lst -> List.fold lst ~init ~f |> snd)
+        let%map _, list = many (plus *> attach_pos atom) in
+        list |> List.fold ~init ~f |> snd)
   ;;
 end
 

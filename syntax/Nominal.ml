@@ -366,7 +366,7 @@ module Term = struct
     let open C_comment_parser in
     fix (fun term ->
         let slot =
-          let%bind range, value = attach_pos' (sep_by1 (char '.') term) in
+          let%bind range, value = sep_by1 (char '.') term in
           let binders, tm = List.unsnoc value in
           match binders |> List.map ~f:to_pattern |> Result.all with
           | Error _ -> fail "Unexpectedly found a variable binding in pattern position"
@@ -375,7 +375,7 @@ module Term = struct
         choice
           ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
           [ parse_prim
-          ; (let%map range, name = attach_pos' (lower_identifier reserved_words) in
+          ; (let%map range, name = lower_identifier reserved_words in
              Var (Provenance.of_range range, name))
           ; make2
               (fun ~info ident slots ->
@@ -556,7 +556,7 @@ module Convertible = struct
 
     let parse =
       let open Lvca_parsing in
-      let%bind nom = Term.(parse' String.Set.empty) in
+      let%bind _, nom = Term.(parse' String.Set.empty) in
       match of_nominal nom with
       | Error err ->
         fail

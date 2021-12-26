@@ -40,7 +40,7 @@ end = struct
 
   let parse =
     let open Lvca_parsing in
-    let%map location, value = attach_pos' Base_plain.parse in
+    let%map location, value = Base_plain.parse in
     Provenance.of_range location, value
   ;;
 end
@@ -293,7 +293,7 @@ let%test_module "Parsing" =
 
     let print_parse str =
       match Lvca_parsing.parse_string_pos parse str with
-      | Ok { value = prim; range } -> Fmt.pr "%a %a" pp prim Opt_range.pp range
+      | Ok (range, prim) -> Fmt.pr "%a %a" pp prim Opt_range.pp range
       | Error msg -> Fmt.pr "%s" msg
     ;;
 

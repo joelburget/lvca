@@ -201,7 +201,7 @@ module Parse = struct
   ;;
 
   let arrow = string "->"
-  let attach_pos' p = attach_pos' p >>| fun (range, a) -> Provenance.of_range range, a
+  let attach_pos' p = p >>~ fun range a -> Provenance.of_range range, a
   let make0, make1, make2 = Provenance.(make0, make1, make2)
   let input = Provenance.Parse_input.Buffer_name "input"
   let identifier = lower_identifier String.Set.empty
@@ -220,7 +220,7 @@ module Parse = struct
         in
         (* prec 5 *)
         let parse_quantified =
-          let%bind tm = parse_atom in
+          let%bind _, tm = parse_atom in
           let quantifier =
             choice
               [ make1 mk_Q_count (braces c_term)
@@ -246,7 +246,7 @@ module Parse = struct
                 (string "fix")
                 (parens
                    (lift3
-                      (fun v _arr body -> v, body)
+                      (fun (_, v) _arr (_, body) -> v, body)
                       (make1 Single_var.mk identifier)
                       arrow
                       parser))
@@ -255,7 +255,7 @@ module Parse = struct
                 (string "satisfy")
                 (parens
                    (lift3
-                      (fun name _arr tm -> name, tm)
+                      (fun (_, name) _arr (_, tm) -> name, tm)
                       (identifier
                       >>~ fun range ident -> Provenance.of_range ~input range, ident)
                       arrow
