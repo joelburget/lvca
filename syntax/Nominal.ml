@@ -366,8 +366,7 @@ module Term = struct
     let open C_comment_parser in
     fix (fun term ->
         let slot =
-          sep_by1 (char '.') term
-          >>== fun Parse_result.{ value; range } ->
+          let%bind range, value = attach_pos' (sep_by1 (char '.') term) in
           let binders, tm = List.unsnoc value in
           match binders |> List.map ~f:to_pattern |> Result.all with
           | Error _ -> fail "Unexpectedly found a variable binding in pattern position"

@@ -103,16 +103,17 @@ let parse =
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive.All.parse >>| fun prim -> Primitive prim)
-        ; (Ws.upper_identifier Lvca_util.String.Set.empty
-          >>== fun Parse_result.{ value = ident; range = start; _ } ->
-          Ws.parens (sep_end_by (Ws.char ';') term)
-          >>|| (fun { value = children; range = finish } ->
-                 let range = Opt_range.union start finish in
-                 Parse_result.
-                   { value = Operator (Provenance.of_range range, ident, children)
-                   ; range
-                   })
-          <?> "term body")
+        ; (let%bind start, ident =
+             attach_pos' (Ws.upper_identifier Lvca_util.String.Set.empty)
+           in
+           Ws.parens (sep_end_by (Ws.char ';') term)
+           >>|| (fun { value = children; range = finish } ->
+                  let range = Opt_range.union start finish in
+                  Parse_result.
+                    { value = Operator (Provenance.of_range range, ident, children)
+                    ; range
+                    })
+           <?> "term body")
         ])
   <?> "term"
 ;;

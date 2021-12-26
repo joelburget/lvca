@@ -208,12 +208,12 @@ let parse reserved_word =
         [ (Primitive_impl.All.parse >>| fun prim -> Primitive prim)
         ; (lower_identifier reserved_word
           >>~ fun range ident -> Var (Provenance.of_range range, ident))
-        ; (upper_identifier reserved_word
-          >>== fun { range; value = ident } ->
-          parens (sep_end_by (char ';' <* whitespace) pat)
-          >>~ fun range' children ->
-          let range = Opt_range.union range range' in
-          Operator (Provenance.of_range range, ident, children))
+        ; (let%bind range, ident = attach_pos' (upper_identifier reserved_word) in
+           let%map range', children =
+             attach_pos' (parens (sep_end_by (char ';' <* whitespace) pat))
+           in
+           let range = Opt_range.union range range' in
+           Operator (Provenance.of_range range, ident, children))
         ])
   <?> "pattern"
 ;;

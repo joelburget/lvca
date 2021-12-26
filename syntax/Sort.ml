@@ -78,8 +78,7 @@ let parse reserved_word =
             >>~ fun loc value -> Name (Provenance.of_range loc, value))
           ]
       in
-      many1 atomic_sort
-      >>== fun Parse_result.{ value = atoms; range } ->
+      let%bind range, atoms = attach_pos' (many1 atomic_sort) in
       match atoms with
       (* A single ap is just parenthesized. An ap applied to things is a problem. *)
       | [ (Ap _ as atom) ] -> return ~range atom

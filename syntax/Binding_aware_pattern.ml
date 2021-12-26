@@ -339,12 +339,10 @@ let parse reserved_words =
         [ (Primitive.All.parse >>| fun prim -> Primitive prim)
         ; (lower_identifier reserved_words
           >>~ fun range ident -> Var (Provenance.of_range range, ident))
-        ; (upper_identifier reserved_words
-          >>== fun { range; value = ident } ->
-          parens (sep_end_by (char ';') slot)
-          >>~ fun range' slots ->
-          let range = Opt_range.union range range' in
-          Operator (Provenance.of_range range, ident, slots))
+        ; (let%bind range, ident = attach_pos' (upper_identifier reserved_words) in
+           let%map range', slots = attach_pos' (parens (sep_end_by (char ';') slot)) in
+           let range = Opt_range.union range range' in
+           Operator (Provenance.of_range range, ident, slots))
         ])
   <?> "binding-aware pattern"
 ;;
@@ -660,8 +658,7 @@ let%test_module "check" =
       match match_term pattern tm with
       | None -> ()
       | Some mapping ->
-        mapping
-        |> Map.iteri ~f:(fun ~key ~data -> Fmt.pr "%s -> %a\n" key Capture.pp data)
+        Map.iteri mapping ~f:(fun ~key ~data -> Fmt.pr "%s -> %a\n" key Capture.pp data)
     ;;
 
     let%expect_test _ =
