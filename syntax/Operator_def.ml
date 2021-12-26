@@ -29,8 +29,8 @@ let pp ppf (Operator_def (info, name, arity)) =
 let parse =
   let open Lvca_parsing in
   let p =
-    let%bind _, ident = C_comment_parser.upper_identifier Lvca_util.String.Set.empty in
-    let%map location, arity = Arity.parse in
+    let* _, ident = C_comment_parser.upper_identifier Lvca_util.String.Set.empty in
+    let+ location, arity = Arity.parse in
     Operator_def (Provenance.of_range location, ident, arity)
   in
   p <?> "operator definition"

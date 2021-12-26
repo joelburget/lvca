@@ -49,9 +49,9 @@ module Operator_fixity = struct
   let parse =
     let open Lvca_parsing in
     let open C_comment_parser in
-    let%bind _, lparens = option' (string "()") in
-    let%bind range, lit = string_lit in
-    let%bind _, rparens = option' (string "()") in
+    let* _, lparens = option' (string "()") in
+    let* range, lit = string_lit in
+    let* _, rparens = option' (string "()") in
     let info = Provenance.of_range range in
     match lparens, rparens with
     | Some _, None -> return (info, Fixity.Left, lit)
@@ -79,7 +79,7 @@ module Operator_ranking = struct
     let open Lvca_parsing in
     let char = C_comment_parser.char in
     let level = sep_by1 (char '=') Operator_fixity.parse in
-    let%map range, levels = sep_by1 (char '>') level in
+    let+ range, levels = sep_by1 (char '>') level in
     Provenance.of_range range, levels
   ;;
 
@@ -132,11 +132,11 @@ module Sequence_item = struct
     let open C_comment_parser in
     choice
       ~failure_msg:"looking for a variable or literal"
-      [ (let%map range, _ = char '_' in
+      [ (let+ range, _ = char '_' in
          Space (Provenance.of_range range))
-      ; (let%map range, str = lower_ident in
+      ; (let+ range, str = lower_ident in
          Var (Provenance.of_range range, str))
-      ; (let%map range, str = string_lit in
+      ; (let+ range, str = string_lit in
          Literal (Provenance.of_range range, str))
       ]
     <?> "sequence item"
@@ -176,7 +176,7 @@ module Operator_concrete_syntax_row = struct
   let parse =
     let open Lvca_parsing in
     let p =
-      let%map range, items = many1 Sequence_item.parse in
+      let+ range, items = many1 Sequence_item.parse in
       Provenance.of_range range, items
     in
     p <?> "operator concrete syntax"
@@ -247,7 +247,7 @@ module Operator_pattern_slot = struct
     let open Lvca_parsing in
     let open C_comment_parser in
     let p =
-      let%map pos, idents = sep_end_by1 (char '.') lower_ident in
+      let+ pos, idents = sep_end_by1 (char '.') lower_ident in
       let variable_names, body_name = List.unsnoc idents in
       { info = Provenance.of_range pos; variable_names; body_name }
     in
@@ -548,10 +548,10 @@ module Sort_syntax = struct
     let open Lvca_parsing in
     let open C_comment_parser in
     let p =
-      let%bind name_info, name = lower_ident in
-      let%bind _ = char ':' in
-      let%bind ops_info, operators = many (char '|' *> Operator_syntax.parse) in
-      let%bind _, operator_ranking =
+      let* name_info, name = lower_ident in
+      let* _ = char ':' in
+      let* ops_info, operators = many (char '|' *> Operator_syntax.parse) in
+      let* _, operator_ranking =
         choice
           ~failure_msg:"Expected a `;` or `\\` operator ranking"
           [ char ';' *> return None; Option.some <$> char '\\' *> Operator_ranking.parse ]
@@ -926,10 +926,10 @@ module Parse_term = struct
         (match item with
         | Sequence_item.Space _ -> go env range items
         | Literal (_, str) ->
-          let%bind rng', _ = string str in
+          let* rng', _ = string str in
           go env (Opt_range.union range rng') items
         | Var (_, name) ->
-          let%bind rng', data = Map.find_exn var_parsers name in
+          let* rng', data = Map.find_exn var_parsers name in
           let env = Map.set env ~key:name ~data in
           go env (Opt_range.union range rng') items)
     in
@@ -971,9 +971,7 @@ module Parse_term = struct
   ;;
 
   let var_parser keywords re =
-    let%bind pos, name =
-      Lvca_parsing.(of_angstrom (Regex.to_angstrom re) <* whitespace)
-    in
+    let* pos, name = Lvca_parsing.(of_angstrom (Regex.to_angstrom re) <* whitespace) in
     if Set.mem keywords name
     then fail (Fmt.str "%S is a keyword" name)
     else return (Nominal.Term.Var (Provenance.of_range pos, name))
@@ -1033,8 +1031,8 @@ module Parse_term = struct
       let op_rhs_pair =
         op_name >>= fun op_info -> higher_prec >>| fun tm -> op_info, tm
       in
-      let%bind _, init = higher_prec in
-      let%bind _, pairs = many op_rhs_pair in
+      let* _, init = higher_prec in
+      let* _, pairs = many op_rhs_pair in
       let fold_pairs =
         List.fold ~init ~f:(fun t1 ((pattern, v1_name, v2_name), t2) ->
             let env = String.Map.of_alist_exn [ v1_name, t1; v2_name, t2 ] in

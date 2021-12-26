@@ -143,6 +143,6 @@ module Let_syntax : sig
   val map4 : 'a t -> 'b t -> 'c t -> 'd t -> f:('a -> 'b -> 'c -> 'd -> 'e) -> 'e t
 end
 
-val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+val ( let+ ) : 'a t -> (Opt_range.t * 'a -> 'b) -> 'b t
+val ( let* ) : 'a t -> (Opt_range.t * 'a -> 'b t) -> 'b t
 val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t

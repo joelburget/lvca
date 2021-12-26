@@ -26,7 +26,7 @@ let parse =
   let open Lvca_parsing in
   let open C_comment_parser in
   let p =
-    let%map _, valences = parens (sep_by (char ';') Valence.parse) in
+    let+ _, valences = parens (sep_by (char ';') Valence.parse) in
     Arity (Provenance.of_here [%here], valences)
   in
   p <?> "arity"

@@ -630,8 +630,8 @@ module Let_syntax = struct
   let map4 a b c d ~f = lift4 (fun (_, a) (_, b) (_, c) (_, d) -> f a b c d) a b c d
 end
 
-let ( let+ ) a f = f <$> a
-let ( let* ) a f = a >>= f
+let ( let+ ) a f = lift f a
+let ( let* ) a f = Angstrom.(a >>= f)
 let ( and+ ) = Let_syntax.both
 
 let%test_module "Parsing" =

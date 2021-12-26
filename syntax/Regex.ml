@@ -60,7 +60,7 @@ module Class = struct
     let open Angstrom in
     let open Angstrom.Let_syntax in
     let p =
-      let%bind _ = char '\\' in
+      let* _ = char '\\' in
       choice
         [ char 'w' *> return (Pos Word)
         ; char 'W' *> return (Neg Word)
@@ -107,7 +107,7 @@ module Set_member = struct
     let open Angstrom in
     let open Angstrom.Let_syntax in
     let p =
-      let%bind c1 = safe_char in
+      let* c1 = safe_char in
       choice
         [ (char '-' *> safe_char >>| fun c2 -> Range (c1, c2)); return (Single_char c1) ]
     in
@@ -175,7 +175,7 @@ let parse =
     <?> "regex (precedence 3)"
   in
   let prec2 =
-    let%bind atom = prec3 in
+    let* atom = prec3 in
     option
       atom
       (choice

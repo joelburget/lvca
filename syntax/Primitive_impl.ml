@@ -40,7 +40,7 @@ end = struct
 
   let parse =
     let open Lvca_parsing in
-    let%map location, value = Base_plain.parse in
+    let+ location, value = Base_plain.parse in
     Provenance.of_range location, value
   ;;
 end

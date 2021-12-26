@@ -84,11 +84,11 @@ let parse =
     <?> "sort variable declaration"
   in
   let p =
-    let%bind _, name = lower_identifier String.Set.empty in
-    let%bind _, vars = many sort_var_decl in
-    let%bind _ = string ":=" in
-    let%bind _, op_defs = option '|' bar *> sep_by bar Operator_def.parse in
-    let%bind _, var_names =
+    let* _, name = lower_identifier String.Set.empty in
+    let* _, vars = many sort_var_decl in
+    let* _ = string ":=" in
+    let* _, op_defs = option '|' bar *> sep_by bar Operator_def.parse in
+    let* _, var_names =
       choice
         ~failure_msg:"Expected a `;` or `\\` variables list"
         [ char ';' *> return None
