@@ -45,20 +45,20 @@ module Typing_clause = struct
     open Lvca_parsing
 
     type arrow_dir =
-      | LeftArr
-      | RightArr
+      | Left_arr
+      | Right_arr
 
     let t =
       lift3
         (fun tm dir ty ->
           match dir with
-          | LeftArr -> Checking_rule { tm; ty }
-          | RightArr -> Inference_rule { tm; ty })
+          | Left_arr -> Checking_rule { tm; ty }
+          | Right_arr -> Inference_rule { tm; ty })
         (Binding_aware_pattern.parse reserved)
         (choice
            ~failure_msg:"looking for <= or =>"
            C_comment_parser.
-             [ (string "<=" >>| fun _ -> LeftArr); (string "=>" >>| fun _ -> RightArr) ])
+             [ (string "<=" >>| fun _ -> Left_arr); (string "=>" >>| fun _ -> Right_arr) ])
         (Binding_aware_pattern.parse reserved)
       <?> "typing clause"
     ;;
