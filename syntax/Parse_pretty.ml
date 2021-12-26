@@ -7,11 +7,11 @@
  * TODO:
  * [x] actually parse / pretty-print with a term
  * [x] check validity
- * [ ] multiple concrete syntaxes mapping to the same abstract
  * [x] operator ranking
- * [ ] whitespace
  * [x] variables colliding with keywords
  * [x] do all operators in the same level have to have the same fixity?
+ * [ ] multiple concrete syntaxes mapping to the same abstract
+ * [ ] whitespace
  *)
 open Base
 open Lvca_provenance
@@ -23,6 +23,15 @@ let reserved_words = Lvca_util.String.Set.empty
 let lower_ident = Lvca_parsing.C_comment_parser.lower_identifier reserved_words
 let upper_ident = Lvca_parsing.C_comment_parser.upper_identifier reserved_words
 let string_sort = List.sort ~compare:String.compare
+
+(*
+ * [ ] space hygiene:
+ *   - no repeated spaces
+ *   - no leading / trailing spaces
+ * [ ] every operator has a line
+ * [ ] will var parser be clobbered by left-recursion deferring to a var parser
+     from another sort? Is this a grammar problem?
+ *)
 
 module Fixity = struct
   type t =
@@ -89,6 +98,15 @@ module Operator_ranking = struct
     Provenance.fmt_stag info Fmt.(hovbox (list pp_level ~sep:(any "@ >@ "))) ppf levels
   ;;
 
+  module Checks = struct
+    let same_fixity level =
+      Fmt.str
+        "All operators in the same level must have the same fixity: found %a"
+        pp_level
+        level
+    ;;
+  end
+
   let check (_, levels) =
     List.find_map levels ~f:(fun level ->
         match level with
@@ -100,14 +118,7 @@ module Operator_ranking = struct
             ~f:(fun fixity (_, fixity', _) ->
               if Fixity.(fixity = fixity')
               then Continue fixity
-              else (
-                let msg =
-                  Fmt.str
-                    "All operators in the same level must have the same fixity: found %a"
-                    pp_level
-                    level
-                in
-                Stop (Some msg)))
+              else Stop (Some (Checks.same_fixity level)))
             ~finish:(Fn.const None))
   ;;
 end
@@ -327,6 +338,56 @@ module Operator_syntax_row = struct
     | _ -> false
   ;;
 
+  module Checks = struct
+    (*
+     1. (a, b) No overlapping variable definitions (on rhs or lhs)
+     2. Variables used 1-1 (lhs vs rhs)
+     3. every line is either a binary operator or prefix row
+   *)
+    let duplicate_abstract_var sort_name pattern_name dupe =
+      Fmt.str
+        "Duplicate variable found in abstract pattern for sort `%s` / operator `%s`: %s"
+        sort_name
+        pattern_name
+        dupe
+    ;;
+
+    let duplicate_concrete_var sort_name pattern_name dupe =
+      Fmt.str
+        "Duplicate variable found in concrete pattern for sort `%s` / operator `%s`: %s"
+        sort_name
+        pattern_name
+        dupe
+    ;;
+
+    let vars_1_1 lhs_vars rhs_vars =
+      Fmt.(
+        str
+          "LHS and RHS don't bind the same vars (%a vs %a)"
+          pp_set
+          lhs_vars
+          pp_set
+          rhs_vars)
+    ;;
+
+    let known_form concrete_syntax =
+      Fmt.str
+        "`%a` is neither a binary operator, prefix row, nor defers to another sort"
+        Operator_concrete_syntax_row.pp
+        concrete_syntax
+    ;;
+  end
+
+  module Invariants = struct
+    let expected_operator sort_name pattern_name sort_def =
+      Fmt.str
+        "Expected operator named %s in %a"
+        pattern_name
+        (Sort_def.pp ~name:sort_name)
+        sort_def
+    ;;
+  end
+
   let check ~sort_name ~sort_def ~operator_names row =
     let { info = _; pattern; concrete_syntax } = row in
     let lhs_vars = pattern |> Operator_pattern.vars |> string_sort in
@@ -338,44 +399,20 @@ module Operator_syntax_row = struct
       with
       | None, None -> None
       | Some (dupe, _), _ ->
-        Some
-          (Fmt.str
-             "Duplicate variable found in abstract pattern for sort `%s` / operator \
-              `%s`: %s"
-             sort_name
-             pattern.name
-             dupe)
+        Some (Checks.duplicate_abstract_var sort_name pattern.name dupe)
       | _, Some (dupe, _) ->
-        Some
-          (Fmt.str
-             "Duplicate variable found in concrete pattern for sort `%s` / operator \
-              `%s`: %s"
-             sort_name
-             pattern.name
-             dupe)
+        Some (Checks.duplicate_concrete_var sort_name pattern.name dupe)
     in
     let check_same_vars () =
       if List.equal String.( = ) lhs_vars rhs_vars
       then None
-      else
-        Some
-          Fmt.(
-            str
-              "LHS and RHS don't bind the same vars (%a vs %a)"
-              pp_set
-              lhs_vars
-              pp_set
-              rhs_vars)
+      else Some (Checks.vars_1_1 lhs_vars rhs_vars)
     in
     let check_known_form () =
       let (Operator_def (_, _, Arity (_, valences))) =
         Sort_def.find_operator_def sort_def pattern.name
         |> Option.get_invariant [%here] (fun () ->
-               Fmt.str
-                 "Expected operator named %s in %a"
-                 pattern.name
-                 (Sort_def.pp ~name:sort_name)
-                 sort_def)
+               Invariants.expected_operator sort_name pattern.name sort_def)
       in
       let var_sort_mapping =
         List.zip_exn row.pattern.slots valences
@@ -397,12 +434,7 @@ module Operator_syntax_row = struct
         , is_prefix_row row || defers_to_another_sort ~sort_name ~var_sort_mapping row )
       with
       | Some _, false | None, true -> None
-      | _ ->
-        Some
-          (Fmt.str
-             "`%a` is neither a binary operator, prefix row, nor defers to another sort"
-             Operator_concrete_syntax_row.pp
-             concrete_syntax)
+      | _ -> Some (Checks.known_form concrete_syntax)
     in
     List.find_map
       [ check_duplicate_vars; check_same_vars; check_known_form ]
@@ -597,6 +629,31 @@ module Sort_syntax = struct
     Provenance.fmt_stag info pp' ppf ()
   ;;
 
+  module Checks = struct
+    (*
+     1. (a, b). Variables defined on both sides or neither
+     2. 1-1 mapping between concrete and abstract operators
+    *)
+    let mismatched_vars_1 =
+      "Abstract syntax defines variables but concrete syntax doesn't"
+    ;;
+
+    let mismatched_vars_2 =
+      "Concrete syntax defines variables but abstract syntax doesn't"
+    ;;
+
+    let same_operators sort_name concrete_op_names abstract_op_names =
+      Fmt.str
+        "Concrete syntax definition for sort `%s` doesn't have the same operators (%a) \
+         as the abstract syntax (%a)"
+        sort_name
+        pp_set
+        concrete_op_names
+        pp_set
+        abstract_op_names
+    ;;
+  end
+
   let check ~sort_defs t =
     let { info = _
         ; operators = concrete_ops
@@ -610,14 +667,13 @@ module Sort_syntax = struct
     let sort_def = Map.find_exn sort_defs sort_name in
     let (Sort_def.Sort_def (_vars, abstract_ops, var_names)) = sort_def in
     let operator_names = t |> operator_infos |> operator_names in
-    let check_1 () =
+    let check_1_1_vars () =
       match variables, var_names with
-      | None, _ :: _ ->
-        Some "Abstract syntax defines variables but concrete syntax doesn't"
-      | Some _, [] -> Some "Concrete syntax defines variables but abstract syntax doesn't"
+      | None, _ :: _ -> Some Checks.mismatched_vars_1
+      | Some _, [] -> Some Checks.mismatched_vars_2
       | _ -> None
     in
-    let check_2 () =
+    let check_same_ops_and_rows () =
       let abstract_op_names =
         abstract_ops
         |> List.map ~f:(fun (Operator_def.Operator_def (_, name, _)) -> name)
@@ -628,24 +684,19 @@ module Sort_syntax = struct
         |> List.map ~f:(function Operator_syntax_row.{ pattern = { name; _ }; _ } -> name)
         |> string_sort
       in
-      if not (List.equal String.( = ) abstract_op_names concrete_op_names)
-      then
-        Some
-          (Fmt.str
-             "Concrete syntax definition for sort `%s` doesn't have the same operators \
-              (%a) as the abstract syntax (%a)"
-             sort_name
-             pp_set
-             concrete_op_names
-             pp_set
-             abstract_op_names)
+      if not (List.equal String.( = ) concrete_op_names abstract_op_names)
+      then Some (Checks.same_operators sort_name concrete_op_names abstract_op_names)
       else
         List.find_map
           concrete_ops
           ~f:(Operator_syntax_row.check ~sort_name ~sort_def ~operator_names)
     in
-    let check_3 () = Option.bind operator_ranking ~f:Operator_ranking.check in
-    List.find_map [ check_1; check_2; check_3 ] ~f:(fun check -> check ())
+    let check_operator_ranking () =
+      Option.bind operator_ranking ~f:Operator_ranking.check
+    in
+    List.find_map
+      [ check_1_1_vars; check_same_ops_and_rows; check_operator_ranking ]
+      ~f:(fun check -> check ())
   ;;
 end
 
@@ -714,11 +765,38 @@ let leading_sort_graph abstract_syntax concrete_syntax =
           | _ -> None))
 ;;
 
+module Checks = struct
+  (*
+   1. Concrete and abstract sorts are 1-1
+   2. No left-recursive cycles between sorts
+   3. No Duplicate sort definitions
+  *)
+  let same_sorts concrete_sort_names abstract_sort_names =
+    Fmt.str
+      "Concrete syntax definition doesn't have the same sorts (%a) as abstract syntax \
+       (%a)"
+      pp_set
+      concrete_sort_names
+      pp_set
+      abstract_sort_names
+  ;;
+
+  let no_left_recursive_cycles = "There is unavoidable left-recursion in this grammar"
+
+  let no_duplicate_sort_defs sort_name =
+    Fmt.str "duplicate sort definition for %s" sort_name
+  ;;
+end
+
 let check_sort_graph abstract_syntax concrete_syntax () =
   let graph = leading_sort_graph abstract_syntax concrete_syntax in
   match Directed_graph.topsort graph with
-  | None -> Some "There is unavoidable left-recursion in this grammar"
+  | None -> Some Checks.no_left_recursive_cycles
   | Some _ -> None
+;;
+
+let check_sort_defs sort_defs ordered =
+  List.find_map ordered ~f:(Sort_syntax.check ~sort_defs)
 ;;
 
 (* Check that the sorts covered in the concrete / abstract syntax are 1-1 *)
@@ -728,37 +806,14 @@ let check_same_sorts sort_defs ordered () =
     ordered |> List.map ~f:(fun Sort_syntax.{ name = _, name; _ } -> name) |> string_sort
   in
   if List.equal String.( = ) abstract_sort_names concrete_sort_names
-  then List.find_map ordered ~f:(Sort_syntax.check ~sort_defs)
-  else
-    Some
-      (Fmt.str
-         "Concrete syntax definition doesn't have the same sorts (%a) as abstract syntax \
-          (%a)"
-         pp_set
-         concrete_sort_names
-         pp_set
-         abstract_sort_names)
+  then check_sort_defs sort_defs ordered
+  else Some (Checks.same_sorts concrete_sort_names abstract_sort_names)
 ;;
 
-(* Check
- * [x] No overlapping variable definitions (on rhs or lhs)
- * [x] Variables used 1-1 (lhs vs rhs)
- * [x] 1-1 mapping between sorts given an abstract / concrete syntax
- * [x] every operator in a sort given a concrete syntax
- * [x] variable given concrete syntax iff allowed
- * [ ] space hygiene:
- *   - no repeated spaces
- *   - no leading / trailing spaces
- * [x] no cycles between sorts
- * [ ] every operator has a line (?)
- * [ ] will var parser be clobbered by left-recursion deferring to a var parser
-   from another sort? Is this a grammar problem?
- * [x] every line is either a binary operator or prefix row
- * [x] all operators in the same level have the same fixity
- *)
+(* Run all checks. *)
 let check sort_defs ordered =
   match build_unordered ordered with
-  | `Duplicate_key k -> Some (Fmt.str "duplicate sort definition for %s" k)
+  | `Duplicate_key sort_name -> Some (Checks.no_duplicate_sort_defs sort_name)
   | `Ok unordered ->
     [ check_same_sorts sort_defs ordered; check_sort_graph sort_defs unordered ]
     |> List.find_map ~f:(fun checker -> checker ())
