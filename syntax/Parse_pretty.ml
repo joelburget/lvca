@@ -49,12 +49,9 @@ module Operator_fixity = struct
   let parse =
     let open Lvca_parsing in
     let open C_comment_parser in
-    option' (string "()")
-    >>= fun lparens ->
-    attach_pos' string_lit
-    >>= fun (range, lit) ->
-    option' (string "()")
-    >>= fun rparens ->
+    let%bind lparens = option' (string "()") in
+    let%bind range, lit = attach_pos' string_lit in
+    let%bind rparens = option' (string "()") in
     let info = Provenance.of_range range in
     match lparens, rparens with
     | Some _, None -> return (info, Fixity.Left, lit)
@@ -546,16 +543,16 @@ module Sort_syntax = struct
     let open Lvca_parsing in
     let open C_comment_parser in
     let p =
-      attach_pos' lower_ident
-      >>= fun (name_info, name) ->
-      char ':'
-      >>= fun _ ->
-      attach_pos' (many (char '|' *> Operator_syntax.parse))
-      >>= fun (ops_info, operators) ->
-      choice
-        ~failure_msg:"Expected a `;` or `\\` operator ranking"
-        [ char ';' *> return None; Option.some <$> char '\\' *> Operator_ranking.parse ]
-      >>= fun operator_ranking ->
+      let%bind name_info, name = attach_pos' lower_ident in
+      let%bind _ = char ':' in
+      let%bind ops_info, operators =
+        attach_pos' (many (char '|' *> Operator_syntax.parse))
+      in
+      let%bind operator_ranking =
+        choice
+          ~failure_msg:"Expected a `;` or `\\` operator ranking"
+          [ char ';' *> return None; Option.some <$> char '\\' *> Operator_ranking.parse ]
+      in
       let range = Opt_range.union name_info ops_info in
       let info = Provenance.of_range range in
       let name = Provenance.of_range name_info, name in
@@ -926,11 +923,10 @@ module Parse_term = struct
         (match item with
         | Sequence_item.Space _ -> go env range items
         | Literal (_, str) ->
-          attach_pos' (string str)
-          >>= fun (rng', _) -> go env (Opt_range.union range rng') items
+          let%bind rng', _ = attach_pos' (string str) in
+          go env (Opt_range.union range rng') items
         | Var (_, name) ->
-          attach_pos' (Map.find_exn var_parsers name)
-          >>= fun (rng', data) ->
+          let%bind rng', data = attach_pos' (Map.find_exn var_parsers name) in
           let env = Map.set env ~key:name ~data in
           go env (Opt_range.union range rng') items)
     in
@@ -972,8 +968,9 @@ module Parse_term = struct
   ;;
 
   let var_parser keywords re =
-    Lvca_parsing.(attach_pos' (of_angstrom (Regex.to_angstrom re)) <* whitespace)
-    >>= fun (pos, name) ->
+    let%bind pos, name =
+      Lvca_parsing.(attach_pos' (of_angstrom (Regex.to_angstrom re)) <* whitespace)
+    in
     if Set.mem keywords name
     then fail (Fmt.str "%S is a keyword" name)
     else return (Nominal.Term.Var (Provenance.of_range pos, name))
@@ -1033,10 +1030,8 @@ module Parse_term = struct
       let op_rhs_pair =
         op_name >>= fun op_info -> higher_prec >>| fun tm -> op_info, tm
       in
-      higher_prec
-      >>= fun init ->
-      many op_rhs_pair
-      >>= fun pairs ->
+      let%bind init = higher_prec in
+      let%bind pairs = many op_rhs_pair in
       let fold_pairs =
         List.fold ~init ~f:(fun t1 ((pattern, v1_name, v2_name), t2) ->
             let env = String.Map.of_alist_exn [ v1_name, t1; v2_name, t2 ] in

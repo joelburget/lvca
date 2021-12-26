@@ -31,8 +31,7 @@ let kind_check env = function
 
 let parse =
   let open Lvca_parsing in
-  Sort.parse Lvca_util.String.Set.empty
-  >>= fun sort ->
+  let%bind sort = Sort.parse Lvca_util.String.Set.empty in
   choice
     [ (C_comment_parser.brackets (Sort.parse Lvca_util.String.Set.empty)
       >>| fun var_sort -> Sort_pattern { pattern_sort = sort; var_sort })

@@ -71,8 +71,8 @@ module Parse = struct
           tm, range
         in
         let atom_or_lam = attach_pos (atom <|> lam) in
-        atom_or_lam
-        >>= fun init -> many atom_or_lam >>| fun atoms -> List.fold atoms ~init ~f |> fst)
+        let%bind init = atom_or_lam in
+        many atom_or_lam >>| fun atoms -> List.fold atoms ~init ~f |> fst)
   ;;
 end
 

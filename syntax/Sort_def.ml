@@ -84,21 +84,18 @@ let parse =
     <?> "sort variable declaration"
   in
   let p =
-    Ws.lower_identifier String.Set.empty
-    >>= fun name ->
-    many sort_var_decl
-    >>= fun vars ->
-    Ws.string ":="
-    >>= fun _ ->
-    option '|' bar *> sep_by bar Operator_def.parse
-    >>= fun op_defs ->
-    choice
-      ~failure_msg:"Expected a `;` or `\\` variables list"
-      [ Ws.char ';' *> return None
-      ; Option.some
-        <$> Ws.char '\\' *> sep_by (Ws.char ',') (Ws.lower_identifier String.Set.empty)
-      ]
-    >>= fun var_names ->
+    let%bind name = Ws.lower_identifier String.Set.empty in
+    let%bind vars = many sort_var_decl in
+    let%bind _ = Ws.string ":=" in
+    let%bind op_defs = option '|' bar *> sep_by bar Operator_def.parse in
+    let%bind var_names =
+      choice
+        ~failure_msg:"Expected a `;` or `\\` variables list"
+        [ Ws.char ';' *> return None
+        ; Option.some
+          <$> Ws.char '\\' *> sep_by (Ws.char ',') (Ws.lower_identifier String.Set.empty)
+        ]
+    in
     let var_names = match var_names with None -> [] | Some vs -> vs in
     return (name, Sort_def (vars, op_defs, var_names))
   in

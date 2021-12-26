@@ -634,6 +634,20 @@ module C_comment_parser : Character_parser = Mk_character_parser (struct
   let junk1 = choice [ whitespace1 <* option "" c_comment; (c_comment >>| fun _ -> ()) ]
 end)
 
+module Let_syntax = struct
+  let return x = return x
+  let map a ~f = f <$> a
+  let bind a ~f = a >>= f
+  let both a b = lift2 (fun a b -> a, b) a b
+  let map2 a b ~f = lift2 f a b
+  let map3 a b c ~f = lift3 f a b c
+  let map4 a b c d ~f = lift4 f a b c d
+end
+
+let ( let+ ) a f = f <$> a
+let ( let* ) a f = a >>= f
+let ( and+ ) = Let_syntax.both
+
 let%test_module "Parsing" =
   (module struct
     module Ws = Whitespace_parser
@@ -830,7 +844,8 @@ let%test_module "Parsing" =
     let%expect_test _ =
       go {|"abc";|};
       go "";
-      [%expect{|
+      [%expect
+        {|
         { value = ["abc"]; range = {0,6} }
         : not enough input |}]
     ;;

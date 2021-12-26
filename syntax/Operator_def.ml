@@ -28,11 +28,12 @@ let pp ppf (Operator_def (info, name, arity)) =
 
 let parse =
   let open Lvca_parsing in
-  C_comment_parser.upper_identifier Lvca_util.String.Set.empty
-  >>= (fun ident ->
-        Arity.parse
-        >>~ fun location arity -> Operator_def (Provenance.of_range location, ident, arity))
-  <?> "operator definition"
+  let p =
+    let%bind ident = C_comment_parser.upper_identifier Lvca_util.String.Set.empty in
+    Arity.parse
+    >>~ fun location arity -> Operator_def (Provenance.of_range location, ident, arity)
+  in
+  p <?> "operator definition"
 ;;
 
 let%test_module "parsing" =

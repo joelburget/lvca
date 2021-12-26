@@ -129,16 +129,13 @@ module Hypothesis = struct
     let context =
       string "ctx"
       *> choice
-           [ (char ','
-             >>= fun _ ->
-             sep_by1 (char ',') typed_term
-             >>= fun ctx_entries ->
-             match String.Map.of_alist ctx_entries with
-             | `Ok context -> return context
-             | `Duplicate_key str ->
-               raise
-                 (StaticsParseError (Printf.sprintf "duplicate name in context: %s" str))
-             )
+           [ (let%bind _ = char ',' in
+              let%bind ctx_entries = sep_by1 (char ',') typed_term in
+              match String.Map.of_alist ctx_entries with
+              | `Ok context -> return context
+              | `Duplicate_key str ->
+                raise
+                  (StaticsParseError (Printf.sprintf "duplicate name in context: %s" str)))
            ; return String.Map.empty
            ]
       <?> "context"

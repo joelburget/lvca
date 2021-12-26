@@ -222,8 +222,7 @@ module Parse = struct
         in
         (* prec 5 *)
         let parse_quantified =
-          parse_atom
-          >>= fun tm ->
+          let%bind tm = parse_atom in
           let quantifier =
             choice
               [ make1 mk_Q_count (Ws.braces c_term)

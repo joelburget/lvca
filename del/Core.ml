@@ -394,10 +394,10 @@ module Parse = struct
     >>== fun { range = body_range; value = body } ->
     choice
       [ (brackets
-           (attach_pos var_identifier
-           >>= fun (name, range) ->
-           let name = Single_var.{ info = Provenance.of_range range; name } in
-           string ":=" >>= fun _ -> term >>| fun arg -> name, arg)
+           (let%bind name, range = attach_pos var_identifier in
+            let name = Single_var.{ info = Provenance.of_range range; name } in
+            let%bind _ = string ":=" in
+            term >>| fun arg -> name, arg)
         >>~ fun bracket_range (name, arg) ->
         let range = Opt_range.union bracket_range body_range in
         let info = Provenance.of_range range in

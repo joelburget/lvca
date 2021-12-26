@@ -130,3 +130,17 @@ module Whitespace_parser : Character_parser
 val parse_string_pos : 'a t -> string -> ('a Parse_result.t, string) Base.Result.t
 val parse_string : 'a t -> string -> ('a, string) Base.Result.t
 val parse_string_or_failwith : 'a t -> string -> 'a
+
+module Let_syntax : sig
+  val return : 'a -> 'a t
+  val map : 'a t -> f:('a -> 'b) -> 'b t
+  val bind : 'a t -> f:('a -> 'b t) -> 'b t
+  val both : 'a t -> 'b t -> ('a * 'b) t
+  val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
+  val map3 : 'a t -> 'b t -> 'c t -> f:('a -> 'b -> 'c -> 'd) -> 'd t
+  val map4 : 'a t -> 'b t -> 'c t -> 'd t -> f:('a -> 'b -> 'c -> 'd -> 'e) -> 'e t
+end
+
+val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t

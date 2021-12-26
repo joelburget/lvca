@@ -220,8 +220,7 @@ module Parse = struct
             in
             tm, range
           in
-          attach_pos application
-          >>= fun init ->
+          let%bind init = attach_pos application in
           many (pair op (attach_pos application)) >>| (List.fold ~init ~f >> fst)
         in
         let add_sub : Expr.t Lvca_parsing.t =
@@ -237,8 +236,7 @@ module Parse = struct
             in
             tm, range
           in
-          attach_pos mul_div
-          >>= fun init ->
+          let%bind init = attach_pos mul_div in
           many (pair op (attach_pos mul_div)) >>| (List.fold ~init ~f >> fst)
         in
         add_sub)

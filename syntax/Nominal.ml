@@ -557,8 +557,7 @@ module Convertible = struct
 
     let parse =
       let open Lvca_parsing in
-      Term.(parse' String.Set.empty)
-      >>= fun nom ->
+      let%bind nom = Term.(parse' String.Set.empty) in
       match of_nominal nom with
       | Error err ->
         fail
