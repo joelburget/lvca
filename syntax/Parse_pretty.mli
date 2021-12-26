@@ -28,6 +28,7 @@ module Operator_ranking : sig
   val info : t -> Provenance.t
   val parse : t Lvca_parsing.t
   val pp : t Fmt.t
+  val check : t -> string option
 end
 
 (** A concrete syntax sequence item is either a variable, literal, or space. *)

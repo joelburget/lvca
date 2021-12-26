@@ -11,7 +11,7 @@
  * [x] operator ranking
  * [ ] whitespace
  * [x] variables colliding with keywords
- * [ ] do all operators in the same level have to have the same fixity?
+ * [x] do all operators in the same level have to have the same fixity?
  *)
 open Base
 open Lvca_provenance
@@ -29,6 +29,10 @@ module Fixity = struct
     | Left
     | None
     | Right
+
+  let ( = ) t1 t2 =
+    match t1, t2 with Left, Left | None, None | Right, Right -> true | _ -> false
+  ;;
 
   let pp ppf = function
     | Left -> Fmt.pf ppf "Left"
@@ -85,6 +89,28 @@ module Operator_ranking = struct
 
   let pp ppf (info, levels) =
     Provenance.fmt_stag info Fmt.(hovbox (list pp_level ~sep:(any "@ >@ "))) ppf levels
+  ;;
+
+  let check (_, levels) =
+    List.find_map levels ~f:(fun level ->
+        match level with
+        | [] -> Some "Invalid empty level"
+        | (_, fixity0, _) :: op_fixities ->
+          List.fold_until
+            op_fixities
+            ~init:fixity0
+            ~f:(fun fixity (_, fixity', _) ->
+              if Fixity.(fixity = fixity')
+              then Continue fixity
+              else (
+                let msg =
+                  Fmt.str
+                    "All operators in the same level must have the same fixity: found %a"
+                    pp_level
+                    level
+                in
+                Stop (Some msg)))
+            ~finish:(Fn.const None))
   ;;
 end
 
@@ -576,7 +602,7 @@ module Sort_syntax = struct
         ; operators = concrete_ops
         ; name = _, sort_name
         ; variables
-        ; operator_ranking = _
+        ; operator_ranking
         }
       =
       t
@@ -584,10 +610,14 @@ module Sort_syntax = struct
     let sort_def = Map.find_exn sort_defs sort_name in
     let (Sort_def.Sort_def (_vars, abstract_ops, var_names)) = sort_def in
     let operator_names = t |> operator_infos |> operator_names in
-    match variables, var_names with
-    | None, _ :: _ -> Some "Abstract syntax defines variables but concrete syntax doesn't"
-    | Some _, [] -> Some "Concrete syntax defines variables but abstract syntax doesn't"
-    | _ ->
+    let check_1 () =
+      match variables, var_names with
+      | None, _ :: _ ->
+        Some "Abstract syntax defines variables but concrete syntax doesn't"
+      | Some _, [] -> Some "Concrete syntax defines variables but abstract syntax doesn't"
+      | _ -> None
+    in
+    let check_2 () =
       let abstract_op_names =
         abstract_ops
         |> List.map ~f:(fun (Operator_def.Operator_def (_, name, _)) -> name)
@@ -613,6 +643,9 @@ module Sort_syntax = struct
         List.find_map
           concrete_ops
           ~f:(Operator_syntax_row.check ~sort_name ~sort_def ~operator_names)
+    in
+    let check_3 () = Option.bind operator_ranking ~f:Operator_ranking.check in
+    List.find_map [ check_1; check_2; check_3 ] ~f:(fun check -> check ())
   ;;
 end
 
@@ -720,7 +753,8 @@ let check_same_sorts sort_defs ordered () =
  * [ ] every operator has a line (?)
  * [ ] will var parser be clobbered by left-recursion deferring to a var parser
    from another sort? Is this a grammar problem?
- * [ ] every line is either a binary operator or prefix row
+ * [x] every line is either a binary operator or prefix row
+ * [x] all operators in the same level have the same fixity
  *)
 let check sort_defs ordered =
   match build_unordered ordered with
