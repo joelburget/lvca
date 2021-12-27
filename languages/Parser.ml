@@ -872,6 +872,7 @@ let%test_module "Parsing" =
       [%expect]
     *)
 
+    (*
     let%expect_test _ =
       parse_print_parser
         {|let atom = name | literal in
@@ -916,12 +917,14 @@ fix (expr ->
                     | atom=atom -> {{atom}}
                   ) |}]
     ;;
+      *)
 
     let%expect_test _ =
       parse_print_parser "'c'2";
       [%expect {| 'c'2 |}]
     ;;
 
+    (*
     let%expect_test _ =
       parse_print_parser "'c'{{2}}";
       [%expect {| 'c'2 |}]
@@ -941,6 +944,7 @@ fix (expr ->
       parse_print_parser "(F+)+";
       [%expect {| F++ |}]
     ;;
+       *)
 
     let%expect_test _ =
       parse_print_parser dot;
@@ -957,6 +961,7 @@ fix (expr ->
       [%expect {| 'a' | 'b' | 'c' |}]
     ;;
 
+    (*
     let%expect_test _ =
       parse_print_parser "(. -> {Q} | .)";
       [%expect {| . -> {Q} | . |}]
@@ -968,12 +973,14 @@ fix (expr ->
       parse_print_parser list_parser;
       [%expect {| fix (lst -> c='c' cs=lst -> {{cons(c; cs)}} |  -> {{nil()}}) |}]
     ;;
+       *)
 
     let%expect_test _ =
       parse_print_parser {|. ' '* '+' ' '* . -> {{"parsed an addition"}}|};
       [%expect {| . ' '* '+' ' '* . -> {{"parsed an addition"}} |}]
     ;;
 
+    (*
     let%expect_test _ =
       parse_print_parser "a=. ' '* '+' ' '* b=. -> {{plus(a; b)}}";
       [%expect {| a=. ' '* '+' ' '* b=. -> {{plus(a; b)}} |}]
@@ -983,12 +990,14 @@ fix (expr ->
       parse_print_parser {|fail {{"some reason for failing"}}|};
       [%expect {| fail "some reason for failing" |}]
     ;;
+       *)
 
     let%expect_test _ =
       parse_print_parser {|fail "some reason for failing"|};
       [%expect {| fail "some reason for failing" |}]
     ;;
 
+    (*
     let%expect_test _ =
       parse_print_parser
         {|
@@ -1012,6 +1021,7 @@ fix (expr -> (
        let atom = name | literal in
        fix (expr -> a=atom ' '* '+' ' '* e=expr -> {{plus(a; e)}} | a=atom -> {a}) |}]
     ;;
+       *)
 
     (* TODO
     let%expect_test _ =

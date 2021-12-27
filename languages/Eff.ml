@@ -495,13 +495,13 @@ c_type := Computation(v_type; list string);
       let parse_print_c_type = parse_print Parse.c_type Pp.c_type
 
       let%expect_test _ =
-        parse_print_value "true()";
-        [%expect {| true() |}]
+        parse_print_value "true";
+        [%expect {| true |}]
       ;;
 
       let%expect_test _ =
-        parse_print_value "false()";
-        [%expect {| false() |}]
+        parse_print_value "false";
+        [%expect {| false |}]
       ;;
 
       let%expect_test _ =

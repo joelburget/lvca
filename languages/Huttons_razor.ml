@@ -177,7 +177,7 @@ let%test_module "Hutton's Razor" =
       print_representations "1";
       [%expect {|
       Lit(1)
-      <bf7475>1</bf7475>
+      <c91b95>1</c91b95>
     |}]
     ;;
 
@@ -187,7 +187,7 @@ let%test_module "Hutton's Razor" =
       [%expect
         {|
       Add(Lit(1); Lit(2))
-      <a2e561><bf7475>1</bf7475> + <20ff08>2</20ff08></a2e561>
+      <a809f3><c91b95>1</c91b95> + <356aaf>2</356aaf></a809f3>
     |}]
     ;;
 
@@ -197,7 +197,7 @@ let%test_module "Hutton's Razor" =
       [%expect
         {|
       Add(Add(Lit(1); Lit(2)); Lit(3))
-      <5e04bc><a2e561><bf7475>1</bf7475> + <20ff08>2</20ff08></a2e561> + <420b31>3</420b31></5e04bc>
+      <409d43><a809f3><c91b95>1</c91b95> + <356aaf>2</356aaf></a809f3> + <756fbf>3</756fbf></409d43>
     |}]
     ;;
 
@@ -207,7 +207,7 @@ let%test_module "Hutton's Razor" =
       [%expect
         {|
       Add(Lit(1); Add(Lit(2); Lit(3)))
-      <0cc723><bf7475>1</bf7475> + <90e51f>(<20ff08>2</20ff08> + <420b31>3</420b31>)</90e51f></0cc723>
+      <9060da><c91b95>1</c91b95> + <170de4>(<356aaf>2</356aaf> + <756fbf>3</756fbf>)</170de4></9060da>
     |}]
     ;;
 

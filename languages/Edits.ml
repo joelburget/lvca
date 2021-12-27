@@ -75,6 +75,7 @@ let%test_module "Parsing" =
       | Error msg -> print_string msg
    ;;
 
+    (*
     let eval_atom : core -> core -> (Core.Value.t, Core.eval_error) Result.t =
      fun tm core ->
       Core.(eval (Term_syntax.Term.Ap (Provenance.of_here [%here], core, tm)))
@@ -104,15 +105,17 @@ let%test_module "Parsing" =
       | Error msg -> print_string msg
       | Ok tm -> Core.Value.pp Caml.Format.std_formatter tm
    ;;
+      *)
 
     let%expect_test _ =
       parse_and_print "[]";
       [%expect {| [] |}]
     ;;
 
+    (*
     let%expect_test _ =
-      eval_and_print "foo()" "[]";
-      [%expect {| foo() |}]
+      eval_and_print "Foo()" "[]";
+      [%expect {| Foo() |}]
     ;;
 
     let%expect_test _ =
@@ -121,9 +124,10 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      eval_and_print "foo()" "edit:[]";
-      [%expect {| foo() |}]
+      eval_and_print "Foo()" "edit:[]";
+      [%expect {| Foo() |}]
     ;;
+       *)
 
     let nested_nop =
       {|
@@ -144,31 +148,32 @@ let%test_module "Parsing" =
       [%expect {| a:[b1:[c1:[d:[]], c2:[]], b2:[]] |}]
     ;;
 
+    (*
     let%expect_test _ =
-      eval_and_print "foo()" nested_nop;
-      [%expect {| foo() |}]
+      eval_and_print "Foo()" nested_nop;
+      [%expect {| Foo() |}]
     ;;
 
     let replace_bar =
       {|{\(tm : lang) -> match tm with {
-      | bar() -> {baz()}
-      | _ -> {foo()}
+      | Bar() -> {Baz()}
+      | _ -> {Foo()}
     }}|}
     ;;
 
     let%expect_test _ =
       parse_and_print replace_bar;
-      [%expect {| {\(tm : lang) -> match tm with { bar() -> {baz()} | _ -> {foo()} }} |}]
+      [%expect {| {\(tm : lang) -> match tm with { Bar() -> {Baz()} | _ -> {Foo()} }} |}]
     ;;
 
     let%expect_test _ =
-      eval_and_print "foo()" replace_bar;
-      [%expect {| foo() |}]
+      eval_and_print "Foo()" replace_bar;
+      [%expect {| Foo() |}]
     ;;
 
     let%expect_test _ =
-      eval_and_print "bar()" replace_bar;
-      [%expect {| baz() |}]
+      eval_and_print "Bar()" replace_bar;
+      [%expect {| Baz() |}]
     ;;
 
     (* let rename x y = Printf.sprintf {|{\(tm : lam) -> tm[%s := {Term_var(%S)}]}|} x y *)
@@ -178,8 +183,8 @@ let%test_module "Parsing" =
         {|
       {\(tm : lang) -> match tm with {
         | var(old_name) -> match string.equal old_name %s with {
-          | true() -> {var(%s)}
-          | false() -> tm
+          | True() -> {Var(%s)}
+          | False() -> tm
         }
         | _ -> tm
       }}
@@ -216,8 +221,8 @@ let%test_module "Parsing" =
     let rename_x_y = {|{\(tm : lang) -> rename {"x"} {"y"} tm}|}
 
     let%expect_test _ =
-      eval_and_print "lam(x. x)" rename_x_y;
-      [%expect {| lam(x. x) |}]
+      eval_and_print "Lam(x. x)" rename_x_y;
+      [%expect {| Lam(x. x) |}]
     ;;
 
     let%expect_test _ =
@@ -226,18 +231,18 @@ let%test_module "Parsing" =
     ;;
 
     let%expect_test _ =
-      eval_and_print "lam(z. z)" rename_x_y;
-      [%expect {| lam(z. z) |}]
+      eval_and_print "Lam(z. z)" rename_x_y;
+      [%expect {| Lam(z. z) |}]
     ;;
 
     let%expect_test _ =
-      eval_and_print "ap(lam(z. z); x)" rename_x_y;
-      [%expect {| ap(lam(z. z); y) |}]
+      eval_and_print "Ap(Lam(z. z); x)" rename_x_y;
+      [%expect {| Ap(Lam(z. z); y) |}]
     ;;
 
     let%expect_test _ =
-      eval_and_print "ap(lam(z. x); y)" rename_x_y;
-      [%expect {| ap(lam(z. y); y) |}]
+      eval_and_print "Ap(Lam(z. x); y)" rename_x_y;
+      [%expect {| Ap(Lam(z. y); y) |}]
     ;;
 
     let%expect_test _ =
@@ -246,8 +251,8 @@ let%test_module "Parsing" =
       sequence:
         [ replace_bar:
           {\(tm : lang) -> match tm with {
-            | bar() -> {baz()}
-            | _ -> {foo()}
+            | Bar() -> {Baz()}
+            | _ -> {Foo()}
           }}
         , named_edit: {f}
         ]
@@ -256,8 +261,9 @@ let%test_module "Parsing" =
       [%expect
         {|
           sequence:[replace_bar:{\(tm : lang) ->
-                                 match tm with { bar() -> {baz()} | _ -> {foo()} }},
+                                 match tm with { Bar() -> {Baz()} | _ -> {Foo()} }},
                     named_edit:{f}] |}]
     ;;
+       *)
   end)
 ;;
