@@ -13,6 +13,12 @@ let test_nonbinding = [%lvca.nonbinding "Foo(Bar(1))"]
 let test_pattern = [%lvca.pattern "Foo(x)"]
 let test_language = [%lvca.abstract_syntax "foo := Foo(integer);"]
 
+let test_concrete = [%lvca.concrete_syntax {|
+foo:
+  | Foo(i) ~ i
+  ;
+|}]
+
 module List_model : [%lvca.abstract_syntax_module_sig
 "list a := Nil() | Cons(a; list a);"] =
 [%lvca.abstract_syntax_module

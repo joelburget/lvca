@@ -231,4 +231,150 @@ module Exp = struct
       Lvca_syntax.Single_var.
         { name = [%e string ~loc name]; info = [%e provenance ~loc info] }]
   ;;
+
+  module Regex = struct
+    open Regex
+
+    let class_base ~loc = function
+      | Class_base.Word -> [%expr Lvca_syntax.Regex.Class_base.Word]
+      | Whitespace -> [%expr Lvca_syntax.Regex.Class_base.Whitespace]
+      | Digit -> [%expr Lvca_syntax.Regex.Class_base.Digit]
+    ;;
+
+    let class' ~loc = function
+      | Class.Pos base -> [%expr Lvca_syntax.Regex.Class.Pos [%e class_base ~loc base]]
+      | Neg base -> [%expr Lvca_syntax.Regex.Class.Neg [%e class_base ~loc base]]
+    ;;
+
+    let set_member ~loc = function
+      | Set_member.Single_char c ->
+        [%expr Lvca_syntax.Regex.Set_member.Single_char [%e char ~loc c]]
+      | Range (c1, c2) ->
+        [%expr Lvca_syntax.Regex.Set_member.Range ([%e char ~loc c1], [%e char ~loc c2])]
+    ;;
+
+    let set ~loc set_members = set_members |> List.map ~f:(set_member ~loc) |> list ~loc
+
+    let rec t ~loc = function
+      | Char c -> [%expr Lvca_syntax.Regex.Char [%e char ~loc c]]
+      | Class cls -> [%expr Lvca_syntax.Regex.Class [%e class' ~loc cls]]
+      | Set s -> [%expr Lvca_syntax.Regex.Set [%e set ~loc s]]
+      | Star t' -> [%expr Lvca_syntax.Regex.Star [%e t ~loc t']]
+      | Plus t' -> [%expr Lvca_syntax.Regex.Plus [%e t ~loc t']]
+      | Count (t', n) -> [%expr Lvca_syntax.Regex.Count ([%e t ~loc t'], [%e int ~loc n])]
+      | Option t' -> [%expr Lvca_syntax.Regex.Option [%e t ~loc t']]
+      | Choice ts ->
+        let ts = ts |> List.map ~f:(t ~loc) |> list ~loc in
+        [%expr Lvca_syntax.Regex.Choice [%e ts]]
+      | Any -> [%expr Lvca_syntax.Regex.Any]
+      | Concat ts ->
+        let ts = ts |> List.map ~f:(t ~loc) |> list ~loc in
+        [%expr Lvca_syntax.Regex.Concat [%e ts]]
+    ;;
+  end
+
+  module Parse_pretty = struct
+    open Parse_pretty
+
+    let fixity ~loc = function
+      | Fixity.Left -> [%expr Lvca_syntax.Parse_pretty.Fixity.Left]
+      | None -> [%expr Lvca_syntax.Parse_pretty.Fixity.None]
+      | Right -> [%expr Lvca_syntax.Parse_pretty.Fixity.Right]
+    ;;
+
+    let operator_fixity ~loc (info, fixity', name) =
+      [%expr [%e provenance ~loc info], [%e fixity ~loc fixity'], [%e string ~loc name]]
+    ;;
+
+    let operator_ranking ~loc (info, levels) =
+      let levels =
+        levels
+        |> List.map ~f:Lvca_util.(List.map ~f:(operator_fixity ~loc) >> list ~loc)
+        |> list ~loc
+      in
+      [%expr [%e provenance ~loc info], [%e levels]]
+    ;;
+
+    let sequence_item ~loc = function
+      | Sequence_item.Var (info, str) ->
+        [%expr
+          Lvca_syntax.Parse_pretty.Sequence_item.Var
+            ([%e provenance ~loc info], [%e string ~loc str])]
+      | Literal (info, str) ->
+        [%expr
+          Lvca_syntax.Parse_pretty.Sequence_item.Literal
+            ([%e provenance ~loc info], [%e string ~loc str])]
+      | Space info ->
+        [%expr Lvca_syntax.Parse_pretty.Sequence_item.Space [%e provenance ~loc info]]
+    ;;
+
+    let operator_concrete_syntax_row ~loc (info, sequence_items) =
+      let sequence_items =
+        sequence_items |> List.map ~f:(sequence_item ~loc) |> list ~loc
+      in
+      [%expr [%e provenance ~loc info], [%e sequence_items]]
+    ;;
+
+    let variable_syntax_row ~loc Variable_syntax_row.{ info; var_name; re } =
+      [%expr
+        Lvca_syntax.Parse_pretty.Variable_syntax_row.
+          { info = [%e provenance ~loc info]
+          ; var_name = [%e string ~loc var_name]
+          ; re = [%e Regex.t ~loc re]
+          }]
+    ;;
+
+    let operator_pattern_slot
+        ~loc
+        Operator_pattern_slot.{ info; variable_names; body_name }
+      =
+      [%expr
+        Lvca_syntax.Parse_pretty.Operator_pattern_slot.
+          { info = [%e provenance ~loc info]
+          ; variable_names = [%e variable_names |> List.map ~f:(string ~loc) |> list ~loc]
+          ; body_name = [%e string ~loc body_name]
+          }]
+    ;;
+
+    let operator_pattern ~loc Operator_pattern.{ info; name; slots } =
+      [%expr
+        Lvca_syntax.Parse_pretty.Operator_pattern.
+          { info = [%e provenance ~loc info]
+          ; name = [%e string ~loc name]
+          ; slots = [%e slots |> List.map ~f:(operator_pattern_slot ~loc) |> list ~loc]
+          }]
+    ;;
+
+    let operator_syntax_row ~loc Operator_syntax_row.{ info; pattern; concrete_syntax } =
+      [%expr
+        Lvca_syntax.Parse_pretty.Operator_syntax_row.
+          { info = [%e provenance ~loc info]
+          ; pattern = [%e operator_pattern ~loc pattern]
+          ; concrete_syntax = [%e operator_concrete_syntax_row ~loc concrete_syntax]
+          }]
+    ;;
+
+    let sort_syntax
+        ~loc
+        Sort_syntax.
+          { info
+          ; name = name_info, name
+          ; operators
+          ; variables
+          ; operator_ranking = ranking
+          }
+      =
+      let operators = operators |> List.map ~f:(operator_syntax_row ~loc) |> list ~loc in
+      [%expr
+        Lvca_syntax.Parse_pretty.Sort_syntax.
+          { info = [%e provenance ~loc info]
+          ; name = [%e provenance ~loc name_info], [%e string ~loc name]
+          ; operators = [%e operators]
+          ; variables = [%e option ~loc variable_syntax_row variables]
+          ; operator_ranking = [%e option ~loc operator_ranking ranking]
+          }]
+    ;;
+
+    let t ~loc sort_syntaxes = List.map sort_syntaxes ~f:(sort_syntax ~loc) |> list ~loc
+  end
 end

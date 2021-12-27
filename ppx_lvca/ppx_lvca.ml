@@ -65,6 +65,12 @@ let expand_abstract_syntax ~(loc : Location.t) ~path:_ str : expression =
   | Ok syntax -> Exp.language ~loc syntax
 ;;
 
+let expand_concrete_syntax ~(loc : Location.t) ~path:_ str : expression =
+  match parse Parse_pretty.parse str with
+  | Error msg -> Location.raise_errorf ~loc "%s" msg
+  | Ok syntax -> Exp.Parse_pretty.t ~loc syntax
+;;
+
 let expand_module ~(loc : Location.t) ~path:_ str exprs expr_opt : module_expr =
   let module Builder_context = struct
     let buf = str
@@ -136,6 +142,14 @@ let abstract_syntax_extension =
     expand_abstract_syntax
 ;;
 
+let concrete_syntax_extension =
+  Extension.declare
+    "lvca.concrete_syntax"
+    Extension.Context.Expression
+    Ast_pattern.(single_expr_payload (estring __))
+    expand_concrete_syntax
+;;
+
 let abstract_syntax_module_extension =
   Extension.declare
     "lvca.abstract_syntax_module"
@@ -162,5 +176,6 @@ let () =
       ; Context_free.Rule.extension abstract_syntax_extension
       ; Context_free.Rule.extension abstract_syntax_module_extension
       ; Context_free.Rule.extension abstract_syntax_module_sig_extension
+      ; Context_free.Rule.extension concrete_syntax_extension
       ]
 ;;

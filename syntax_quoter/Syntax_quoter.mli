@@ -29,6 +29,10 @@ module Exp : sig
   val nonbinding : loc:Ppxlib.location -> Nonbinding.t -> Ppxlib.expression
   val language : loc:Ppxlib.location -> Abstract_syntax.t -> Ppxlib.expression
   val single_var : loc:Ppxlib.location -> Single_var.t -> Ppxlib.expression
+
+  module Parse_pretty : sig
+    val t : loc:Ppxlib.location -> Parse_pretty.t -> Ppxlib.expression
+  end
 end
 
 module Pat : sig
