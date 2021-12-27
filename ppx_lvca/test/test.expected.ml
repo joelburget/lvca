@@ -62,9 +62,9 @@ module Nominal_list =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
           end
@@ -108,9 +108,9 @@ module Nominal_list =
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Arity.ml";
-                                     pos_lnum = 31;
-                                     pos_bol = 785;
-                                     pos_cnum = 834
+                                     pos_lnum = 30;
+                                     pos_bol = 777;
+                                     pos_cnum = 807
                                    })), [])));
                     Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
@@ -129,9 +129,9 @@ module Nominal_list =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -166,7 +166,7 @@ module Nominal_list =
                                                            start = 37;
                                                            finish = 41
                                                          }))
-                                               })))), "list")))])))])))]
+                                               })))), "list")))])))], [])))]
         }
     module List =
       struct
@@ -311,9 +311,9 @@ let test_language =
                             (Lvca_syntax.Provenance.Located.Source_located
                                {
                                  pos_fname = "syntax/Arity.ml";
-                                 pos_lnum = 31;
-                                 pos_bol = 785;
-                                 pos_cnum = 834
+                                 pos_lnum = 30;
+                                 pos_bol = 777;
+                                 pos_cnum = 807
                                })),
                           [Lvca_syntax.Valence.Valence
                              ([],
@@ -331,8 +331,113 @@ let test_language =
                                                          start = 11;
                                                          finish = 18
                                                        }))
-                                             })))), "integer")))])))])))]
+                                             })))), "integer")))])))], [])))]
     }
+let test_concrete =
+  [(let open Lvca_syntax.Concrete.Sort_syntax in
+      {
+        info =
+          (Lvca_syntax.Provenance.Located
+             (Lvca_syntax.Provenance.Located.Parse_located
+                (let open Lvca_syntax.Provenance.Parse_located in
+                   {
+                     input = Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                     range =
+                       (Some
+                          (let open Lvca_provenance.Range in
+                             { start = 1; finish = 20 }))
+                   })));
+        name =
+          ((Lvca_syntax.Provenance.Located
+              (Lvca_syntax.Provenance.Located.Parse_located
+                 (let open Lvca_syntax.Provenance.Parse_located in
+                    {
+                      input =
+                        Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                      range =
+                        (Some
+                           (let open Lvca_provenance.Range in
+                              { start = 1; finish = 4 }))
+                    }))), "foo");
+        operators =
+          [(let open Lvca_syntax.Concrete.Operator_syntax_row in
+              {
+                info =
+                  (Lvca_syntax.Provenance.Located
+                     (Lvca_syntax.Provenance.Located.Parse_located
+                        (let open Lvca_syntax.Provenance.Parse_located in
+                           {
+                             input =
+                               Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                             range =
+                               (Some
+                                  (let open Lvca_provenance.Range in
+                                     { start = 10; finish = 20 }))
+                           })));
+                pattern =
+                  (let open Lvca_syntax.Concrete.Operator_pattern in
+                     {
+                       info =
+                         (Lvca_syntax.Provenance.Located
+                            (Lvca_syntax.Provenance.Located.Parse_located
+                               (let open Lvca_syntax.Provenance.Parse_located in
+                                  {
+                                    input =
+                                      Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                    range =
+                                      (Some
+                                         (let open Lvca_provenance.Range in
+                                            { start = 10; finish = 16 }))
+                                  })));
+                       name = "Foo";
+                       slots =
+                         [(let open Lvca_syntax.Concrete.Operator_pattern_slot in
+                             {
+                               info =
+                                 (Lvca_syntax.Provenance.Located
+                                    (Lvca_syntax.Provenance.Located.Parse_located
+                                       (let open Lvca_syntax.Provenance.Parse_located in
+                                          {
+                                            input =
+                                              Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                            range =
+                                              (Some
+                                                 (let open Lvca_provenance.Range in
+                                                    { start = 14; finish = 15
+                                                    }))
+                                          })));
+                               variable_names = [];
+                               body_name = "i"
+                             })]
+                     });
+                concrete_syntax =
+                  ((Lvca_syntax.Provenance.Located
+                      (Lvca_syntax.Provenance.Located.Parse_located
+                         (let open Lvca_syntax.Provenance.Parse_located in
+                            {
+                              input =
+                                Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                              range =
+                                (Some
+                                   (let open Lvca_provenance.Range in
+                                      { start = 19; finish = 20 }))
+                            }))),
+                    [Lvca_syntax.Concrete.Sequence_item.Var
+                       ((Lvca_syntax.Provenance.Located
+                           (Lvca_syntax.Provenance.Located.Parse_located
+                              ((let open Lvca_syntax.Provenance.Parse_located in
+                                  {
+                                    input =
+                                      Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                    range =
+                                      (Some
+                                         (let open Lvca_provenance.Range in
+                                            { start = 19; finish = 20 }))
+                                  })))), "i")])
+              })];
+        variables = None;
+        operator_ranking = None
+      })]
 module List_model :
   sig
     val language : Lvca_syntax.Abstract_syntax.t
@@ -438,9 +543,9 @@ module List_model :
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
           end
@@ -471,9 +576,9 @@ module List_model :
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Arity.ml";
-                                     pos_lnum = 31;
-                                     pos_bol = 785;
-                                     pos_cnum = 834
+                                     pos_lnum = 30;
+                                     pos_bol = 777;
+                                     pos_cnum = 807
                                    })), [])));
                     Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
@@ -492,9 +597,9 @@ module List_model :
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -530,43 +635,21 @@ module List_model :
                                                            finish = 30
                                                          }))
                                                })))), "list",
-                                      (Lvca_syntax.Sort.Cons
+                                      [Lvca_syntax.Sort.Name
                                          ((Lvca_syntax.Provenance.Located
-                                             (Lvca_syntax.Provenance.Located.Source_located
-                                                {
-                                                  pos_fname =
-                                                    "syntax/Sort.ml";
-                                                  pos_lnum = 44;
-                                                  pos_bol = 1417;
-                                                  pos_cnum = 1459
-                                                })),
-                                           (Lvca_syntax.Sort.Name
-                                              ((Lvca_syntax.Provenance.Located
-                                                  (Lvca_syntax.Provenance.Located.Parse_located
-                                                     ((let open Lvca_syntax.Provenance.Parse_located in
-                                                         {
-                                                           input =
-                                                             Lvca_syntax.Provenance.Parse_input.Input_unknown;
-                                                           range =
-                                                             (Some
-                                                                (let open Lvca_provenance.Range in
-                                                                   {
-                                                                    start =
-                                                                    31;
-                                                                    finish =
-                                                                    32
-                                                                   }))
-                                                         })))), "a")),
-                                           (Lvca_syntax.Sort.Nil
-                                              (Lvca_syntax.Provenance.Located
-                                                 (Lvca_syntax.Provenance.Located.Source_located
+                                             (Lvca_syntax.Provenance.Located.Parse_located
+                                                ((let open Lvca_syntax.Provenance.Parse_located in
                                                     {
-                                                      pos_fname =
-                                                        "syntax/Sort.ml";
-                                                      pos_lnum = 43;
-                                                      pos_bol = 1372;
-                                                      pos_cnum = 1408
-                                                    }))))))))])))])))]
+                                                      input =
+                                                        Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                      range =
+                                                        (Some
+                                                           (let open Lvca_provenance.Range in
+                                                              {
+                                                                start = 31;
+                                                                finish = 32
+                                                              }))
+                                                    })))), "a")])))])))], [])))]
         }
     module List =
       struct
@@ -796,9 +879,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let pair a b =
@@ -821,9 +904,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let rec foo =
@@ -857,9 +940,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let pair_plus a b =
@@ -886,9 +969,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let rec term =
@@ -908,9 +991,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let rec mut_a =
@@ -930,9 +1013,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             and mut_b =
@@ -952,9 +1035,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let rec nat =
@@ -975,9 +1058,9 @@ module Lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
           end
@@ -1060,9 +1143,9 @@ module Lang =
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Arity.ml";
-                                     pos_lnum = 31;
-                                     pos_bol = 785;
-                                     pos_cnum = 834
+                                     pos_lnum = 30;
+                                     pos_bol = 777;
+                                     pos_cnum = 807
                                    })),
                               [Lvca_syntax.Valence.Valence
                                  ([],
@@ -1098,9 +1181,9 @@ module Lang =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([Lvca_syntax.Sort_slot.Sort_pattern
@@ -1168,7 +1251,7 @@ module Lang =
                                                             start = 101;
                                                             finish = 104
                                                           }))
-                                                })))), "foo")))])))])));
+                                                })))), "foo")))])))], [])));
             ("nat",
               (Lvca_syntax.Sort_def.Sort_def
                  ([],
@@ -1182,16 +1265,16 @@ module Lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 115; finish = 117 }))
+                                           { start = 119; finish = 121 }))
                                  })))), "Z",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })), [])));
                    Lvca_syntax.Operator_def.Operator_def
                      ((Lvca_syntax.Provenance.Located
@@ -1203,16 +1286,16 @@ module Lang =
                                   range =
                                     (Some
                                        (let open Lvca_provenance.Range in
-                                          { start = 121; finish = 126 }))
+                                          { start = 125; finish = 130 }))
                                 })))), "S",
                        (Lvca_syntax.Arity.Arity
                           ((Lvca_syntax.Provenance.Located
                               (Lvca_syntax.Provenance.Located.Source_located
                                  {
                                    pos_fname = "syntax/Arity.ml";
-                                   pos_lnum = 31;
-                                   pos_bol = 785;
-                                   pos_cnum = 834
+                                   pos_lnum = 30;
+                                   pos_bol = 777;
+                                   pos_cnum = 807
                                  })),
                             [Lvca_syntax.Valence.Valence
                                ([],
@@ -1227,10 +1310,10 @@ module Lang =
                                                    (Some
                                                       (let open Lvca_provenance.Range in
                                                          {
-                                                           start = 122;
-                                                           finish = 125
+                                                           start = 126;
+                                                           finish = 129
                                                          }))
-                                               })))), "nat")))])))])));
+                                               })))), "nat")))])))], [])));
             ("pair",
               (Lvca_syntax.Sort_def.Sort_def
                  ([("a", None); ("b", None)],
@@ -1244,16 +1327,16 @@ module Lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 144; finish = 150 }))
+                                           { start = 149; finish = 155 }))
                                  })))), "Pair",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -1268,8 +1351,8 @@ module Lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 145;
-                                                            finish = 146
+                                                            start = 150;
+                                                            finish = 151
                                                           }))
                                                 })))), "a")));
                              Lvca_syntax.Valence.Valence
@@ -1285,10 +1368,10 @@ module Lang =
                                                    (Some
                                                       (let open Lvca_provenance.Range in
                                                          {
-                                                           start = 148;
-                                                           finish = 149
+                                                           start = 153;
+                                                           finish = 154
                                                          }))
-                                               })))), "b")))])))])));
+                                               })))), "b")))])))], [])));
             ("pair_plus",
               (Lvca_syntax.Sort_def.Sort_def
                  ([("a", None); ("b", None)],
@@ -1302,16 +1385,16 @@ module Lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 176; finish = 187 }))
+                                           { start = 182; finish = 193 }))
                                  })))), "PairPlus",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -1326,8 +1409,8 @@ module Lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 177;
-                                                            finish = 178
+                                                            start = 183;
+                                                            finish = 184
                                                           }))
                                                 })))), "a")));
                              Lvca_syntax.Valence.Valence
@@ -1343,8 +1426,8 @@ module Lang =
                                                    (Some
                                                       (let open Lvca_provenance.Range in
                                                          {
-                                                           start = 180;
-                                                           finish = 181
+                                                           start = 186;
+                                                           finish = 187
                                                          }))
                                                })))), "b")));
                              Lvca_syntax.Valence.Valence
@@ -1360,10 +1443,10 @@ module Lang =
                                                    (Some
                                                       (let open Lvca_provenance.Range in
                                                          {
-                                                           start = 183;
-                                                           finish = 186
+                                                           start = 189;
+                                                           finish = 192
                                                          }))
-                                               })))), "foo")))])))])));
+                                               })))), "foo")))])))], [])));
             ("nonempty",
               (Lvca_syntax.Sort_def.Sort_def
                  ([],
@@ -1377,16 +1460,16 @@ module Lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 209; finish = 230 }))
+                                           { start = 216; finish = 237 }))
                                  })))), "Nonempty",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -1401,8 +1484,8 @@ module Lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 210;
-                                                            finish = 216
+                                                            start = 217;
+                                                            finish = 223
                                                           }))
                                                 })))), "string")));
                              Lvca_syntax.Valence.Valence
@@ -1418,47 +1501,26 @@ module Lang =
                                                    (Some
                                                       (let open Lvca_provenance.Range in
                                                          {
-                                                           start = 218;
-                                                           finish = 222
+                                                           start = 225;
+                                                           finish = 229
                                                          }))
                                                })))), "list",
-                                      (Lvca_syntax.Sort.Cons
+                                      [Lvca_syntax.Sort.Name
                                          ((Lvca_syntax.Provenance.Located
-                                             (Lvca_syntax.Provenance.Located.Source_located
-                                                {
-                                                  pos_fname =
-                                                    "syntax/Sort.ml";
-                                                  pos_lnum = 44;
-                                                  pos_bol = 1417;
-                                                  pos_cnum = 1459
-                                                })),
-                                           (Lvca_syntax.Sort.Name
-                                              ((Lvca_syntax.Provenance.Located
-                                                  (Lvca_syntax.Provenance.Located.Parse_located
-                                                     ((let open Lvca_syntax.Provenance.Parse_located in
-                                                         {
-                                                           input =
-                                                             Lvca_syntax.Provenance.Parse_input.Input_unknown;
-                                                           range =
-                                                             (Some
-                                                                (let open Lvca_provenance.Range in
-                                                                   {
-                                                                    start =
-                                                                    223;
-                                                                    finish =
-                                                                    229
-                                                                   }))
-                                                         })))), "string")),
-                                           (Lvca_syntax.Sort.Nil
-                                              (Lvca_syntax.Provenance.Located
-                                                 (Lvca_syntax.Provenance.Located.Source_located
+                                             (Lvca_syntax.Provenance.Located.Parse_located
+                                                ((let open Lvca_syntax.Provenance.Parse_located in
                                                     {
-                                                      pos_fname =
-                                                        "syntax/Sort.ml";
-                                                      pos_lnum = 43;
-                                                      pos_bol = 1372;
-                                                      pos_cnum = 1408
-                                                    }))))))))])))])));
+                                                      input =
+                                                        Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                      range =
+                                                        (Some
+                                                           (let open Lvca_provenance.Range in
+                                                              {
+                                                                start = 230;
+                                                                finish = 236
+                                                              }))
+                                                    })))), "string")])))])))],
+                   [])));
             ("term",
               (Lvca_syntax.Sort_def.Sort_def
                  ([],
@@ -1472,16 +1534,16 @@ module Lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 248; finish = 259 }))
+                                           { start = 256; finish = 267 }))
                                  })))), "Operator",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -1496,47 +1558,26 @@ module Lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 249;
-                                                            finish = 253
+                                                            start = 257;
+                                                            finish = 261
                                                           }))
                                                 })))), "list",
-                                       (Lvca_syntax.Sort.Cons
+                                       [Lvca_syntax.Sort.Name
                                           ((Lvca_syntax.Provenance.Located
-                                              (Lvca_syntax.Provenance.Located.Source_located
-                                                 {
-                                                   pos_fname =
-                                                     "syntax/Sort.ml";
-                                                   pos_lnum = 44;
-                                                   pos_bol = 1417;
-                                                   pos_cnum = 1459
-                                                 })),
-                                            (Lvca_syntax.Sort.Name
-                                               ((Lvca_syntax.Provenance.Located
-                                                   (Lvca_syntax.Provenance.Located.Parse_located
-                                                      ((let open Lvca_syntax.Provenance.Parse_located in
-                                                          {
-                                                            input =
-                                                              Lvca_syntax.Provenance.Parse_input.Input_unknown;
-                                                            range =
-                                                              (Some
-                                                                 (let open Lvca_provenance.Range in
-                                                                    {
-                                                                    start =
-                                                                    254;
-                                                                    finish =
-                                                                    258
-                                                                    }))
-                                                          })))), "term")),
-                                            (Lvca_syntax.Sort.Nil
-                                               (Lvca_syntax.Provenance.Located
-                                                  (Lvca_syntax.Provenance.Located.Source_located
+                                              (Lvca_syntax.Provenance.Located.Parse_located
+                                                 ((let open Lvca_syntax.Provenance.Parse_located in
                                                      {
-                                                       pos_fname =
-                                                         "syntax/Sort.ml";
-                                                       pos_lnum = 43;
-                                                       pos_bol = 1372;
-                                                       pos_cnum = 1408
-                                                     }))))))))])))])));
+                                                       input =
+                                                         Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                       range =
+                                                         (Some
+                                                            (let open Lvca_provenance.Range in
+                                                               {
+                                                                 start = 262;
+                                                                 finish = 266
+                                                               }))
+                                                     })))), "term")])))])))],
+                   [])));
             ("mut_a",
               (Lvca_syntax.Sort_def.Sort_def
                  ([],
@@ -1550,16 +1591,16 @@ module Lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 275; finish = 282 }))
+                                           { start = 284; finish = 291 }))
                                  })))), "Mut_a",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -1574,10 +1615,10 @@ module Lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 276;
-                                                            finish = 281
+                                                            start = 285;
+                                                            finish = 290
                                                           }))
-                                                })))), "mut_b")))])))])));
+                                                })))), "mut_b")))])))], [])));
             ("mut_b",
               (Lvca_syntax.Sort_def.Sort_def
                  ([],
@@ -1591,16 +1632,16 @@ module Lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 297; finish = 304 }))
+                                           { start = 307; finish = 314 }))
                                  })))), "Mut_b",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -1615,10 +1656,10 @@ module Lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 298;
-                                                            finish = 303
+                                                            start = 308;
+                                                            finish = 313
                                                           }))
-                                                })))), "mut_a")))])))])))]
+                                                })))), "mut_a")))])))], [])))]
         }
     module Foo =
       struct
@@ -1827,9 +1868,9 @@ module Ifz_lang :
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
           end
@@ -1860,9 +1901,9 @@ module Ifz_lang :
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Arity.ml";
-                                     pos_lnum = 31;
-                                     pos_bol = 785;
-                                     pos_cnum = 834
+                                     pos_lnum = 30;
+                                     pos_bol = 777;
+                                     pos_cnum = 807
                                    })),
                               [Lvca_syntax.Valence.Valence
                                  ([],
@@ -1929,7 +1970,7 @@ module Ifz_lang :
                                                             start = 26;
                                                             finish = 29
                                                           }))
-                                                })))), "ifz")))])))])))]
+                                                })))), "ifz")))])))], [])))]
         }
     module Ifz =
       struct
@@ -2148,9 +2189,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let predefined =
@@ -2165,9 +2206,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let list_list_predefined_1 =
@@ -2187,9 +2228,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let list_list_a a =
@@ -2209,9 +2250,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let list_list_predefined_2 =
@@ -2231,9 +2272,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let list_list_string_1 =
@@ -2253,9 +2294,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let list_list_string_2 =
@@ -2275,9 +2316,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let list_predefined =
@@ -2297,9 +2338,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let list_external =
@@ -2319,9 +2360,9 @@ module List_lang =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
           end
@@ -2365,10 +2406,10 @@ module List_lang =
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Arity.ml";
-                                     pos_lnum = 31;
-                                     pos_bol = 785;
-                                     pos_cnum = 834
-                                   })), [])))])));
+                                     pos_lnum = 30;
+                                     pos_bol = 777;
+                                     pos_cnum = 807
+                                   })), [])))], [])));
             ("list",
               (Lvca_syntax.Sort_def.Sort_def
                  ([("a", None)],
@@ -2382,16 +2423,16 @@ module List_lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 53; finish = 55 }))
+                                           { start = 54; finish = 56 }))
                                  })))), "Nil",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })), [])));
                    Lvca_syntax.Operator_def.Operator_def
                      ((Lvca_syntax.Provenance.Located
@@ -2403,16 +2444,16 @@ module List_lang =
                                   range =
                                     (Some
                                        (let open Lvca_provenance.Range in
-                                          { start = 62; finish = 73 }))
+                                          { start = 63; finish = 74 }))
                                 })))), "Cons",
                        (Lvca_syntax.Arity.Arity
                           ((Lvca_syntax.Provenance.Located
                               (Lvca_syntax.Provenance.Located.Source_located
                                  {
                                    pos_fname = "syntax/Arity.ml";
-                                   pos_lnum = 31;
-                                   pos_bol = 785;
-                                   pos_cnum = 834
+                                   pos_lnum = 30;
+                                   pos_bol = 777;
+                                   pos_cnum = 807
                                  })),
                             [Lvca_syntax.Valence.Valence
                                ([],
@@ -2427,8 +2468,8 @@ module List_lang =
                                                    (Some
                                                       (let open Lvca_provenance.Range in
                                                          {
-                                                           start = 63;
-                                                           finish = 64
+                                                           start = 64;
+                                                           finish = 65
                                                          }))
                                                })))), "a")));
                             Lvca_syntax.Valence.Valence
@@ -2444,46 +2485,25 @@ module List_lang =
                                                   (Some
                                                      (let open Lvca_provenance.Range in
                                                         {
-                                                          start = 66;
-                                                          finish = 70
+                                                          start = 67;
+                                                          finish = 71
                                                         }))
                                               })))), "list",
-                                     (Lvca_syntax.Sort.Cons
+                                     [Lvca_syntax.Sort.Name
                                         ((Lvca_syntax.Provenance.Located
-                                            (Lvca_syntax.Provenance.Located.Source_located
-                                               {
-                                                 pos_fname = "syntax/Sort.ml";
-                                                 pos_lnum = 44;
-                                                 pos_bol = 1417;
-                                                 pos_cnum = 1459
-                                               })),
-                                          (Lvca_syntax.Sort.Name
-                                             ((Lvca_syntax.Provenance.Located
-                                                 (Lvca_syntax.Provenance.Located.Parse_located
-                                                    ((let open Lvca_syntax.Provenance.Parse_located in
-                                                        {
-                                                          input =
-                                                            Lvca_syntax.Provenance.Parse_input.Input_unknown;
-                                                          range =
-                                                            (Some
-                                                               (let open Lvca_provenance.Range in
-                                                                  {
-                                                                    start =
-                                                                    71;
-                                                                    finish =
-                                                                    72
-                                                                  }))
-                                                        })))), "a")),
-                                          (Lvca_syntax.Sort.Nil
-                                             (Lvca_syntax.Provenance.Located
-                                                (Lvca_syntax.Provenance.Located.Source_located
+                                            (Lvca_syntax.Provenance.Located.Parse_located
+                                               ((let open Lvca_syntax.Provenance.Parse_located in
                                                    {
-                                                     pos_fname =
-                                                       "syntax/Sort.ml";
-                                                     pos_lnum = 43;
-                                                     pos_bol = 1372;
-                                                     pos_cnum = 1408
-                                                   }))))))))])))])));
+                                                     input =
+                                                       Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                     range =
+                                                       (Some
+                                                          (let open Lvca_provenance.Range in
+                                                             {
+                                                               start = 72;
+                                                               finish = 73
+                                                             }))
+                                                   })))), "a")])))])))], [])));
             ("list_external",
               (Lvca_syntax.Sort_def.Sort_def
                  ([],
@@ -2497,16 +2517,16 @@ module List_lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 104; finish = 117 }))
+                                           { start = 106; finish = 119 }))
                                  })))), "List_external",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -2521,47 +2541,26 @@ module List_lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 105;
-                                                            finish = 109
+                                                            start = 107;
+                                                            finish = 111
                                                           }))
                                                 })))), "list",
-                                       (Lvca_syntax.Sort.Cons
+                                       [Lvca_syntax.Sort.Name
                                           ((Lvca_syntax.Provenance.Located
-                                              (Lvca_syntax.Provenance.Located.Source_located
-                                                 {
-                                                   pos_fname =
-                                                     "syntax/Sort.ml";
-                                                   pos_lnum = 44;
-                                                   pos_bol = 1417;
-                                                   pos_cnum = 1459
-                                                 })),
-                                            (Lvca_syntax.Sort.Name
-                                               ((Lvca_syntax.Provenance.Located
-                                                   (Lvca_syntax.Provenance.Located.Parse_located
-                                                      ((let open Lvca_syntax.Provenance.Parse_located in
-                                                          {
-                                                            input =
-                                                              Lvca_syntax.Provenance.Parse_input.Input_unknown;
-                                                            range =
-                                                              (Some
-                                                                 (let open Lvca_provenance.Range in
-                                                                    {
-                                                                    start =
-                                                                    110;
-                                                                    finish =
-                                                                    116
-                                                                    }))
-                                                          })))), "string")),
-                                            (Lvca_syntax.Sort.Nil
-                                               (Lvca_syntax.Provenance.Located
-                                                  (Lvca_syntax.Provenance.Located.Source_located
+                                              (Lvca_syntax.Provenance.Located.Parse_located
+                                                 ((let open Lvca_syntax.Provenance.Parse_located in
                                                      {
-                                                       pos_fname =
-                                                         "syntax/Sort.ml";
-                                                       pos_lnum = 43;
-                                                       pos_bol = 1372;
-                                                       pos_cnum = 1408
-                                                     }))))))))])))])));
+                                                       input =
+                                                         Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                       range =
+                                                         (Some
+                                                            (let open Lvca_provenance.Range in
+                                                               {
+                                                                 start = 112;
+                                                                 finish = 118
+                                                               }))
+                                                     })))), "string")])))])))],
+                   [])));
             ("list_predefined",
               (Lvca_syntax.Sort_def.Sort_def
                  ([],
@@ -2575,16 +2574,16 @@ module List_lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 152; finish = 169 }))
+                                           { start = 155; finish = 172 }))
                                  })))), "List_predefined",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -2599,48 +2598,26 @@ module List_lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 153;
-                                                            finish = 157
+                                                            start = 156;
+                                                            finish = 160
                                                           }))
                                                 })))), "list",
-                                       (Lvca_syntax.Sort.Cons
+                                       [Lvca_syntax.Sort.Name
                                           ((Lvca_syntax.Provenance.Located
-                                              (Lvca_syntax.Provenance.Located.Source_located
-                                                 {
-                                                   pos_fname =
-                                                     "syntax/Sort.ml";
-                                                   pos_lnum = 44;
-                                                   pos_bol = 1417;
-                                                   pos_cnum = 1459
-                                                 })),
-                                            (Lvca_syntax.Sort.Name
-                                               ((Lvca_syntax.Provenance.Located
-                                                   (Lvca_syntax.Provenance.Located.Parse_located
-                                                      ((let open Lvca_syntax.Provenance.Parse_located in
-                                                          {
-                                                            input =
-                                                              Lvca_syntax.Provenance.Parse_input.Input_unknown;
-                                                            range =
-                                                              (Some
-                                                                 (let open Lvca_provenance.Range in
-                                                                    {
-                                                                    start =
-                                                                    158;
-                                                                    finish =
-                                                                    168
-                                                                    }))
-                                                          })))),
-                                                 "predefined")),
-                                            (Lvca_syntax.Sort.Nil
-                                               (Lvca_syntax.Provenance.Located
-                                                  (Lvca_syntax.Provenance.Located.Source_located
+                                              (Lvca_syntax.Provenance.Located.Parse_located
+                                                 ((let open Lvca_syntax.Provenance.Parse_located in
                                                      {
-                                                       pos_fname =
-                                                         "syntax/Sort.ml";
-                                                       pos_lnum = 43;
-                                                       pos_bol = 1372;
-                                                       pos_cnum = 1408
-                                                     }))))))))])))])));
+                                                       input =
+                                                         Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                       range =
+                                                         (Some
+                                                            (let open Lvca_provenance.Range in
+                                                               {
+                                                                 start = 161;
+                                                                 finish = 171
+                                                               }))
+                                                     })))), "predefined")])))])))],
+                   [])));
             ("list_list_a",
               (Lvca_syntax.Sort_def.Sort_def
                  ([("a", None)],
@@ -2654,16 +2631,16 @@ module List_lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 199; finish = 214 }))
+                                           { start = 203; finish = 218 }))
                                  })))), "List_list_a",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -2678,21 +2655,26 @@ module List_lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 200;
-                                                            finish = 204
+                                                            start = 204;
+                                                            finish = 208
                                                           }))
                                                 })))), "list",
-                                       (Lvca_syntax.Sort.Cons
+                                       [Lvca_syntax.Sort.Ap
                                           ((Lvca_syntax.Provenance.Located
-                                              (Lvca_syntax.Provenance.Located.Source_located
-                                                 {
-                                                   pos_fname =
-                                                     "syntax/Sort.ml";
-                                                   pos_lnum = 44;
-                                                   pos_bol = 1417;
-                                                   pos_cnum = 1459
-                                                 })),
-                                            (Lvca_syntax.Sort.Ap
+                                              (Lvca_syntax.Provenance.Located.Parse_located
+                                                 ((let open Lvca_syntax.Provenance.Parse_located in
+                                                     {
+                                                       input =
+                                                         Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                       range =
+                                                         (Some
+                                                            (let open Lvca_provenance.Range in
+                                                               {
+                                                                 start = 210;
+                                                                 finish = 214
+                                                               }))
+                                                     })))), "list",
+                                            [Lvca_syntax.Sort.Name
                                                ((Lvca_syntax.Provenance.Located
                                                    (Lvca_syntax.Provenance.Located.Parse_located
                                                       ((let open Lvca_syntax.Provenance.Parse_located in
@@ -2704,62 +2686,12 @@ module List_lang =
                                                                  (let open Lvca_provenance.Range in
                                                                     {
                                                                     start =
-                                                                    206;
+                                                                    215;
                                                                     finish =
-                                                                    210
+                                                                    216
                                                                     }))
-                                                          })))), "list",
-                                                 (Lvca_syntax.Sort.Cons
-                                                    ((Lvca_syntax.Provenance.Located
-                                                        (Lvca_syntax.Provenance.Located.Source_located
-                                                           {
-                                                             pos_fname =
-                                                               "syntax/Sort.ml";
-                                                             pos_lnum = 44;
-                                                             pos_bol = 1417;
-                                                             pos_cnum = 1459
-                                                           })),
-                                                      (Lvca_syntax.Sort.Name
-                                                         ((Lvca_syntax.Provenance.Located
-                                                             (Lvca_syntax.Provenance.Located.Parse_located
-                                                                ((let open Lvca_syntax.Provenance.Parse_located in
-                                                                    {
-                                                                    input =
-                                                                    Lvca_syntax.Provenance.Parse_input.Input_unknown;
-                                                                    range =
-                                                                    (Some
-                                                                    (let open Lvca_provenance.Range in
-                                                                    {
-                                                                    start =
-                                                                    211;
-                                                                    finish =
-                                                                    212
-                                                                    }))
-                                                                    })))),
-                                                           "a")),
-                                                      (Lvca_syntax.Sort.Nil
-                                                         (Lvca_syntax.Provenance.Located
-                                                            (Lvca_syntax.Provenance.Located.Source_located
-                                                               {
-                                                                 pos_fname =
-                                                                   "syntax/Sort.ml";
-                                                                 pos_lnum =
-                                                                   43;
-                                                                 pos_bol =
-                                                                   1372;
-                                                                 pos_cnum =
-                                                                   1408
-                                                               }))))))),
-                                            (Lvca_syntax.Sort.Nil
-                                               (Lvca_syntax.Provenance.Located
-                                                  (Lvca_syntax.Provenance.Located.Source_located
-                                                     {
-                                                       pos_fname =
-                                                         "syntax/Sort.ml";
-                                                       pos_lnum = 43;
-                                                       pos_bol = 1372;
-                                                       pos_cnum = 1408
-                                                     }))))))))])))])));
+                                                          })))), "a")])])))])))],
+                   [])));
             ("list_list_string_1",
               (Lvca_syntax.Sort_def.Sort_def
                  ([],
@@ -2773,16 +2705,16 @@ module List_lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 255; finish = 275 }))
+                                           { start = 260; finish = 280 }))
                                  })))), "List_list_string_1",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -2797,21 +2729,26 @@ module List_lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 256;
-                                                            finish = 260
+                                                            start = 261;
+                                                            finish = 265
                                                           }))
                                                 })))), "list",
-                                       (Lvca_syntax.Sort.Cons
+                                       [Lvca_syntax.Sort.Ap
                                           ((Lvca_syntax.Provenance.Located
-                                              (Lvca_syntax.Provenance.Located.Source_located
-                                                 {
-                                                   pos_fname =
-                                                     "syntax/Sort.ml";
-                                                   pos_lnum = 44;
-                                                   pos_bol = 1417;
-                                                   pos_cnum = 1459
-                                                 })),
-                                            (Lvca_syntax.Sort.Ap
+                                              (Lvca_syntax.Provenance.Located.Parse_located
+                                                 ((let open Lvca_syntax.Provenance.Parse_located in
+                                                     {
+                                                       input =
+                                                         Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                       range =
+                                                         (Some
+                                                            (let open Lvca_provenance.Range in
+                                                               {
+                                                                 start = 267;
+                                                                 finish = 271
+                                                               }))
+                                                     })))), "list",
+                                            [Lvca_syntax.Sort.Name
                                                ((Lvca_syntax.Provenance.Located
                                                    (Lvca_syntax.Provenance.Located.Parse_located
                                                       ((let open Lvca_syntax.Provenance.Parse_located in
@@ -2823,62 +2760,12 @@ module List_lang =
                                                                  (let open Lvca_provenance.Range in
                                                                     {
                                                                     start =
-                                                                    262;
+                                                                    272;
                                                                     finish =
-                                                                    266
+                                                                    278
                                                                     }))
-                                                          })))), "list",
-                                                 (Lvca_syntax.Sort.Cons
-                                                    ((Lvca_syntax.Provenance.Located
-                                                        (Lvca_syntax.Provenance.Located.Source_located
-                                                           {
-                                                             pos_fname =
-                                                               "syntax/Sort.ml";
-                                                             pos_lnum = 44;
-                                                             pos_bol = 1417;
-                                                             pos_cnum = 1459
-                                                           })),
-                                                      (Lvca_syntax.Sort.Name
-                                                         ((Lvca_syntax.Provenance.Located
-                                                             (Lvca_syntax.Provenance.Located.Parse_located
-                                                                ((let open Lvca_syntax.Provenance.Parse_located in
-                                                                    {
-                                                                    input =
-                                                                    Lvca_syntax.Provenance.Parse_input.Input_unknown;
-                                                                    range =
-                                                                    (Some
-                                                                    (let open Lvca_provenance.Range in
-                                                                    {
-                                                                    start =
-                                                                    267;
-                                                                    finish =
-                                                                    273
-                                                                    }))
-                                                                    })))),
-                                                           "string")),
-                                                      (Lvca_syntax.Sort.Nil
-                                                         (Lvca_syntax.Provenance.Located
-                                                            (Lvca_syntax.Provenance.Located.Source_located
-                                                               {
-                                                                 pos_fname =
-                                                                   "syntax/Sort.ml";
-                                                                 pos_lnum =
-                                                                   43;
-                                                                 pos_bol =
-                                                                   1372;
-                                                                 pos_cnum =
-                                                                   1408
-                                                               }))))))),
-                                            (Lvca_syntax.Sort.Nil
-                                               (Lvca_syntax.Provenance.Located
-                                                  (Lvca_syntax.Provenance.Located.Source_located
-                                                     {
-                                                       pos_fname =
-                                                         "syntax/Sort.ml";
-                                                       pos_lnum = 43;
-                                                       pos_bol = 1372;
-                                                       pos_cnum = 1408
-                                                     }))))))))])))])));
+                                                          })))), "string")])])))])))],
+                   [])));
             ("list_list_string_2",
               (Lvca_syntax.Sort_def.Sort_def
                  ([],
@@ -2892,16 +2779,16 @@ module List_lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 316; finish = 336 }))
+                                           { start = 322; finish = 342 }))
                                  })))), "List_list_string_2",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -2916,47 +2803,26 @@ module List_lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 317;
-                                                            finish = 328
+                                                            start = 323;
+                                                            finish = 334
                                                           }))
                                                 })))), "list_list_a",
-                                       (Lvca_syntax.Sort.Cons
+                                       [Lvca_syntax.Sort.Name
                                           ((Lvca_syntax.Provenance.Located
-                                              (Lvca_syntax.Provenance.Located.Source_located
-                                                 {
-                                                   pos_fname =
-                                                     "syntax/Sort.ml";
-                                                   pos_lnum = 44;
-                                                   pos_bol = 1417;
-                                                   pos_cnum = 1459
-                                                 })),
-                                            (Lvca_syntax.Sort.Name
-                                               ((Lvca_syntax.Provenance.Located
-                                                   (Lvca_syntax.Provenance.Located.Parse_located
-                                                      ((let open Lvca_syntax.Provenance.Parse_located in
-                                                          {
-                                                            input =
-                                                              Lvca_syntax.Provenance.Parse_input.Input_unknown;
-                                                            range =
-                                                              (Some
-                                                                 (let open Lvca_provenance.Range in
-                                                                    {
-                                                                    start =
-                                                                    329;
-                                                                    finish =
-                                                                    335
-                                                                    }))
-                                                          })))), "string")),
-                                            (Lvca_syntax.Sort.Nil
-                                               (Lvca_syntax.Provenance.Located
-                                                  (Lvca_syntax.Provenance.Located.Source_located
+                                              (Lvca_syntax.Provenance.Located.Parse_located
+                                                 ((let open Lvca_syntax.Provenance.Parse_located in
                                                      {
-                                                       pos_fname =
-                                                         "syntax/Sort.ml";
-                                                       pos_lnum = 43;
-                                                       pos_bol = 1372;
-                                                       pos_cnum = 1408
-                                                     }))))))))])))])));
+                                                       input =
+                                                         Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                       range =
+                                                         (Some
+                                                            (let open Lvca_provenance.Range in
+                                                               {
+                                                                 start = 335;
+                                                                 finish = 341
+                                                               }))
+                                                     })))), "string")])))])))],
+                   [])));
             ("list_list_predefined_1",
               (Lvca_syntax.Sort_def.Sort_def
                  ([],
@@ -2970,16 +2836,16 @@ module List_lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 385; finish = 409 }))
+                                           { start = 392; finish = 416 }))
                                  })))), "List_list_predefined_1",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -2994,21 +2860,26 @@ module List_lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 386;
-                                                            finish = 390
+                                                            start = 393;
+                                                            finish = 397
                                                           }))
                                                 })))), "list",
-                                       (Lvca_syntax.Sort.Cons
+                                       [Lvca_syntax.Sort.Ap
                                           ((Lvca_syntax.Provenance.Located
-                                              (Lvca_syntax.Provenance.Located.Source_located
-                                                 {
-                                                   pos_fname =
-                                                     "syntax/Sort.ml";
-                                                   pos_lnum = 44;
-                                                   pos_bol = 1417;
-                                                   pos_cnum = 1459
-                                                 })),
-                                            (Lvca_syntax.Sort.Ap
+                                              (Lvca_syntax.Provenance.Located.Parse_located
+                                                 ((let open Lvca_syntax.Provenance.Parse_located in
+                                                     {
+                                                       input =
+                                                         Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                       range =
+                                                         (Some
+                                                            (let open Lvca_provenance.Range in
+                                                               {
+                                                                 start = 399;
+                                                                 finish = 403
+                                                               }))
+                                                     })))), "list",
+                                            [Lvca_syntax.Sort.Name
                                                ((Lvca_syntax.Provenance.Located
                                                    (Lvca_syntax.Provenance.Located.Parse_located
                                                       ((let open Lvca_syntax.Provenance.Parse_located in
@@ -3020,62 +2891,13 @@ module List_lang =
                                                                  (let open Lvca_provenance.Range in
                                                                     {
                                                                     start =
-                                                                    392;
+                                                                    404;
                                                                     finish =
-                                                                    396
+                                                                    414
                                                                     }))
-                                                          })))), "list",
-                                                 (Lvca_syntax.Sort.Cons
-                                                    ((Lvca_syntax.Provenance.Located
-                                                        (Lvca_syntax.Provenance.Located.Source_located
-                                                           {
-                                                             pos_fname =
-                                                               "syntax/Sort.ml";
-                                                             pos_lnum = 44;
-                                                             pos_bol = 1417;
-                                                             pos_cnum = 1459
-                                                           })),
-                                                      (Lvca_syntax.Sort.Name
-                                                         ((Lvca_syntax.Provenance.Located
-                                                             (Lvca_syntax.Provenance.Located.Parse_located
-                                                                ((let open Lvca_syntax.Provenance.Parse_located in
-                                                                    {
-                                                                    input =
-                                                                    Lvca_syntax.Provenance.Parse_input.Input_unknown;
-                                                                    range =
-                                                                    (Some
-                                                                    (let open Lvca_provenance.Range in
-                                                                    {
-                                                                    start =
-                                                                    397;
-                                                                    finish =
-                                                                    407
-                                                                    }))
-                                                                    })))),
-                                                           "predefined")),
-                                                      (Lvca_syntax.Sort.Nil
-                                                         (Lvca_syntax.Provenance.Located
-                                                            (Lvca_syntax.Provenance.Located.Source_located
-                                                               {
-                                                                 pos_fname =
-                                                                   "syntax/Sort.ml";
-                                                                 pos_lnum =
-                                                                   43;
-                                                                 pos_bol =
-                                                                   1372;
-                                                                 pos_cnum =
-                                                                   1408
-                                                               }))))))),
-                                            (Lvca_syntax.Sort.Nil
-                                               (Lvca_syntax.Provenance.Located
-                                                  (Lvca_syntax.Provenance.Located.Source_located
-                                                     {
-                                                       pos_fname =
-                                                         "syntax/Sort.ml";
-                                                       pos_lnum = 43;
-                                                       pos_bol = 1372;
-                                                       pos_cnum = 1408
-                                                     }))))))))])))])));
+                                                          })))),
+                                                 "predefined")])])))])))],
+                   [])));
             ("list_list_predefined_2",
               (Lvca_syntax.Sort_def.Sort_def
                  ([],
@@ -3089,16 +2911,16 @@ module List_lang =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 458; finish = 482 }))
+                                           { start = 466; finish = 490 }))
                                  })))), "List_list_predefined_2",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -3113,48 +2935,26 @@ module List_lang =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 459;
-                                                            finish = 470
+                                                            start = 467;
+                                                            finish = 478
                                                           }))
                                                 })))), "list_list_a",
-                                       (Lvca_syntax.Sort.Cons
+                                       [Lvca_syntax.Sort.Name
                                           ((Lvca_syntax.Provenance.Located
-                                              (Lvca_syntax.Provenance.Located.Source_located
-                                                 {
-                                                   pos_fname =
-                                                     "syntax/Sort.ml";
-                                                   pos_lnum = 44;
-                                                   pos_bol = 1417;
-                                                   pos_cnum = 1459
-                                                 })),
-                                            (Lvca_syntax.Sort.Name
-                                               ((Lvca_syntax.Provenance.Located
-                                                   (Lvca_syntax.Provenance.Located.Parse_located
-                                                      ((let open Lvca_syntax.Provenance.Parse_located in
-                                                          {
-                                                            input =
-                                                              Lvca_syntax.Provenance.Parse_input.Input_unknown;
-                                                            range =
-                                                              (Some
-                                                                 (let open Lvca_provenance.Range in
-                                                                    {
-                                                                    start =
-                                                                    471;
-                                                                    finish =
-                                                                    481
-                                                                    }))
-                                                          })))),
-                                                 "predefined")),
-                                            (Lvca_syntax.Sort.Nil
-                                               (Lvca_syntax.Provenance.Located
-                                                  (Lvca_syntax.Provenance.Located.Source_located
+                                              (Lvca_syntax.Provenance.Located.Parse_located
+                                                 ((let open Lvca_syntax.Provenance.Parse_located in
                                                      {
-                                                       pos_fname =
-                                                         "syntax/Sort.ml";
-                                                       pos_lnum = 43;
-                                                       pos_bol = 1372;
-                                                       pos_cnum = 1408
-                                                     }))))))))])))])))]
+                                                       input =
+                                                         Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                       range =
+                                                         (Some
+                                                            (let open Lvca_provenance.Range in
+                                                               {
+                                                                 start = 479;
+                                                                 finish = 489
+                                                               }))
+                                                     })))), "predefined")])))])))],
+                   [])))]
         }
     module Predefined =
       struct
@@ -3446,9 +3246,9 @@ module Option_model :
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
           end
@@ -3479,9 +3279,9 @@ module Option_model :
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Arity.ml";
-                                     pos_lnum = 31;
-                                     pos_bol = 785;
-                                     pos_cnum = 834
+                                     pos_lnum = 30;
+                                     pos_bol = 777;
+                                     pos_cnum = 807
                                    })), [])));
                     Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
@@ -3500,9 +3300,9 @@ module Option_model :
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -3520,7 +3320,7 @@ module Option_model :
                                                             start = 26;
                                                             finish = 27
                                                           }))
-                                                })))), "a")))])))])))]
+                                                })))), "a")))])))], [])))]
         }
     module Option =
       struct
@@ -3577,9 +3377,9 @@ module Empty :
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
           end
@@ -3589,7 +3389,8 @@ module Empty :
       let open Lvca_syntax.Abstract_syntax in
         {
           externals = [];
-          sort_defs = [("empty", (Lvca_syntax.Sort_def.Sort_def ([], [])))]
+          sort_defs =
+            [("empty", (Lvca_syntax.Sort_def.Sort_def ([], [], [])))]
         }
     module Empty =
       struct
@@ -3704,9 +3505,9 @@ module Empty_as_var =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let rec foo =
@@ -3740,9 +3541,9 @@ module Empty_as_var =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
             let rec list a =
@@ -3767,9 +3568,9 @@ module Empty_as_var =
                                         {
                                           pos_fname =
                                             "ppx_lvca/Module_builder.ml";
-                                          pos_lnum = 897;
-                                          pos_bol = 27810;
-                                          pos_cnum = 27844
+                                          pos_lnum = 893;
+                                          pos_bol = 27735;
+                                          pos_cnum = 27769
                                         })) tm in
                   Error err
           end
@@ -3800,9 +3601,9 @@ module Empty_as_var =
                                 (Lvca_syntax.Provenance.Located.Source_located
                                    {
                                      pos_fname = "syntax/Arity.ml";
-                                     pos_lnum = 31;
-                                     pos_bol = 785;
-                                     pos_cnum = 834
+                                     pos_lnum = 30;
+                                     pos_bol = 777;
+                                     pos_cnum = 807
                                    })), [])));
                     Lvca_syntax.Operator_def.Operator_def
                       ((Lvca_syntax.Provenance.Located
@@ -3821,9 +3622,9 @@ module Empty_as_var =
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([],
@@ -3859,44 +3660,22 @@ module Empty_as_var =
                                                            finish = 31
                                                          }))
                                                })))), "list",
-                                      (Lvca_syntax.Sort.Cons
+                                      [Lvca_syntax.Sort.Name
                                          ((Lvca_syntax.Provenance.Located
-                                             (Lvca_syntax.Provenance.Located.Source_located
-                                                {
-                                                  pos_fname =
-                                                    "syntax/Sort.ml";
-                                                  pos_lnum = 44;
-                                                  pos_bol = 1417;
-                                                  pos_cnum = 1459
-                                                })),
-                                           (Lvca_syntax.Sort.Name
-                                              ((Lvca_syntax.Provenance.Located
-                                                  (Lvca_syntax.Provenance.Located.Parse_located
-                                                     ((let open Lvca_syntax.Provenance.Parse_located in
-                                                         {
-                                                           input =
-                                                             Lvca_syntax.Provenance.Parse_input.Input_unknown;
-                                                           range =
-                                                             (Some
-                                                                (let open Lvca_provenance.Range in
-                                                                   {
-                                                                    start =
-                                                                    32;
-                                                                    finish =
-                                                                    33
-                                                                   }))
-                                                         })))), "a")),
-                                           (Lvca_syntax.Sort.Nil
-                                              (Lvca_syntax.Provenance.Located
-                                                 (Lvca_syntax.Provenance.Located.Source_located
+                                             (Lvca_syntax.Provenance.Located.Parse_located
+                                                ((let open Lvca_syntax.Provenance.Parse_located in
                                                     {
-                                                      pos_fname =
-                                                        "syntax/Sort.ml";
-                                                      pos_lnum = 43;
-                                                      pos_bol = 1372;
-                                                      pos_cnum = 1408
-                                                    }))))))))])))])));
-            ("empty", (Lvca_syntax.Sort_def.Sort_def ([], [])));
+                                                      input =
+                                                        Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                      range =
+                                                        (Some
+                                                           (let open Lvca_provenance.Range in
+                                                              {
+                                                                start = 32;
+                                                                finish = 33
+                                                              }))
+                                                    })))), "a")])))])))], [])));
+            ("empty", (Lvca_syntax.Sort_def.Sort_def ([], [], [])));
             ("foo",
               (Lvca_syntax.Sort_def.Sort_def
                  ([],
@@ -3910,16 +3689,16 @@ module Empty_as_var =
                                    range =
                                      (Some
                                         (let open Lvca_provenance.Range in
-                                           { start = 58; finish = 72 }))
+                                           { start = 61; finish = 75 }))
                                  })))), "Foo",
                         (Lvca_syntax.Arity.Arity
                            ((Lvca_syntax.Provenance.Located
                                (Lvca_syntax.Provenance.Located.Source_located
                                   {
                                     pos_fname = "syntax/Arity.ml";
-                                    pos_lnum = 31;
-                                    pos_bol = 785;
-                                    pos_cnum = 834
+                                    pos_lnum = 30;
+                                    pos_bol = 777;
+                                    pos_cnum = 807
                                   })),
                              [Lvca_syntax.Valence.Valence
                                 ([Lvca_syntax.Sort_slot.Sort_binding
@@ -3934,8 +3713,8 @@ module Empty_as_var =
                                                       (Some
                                                          (let open Lvca_provenance.Range in
                                                             {
-                                                              start = 59;
-                                                              finish = 64
+                                                              start = 62;
+                                                              finish = 67
                                                             }))
                                                   })))), "empty"))],
                                   (Lvca_syntax.Sort.Name
@@ -3949,8 +3728,8 @@ module Empty_as_var =
                                                     (Some
                                                        (let open Lvca_provenance.Range in
                                                           {
-                                                            start = 66;
-                                                            finish = 71
+                                                            start = 69;
+                                                            finish = 74
                                                           }))
                                                 })))), "empty")))])));
                    Lvca_syntax.Operator_def.Operator_def
@@ -3963,16 +3742,16 @@ module Empty_as_var =
                                   range =
                                     (Some
                                        (let open Lvca_provenance.Range in
-                                          { start = 80; finish = 104 }))
+                                          { start = 83; finish = 107 }))
                                 })))), "Bar",
                        (Lvca_syntax.Arity.Arity
                           ((Lvca_syntax.Provenance.Located
                               (Lvca_syntax.Provenance.Located.Source_located
                                  {
                                    pos_fname = "syntax/Arity.ml";
-                                   pos_lnum = 31;
-                                   pos_bol = 785;
-                                   pos_cnum = 834
+                                   pos_lnum = 30;
+                                   pos_bol = 777;
+                                   pos_cnum = 807
                                  })),
                             [Lvca_syntax.Valence.Valence
                                ([Lvca_syntax.Sort_slot.Sort_pattern
@@ -3989,48 +3768,27 @@ module Empty_as_var =
                                                          (Some
                                                             (let open Lvca_provenance.Range in
                                                                {
-                                                                 start = 82;
-                                                                 finish = 86
+                                                                 start = 85;
+                                                                 finish = 89
                                                                }))
                                                      })))), "list",
-                                            (Lvca_syntax.Sort.Cons
+                                            [Lvca_syntax.Sort.Name
                                                ((Lvca_syntax.Provenance.Located
-                                                   (Lvca_syntax.Provenance.Located.Source_located
-                                                      {
-                                                        pos_fname =
-                                                          "syntax/Sort.ml";
-                                                        pos_lnum = 44;
-                                                        pos_bol = 1417;
-                                                        pos_cnum = 1459
-                                                      })),
-                                                 (Lvca_syntax.Sort.Name
-                                                    ((Lvca_syntax.Provenance.Located
-                                                        (Lvca_syntax.Provenance.Located.Parse_located
-                                                           ((let open Lvca_syntax.Provenance.Parse_located in
-                                                               {
-                                                                 input =
-                                                                   Lvca_syntax.Provenance.Parse_input.Input_unknown;
-                                                                 range =
-                                                                   (Some
-                                                                    (let open Lvca_provenance.Range in
+                                                   (Lvca_syntax.Provenance.Located.Parse_located
+                                                      ((let open Lvca_syntax.Provenance.Parse_located in
+                                                          {
+                                                            input =
+                                                              Lvca_syntax.Provenance.Parse_input.Input_unknown;
+                                                            range =
+                                                              (Some
+                                                                 (let open Lvca_provenance.Range in
                                                                     {
                                                                     start =
-                                                                    87;
+                                                                    90;
                                                                     finish =
-                                                                    92
+                                                                    95
                                                                     }))
-                                                               })))),
-                                                      "empty")),
-                                                 (Lvca_syntax.Sort.Nil
-                                                    (Lvca_syntax.Provenance.Located
-                                                       (Lvca_syntax.Provenance.Located.Source_located
-                                                          {
-                                                            pos_fname =
-                                                              "syntax/Sort.ml";
-                                                            pos_lnum = 43;
-                                                            pos_bol = 1372;
-                                                            pos_cnum = 1408
-                                                          })))))));
+                                                          })))), "empty")]));
                                      var_sort =
                                        (Lvca_syntax.Sort.Name
                                           ((Lvca_syntax.Provenance.Located
@@ -4043,8 +3801,8 @@ module Empty_as_var =
                                                          (Some
                                                             (let open Lvca_provenance.Range in
                                                                {
-                                                                 start = 94;
-                                                                 finish = 97
+                                                                 start = 97;
+                                                                 finish = 100
                                                                }))
                                                      })))), "foo"))
                                    }],
@@ -4059,10 +3817,10 @@ module Empty_as_var =
                                                    (Some
                                                       (let open Lvca_provenance.Range in
                                                          {
-                                                           start = 100;
-                                                           finish = 103
+                                                           start = 103;
+                                                           finish = 106
                                                          }))
-                                               })))), "foo")))])))])))]
+                                               })))), "foo")))])))], [])))]
         }
     module List =
       struct
