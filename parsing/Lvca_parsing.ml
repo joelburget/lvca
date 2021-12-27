@@ -344,7 +344,6 @@ let ( <*> ) f_p a_p =
 ;;
 
 let ( >>| ) p f = p >>| Lvca_util.Tuple2.map2 ~f
-let ( >>~ ) p f = p >>|| fun (range, value) -> range, f range value
 
 let ( >>= ) p f =
   p
@@ -358,9 +357,9 @@ let adapt p = Angstrom.(p >>= return)
 let of_angstrom p = adapt (Basic.go p)
 let ( <$> ) f p = p >>| f
 let fail msg = fail msg
-let make1 mk a = a >>~ fun info a -> mk ~info a
+let make1 mk a = a >>|| fun (info, a) -> info, mk ~info a
 let make0 mk a = make1 (fun ~info _ -> mk ~info) a
-let lift mk a = a >>~ fun info a -> mk (info, a)
+let lift mk a = a >>|| fun (info, a) -> info, mk (info, a)
 
 let make2 mk a b =
   a

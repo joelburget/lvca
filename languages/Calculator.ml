@@ -112,8 +112,7 @@ module Parse = struct
 
   let lit : Expr.t Lvca_parsing.t =
     (* TODO: this fails on too-large float lits *)
-    integer_or_float_lit
-    >>~ fun range lit ->
+    let%map range, lit = integer_or_float_lit in
     let lit =
       match lit with
       | Base.Either.First str ->
@@ -161,10 +160,10 @@ module Parse = struct
   ;;
 
   let const =
-    constants
-    |> List.map ~f:string
-    |> choice ~failure_msg:"looking for a constant name"
-    >>~ mk_const
+    let%map range, c =
+      constants |> List.map ~f:string |> choice ~failure_msg:"looking for a constant name"
+    in
+    mk_const range c
   ;;
 
   (* Precedence:
@@ -184,8 +183,7 @@ module Parse = struct
           unary_operators
           |> List.map ~f:(fun name ->
                  let%bind p1, name = string name in
-                 atom
-                 >>~ fun p2 body ->
+                 let%map p2, body = atom in
                  let pos = Opt_range.union p1 p2 |> Provenance.of_range in
                  mk_unary pos name body)
           |> choice ~failure_msg:"looking for a unary operator expression"

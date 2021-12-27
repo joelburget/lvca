@@ -311,7 +311,9 @@ c_type := Computation(v_type; list string);
     let ident = make1 Single_var.mk identifier
 
     let op_name =
-      No_junk.char '#' *> identifier >>~ fun range str -> Provenance.of_range range, str
+      let%bind _ = No_junk.char '#' in
+      let%map range, str = identifier in
+      Provenance.of_range range, str
     ;;
 
     let of_list xs = List_model.of_list xs

@@ -382,9 +382,10 @@ module Parse = struct
     choice
       ~failure_msg:"looking for a parenthesized expression or nominal term"
       [ parens term
-      ; (braces term >>~ fun range tm -> Term.Quote (Provenance.of_range range, tm))
-      ; (var_identifier
-        >>~ fun range ident -> Term.Term_var (Provenance.of_range range, ident))
+      ; (let%map range, tm = braces term in
+         Term.Quote (Provenance.of_range range, tm))
+      ; (let%map range, ident = var_identifier in
+         Term.Term_var (Provenance.of_range range, ident))
       ; Nominal.Term.parse' reserved >>| Of_nominal.term
       ]
   ;;
@@ -392,15 +393,16 @@ module Parse = struct
   let atomic_term' term =
     let%bind body_range, body = atomic_term term in
     choice
-      [ (brackets
-           (let%bind range, name = var_identifier in
-            let name = Single_var.{ info = Provenance.of_range range; name } in
-            let%bind _ = string ":=" in
-            term >>| fun arg -> name, arg)
-        >>~ fun bracket_range (name, arg) ->
-        let range = Opt_range.union bracket_range body_range in
-        let info = Provenance.of_range range in
-        Term.Subst (info, (name, body), arg))
+      [ (let%map bracket_range, (name, arg) =
+           brackets
+             (let%bind range, name = var_identifier in
+              let name = Single_var.{ info = Provenance.of_range range; name } in
+              let%bind _ = string ":=" in
+              term >>| fun arg -> name, arg)
+         in
+         let range = Opt_range.union bracket_range body_range in
+         let info = Provenance.of_range range in
+         Term.Subst (info, (name, body), arg))
       ; return body
       ]
     <?> "atomic term (with possible subsitution)"

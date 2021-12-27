@@ -201,7 +201,12 @@ module Parse = struct
   ;;
 
   let arrow = string "->"
-  let attach_pos' p = p >>~ fun range a -> Provenance.of_range range, a
+
+  let attach_pos' p =
+    let%map range, a = p in
+    Provenance.of_range range, a
+  ;;
+
   let make0, make1, make2 = Provenance.(make0, make1, make2)
   let input = Provenance.Parse_input.Buffer_name "input"
   let identifier = lower_identifier String.Set.empty
@@ -226,11 +231,10 @@ module Parse = struct
               [ make1 mk_Q_count (braces c_term)
               ; make1
                   mk_Q_count
-                  (integer_lit
-                  >>~ fun range i ->
-                  let i = Z.of_string i in
-                  let info = Provenance.of_range range in
-                  Core.Term_syntax.Term.Primitive (info, (info, Integer i)))
+                  (let%map range, i = integer_lit in
+                   let i = Z.of_string i in
+                   let info = Provenance.of_range range in
+                   Core.Term_syntax.Term.Primitive (info, (info, Integer i)))
               ; make0 mk_Q_option (char '?')
               ; make0 mk_Q_many (char '*')
               ; make0 mk_Q_many1 (char '+')
@@ -256,8 +260,8 @@ module Parse = struct
                 (parens
                    (lift3
                       (fun (_, name) _arr (_, tm) -> name, tm)
-                      (identifier
-                      >>~ fun range ident -> Provenance.of_range ~input range, ident)
+                      (let%map range, ident = identifier in
+                       Provenance.of_range ~input range, ident)
                       arrow
                       (braces c_term)))
             ; make2
@@ -265,10 +269,9 @@ module Parse = struct
                 (string "fail")
                 (choice
                    [ braces c_term
-                   ; (string_lit
-                     >>~ fun range str ->
-                     let info = Provenance.of_range range in
-                     Core.Term_syntax.Term.Primitive (info, (info, String str)))
+                   ; (let%map range, str = string_lit in
+                      let info = Provenance.of_range range in
+                      Core.Term_syntax.Term.Primitive (info, (info, String str)))
                    ])
             ]
           <|> parse_quantified

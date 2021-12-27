@@ -1116,38 +1116,36 @@ let parse : Lang.Tex.t list Lvca_parsing.t =
     >>= fun _ ->
     choice
       ~failure_msg:"control sequence"
-      [ (many1 (No_junk.satisfy Char.is_alpha)
-        >>~ fun range value ->
-        Control_seq
-          ( Provenance.of_range range
-          , (Provenance.of_range range, String.of_char_list ('\\' :: value)) ))
-      ; (No_junk.satisfy is_control_seq_single_char
-        >>~ fun range value ->
-        Control_seq
-          ( Provenance.of_range range
-          , (Provenance.of_range range, String.of_char_list [ '\\'; value ]) ))
+      [ (let%map range, value = many1 (No_junk.satisfy Char.is_alpha) in
+         Control_seq
+           ( Provenance.of_range range
+           , (Provenance.of_range range, String.of_char_list ('\\' :: value)) ))
+      ; (let%map range, value = No_junk.satisfy is_control_seq_single_char in
+         Control_seq
+           ( Provenance.of_range range
+           , (Provenance.of_range range, String.of_char_list [ '\\'; value ]) ))
       ]
   in
   let subsuptick =
     [ '_'; '^'; '\''; '~' ]
     |> List.map ~f:(fun c ->
-           No_junk.char c
-           >>~ fun range c ->
+           let%map range, c = No_junk.char c in
            Control_seq
              (Provenance.of_range range, (Provenance.of_range range, String.of_char c)))
     |> choice ~failure_msg:"looking for `_`, `^`, `'`, or `~`"
   in
-  let space = whitespace1 >>~ fun range _ -> Space (Provenance.of_range range) in
+  let space =
+    let%map range, _ = whitespace1 in
+    Space (Provenance.of_range range)
+  in
   let token =
-    No_junk.satisfy is_token_char
-    >>~ fun range value ->
+    let%map range, value = No_junk.satisfy is_token_char in
     Token (Provenance.of_range range, (Provenance.of_range range, value))
   in
   let atom =
     fix (fun expr ->
         let grouped =
-          No_junk.braces (many1 expr)
-          >>~ fun range value ->
+          let%map range, value = No_junk.braces (many1 expr) in
           Grouped (Provenance.of_range range, List_model.of_list value)
         in
         choice

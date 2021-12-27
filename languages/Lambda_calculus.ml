@@ -40,11 +40,13 @@ module Parse = struct
   let identifier = lower_identifier Lvca_util.String.Set.empty
 
   let t_var : Nominal.Term.t Lvca_parsing.t =
-    identifier >>~ fun range name -> Nominal.Term.Var (Provenance.of_range range, name)
+    let%map range, name = identifier in
+    Nominal.Term.Var (Provenance.of_range range, name)
   ;;
 
   let p_var : Pattern.t Lvca_parsing.t =
-    identifier >>~ fun range name -> Pattern.Var (Provenance.of_range range, name)
+    let%map range, name = identifier in
+    Pattern.Var (Provenance.of_range range, name)
   ;;
 
   (* Precedence 0: Lam (right-associative) 1: App (left-associative) *)

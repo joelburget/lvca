@@ -66,8 +66,7 @@ module Parse = struct
   open C_comment_parser
 
   let lit : Nonbinding.t Lvca_parsing.t =
-    integer_lit
-    >>~ fun range str ->
+    let%map range, str = integer_lit in
     let range = Provenance.of_range range in
     Nonbinding.Operator (range, "Lit", [ Primitive (range, Integer (Z.of_string str)) ])
   ;;
