@@ -15,22 +15,19 @@ module Description = struct
      type := Int();  |}]
   ;;
 
-  let parser_str =
-    {|
-  fix (parser ->
-    let space = (' ' | '\n' | '\t')* in
-    let lit = satisfy (c -> is_digit c) in
-    let atom =
-      | lit space -> { lit }
-      | '(' space parser space ')' space -> { parser })
-    in
-    l=atom r=('+' space parser)? -> {
-      match r with
-        | some(r') -> Add(l; r')
-        | none() -> l
-    }
-  )
-    |}
+  let concrete_syntax =
+    [%lvca.concrete_syntax
+      {|
+    expr:
+      | Lit(i)    ~ i
+      | Add(x; y) ~ x "+" y
+      | i         ~ /[a-z][a-zA-Z0-1_]/
+      ;
+
+    type:
+      | Int() ~ "int"
+      ;
+    |}]
   ;;
 
   let statics =
@@ -43,14 +40,24 @@ module Description = struct
     |}
   ;;
 
-  let expr_name = "expr"
+  let dynamics_str =
+    {|
+    let rec dynamics = \(expr : expr()) -> match expr with {
+      | Add(a; b) ->
+        let a' = dynamics a in
+        let b' = dynamics b in
+        {Add(a'; b')}
+      | Lit(i) -> i
+    } in dynamics
+    |}
+  ;;
 
-  (* let dynamics_str = {| let rec dynamics = \(expr : expr()) -> match expr with { |
-     Add(a; b) -> let a' = dynamics a in let b' = dynamics b in {Add(a'; b')} | Lit(i) ->
-     i } in dynamics |}
-
-     let dynamics : Core.term = Lvca_parsing.(parse_string (whitespace *> ParseDynamics.term))
-     dynamics_str |> Result.ok_or_failwith ;; *)
+  (*
+  let dynamics =
+    Lvca_parsing.(parse_string (whitespace *> Del.Core.Term.parse)) dynamics_str
+    |> Result.ok_or_failwith
+  ;;
+  *)
 end
 
 (* Write by hand first, later assert the generated parser is equivalent *)
