@@ -646,7 +646,7 @@ let%test_module "Parsing" =
     let%expect_test _ =
       let pp_str ppf str = Fmt.pf ppf "%S" str in
       parse_print c_comment pp_str {|// comment|};
-      [%expect {|{ value = " comment"; range = {2,10} }|}]
+      [%expect {|({2,10}, " comment")|}]
     ;;
 
     let pp_char ppf str = Fmt.pf ppf "%C" str
@@ -658,8 +658,8 @@ let%test_module "Parsing" =
       go' {|'x' // comment|};
       [%expect
         {|
-        { value = 'x'; range = {0,3} }
-        { value = 'x'; range = {0,3} }|}]
+        ({0,3}, 'x')
+        ({0,3}, 'x')|}]
     ;;
 
     let%expect_test _ =
@@ -669,12 +669,12 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       go {|'\123'|};
-      [%expect {|{ value = '{'; range = {0,6} }|}]
+      [%expect {|({0,6}, '{')|}]
     ;;
 
     let%expect_test _ =
       go {|'\xbb'|};
-      [%expect {|{ value = '\187'; range = {0,6} }|}]
+      [%expect {|({0,6}, '\187')|}]
     ;;
 
     let%expect_test _ =
@@ -689,7 +689,7 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       go {|'\o377'|};
-      [%expect {|{ value = '\255'; range = {0,7} }|}]
+      [%expect {|({0,7}, '\255')|}]
     ;;
 
     let%expect_test _ =
@@ -699,12 +699,12 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       go {|'\\'|};
-      [%expect {|{ value = '\\'; range = {0,4} }|}]
+      [%expect {|({0,4}, '\\')|}]
     ;;
 
     let%expect_test _ =
       go {|'\''|};
-      [%expect {|{ value = '\''; range = {0,4} }|}]
+      [%expect {|({0,4}, '\'')|}]
     ;;
 
     let pp_str ppf str = Fmt.pf ppf "%S" str
@@ -712,17 +712,17 @@ let%test_module "Parsing" =
 
     let%expect_test _ =
       go {|"abc"|};
-      [%expect {|{ value = "abc"; range = {0,5} }|}]
+      [%expect {|({0,5}, "abc")|}]
     ;;
 
     let%expect_test _ =
       go {|"\""|};
-      [%expect {|{ value = "\""; range = {0,4} }|}]
+      [%expect {|({0,4}, "\"")|}]
     ;;
 
     let%expect_test _ =
       go {|"\\"|};
-      [%expect {|{ value = "\\"; range = {0,4} }|}]
+      [%expect {|({0,4}, "\\")|}]
     ;;
 
     let go = parse_print Ws.(parens string_lit) pp_str
@@ -730,7 +730,7 @@ let%test_module "Parsing" =
     let%expect_test _ =
       go {|("a")|};
       (*   012345 *)
-      [%expect {|{ value = "a"; range = {0,5} }|}]
+      [%expect {|({0,5}, "a")|}]
     ;;
 
     let pp ppf = Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") pp_str))
@@ -743,8 +743,8 @@ let%test_module "Parsing" =
       go' {|("a" "b")  // comment|};
       [%expect
         {|
-        { value = ["a"; "b"]; range = {0,9} }
-        { value = ["a"; "b"]; range = {0,9} }|}]
+        ({0,9}, ["a"; "b"])
+        ({0,9}, ["a"; "b"])|}]
     ;;
 
     let pp ppf = function
@@ -760,38 +760,38 @@ let%test_module "Parsing" =
       go' "123";
       [%expect
         {|
-        { value = First "123"; range = {0,3} }
-        { value = First "123"; range = {0,3} }|}]
+        ({0,3}, First "123")
+        ({0,3}, First "123")|}]
     ;;
 
     let%expect_test _ =
       go "-123";
-      [%expect {|{ value = First "-123"; range = {0,4} }|}]
+      [%expect {|({0,4}, First "-123")|}]
     ;;
 
     let%expect_test _ =
       go "+123";
-      [%expect {|{ value = First "+123"; range = {0,4} }|}]
+      [%expect {|({0,4}, First "+123")|}]
     ;;
 
     let%expect_test _ =
       go "1.1";
-      [%expect {|{ value = Second 1.1; range = {0,3} }|}]
+      [%expect {|({0,3}, Second 1.1)|}]
     ;;
 
     let%expect_test _ =
       go "-1.1";
-      [%expect {|{ value = Second -1.1; range = {0,4} }|}]
+      [%expect {|({0,4}, Second -1.1)|}]
     ;;
 
     let%expect_test _ =
       go "+1.1";
-      [%expect {|{ value = Second 1.1; range = {0,4} }|}]
+      [%expect {|({0,4}, Second 1.1)|}]
     ;;
 
     let%expect_test _ =
       go "1.";
-      [%expect {|{ value = Second 1.; range = {0,2} }|}]
+      [%expect {|({0,2}, Second 1.)|}]
     ;;
 
     let pp ppf = Fmt.(pf ppf "[%a]" (list ~sep:(any "; ") pp_str))
@@ -807,9 +807,9 @@ let%test_module "Parsing" =
       go {|"abc"; "def"|};
       [%expect
         {|
-      { value = []; range = _ }
-      { value = ["abc"]; range = {0,5} }
-      { value = ["abc"; "def"]; range = {0,12} }|}]
+      (_, [])
+      ({0,5}, ["abc"])
+      ({0,12}, ["abc"; "def"])|}]
     ;;
 
     let%expect_test _ =
@@ -820,8 +820,8 @@ let%test_module "Parsing" =
       |};
       [%expect
         {|
-        { value = ["abc"; "def"]; range = {0,13} }
-        { value = ["abc"; "def"]; range = {7,42} }|}]
+        ({0,13}, ["abc"; "def"])
+        ({7,42}, ["abc"; "def"])|}]
     ;;
 
     let go = parse_print Ws.(whitespace *> sep_end_by1 (char ';') string_lit) pp
@@ -831,7 +831,7 @@ let%test_module "Parsing" =
       go "";
       [%expect
         {|
-        { value = ["abc"]; range = {0,6} }
+        ({0,6}, ["abc"])
         : not enough input |}]
     ;;
 
@@ -858,8 +858,8 @@ let%test_module "Parsing" =
         "c". "d"|};
       [%expect
         {|
-        { value = ["a". "b"; "c". "d"]; range = {0,18} }
-        { value = ["a". "b"; "c". "d"]; range = {9,55} }|}]
+        ({0,18}, ["a". "b"; "c". "d"])
+        ({9,55}, ["a". "b"; "c". "d"])|}]
     ;;
 
     let go str =
