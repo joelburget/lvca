@@ -66,9 +66,9 @@ let expand_abstract_syntax ~(loc : Location.t) ~path:_ str : expression =
 ;;
 
 let expand_concrete_syntax ~(loc : Location.t) ~path:_ str : expression =
-  match parse Parse_pretty.parse str with
+  match parse Concrete.parse str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
-  | Ok syntax -> Exp.Parse_pretty.t ~loc syntax
+  | Ok syntax -> Exp.Concrete.t ~loc syntax
 ;;
 
 let expand_module ~(loc : Location.t) ~path:_ str exprs expr_opt : module_expr =

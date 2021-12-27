@@ -273,13 +273,13 @@ module Exp = struct
     ;;
   end
 
-  module Parse_pretty = struct
-    open Parse_pretty
+  module Concrete = struct
+    open Concrete
 
     let fixity ~loc = function
-      | Fixity.Left -> [%expr Lvca_syntax.Parse_pretty.Fixity.Left]
-      | None -> [%expr Lvca_syntax.Parse_pretty.Fixity.None]
-      | Right -> [%expr Lvca_syntax.Parse_pretty.Fixity.Right]
+      | Fixity.Left -> [%expr Lvca_syntax.Concrete.Fixity.Left]
+      | None -> [%expr Lvca_syntax.Concrete.Fixity.None]
+      | Right -> [%expr Lvca_syntax.Concrete.Fixity.Right]
     ;;
 
     let operator_fixity ~loc (info, fixity', name) =
@@ -298,14 +298,14 @@ module Exp = struct
     let sequence_item ~loc = function
       | Sequence_item.Var (info, str) ->
         [%expr
-          Lvca_syntax.Parse_pretty.Sequence_item.Var
+          Lvca_syntax.Concrete.Sequence_item.Var
             ([%e provenance ~loc info], [%e string ~loc str])]
       | Literal (info, str) ->
         [%expr
-          Lvca_syntax.Parse_pretty.Sequence_item.Literal
+          Lvca_syntax.Concrete.Sequence_item.Literal
             ([%e provenance ~loc info], [%e string ~loc str])]
       | Space info ->
-        [%expr Lvca_syntax.Parse_pretty.Sequence_item.Space [%e provenance ~loc info]]
+        [%expr Lvca_syntax.Concrete.Sequence_item.Space [%e provenance ~loc info]]
     ;;
 
     let operator_concrete_syntax_row ~loc (info, sequence_items) =
@@ -317,7 +317,7 @@ module Exp = struct
 
     let variable_syntax_row ~loc Variable_syntax_row.{ info; var_name; re } =
       [%expr
-        Lvca_syntax.Parse_pretty.Variable_syntax_row.
+        Lvca_syntax.Concrete.Variable_syntax_row.
           { info = [%e provenance ~loc info]
           ; var_name = [%e string ~loc var_name]
           ; re = [%e Regex.t ~loc re]
@@ -329,7 +329,7 @@ module Exp = struct
         Operator_pattern_slot.{ info; variable_names; body_name }
       =
       [%expr
-        Lvca_syntax.Parse_pretty.Operator_pattern_slot.
+        Lvca_syntax.Concrete.Operator_pattern_slot.
           { info = [%e provenance ~loc info]
           ; variable_names = [%e variable_names |> List.map ~f:(string ~loc) |> list ~loc]
           ; body_name = [%e string ~loc body_name]
@@ -338,7 +338,7 @@ module Exp = struct
 
     let operator_pattern ~loc Operator_pattern.{ info; name; slots } =
       [%expr
-        Lvca_syntax.Parse_pretty.Operator_pattern.
+        Lvca_syntax.Concrete.Operator_pattern.
           { info = [%e provenance ~loc info]
           ; name = [%e string ~loc name]
           ; slots = [%e slots |> List.map ~f:(operator_pattern_slot ~loc) |> list ~loc]
@@ -347,7 +347,7 @@ module Exp = struct
 
     let operator_syntax_row ~loc Operator_syntax_row.{ info; pattern; concrete_syntax } =
       [%expr
-        Lvca_syntax.Parse_pretty.Operator_syntax_row.
+        Lvca_syntax.Concrete.Operator_syntax_row.
           { info = [%e provenance ~loc info]
           ; pattern = [%e operator_pattern ~loc pattern]
           ; concrete_syntax = [%e operator_concrete_syntax_row ~loc concrete_syntax]
@@ -366,7 +366,7 @@ module Exp = struct
       =
       let operators = operators |> List.map ~f:(operator_syntax_row ~loc) |> list ~loc in
       [%expr
-        Lvca_syntax.Parse_pretty.Sort_syntax.
+        Lvca_syntax.Concrete.Sort_syntax.
           { info = [%e provenance ~loc info]
           ; name = [%e provenance ~loc name_info], [%e string ~loc name]
           ; operators = [%e operators]
