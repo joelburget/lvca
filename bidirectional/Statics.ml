@@ -159,25 +159,25 @@ module Hypothesis = struct
         Lvca_parsing.(parse_string (whitespace *> Parse.t)) >> Result.ok_or_failwith
       ;;
 
-      let print_parse = parse_exn >> Fmt.pr "%a" pp
+      let print_parse = parse_exn >> pp Fmt.stdout
 
       let%test _ =
-        let m, rule = parse_exn "ctx >> t1 <= bool()" in
+        let m, rule = parse_exn "ctx >> t1 <= Bool()" in
         Map.is_empty m
         && Typing_clause.(
              equivalent
                rule
-               (Checking_rule { tm = Var (here, "t1"); ty = Operator (here, "bool", []) }))
+               (Checking_rule { tm = Var (here, "t1"); ty = Operator (here, "Bool", []) }))
       ;;
 
       let%expect_test _ =
-        print_parse "ctx >> t1 <= bool()";
-        [%expect "ctx >> t1 <= bool()"]
+        print_parse "ctx >> t1 <= Bool()";
+        [%expect "ctx >> t1 <= Bool()"]
       ;;
 
       let%expect_test _ =
-        print_parse "ctx, x : t >> t1 => bool()";
-        [%expect "ctx, x : t >> t1 => bool()"]
+        print_parse "ctx, x : t >> t1 => Bool()";
+        [%expect "ctx, x : t >> t1 => Bool()"]
       ;;
     end)
   ;;
@@ -269,25 +269,25 @@ let%test_module "Parsing" =
     ctx, x : t >> x => t
 
     ---
-    ctx >> Str(x) => str()
+    ctx >> Str(x) => Str()
 
     ---
-    ctx >> Num(x) => num()
+    ctx >> Num(x) => Num()
 
-    ctx >> e1 <= num()    ctx >> e2 <= num()
+    ctx >> e1 <= Num()    ctx >> e2 <= Num()
     ---
-    ctx >> Plus(e1; e2) => num()
+    ctx >> Plus(e1; e2) => Num()
 
-    ctx >> e1 <= str()    ctx >> e2 <= str()
+    ctx >> e1 <= Str()    ctx >> e2 <= Str()
     ---
-    ctx >> Cat(e1; e2) => str()
+    ctx >> Cat(e1; e2) => Str()
 
-    ctx >> e <= str()
+    ctx >> e <= Str()
     ---
-    ctx >> Len(e) => num()
+    ctx >> Len(e) => Num()
 
     ctx >> e1 => t1   ctx, x : t1 >> e2 <= t2
-    --- (Let)
+    --- (let)
     ctx >> Let(e1; x. e2) <= t2
   |};
       [%expect {| parsed |}]
@@ -297,10 +297,10 @@ let%test_module "Parsing" =
       print_parse {|
 
 ---
-  ctx >> True() => bool()
+  ctx >> True() => Bool()
 
 ---
-  ctx >> False() => bool()
+  ctx >> False() => Bool()
 
   |};
       [%expect {| parsed |}]

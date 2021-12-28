@@ -366,22 +366,22 @@ let%test_module "check / infer" =
     let rules =
       {|
     --- (str_literal)
-    ctx >> Str(x) => str()
+    ctx >> Str(x) => Str()
 
     --- (num_literal)
-    ctx >> Num(x) => num()
+    ctx >> Num(x) => Num()
 
-    ctx >> e1 <= num()    ctx >> e2 <= num()
+    ctx >> e1 <= Num()    ctx >> e2 <= Num()
     --- (plus)
-    ctx >> Plus(e1; e2) => num()
+    ctx >> Plus(e1; e2) => Num()
 
-    ctx >> e1 <= str()    ctx >> e2 <= str()
+    ctx >> e1 <= Str()    ctx >> e2 <= Str()
     --- (cat)
-    ctx >> Cat(e1; e2) => str()
+    ctx >> Cat(e1; e2) => Str()
 
-    ctx >> e <= str()
+    ctx >> e <= Str()
     --- (len)
-    ctx >> Len(e) => num()
+    ctx >> Len(e) => Num()
 
     ctx >> e1 => t1   ctx, x : t1 >> e2 => t2
     --- (let)
@@ -416,53 +416,53 @@ let%test_module "check / infer" =
     ;;
 
     let%expect_test _ =
-      print_check ~tm:"Num(1)" ~ty:"num()";
+      print_check ~tm:"Num(1)" ~ty:"Num()";
       [%expect {| |}]
     ;;
 
     let%expect_test _ =
       print_infer "Num(1)";
-      [%expect {| num() |}]
+      [%expect {| Num() |}]
     ;;
 
     let%expect_test _ =
-      print_check ~tm:"Num(1)" ~ty:"num()";
+      print_check ~tm:"Num(1)" ~ty:"Num()";
       [%expect {| |}]
     ;;
 
     let%expect_test _ =
       print_infer {| Len(Str("foo")) |};
-      [%expect {| num() |}]
+      [%expect {| Num() |}]
     ;;
 
     let%expect_test _ =
-      print_check ~tm:{| Len(Str("foo")) |} ~ty:"num()";
+      print_check ~tm:{| Len(Str("foo")) |} ~ty:"Num()";
       [%expect {| |}]
     ;;
 
     let%expect_test _ =
       print_infer {| Plus(Len(Str("foo")); Num(1)) |};
-      [%expect {| num() |}]
+      [%expect {| Num() |}]
     ;;
 
     let%expect_test _ =
       print_infer {| Let(Num(1); v. v) |};
-      [%expect {| num() |}]
+      [%expect {| Num() |}]
     ;;
 
     let%expect_test _ =
       print_infer {| Let(Len(Str("foo")); x. Plus(x; Num(1))) |};
-      [%expect {| num() |}]
+      [%expect {| Num() |}]
     ;;
 
     let%expect_test _ =
       print_infer {| Let(Num(1); x. Let(Str("foo"); y. y)) |};
-      [%expect {| str() |}]
+      [%expect {| Str() |}]
     ;;
 
     let%expect_test _ =
       print_infer {| Let(Num(1); x. Let(Str("foo"); x. x)) |};
-      [%expect {| str() |}]
+      [%expect {| Str() |}]
     ;;
   end)
 ;;
