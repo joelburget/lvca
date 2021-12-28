@@ -5,6 +5,8 @@
   (:standard -no-check-prims))
  (libraries angstrom base brr brr.note digestif.ocaml lvca_bidirectional
    lvca_languages lvca_parsing lvca_provenance lvca_syntax note)
+ (preprocessor_deps
+  (glob_files md/*.md))
  (preprocess
   (pps ppx_blob ppx_jane ppx_lvca)))
 
