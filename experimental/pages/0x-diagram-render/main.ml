@@ -179,8 +179,7 @@ module Parser = struct
       ; string' "white" *> return (op0 "white")
       ; string' "red" *> return (op0 "red")
       ; string' "green" *> return (op0 "green")
-      ; string' "blue" *> return (op0 "blue")
-        (* TODO: blend, clamp, with_a, etc *)
+      ; string' "blue" *> return (op0 "blue") (* TODO: blend, clamp, with_a, etc *)
       ]
     <?> "color"
   ;;
