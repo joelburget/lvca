@@ -20,9 +20,9 @@ module Description = struct
       {|
     expr:
       | Lit(i)    ~ i
-      | Add(x; y) ~ x "+" y
+      | Add(x; y) ~ x _ "+" _ y
       | i         ~ /[a-z][a-zA-Z0-1_]/
-      ;
+      \ ()"+"
 
     type:
       | Int() ~ "int"
@@ -154,7 +154,32 @@ let ident_stag_funs =
 
 let%test_module "Hutton's Razor" =
   (module struct
+    module Concrete = Concrete.Make (struct
+      let abstract =
+        match Abstract_syntax.mk_unordered Description.abstract_syntax with
+        | `Ok unordered -> unordered.sort_defs
+        | `Duplicate_key _ -> failwith "duplicate key"
+      ;;
+
+      let concrete =
+        match Concrete.Unordered.build Description.concrete_syntax with
+        | `Ok unordered -> unordered
+        | `Duplicate_key _ -> failwith "duplicate key"
+      ;;
+
+      let start_sort = "expr"
+    end)
+
     let parse str = Lvca_parsing.(parse_string (whitespace *> Parse.t) str)
+
+    let parse2 str =
+      Lvca_parsing.(
+        parse_string
+          (whitespace
+          *> Concrete.parse_term (Provenance.Parse_input.Buffer_name "test input"))
+          str)
+    ;;
+
     let margin = Stdlib.Format.(pp_get_margin std_formatter ())
 
     let () =
@@ -166,11 +191,12 @@ let%test_module "Hutton's Razor" =
     ;;
 
     let print_representations str =
-      match parse str with
-      | Error str -> print_string str
-      | Ok tm ->
-        Fmt.pr "%a\n" Nonbinding.pp tm;
-        Fmt.pr "%a" pp tm
+      match parse str, parse2 str with
+      | Error str, _ | _, Error str -> print_string str
+      | Ok tm1, Ok tm2 ->
+        Fmt.pr "%a\n" Nonbinding.pp tm1;
+        Fmt.pr "%a\n" pp tm1;
+        Fmt.pr "%a\n" Nominal.Term.pp tm2
     ;;
 
     let%expect_test _ =
@@ -178,6 +204,7 @@ let%test_module "Hutton's Razor" =
       [%expect {|
       Lit(1)
       <c91b95>1</c91b95>
+      Lit(1)
     |}]
     ;;
 
@@ -188,6 +215,7 @@ let%test_module "Hutton's Razor" =
         {|
       Add(Lit(1); Lit(2))
       <a809f3><c91b95>1</c91b95> + <356aaf>2</356aaf></a809f3>
+      Add(Lit(1); Lit(2))
     |}]
     ;;
 
@@ -198,6 +226,7 @@ let%test_module "Hutton's Razor" =
         {|
       Add(Add(Lit(1); Lit(2)); Lit(3))
       <409d43><a809f3><c91b95>1</c91b95> + <356aaf>2</356aaf></a809f3> + <756fbf>3</756fbf></409d43>
+      Add(Add(Lit(1); Lit(2)); Lit(3))
     |}]
     ;;
 
@@ -208,6 +237,7 @@ let%test_module "Hutton's Razor" =
         {|
       Add(Lit(1); Add(Lit(2); Lit(3)))
       <9060da><c91b95>1</c91b95> + <170de4>(<356aaf>2</356aaf> + <756fbf>3</756fbf>)</170de4></9060da>
+      Add(Lit(1); Add(Lit(2); Lit(3)))
     |}]
     ;;
 
