@@ -359,7 +359,7 @@ let ( <$> ) f p = p >>| f
 let fail msg = fail msg
 let make1 mk a = a >>|| fun (info, a) -> info, mk ~info a
 let make0 mk a = make1 (fun ~info _ -> mk ~info) a
-let lift mk a = a >>|| fun (info, a) -> info, mk (info, a)
+let lift f a = a >>|| fun (info, a) -> info, f (info, a)
 
 let make2 mk a b =
   a
@@ -656,8 +656,7 @@ let%test_module "Parsing" =
     let%expect_test _ =
       go {|'x'|};
       go' {|'x' // comment|};
-      [%expect
-        {|
+      [%expect {|
         ({0,3}, 'x')
         ({0,3}, 'x')|}]
     ;;
@@ -741,8 +740,7 @@ let%test_module "Parsing" =
       go {|("a" "b")|};
       (*   0123456789 *)
       go' {|("a" "b")  // comment|};
-      [%expect
-        {|
+      [%expect {|
         ({0,9}, ["a"; "b"])
         ({0,9}, ["a"; "b"])|}]
     ;;
@@ -758,8 +756,7 @@ let%test_module "Parsing" =
     let%expect_test _ =
       go "123";
       go' "123";
-      [%expect
-        {|
+      [%expect {|
         ({0,3}, First "123")
         ({0,3}, First "123")|}]
     ;;
@@ -805,8 +802,7 @@ let%test_module "Parsing" =
       go "";
       go {|"abc"|};
       go {|"abc"; "def"|};
-      [%expect
-        {|
+      [%expect {|
       (_, [])
       ({0,5}, ["abc"])
       ({0,12}, ["abc"; "def"])|}]
@@ -818,8 +814,7 @@ let%test_module "Parsing" =
       "abc";  // this is abc
       "def";  // this one is def
       |};
-      [%expect
-        {|
+      [%expect {|
         ({0,13}, ["abc"; "def"])
         ({7,42}, ["abc"; "def"])|}]
     ;;
@@ -829,8 +824,7 @@ let%test_module "Parsing" =
     let%expect_test _ =
       go {|"abc";|};
       go "";
-      [%expect
-        {|
+      [%expect {|
         ({0,6}, ["abc"])
         : not enough input |}]
     ;;
