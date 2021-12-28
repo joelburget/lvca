@@ -1,7 +1,7 @@
 open Base
 
 let ( << ) f g x = f (g x)
-let ( >> ) f g = g << f
+let ( >> ) f g x = g (f x)
 
 (* Used by bidirectional *)
 module Map = struct
