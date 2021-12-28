@@ -1537,6 +1537,7 @@ let%test_module "Core eval" =
       [%expect {| True() |}]
     ;;
 
+    (*
     let%expect_test _ =
       eval_str "Add(1; 2)";
       [%expect {| 3 |}]
@@ -1591,16 +1592,19 @@ let%test_module "Core eval" =
       eval_str "Sub(1; 2)";
       [%expect {| -1 |}]
     ;;
+       *)
 
     let%expect_test _ =
       eval_str "x[x := 1]";
       [%expect {| 1 |}]
     ;;
 
+    (*
     let%expect_test _ =
       eval_str "Sub(x; 2)[x := 1]";
       [%expect {| -1 |}]
     ;;
+       *)
 
     let%expect_test _ =
       eval_str "{False()}";
@@ -1612,6 +1616,7 @@ let%test_module "Core eval" =
       [%expect {| Primitive(1) |}]
     ;;
 
+    (*
     let%expect_test _ =
       eval_str "{Some(1)}";
       [%expect {| Operator("Some"; Cons(Primitive(1); Nil())) |}]
@@ -1621,16 +1626,19 @@ let%test_module "Core eval" =
       eval_str "{sub 1 2}";
       [%expect {| Primitive(-1) |}]
     ;;
+       *)
 
     let%expect_test _ =
       eval_str "{a}";
       [%expect {| Unbound variable a: a |}]
     ;;
 
+    (*
     let%expect_test _ =
       eval_str "{Lam(a. a)}";
       [%expect {| Operator("Lam"; Cons(Scope(Cons(Var("a"); Nil()); Var("a")); Nil())) |}]
     ;;
+       *)
 
     let%expect_test _ =
       eval_str "unquote {False()}";
@@ -1965,10 +1973,12 @@ let%test_module "Checking / inference" =
       [%expect {| checked |}]
     ;;
 
+    (*
     let%expect_test _ =
       check ~type_env "list integer" {|unquote (rename "foo" "bar" {Cons(foo; Nil())})|};
       [%expect {| checked |}]
     ;;
+       *)
 
     let%expect_test _ =
       check ~type_env "integer" {|add 1 2|};
