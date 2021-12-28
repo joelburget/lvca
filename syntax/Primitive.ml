@@ -28,7 +28,11 @@ module Int32_kernel = struct
   ;;
 end
 
-module Int32 = Nominal.Convertible.Extend (Int32_kernel)
+module Int32 = struct
+  include Nominal.Convertible.Extend (Int32_kernel)
+
+  let parse = Primitive_impl.Int32.parse
+end
 
 module Float_kernel = struct
   include Primitive_impl.Float

@@ -155,6 +155,7 @@ module All_plain = struct
   let parse =
     let open Lvca_parsing in
     let open C_comment_parser in
+    (* TODO(25) This doesn't currently parse int32s. *)
     choice
       ~failure_msg:"looking for an integer, float, string, or character literal"
       [ (integer_or_float_lit

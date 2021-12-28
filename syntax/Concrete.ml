@@ -970,41 +970,42 @@ module Parse_term = struct
       (Provenance.of_range ~input range, name, List.map slots ~f:(build_slot env))
   ;;
 
-  let sequence_items var_parsers pattern items input =
-    let open C_comment_parser in
+  let sequence_items var_parsers pattern items0 input =
     let rec go env range = function
       | [] -> return (build_operator range env pattern input)
       | item :: items ->
         (match item with
         | Sequence_item.Space _ -> go env range items
-        | Literal (_, str) ->
-          let* range', _ = string str in
+        | Literal (_, s) ->
+          let* range', _ = C_comment_parser.string s in
           go env (Opt_range.union range range') items
         | Var (_, name) ->
           let* range', data = Map.find_exn var_parsers name in
           let env = Map.set env ~key:name ~data in
           go env (Opt_range.union range range') items)
     in
-    go String.Map.empty None items
+    go String.Map.empty None items0
   ;;
 
   let builtin_sort_parsers =
-    String.Map.of_alist_exn
+    let open Nominal.Term in
+    let open Primitive in
+    Lvca_util.String.Map.of_alist_exn
       [ ( "char"
-        , let+ _range, (prov, i) = Primitive.Char.parse in
-          Nominal.Term.Primitive (prov, Primitive_impl.All_plain.Char i) )
+        , let+ _range, (prov, c) = Char.parse in
+          Primitive (prov, Char c) )
       ; ( "integer"
-        , let+ _range, (prov, i) = Primitive.Integer.parse in
-          Nominal.Term.Primitive (prov, Primitive_impl.All_plain.Integer i) )
+        , let+ _range, (prov, i) = Integer.parse in
+          Primitive (prov, Integer i) )
       ; ( "int32"
-        , let+ _range, (prov, i) = Primitive.Int32.parse in
-          Nominal.Term.Primitive (prov, Primitive_impl.All_plain.Int32 i) )
+        , let+ _range, (prov, i) = Int32.parse in
+          Primitive (prov, Int32 i) )
       ; ( "float"
-        , let+ _range, (prov, i) = Primitive.Float.parse in
-          Nominal.Term.Primitive (prov, Primitive_impl.All_plain.Float i) )
+        , let+ _range, (prov, f) = Float.parse in
+          Primitive (prov, Float f) )
       ; ( "string"
-        , let+ _range, (prov, i) = Primitive.String.parse in
-          Nominal.Term.Primitive (prov, Primitive_impl.All_plain.String i) )
+        , let+ _range, (prov, s) = String.parse in
+          Primitive (prov, String s) )
       ]
   ;;
 
@@ -1081,11 +1082,11 @@ module Parse_term = struct
       Sort_def.find_operator_def sort_def op_name
       |> Option.get_invariant [%here] (fun () -> "TODO: find_op_def_exn")
     in
-    let mk_op_parser op =
+    let mk_prefix_parser op =
       let op_def = find_op_def_exn (Operator_syntax_row.name op) in
       prefix_operator_syntax_row sort op_def op input
     in
-    let prefix_rows' = List.map prefix_rows ~f:mk_op_parser in
+    let prefix_rows' = List.map prefix_rows ~f:mk_prefix_parser in
     let prefix_parser =
       match variables, prefix_rows' with
       | None, [] -> None
@@ -1128,12 +1129,12 @@ module Parse_term = struct
       match prefix_parser with
       | Some p ->
         let failure_msg =
-          Fmt.(
-            str
-              "looking for a parenthesized %s (or one with a literal prefix: {%a})"
-              sort_name
-              (list ~sep:semi Operator_syntax_row.pp)
-              prefix_rows)
+          let open Fmt in
+          str
+            "looking for a parenthesized %s (or one with a literal prefix: {%a})"
+            sort_name
+            (list ~sep:semi Operator_syntax_row.pp)
+            prefix_rows
         in
         choice ~failure_msg [ C_comment_parser.parens self; p ]
       | None -> C_comment_parser.parens self
@@ -1704,11 +1705,11 @@ foo:
 
         let concrete_defn =
           {|expr:
-  | Char(x)    ~ x
-  | Integer(x) ~ x
-  | Int32(x)   ~ "i32" _ x
-  | Float(x)   ~ x
-  | String(x)  ~ x
+  | Char(c)    ~ c
+  | Integer(i) ~ i
+  | Int32(x)   ~ "i" x
+  | Float(f)   ~ f
+  | String(s)  ~ s
   ;
 |}
         ;;
@@ -1725,16 +1726,17 @@ foo:
 
         let%expect_test _ =
           parse_print "1";
-          (* parse_print "i32 1"; *)
           parse_print "1.0";
           parse_print "'c'";
           parse_print {|"str"|};
+          parse_print "i1";
           [%expect
             {|
             Integer(1)
             Float(1.000000)
             Char('c')
-            String("str") |}]
+            String("str")
+            Int32(1) |}]
         ;;
 
         let go tm =
@@ -1755,7 +1757,7 @@ foo:
           [%expect
             {|
             1
-            i32 1
+            i1
             1.000000
             'c'
             "str" |}]
