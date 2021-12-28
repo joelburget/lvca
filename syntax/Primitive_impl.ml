@@ -327,6 +327,20 @@ let%test_module "Parsing" =
       [%expect {| -0.000000 {0,8} |}]
     ;;
 
+    let print_parse str =
+      match Lvca_parsing.parse_string_pos Int32.parse str with
+      | Ok (range, prim) -> Fmt.pr "%a %a@." Int32.pp prim Opt_range.pp range
+      | Error msg -> Fmt.pr "%s" msg
+    ;;
+
+    let%expect_test _ =
+      print_parse "1";
+      print_parse "3";
+      [%expect {|
+        1 {0,1}
+        3 {0,1} |}]
+    ;;
+
     (* TODO: are floats a good idea?
     let%expect_test _ =
       let f = 2.9384442618974733e-233 in
