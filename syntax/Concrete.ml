@@ -547,10 +547,7 @@ module Sort_syntax = struct
   let partition_operator_rows operator_rows operator_names =
     let binary_operators, prefix_rows =
       List.partition_map operator_rows ~f:(fun row ->
-          match
-            (* TODO: Just replace with a check for operator in operator_ranking? *)
-            Operator_syntax_row.is_binary_operator operator_names row
-          with
+          match Operator_syntax_row.is_binary_operator operator_names row with
           | Some (v1, l, v2) ->
             Either.First { pattern = row.pattern; v1; op_name = l; v2 }
             (* TODO: Just use everything which is not a binary operator? *)
@@ -981,21 +978,45 @@ module Parse_term = struct
         (match item with
         | Sequence_item.Space _ -> go env range items
         | Literal (_, str) ->
-          let* rng', _ = string str in
-          go env (Opt_range.union range rng') items
+          let* range', _ = string str in
+          go env (Opt_range.union range range') items
         | Var (_, name) ->
-          let* rng', data = Map.find_exn var_parsers name in
+          let* range', data = Map.find_exn var_parsers name in
           let env = Map.set env ~key:name ~data in
-          go env (Opt_range.union range rng') items)
+          go env (Opt_range.union range range') items)
     in
     go String.Map.empty None items
   ;;
 
+  let builtin_sort_parsers =
+    String.Map.of_alist_exn
+      [ ( "char"
+        , let+ _range, (prov, i) = Primitive.Char.parse in
+          Nominal.Term.Primitive (prov, Primitive_impl.All_plain.Char i) )
+      ; ( "integer"
+        , let+ _range, (prov, i) = Primitive.Integer.parse in
+          Nominal.Term.Primitive (prov, Primitive_impl.All_plain.Integer i) )
+      ; ( "int32"
+        , let+ _range, (prov, i) = Primitive.Int32.parse in
+          Nominal.Term.Primitive (prov, Primitive_impl.All_plain.Int32 i) )
+      ; ( "float"
+        , let+ _range, (prov, i) = Primitive.Float.parse in
+          Nominal.Term.Primitive (prov, Primitive_impl.All_plain.Float i) )
+      ; ( "string"
+        , let+ _range, (prov, i) = Primitive.String.parse in
+          Nominal.Term.Primitive (prov, Primitive_impl.All_plain.String i) )
+      ]
+  ;;
+
+  (* Find the appropriate sort parser *)
   let sort sort_name self dispatch input sort =
     let sort_name' = Sort.name sort in
-    if String.(sort_name' = sort_name)
-    then self
-    else Map.find_exn dispatch.map sort_name' input dispatch
+    match Map.find builtin_sort_parsers sort_name' with
+    | Some parser -> parser
+    | None ->
+      if String.(sort_name' = sort_name)
+      then self
+      else Map.find_exn dispatch.map sort_name' input dispatch
   ;;
 
   let sort_mapping slots valences =
@@ -1064,13 +1085,13 @@ module Parse_term = struct
       let op_def = find_op_def_exn (Operator_syntax_row.name op) in
       prefix_operator_syntax_row sort op_def op input
     in
-    let prefix_rows = List.map prefix_rows ~f:mk_op_parser in
+    let prefix_rows' = List.map prefix_rows ~f:mk_op_parser in
     let prefix_parser =
-      match variables, prefix_rows with
+      match variables, prefix_rows' with
       | None, [] -> None
-      | None, _ -> Some (choice ~failure_msg prefix_rows)
+      | None, _ -> Some (choice ~failure_msg prefix_rows')
       | Some Variable_syntax_row.{ re; _ }, _ ->
-        Some (choice ~failure_msg (var_parser keywords re :: prefix_rows))
+        Some (choice ~failure_msg (var_parser keywords re :: prefix_rows'))
     in
     let mk_level_parser higher_prec rows =
       let op_name =
@@ -1106,9 +1127,15 @@ module Parse_term = struct
     let highest_prec =
       match prefix_parser with
       | Some p ->
-        choice
-          ~failure_msg:(Fmt.str "parenthesized %s, or with a literal prefix" sort_name)
-          [ C_comment_parser.parens self; p ]
+        let failure_msg =
+          Fmt.(
+            str
+              "looking for a parenthesized %s (or one with a literal prefix: {%a})"
+              sort_name
+              (list ~sep:semi Operator_syntax_row.pp)
+              prefix_rows)
+        in
+        choice ~failure_msg [ C_comment_parser.parens self; p ]
       | None -> C_comment_parser.parens self
     in
     let operator_levels =
@@ -1331,8 +1358,8 @@ let%test_module "parsing / pretty-printing" =
       end)
     ;;
 
-    let parse = Lvca_parsing.parse_string_or_failwith parse
-    let parse_print str = pp Fmt.stdout (parse str)
+    let mk_concrete = Lvca_parsing.parse_string_or_failwith parse
+    let parse_print str = pp Fmt.stdout (mk_concrete str)
 
     let lang_abstract_defn =
       {|expr :=
@@ -1381,17 +1408,17 @@ val:
           |}]
     ;;
 
+    let mk_abstract str =
+      match
+        Lvca_parsing.parse_string_or_failwith Abstract_syntax.parse str
+        |> Abstract_syntax.mk_unordered
+      with
+      | `Duplicate_key k -> failwith (Fmt.str "duplicate key %s" k)
+      | `Ok Abstract_syntax.Unordered.{ sort_defs; _ } -> sort_defs
+    ;;
+
     let%test_module "check" =
       (module struct
-        let mk_abstract str =
-          match
-            Lvca_parsing.parse_string_or_failwith Abstract_syntax.parse str
-            |> Abstract_syntax.mk_unordered
-          with
-          | `Duplicate_key k -> failwith (Fmt.str "duplicate key %s" k)
-          | `Ok Abstract_syntax.Unordered.{ sort_defs; _ } -> sort_defs
-        ;;
-
         let go abstract concrete =
           match check abstract concrete with
           | None -> Fmt.pr "okay"
@@ -1400,7 +1427,7 @@ val:
 
         let%expect_test _ =
           let abstract = mk_abstract lang_abstract_defn in
-          let concrete = parse lang_concrete_defn in
+          let concrete = mk_concrete lang_concrete_defn in
           go abstract concrete;
           [%expect {| Concrete syntax defines variables but abstract syntax doesn't |}]
         ;;
@@ -1409,7 +1436,8 @@ val:
           let abstract = mk_abstract {|a := A(b);
 b := B(a);|} in
           let concrete =
-            parse {|a:
+            mk_concrete
+              {|a:
   | A(b) ~ b "b"
   \ "foo" > "bar"
 
@@ -1425,7 +1453,7 @@ b:
 
         let%expect_test _ =
           let concrete =
-            parse
+            mk_concrete
               {|foo:
   | Foo() ~ "foo"
   \ "foo" > "bar"
@@ -1440,7 +1468,7 @@ foo:
 
         let%expect_test _ =
           let concrete =
-            parse {|foo:
+            mk_concrete {|foo:
   | Foo() ~ "foo"
   | Bar() ~ "bar"
   \ "foo" > "bar"|}
@@ -1455,7 +1483,7 @@ foo:
         let abstract = mk_abstract "a := A(a. a);"
 
         let%expect_test _ =
-          let concrete = parse {|a:
+          let concrete = mk_concrete {|a:
   | A(x. y) ~ "x" x "y" z
   ; |} in
           go abstract concrete;
@@ -1463,7 +1491,7 @@ foo:
         ;;
 
         let%expect_test _ =
-          let concrete = parse {|a:
+          let concrete = mk_concrete {|a:
   | A(x. x) ~ "x" x "y" z
   ; |} in
           go abstract concrete;
@@ -1472,7 +1500,7 @@ foo:
         ;;
 
         let%expect_test _ =
-          let concrete = parse {|a:
+          let concrete = mk_concrete {|a:
   | A(x. y) ~ "x" x "y" x
   ; |} in
           go abstract concrete;
@@ -1481,7 +1509,7 @@ foo:
         ;;
 
         let%expect_test _ =
-          let concrete = parse {|a:
+          let concrete = mk_concrete {|a:
   | A(x. y) ~ x "a" y
   ; |} in
           go abstract concrete;
@@ -1491,11 +1519,13 @@ foo:
       end)
     ;;
 
-    let lang_concrete =
-      match lang_concrete_defn |> parse |> Unordered.build with
+    let mk_concrete' str =
+      match str |> mk_concrete |> Unordered.build with
       | `Duplicate_key k -> failwith (Fmt.str "Unexpected duplicate key %s" k)
       | `Ok lang -> lang
     ;;
+
+    let lang_concrete = mk_concrete' lang_concrete_defn
 
     let%test_module "pp_term" =
       (module struct
@@ -1567,14 +1597,7 @@ foo:
 
     let%test_module "Parse_term" =
       (module struct
-        let lang_abstract =
-          match
-            Lvca_parsing.parse_string_or_failwith Abstract_syntax.parse lang_abstract_defn
-            |> Abstract_syntax.mk_unordered
-          with
-          | `Duplicate_key k -> failwith (Fmt.str "duplicate key %s" k)
-          | `Ok Abstract_syntax.Unordered.{ sort_defs; _ } -> sort_defs
-        ;;
+        let lang_abstract = mk_abstract lang_abstract_defn
 
         let parser ~sort =
           Unordered.parse_term
@@ -1662,6 +1685,80 @@ foo:
         let%expect_test _ =
           parse_print "expr" "x * (y * z)";
           [%expect {|Mul(x; Mul(y; z))|}]
+        ;;
+      end)
+    ;;
+
+    let%test_module "primitives" =
+      (module struct
+        let abstract_defn =
+          {|expr :=
+  | Char(char)
+  | Integer(integer)
+  | Int32(int32)
+  | Float(float)
+  | String(string)
+  ;
+      |}
+        ;;
+
+        let concrete_defn =
+          {|expr:
+  | Char(x)    ~ x
+  | Integer(x) ~ x
+  | Int32(x)   ~ "i32" _ x
+  | Float(x)   ~ x
+  | String(x)  ~ x
+  ;
+|}
+        ;;
+
+        let abstract = mk_abstract abstract_defn
+        let concrete = mk_concrete' concrete_defn
+
+        let parser ~sort =
+          Unordered.parse_term ~input:(Buffer_name "test") ~sort abstract concrete
+        ;;
+
+        let parse sort = Lvca_parsing.parse_string_or_failwith (parser ~sort)
+        let parse_print = parse "expr" >> Fmt.pr "%a@." Nominal.Term.pp
+
+        let%expect_test _ =
+          parse_print "1";
+          (* parse_print "i32 1"; *)
+          parse_print "1.0";
+          parse_print "'c'";
+          parse_print {|"str"|};
+          [%expect
+            {|
+            Integer(1)
+            Float(1.000000)
+            Char('c')
+            String("str") |}]
+        ;;
+
+        let go tm =
+          let tm =
+            Lvca_parsing.parse_string_or_failwith
+              (Nominal.Term.parse' String.Set.empty)
+              tm
+          in
+          Fmt.pr "%a@." (Pp_term.pp_term concrete "expr") tm
+        ;;
+
+        let%expect_test _ =
+          go "Integer(1)";
+          go "Int32(1)";
+          go "Float(1.0)";
+          go "Char('c')";
+          go {|String("str")|};
+          [%expect
+            {|
+            1
+            i32 1
+            1.000000
+            'c'
+            "str" |}]
         ;;
       end)
     ;;
