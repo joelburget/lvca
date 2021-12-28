@@ -89,7 +89,7 @@ end
 let pp =
   (* re prec: ambient precedence level: either 0 or 1. A (+) in an ambient precedence of 1
      needs parens. *)
-  let open Caml.Format in
+  let open Stdlib.Format in
   let with_stag ppf stag f =
     pp_open_stag ppf stag;
     f ();
@@ -136,7 +136,7 @@ let eval_str : string -> (Z.t, string) Result.t =
    | _ -> Error "unexpected non-integer result" end *)
 
 let ident_stag_funs =
-  Caml.Format.
+  Stdlib.Format.
     { mark_open_stag =
         (function
         | Range.Stag rng -> Fmt.str "<%a>" Range.pp rng
@@ -183,7 +183,7 @@ let%test_module "Hutton's Razor" =
     let margin = Stdlib.Format.(pp_get_margin std_formatter ())
 
     let () =
-      let open Caml.Format in
+      let open Stdlib.Format in
       pp_set_margin std_formatter 200;
       set_formatter_stag_functions ident_stag_funs;
       set_tags true;

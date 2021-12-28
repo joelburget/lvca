@@ -78,7 +78,7 @@ I created a formatter that produces Html elements (that also react to a range si
     element is empty until the formatter is used and flushed. *)
 let mk_range_formatter
   : Range.t React.signal
-  -> [> `Code ] Js_of_ocaml_tyxml.Tyxml_js.Html5.elt * Caml.Format.formatter
+  -> [> `Code ] Js_of_ocaml_tyxml.Tyxml_js.Html5.elt * Stdlib.Format.formatter
   = fun rng_signal ->
   let br, span, txt = Html.(br, span, txt) in
 
@@ -98,7 +98,7 @@ let mk_range_formatter
   let add_at_current_level elem = ... in
   let add_text str = add_at_current_level (span [txt str]) in
 
-  Caml.Format.pp_set_formatter_stag_functions fmt
+  Stdlib.Format.pp_set_formatter_stag_functions fmt
     (* We open a new span for every range tag we encounter. All children until we
        encounter the matching close tag will be nested under it (by enqueuing). *)
     { mark_open_stag = (function

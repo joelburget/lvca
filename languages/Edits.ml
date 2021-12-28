@@ -71,7 +71,7 @@ let%test_module "Parsing" =
     let parse_and_print : string -> unit =
      fun str ->
       match parse str with
-      | Ok edit -> pp (Fmt.braces Core.Term.pp_concrete) Caml.Format.std_formatter edit
+      | Ok edit -> pp (Fmt.braces Core.Term.pp_concrete) Stdlib.Format.std_formatter edit
       | Error msg -> print_string msg
    ;;
 
@@ -103,7 +103,7 @@ let%test_module "Parsing" =
         eval tm edit |> Result.map_error ~f:(fun (msg, _tm) -> msg)
       with
       | Error msg -> print_string msg
-      | Ok tm -> Core.Value.pp Caml.Format.std_formatter tm
+      | Ok tm -> Core.Value.pp Stdlib.Format.std_formatter tm
    ;;
       *)
 

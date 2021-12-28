@@ -218,7 +218,7 @@ let pp_view ~highlight_s tm fmt =
   let _sink : Logr.t =
     S.log char_size_s (fun size ->
         clear_formatter ();
-        Caml.Format.pp_set_margin formatter size;
+        Stdlib.Format.pp_set_margin formatter size;
         Fmt.pf formatter "%a" fmt tm;
         Fmt.flush formatter ())
   in

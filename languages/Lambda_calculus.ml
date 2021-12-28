@@ -81,7 +81,7 @@ end
 
 let pp =
   let rec pp' prec ppf tm =
-    let module Format = Caml.Format in
+    let module Format = Stdlib.Format in
     Format.pp_open_stag ppf (Format.String_tag (Nominal.Term.hash tm));
     Provenance.open_stag ppf (Nominal.Term.info tm);
     (match tm with
@@ -105,7 +105,7 @@ let pp =
 
 let%test_module "Lambda Calculus" =
   (module struct
-    let () = Caml.Format.set_tags false
+    let () = Stdlib.Format.set_tags false
     let parse str = Lvca_parsing.(parse_string (whitespace *> Parse.t) str)
     let pretty_parse str = parse str |> Result.ok_or_failwith |> Fmt.pr "%a" pp
 

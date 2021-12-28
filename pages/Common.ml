@@ -26,8 +26,8 @@ let parser_of = function
 (* let term_pretty = Nominal.Term.pp *)
 (* let lambda_pretty = Lvca_languages.Lambda_calculus.pp *)
 (* let lambda_ranges_pretty = Lvca_languages.Lambda_calculus.pp *)
-let html_eq = Caml.( = )
-let htmls_eq = List.equal Caml.( = )
+let html_eq = Stdlib.( = )
+let htmls_eq = List.equal Stdlib.( = )
 
 module Action = struct
   type t =
