@@ -144,27 +144,4 @@ module Unordered : sig
 
   val build : Sort_syntax.t list -> [ `Duplicate_key of string | `Ok of t ]
   val keywords : t -> String.Set.t
-
-  (** Pretty-print a term using this concrete syntax. *)
-  val pp_term : sort:string -> t -> Nominal.Term.t Fmt.t
-
-  (** Parse a term using this concrete syntax. *)
-  val parse_term
-    :  ?input:Provenance.Parse_input.t
-    -> sort:string
-    -> Sort_def.t String.Map.t
-    -> t
-    -> Nominal.Term.t Lvca_parsing.t
-end
-
-module Make (Input : sig
-  val abstract : Sort_def.t String.Map.t
-  val concrete : Unordered.t
-  val start_sort : string
-end) : sig
-  (** Pretty-print a term using this concrete syntax. *)
-  val pp_term : Nominal.Term.t Fmt.t
-
-  (** Parse a term using this concrete syntax. *)
-  val parse_term : Provenance.Parse_input.t -> Nominal.Term.t Lvca_parsing.t
 end
