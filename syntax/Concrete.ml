@@ -641,18 +641,12 @@ let build_unordered ordered =
 let parse = Lvca_parsing.(many1 Sort_syntax.parse <?> "parse / pretty definition")
 let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
 
-(* Find the sort of a variable in a pattern. *)
-let find_var_in_pattern_slots
-    (pattern_slots : Operator_pattern_slot.t list)
-    (valences : Valence.t list)
-    (needle : string)
-    : Sort_slot.t
-  =
+let find_var_sort pattern_slots valences needle =
   List.zip_exn pattern_slots valences
   |> List.find_map_exn
        ~f:(fun
             ( Operator_pattern_slot.{ variable_names; body_name; _ }
-            , Valence (sort_slots, body_sort) )
+            , Valence.Valence (sort_slots, body_sort) )
           ->
          if String.(body_name = needle)
          then Some (Sort_slot.Sort_binding body_sort)
@@ -678,7 +672,7 @@ let leading_sort_graph abstract_syntax concrete_syntax =
           in
           match sequence_items with
           | Var (_, name) :: _ ->
-            let sort_slot = find_var_in_pattern_slots pattern.slots valences name in
+            let sort_slot = find_var_sort pattern.slots valences name in
             let sort =
               match sort_slot with
               | Sort_binding sort -> sort

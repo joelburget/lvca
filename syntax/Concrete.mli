@@ -138,6 +138,13 @@ val pp : t Fmt.t
 val check : Sort_def.t String.Map.t -> t -> string option
 val keywords : t -> String.Set.t
 
+(** Find the sort of a variable in a pattern. *)
+val find_var_sort
+  :  Operator_pattern_slot.t list
+  -> Valence.t list
+  -> string
+  -> Sort_slot.t
+
 (** How to parse / print a language. Also see the ordered form [t]. *)
 module Unordered : sig
   type t = Sort_syntax.t String.Map.t
