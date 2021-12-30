@@ -40,11 +40,13 @@ module Rule = struct
     | Optional t -> app1 "optional" pp ppf t
     | Prec (i, t) -> app2 "prec" int i pp t
     | Left (i_opt, t) ->
-      (match i_opt with None -> app1 "left" pp ppf t | Some i -> app2 "left" int i pp t)
+      (match i_opt with
+      | None -> app1 "prec.left" pp ppf t
+      | Some i -> app2 "prec.left" int i pp t)
     | Right (i_opt, t) ->
       (match i_opt with
-      | None -> app1 "right" pp ppf t
-      | Some i -> app2 "right" int i pp t)
+      | None -> app1 "prec.right" pp ppf t
+      | Some i -> app2 "prec.right" int i pp t)
     | Dynamic (i, t) -> app2 "dynamic" int i pp t
     | Token t -> app1 "token" pp ppf t
     | Immediate t -> app1 "token.immediate" pp ppf t
@@ -222,9 +224,9 @@ let%test_module _ =
           rules:
            {_expression: $ => choice($.identifier, $.unary_expression,
                               $.binary_expression),
-            binary_expression: $ => choice(left(1, seq($._expression, "instanceof",
-                                                   $._expression))),
-            unary_expression: $ => choice(left(1, seq("typeof", $._expression))),
+            binary_expression: $ => choice(prec.left(1, seq($._expression,
+                                                        "instanceof", $._expression))),
+            unary_expression: $ => choice(prec.left(1, seq("typeof", $._expression))),
             identifier: $ => /[a-z_]+/}}) |}]
     ;;
 
@@ -279,8 +281,8 @@ val:
           name: "test",
           rules:
            {expr: $ => choice(/[a-z][a-zA-Z0-9_]*/,
-                       left(1, seq($.expr, "+", $.expr)),
-                       left(2, seq($.expr, "*", $.expr)),
+                       prec.left(1, seq($.expr, "+", $.expr)),
+                       prec.left(2, seq($.expr, "*", $.expr)),
                        seq("fun", $.val, "->", $.expr), $.val),
             val: $ => choice("true", "false")}}) |}]
     ;;
