@@ -160,4 +160,7 @@ module Unordered : sig
 
   val build : Sort_syntax.t list -> [ `Duplicate_key of string | `Ok of t ]
   val keywords : t -> String.Set.t
+
+  (** Pretty-print a term using this concrete syntax. *)
+  val pp_term : t -> string -> Nominal.Term.t Fmt.t
 end

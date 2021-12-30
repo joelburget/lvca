@@ -738,11 +738,142 @@ let check sort_defs ordered =
     |> List.find_map ~f:(fun checker -> checker ())
 ;;
 
+module Pp_term = struct
+  (* Precedence levels
+     - Starting from 0 (highest precedence), counting up to Base.Int.max_value
+       (lowest precedence)
+     - We compare two precedence levels -- the environment's level and the
+       current expression's level. If the environment has higher (or equal)
+       precedence (a lower number), we must include parens.
+   *)
+  let pp_term
+      (concrete_syntax : Sort_syntax.t String.Map.t)
+      (start_sort : string)
+      ppf
+      (tm : Nominal.Term.t)
+    =
+    let operator_infos = Map.map concrete_syntax ~f:Sort_syntax.operator_infos in
+    let rec operator_row
+        ~sort_name
+        ~env_prec
+        (row : Operator_syntax_row.t)
+        (tm : Nominal.Term.t)
+      =
+      match tm with
+      | Nominal.Term.Var _ ->
+        Lvca_util.invariant_violation [%here] "operator_row doesn't handle vars"
+      | Primitive prim -> Ok (Some (Primitive.All.pp ppf prim))
+      | Operator (_, op_name, scopes) ->
+        if String.(row.Operator_syntax_row.pattern.name <> op_name)
+        then Ok None
+        else pp_operator ~env_prec ~sort_name row scopes
+    and pp_operator
+        ~env_prec
+        ~sort_name
+        (row : Operator_syntax_row.t)
+        (scopes : Nominal.Scope.t list)
+      =
+      let Operator_syntax_row.
+            { info = _; pattern = { slots; _ }; concrete_syntax = _, sequence_items }
+        =
+        row
+      in
+      let operator_infos = Map.find_exn operator_infos sort_name in
+      let operator_names = Sort_syntax.operator_names operator_infos in
+      match List.zip slots scopes with
+      | Ok slotscopes ->
+        let open Result.Let_syntax in
+        let%bind var_mappings =
+          slotscopes
+          |> List.map
+               ~f:(fun
+                    ( Operator_pattern_slot.{ info = _; variable_names; body_name }
+                    , Nominal.Scope.Scope (pats, body) )
+                  ->
+                 match List.zip variable_names (List.map pats ~f:Either.First.return) with
+                 | Unequal_lengths -> Error "TODO: pp_term 1"
+                 | Ok varpats ->
+                   Ok
+                     (varpats
+                     |> String.Map.of_alist_exn
+                     |> Map.set ~key:body_name ~data:(Either.Second body)))
+          |> Result.all
+        in
+        let var_mapping = String.Map.unions_left_biased var_mappings in
+        let pp_sequence_items ppf get_env_prec =
+          List.iter sequence_items ~f:(function
+              | Sequence_item.Var (_, name) ->
+                let tm =
+                  match Map.find_exn var_mapping name with
+                  | First pat -> Nominal.Term.of_pattern pat
+                  | Second tm -> tm
+                in
+                go ~env_prec:(get_env_prec ()) ~sort_name tm
+              | Literal (_, str) -> Fmt.string ppf str
+              | Space _ -> Fmt.sp ppf ())
+        in
+        let print_it ppf () =
+          match Operator_syntax_row.is_binary_operator ~operator_names row with
+          | Some (_, op_name, _) ->
+            let op_prec, fixity = Map.find_exn operator_infos op_name in
+            let initial_prec_level, final_prec_level =
+              (* New environment prec levels for left / right sides. Higher
+                 number means lower precedence means won't show parens for same
+                 level. Same number will show parens for the same level. *)
+              match fixity with
+              | Left -> op_prec + 1, op_prec
+              | None -> op_prec, op_prec
+              | Right -> op_prec, op_prec + 1
+            in
+            let prec_level_ref = ref initial_prec_level in
+            let get_env_prec () =
+              let result = !prec_level_ref in
+              prec_level_ref := final_prec_level;
+              result
+            in
+            (* Include parens when we have lower precedence than the
+               environment (higher number) *)
+            if op_prec >= env_prec
+            then Fmt.parens pp_sequence_items ppf get_env_prec
+            else pp_sequence_items ppf get_env_prec
+          | None -> pp_sequence_items ppf (fun () -> Base.Int.max_value)
+        in
+        Ok (Some Fmt.((hovbox ~indent:2 print_it) ppf ()))
+      | Unequal_lengths -> Error "TODO: pp_term 2"
+    and go ~env_prec ~sort_name tm =
+      match tm with
+      | Nominal.Term.Var (_, var_name) -> Fmt.string ppf var_name
+      | _ ->
+        let operator_syntaxes : Operator_syntax_row.t list =
+          match Map.find concrete_syntax start_sort (* XXX need to change sort *) with
+          | Some Sort_syntax.{ operators; _ } -> operators
+          | None ->
+            Lvca_util.invariant_violation
+              [%here]
+              (Fmt.str "didn't find expected operator %S" start_sort)
+        in
+        (match
+           List.find_map operator_syntaxes ~f:(fun row ->
+               match operator_row ~sort_name ~env_prec row tm with
+               | Error _ -> None
+               | Ok v -> v)
+         with
+        | None ->
+          Lvca_util.invariant_violation
+            [%here]
+            (Fmt.str "Didn't find matching operator syntax for `%a`" Nominal.Term.pp tm)
+        | Some () -> ())
+    in
+    go ~env_prec:Base.Int.max_value ~sort_name:start_sort tm
+  ;;
+end
+
 module Unordered = struct
   type t = Sort_syntax.t String.Map.t
 
   let build = build_unordered
   let keywords = unordered_keywords
+  let pp_term = Pp_term.pp_term
 end
 
 let%test_module "parsing / pretty-printing" =
@@ -1070,6 +1201,82 @@ foo:
           go abstract concrete;
           [%expect
             {|`x "a" y` is neither a binary operator, prefix row, nor defers to another sort|}]
+        ;;
+      end)
+    ;;
+
+    let mk_concrete' str =
+      match str |> mk_concrete |> Unordered.build with
+      | `Duplicate_key k -> failwith (Fmt.str "Unexpected duplicate key %s" k)
+      | `Ok lang -> lang
+    ;;
+
+    let lang_concrete = mk_concrete' lang_concrete_defn
+
+    let%test_module "pp_term" =
+      (module struct
+        let go sort tm =
+          let tm =
+            Lvca_parsing.parse_string_or_failwith
+              (Nominal.Term.parse' String.Set.empty)
+              tm
+          in
+          Unordered.pp_term lang_concrete sort Fmt.stdout tm
+        ;;
+
+        let%expect_test _ =
+          go "expr" "z";
+          [%expect {|z|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Add(1; 1)";
+          [%expect {|1 + 1|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Add(Add(x; y); z)";
+          [%expect {|x + y + z|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Add(x; Add(y; z))";
+          [%expect {|x + (y + z)|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Add(x; Mul(y; z))";
+          [%expect {|x + y * z|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Add(Mul(x; y); z)";
+          [%expect {|x * y + z|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Mul(Mul(x; y); z)";
+          [%expect {|x * y * z|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Mul(x; Mul(y; z))";
+          [%expect {|x * (y * z)|}]
+        ;;
+
+        let%expect_test _ =
+          go "expr" "Fun(x. x)";
+          [%expect {|fun x -> x|}]
+        ;;
+
+        let%expect_test _ =
+          go "val" "True()";
+          [%expect {|true|}]
+        ;;
+
+        let%expect_test _ =
+          go "val" "False()";
+          [%expect {|false|}]
         ;;
       end)
     ;;
