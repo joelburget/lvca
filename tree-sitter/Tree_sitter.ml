@@ -2,6 +2,7 @@
    [ ] check for JS keywords
  *)
 open Base
+open Lvca_syntax
 open Lvca_util
 
 module Rule = struct
@@ -151,9 +152,9 @@ module Grammar = struct
     { name; rules; extras; inline; conflicts; externals; word; supertypes }
   ;;
 
-  let of_concrete ~abstract ~name sort_syntaxes =
+  let of_language ~name ~abstract ~concrete =
     let rules =
-      List.map sort_syntaxes ~f:(fun sort_syntax ->
+      List.map concrete ~f:(fun sort_syntax ->
           let _, sort_name = sort_syntax.Concrete.Sort_syntax.name in
           let sort_def =
             Map.find abstract sort_name
@@ -183,7 +184,7 @@ module Grammar = struct
       ]
       |> List.filter_map ~f:Fn.id
     in
-    pf ppf "@[module.exports = grammar({@,%a@,})@]" (record fields) t
+    pf ppf "@[<hov 2>module.exports = grammar({@,%a@,})@]" (record fields) t
   ;;
 end
 
@@ -217,15 +218,14 @@ let%test_module _ =
       [%expect
         {|
         module.exports = grammar({
-        name: "javascript"
-        rules:
-         {_expression: $ => choice($.identifier, $.unary_expression,
-                            $.binary_expression),
-          binary_expression: $ => choice(left(1, seq($._expression, "instanceof",
-                                                 $._expression))),
-          unary_expression: $ => choice(left(1, seq("typeof", $._expression))),
-          identifier: $ => /[a-z_]+/}
-        }) |}]
+          name: "javascript"
+          rules:
+           {_expression: $ => choice($.identifier, $.unary_expression,
+                              $.binary_expression),
+            binary_expression: $ => choice(left(1, seq($._expression, "instanceof",
+                                                   $._expression))),
+            unary_expression: $ => choice(left(1, seq("typeof", $._expression))),
+            identifier: $ => /[a-z_]+/}}) |}]
     ;;
 
     let abstract_defn =
@@ -271,18 +271,18 @@ val:
     let concrete = mk_concrete concrete_defn
 
     let%expect_test _ =
-      let grammar = Grammar.of_concrete ~name:"test" ~abstract concrete in
+      let grammar = Grammar.of_language ~name:"test" ~abstract ~concrete in
       Grammar.pp Fmt.stdout grammar;
       [%expect
         {|
         module.exports = grammar({
-        name: "test"
-        rules:
-         {expr: $ => choice(/[a-z][a-zA-Z0-9_]*/, left(1, seq($.expr, "+", $.expr)),
-                     left(2, seq($.expr, "*", $.expr)),
-                     seq("fun", $.val, "->", $.expr), $.val),
-          val: $ => choice("true", "false")}
-        }) |}]
+          name: "test"
+          rules:
+           {expr: $ => choice(/[a-z][a-zA-Z0-9_]*/,
+                       left(1, seq($.expr, "+", $.expr)),
+                       left(2, seq($.expr, "*", $.expr)),
+                       seq("fun", $.val, "->", $.expr), $.val),
+            val: $ => choice("true", "false")}}) |}]
     ;;
   end)
 ;;

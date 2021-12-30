@@ -1,0 +1,14 @@
+(library
+ (name lvca_tree_sitter)
+ (public_name lvca.tree_sitter)
+ (inline_tests)
+ (libraries base fmt lvca_syntax lvca_util)
+ (preprocess
+  (pps ppx_jane))
+ (modules Tree_sitter)
+ (wrapped false))
+
+(executable
+ (name tree_sitter_gen)
+ (libraries cmdliner fmt lvca.tree_sitter)
+ (modules Tree_sitter_gen))

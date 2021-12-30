@@ -1,3 +1,5 @@
+open Lvca_syntax
+
 module Rule : sig
   type t =
     | Str_lit of string
@@ -33,6 +35,8 @@ module Grammar : sig
     ; supertypes : string list option
     }
 
+  val pp : t Fmt.t
+
   val mk
     :  ?extras:string list
     -> ?inline:string list
@@ -44,9 +48,9 @@ module Grammar : sig
     -> (string * Rule.t) list
     -> t
 
-  val of_concrete
-    :  abstract:Sort_def.t Lvca_util.String.Map.t
-    -> name:string
-    -> Concrete.Sort_syntax.t list
+  val of_language
+    :  name:string
+    -> abstract:Sort_def.t Lvca_util.String.Map.t
+    -> concrete:Concrete.Sort_syntax.t list
     -> t
 end
