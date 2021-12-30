@@ -640,7 +640,7 @@ let build_unordered ordered =
   |> String.Map.of_alist
 ;;
 
-let parse = Lvca_parsing.(many1 Sort_syntax.parse <?> "parse / pretty definition")
+let parse = Lvca_parsing.(many1 Sort_syntax.parse <?> "concrete syntax")
 let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
 
 let find_var_sort pattern_slots valences needle =
