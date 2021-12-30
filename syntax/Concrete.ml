@@ -172,7 +172,7 @@ module Operator_concrete_syntax_row = struct
     sequence_items |> List.map ~f:Sequence_item.keywords |> Set.union_list (module String)
   ;;
 
-  let is_binary_operator operator_names (_, items) =
+  let is_binary_operator ~operator_names (_, items) =
     match List.filter items ~f:(not << Sequence_item.is_space) with
     | [ Var (_, v1); Literal (_, l); Var (_, v2) ] when Set.mem operator_names l ->
       Some (v1, l, v2)
@@ -299,8 +299,8 @@ module Operator_syntax_row = struct
     Operator_concrete_syntax_row.keywords concrete_syntax
   ;;
 
-  let is_binary_operator operator_names { concrete_syntax; _ } =
-    Operator_concrete_syntax_row.is_binary_operator operator_names concrete_syntax
+  let is_binary_operator ~operator_names { concrete_syntax; _ } =
+    Operator_concrete_syntax_row.is_binary_operator ~operator_names concrete_syntax
   ;;
 
   let is_prefix_row { concrete_syntax; _ } =
@@ -411,7 +411,7 @@ module Operator_syntax_row = struct
         |> String.Map.of_alist_exn
       in
       match
-        ( is_binary_operator operator_names row
+        ( is_binary_operator ~operator_names row
         , is_prefix_row row || defers_to_another_sort ~sort_name ~var_sort_mapping row )
       with
       | Some _, false | None, true -> None
@@ -479,6 +479,8 @@ module Sort_syntax = struct
     ; variables : Variable_syntax_row.t option
     ; operator_ranking : Operator_ranking.t option
     }
+
+  type operator_infos = (int * Fixity.t) String.Map.t
 
   let keywords { operators; _ } =
     operators

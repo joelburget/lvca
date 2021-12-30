@@ -2,6 +2,7 @@
    [ ] check for JS keywords
  *)
 open Base
+open Lvca_util
 
 module Rule = struct
   type t =
@@ -50,26 +51,45 @@ module Rule = struct
     | Field (name, t) -> app2 "field" pp t string name
   ;;
 
-  let of_sort_syntax
-      ~sort_def
-      Concrete.Sort_syntax.
-        { info = _; name = _, name; operators; variables; operator_ranking = _ (* TODO*) }
-    =
+  let get_binary_op_info operator_names row levels =
+    let open Concrete in
+    let open Option.Let_syntax in
+    let%bind _, op_name, _ =
+      Operator_concrete_syntax_row.is_binary_operator
+        ~operator_names
+        row.Operator_syntax_row.concrete_syntax
+    in
+    let num_levels = List.length levels in
+    List.find_mapi levels ~f:(fun i fixities ->
+        let%map _, fixity, _ =
+          List.find fixities ~f:(fun (_, _, op_name') -> String.(op_name' = op_name))
+        in
+        num_levels - i, fixity)
+  ;;
+
+  let of_sort_syntax ~sort_def sort_syntax =
+    let open Concrete in
     let (Sort_def.Sort_def (_vars, abstract_ops, _)) = sort_def in
+    let Sort_syntax.{ info = _; name = _, name; operators; variables; operator_ranking } =
+      sort_syntax
+    in
+    let operator_names =
+      sort_syntax |> Sort_syntax.operator_infos |> Sort_syntax.operator_names
+    in
     let choices =
-      List.map
-        operators
-        ~f:(fun Concrete.Operator_syntax_row.{ pattern; concrete_syntax; _ } ->
-          let op_name = pattern.name in
+      List.map operators ~f:(fun row ->
+          let Operator_syntax_row.{ pattern; concrete_syntax; _ } = row in
           let (Operator_def.Operator_def (_, _, Arity (_, valences))) =
-            List.find_exn abstract_ops ~f:(fun (Operator_def.Operator_def (_, name, _)) ->
-                String.(name = op_name))
+            List.find abstract_ops ~f:(fun (Operator_def.Operator_def (_, name, _)) ->
+                String.(name = pattern.name))
+            |> Option.get_invariant [%here] (fun () ->
+                   Fmt.str "Operator %s must appear in the abstract syntax" pattern.name)
           in
           let _, sequence_items = concrete_syntax in
           let sequence_items =
             List.filter_map sequence_items ~f:(function
                 | Var (_, name) ->
-                  let sort_slot = Concrete.find_var_sort pattern.slots valences name in
+                  let sort_slot = find_var_sort pattern.slots valences name in
                   let sort =
                     match sort_slot with
                     | Sort_binding sort -> sort
@@ -79,15 +99,27 @@ module Rule = struct
                 | Literal (_, str) -> Some (Str_lit str)
                 | Space _ -> None)
           in
-          match sequence_items with
-          | [] -> Lvca_util.invariant_violation [%here] "Empty sequence"
-          | [ item ] -> item
-          | _ -> Seq sequence_items)
+          let rule =
+            match sequence_items with
+            | [] -> Lvca_util.invariant_violation [%here] "Empty sequence"
+            | [ item ] -> item
+            | _ -> Seq sequence_items
+          in
+          let operator_ranking =
+            match operator_ranking with None -> [] | Some (_prov, ranking) -> ranking
+          in
+          match get_binary_op_info operator_names row operator_ranking with
+          | None -> rule
+          | Some (prec, fixity) ->
+            (match fixity with
+            | Fixity.Left -> Left (Some prec, rule)
+            | None -> Prec (prec, rule)
+            | Right -> Right (Some prec, rule)))
     in
     let choices =
       match variables with
       | None -> choices
-      | Some Concrete.Variable_syntax_row.{ re; _ } -> Re_lit re :: choices
+      | Some Variable_syntax_row.{ re; _ } -> Re_lit re :: choices
     in
     let choices =
       match choices with
@@ -123,7 +155,11 @@ module Grammar = struct
     let rules =
       List.map sort_syntaxes ~f:(fun sort_syntax ->
           let _, sort_name = sort_syntax.Concrete.Sort_syntax.name in
-          let sort_def = Map.find_exn abstract sort_name in
+          let sort_def =
+            Map.find abstract sort_name
+            |> Option.get_invariant [%here] (fun () ->
+                   Fmt.str "Sort %s must appear in the abstract syntax" sort_name)
+          in
           Rule.of_sort_syntax ~sort_def sort_syntax)
     in
     mk name rules
@@ -242,8 +278,9 @@ val:
         module.exports = grammar({
         name: "test"
         rules:
-         {expr: $ => choice(/[a-z][a-zA-Z0-9_]*/, seq($.expr, "+", $.expr),
-                     seq($.expr, "*", $.expr), seq("fun", $.val, "->", $.expr), $.val),
+         {expr: $ => choice(/[a-z][a-zA-Z0-9_]*/, left(1, seq($.expr, "+", $.expr)),
+                     left(2, seq($.expr, "*", $.expr)),
+                     seq("fun", $.val, "->", $.expr), $.val),
           val: $ => choice("true", "false")}
         }) |}]
     ;;

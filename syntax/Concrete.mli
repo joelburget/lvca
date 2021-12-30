@@ -52,6 +52,11 @@ module Operator_concrete_syntax_row : sig
   val vars : t -> string list
   val parse : t Lvca_parsing.t
   val pp : t Fmt.t
+
+  val is_binary_operator
+    :  operator_names:Lvca_util.String.Set.t
+    -> t
+    -> (string * string * string) option
 end
 
 (** The regex for parsing a variable name. *)
@@ -124,9 +129,13 @@ module Sort_syntax : sig
     ; operator_ranking : Operator_ranking.t option
     }
 
+  type operator_infos = (int * Fixity.t) String.Map.t
+
   val parse : t Lvca_parsing.t
   val pp : t Fmt.t
   val check : sort_defs:Sort_def.t String.Map.t -> t -> string option
+  val operator_infos : t -> operator_infos
+  val operator_names : operator_infos -> String.Set.t
 end
 
 (** How to parse, print, and check a language. This is a list so we can print back a
