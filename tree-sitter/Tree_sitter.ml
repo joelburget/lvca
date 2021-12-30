@@ -184,7 +184,7 @@ module Grammar = struct
       ]
       |> List.filter_map ~f:Fn.id
     in
-    pf ppf "@[<hov 2>module.exports = grammar({@,%a@,})@]" (record fields) t
+    pf ppf "@[<hov 2>module.exports = grammar({@,%a@,})@]" (record ~sep:comma fields) t
   ;;
 end
 
@@ -218,7 +218,7 @@ let%test_module _ =
       [%expect
         {|
         module.exports = grammar({
-          name: "javascript"
+          name: "javascript",
           rules:
            {_expression: $ => choice($.identifier, $.unary_expression,
                               $.binary_expression),
@@ -276,7 +276,7 @@ val:
       [%expect
         {|
         module.exports = grammar({
-          name: "test"
+          name: "test",
           rules:
            {expr: $ => choice(/[a-z][a-zA-Z0-9_]*/,
                        left(1, seq($.expr, "+", $.expr)),
