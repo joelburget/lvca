@@ -24,29 +24,30 @@ module Rule = struct
 
   let rec pp ppf =
     let open Fmt in
+    let app1 name pp ppf v = pf ppf "@[<hov>%s(%a)@]" name pp v in
+    let app2 name pp1 v1 pp2 v2 = pf ppf "@[<hov>%s(%a, %a)@]" name pp1 v1 pp2 v2 in
+    let string ppf str = pf ppf "%S" str in
     function
-    | Str_lit str -> pf ppf "%S" str
+    | Str_lit str -> string ppf str
     | Re_lit re -> pf ppf "/%a/" Regex.pp re
     | Symbol name -> pf ppf "$.%s" name
-    | Seq ts -> pf ppf "@[seq(%a)@]" (list ~sep:comma pp) ts
-    | Choice ts -> pf ppf "@[choice(%a)@]" (list ~sep:comma pp) ts
-    | Repeat t -> pf ppf "@[repeat(%a)@]" pp t
-    | Repeat1 t -> pf ppf "@[repeat1(%a)@]" pp t
-    | Optional t -> pf ppf "@[optional(%a)@]" pp t
-    | Prec (i, t) -> pf ppf "@[prec(%d, %a)@]" i pp t
+    | Seq ts -> app1 "seq" (list ~sep:comma pp) ppf ts
+    | Choice ts -> app1 "choice" (list ~sep:comma pp) ppf ts
+    | Repeat t -> app1 "repeat" pp ppf t
+    | Repeat1 t -> app1 "repeat1" pp ppf t
+    | Optional t -> app1 "optional" pp ppf t
+    | Prec (i, t) -> app2 "prec" int i pp t
     | Left (i_opt, t) ->
-      (match i_opt with
-      | None -> pf ppf "@[left(%a)@]" pp t
-      | Some i -> pf ppf "@[left(%d, %a)@]" i pp t)
+      (match i_opt with None -> app1 "left" pp ppf t | Some i -> app2 "left" int i pp t)
     | Right (i_opt, t) ->
       (match i_opt with
-      | None -> pf ppf "@[right(%a)@]" pp t
-      | Some i -> pf ppf "@[right(%d, %a)@]" i pp t)
-    | Dynamic (i, t) -> pf ppf "@[dynamic(%d, %a)@]" i pp t
-    | Token t -> pf ppf "@[token(%a)@]" pp t
-    | Immediate t -> pf ppf "@[token.immediate(%a)@]" pp t
-    | Alias (name, t) -> pf ppf "@[alias(%a, %S)@]" pp t name
-    | Field (name, t) -> pf ppf "@[field(%a, %S)@]" pp t name
+      | None -> app1 "right" pp ppf t
+      | Some i -> app2 "right" int i pp t)
+    | Dynamic (i, t) -> app2 "dynamic" int i pp t
+    | Token t -> app1 "token" pp ppf t
+    | Immediate t -> app1 "token.immediate" pp ppf t
+    | Alias (name, t) -> app2 "alias" pp t string name
+    | Field (name, t) -> app2 "field" pp t string name
   ;;
 
   let of_sort_syntax
