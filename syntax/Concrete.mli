@@ -16,7 +16,6 @@ module Operator_fixity : sig
   type t = Provenance.t * Fixity.t * string
 
   val info : t -> Provenance.t
-  val parse : t Lvca_parsing.t
   val pp : t Fmt.t
 end
 
@@ -26,7 +25,6 @@ module Operator_ranking : sig
   type t = Provenance.t * Operator_fixity.t list list
 
   val info : t -> Provenance.t
-  val parse : t Lvca_parsing.t
   val pp : t Fmt.t
   val check : t -> string option
 end
@@ -40,7 +38,6 @@ module Sequence_item : sig
 
   val info : t -> Provenance.t
   val vars : t -> string list
-  val parse : t Lvca_parsing.t
   val pp : t Fmt.t
 end
 
@@ -50,7 +47,6 @@ module Operator_concrete_syntax_row : sig
 
   val info : t -> Provenance.t
   val vars : t -> string list
-  val parse : t Lvca_parsing.t
   val pp : t Fmt.t
 end
 
@@ -63,7 +59,6 @@ module Variable_syntax_row : sig
     }
 
   val info : t -> Provenance.t
-  val parse : t Lvca_parsing.t
   val pp : t Fmt.t
 end
 
@@ -78,7 +73,6 @@ module Operator_pattern_slot : sig
 
   val vars : t -> string list
   val pp : t Fmt.t
-  val parse : t Lvca_parsing.t
 end
 
 (** A pattern for an operator with subterms and binders. *)
@@ -91,7 +85,6 @@ module Operator_pattern : sig
 
   val vars : t -> string list
   val pp : t Fmt.t
-  val parse : t Lvca_parsing.t
 end
 
 (** One way to parse, print, and check an operator. *)
@@ -103,7 +96,6 @@ module Operator_syntax_row : sig
     }
 
   val info : t -> Provenance.t
-  val parse : t Lvca_parsing.t
   val pp : t Fmt.t
 
   val check
@@ -124,7 +116,6 @@ module Sort_syntax : sig
     ; operator_ranking : Operator_ranking.t option
     }
 
-  val parse : t Lvca_parsing.t
   val pp : t Fmt.t
   val check : sort_defs:Sort_def.t String.Map.t -> t -> string option
 end
@@ -133,7 +124,6 @@ end
     language in the same order it was parsed. See [Unordered.t] for another useful form. *)
 type t = Sort_syntax.t list
 
-val parse : t Lvca_parsing.t
 val pp : t Fmt.t
 val check : Sort_def.t String.Map.t -> t -> string option
 val keywords : t -> String.Set.t
@@ -147,14 +137,6 @@ module Unordered : sig
 
   (** Pretty-print a term using this concrete syntax. *)
   val pp_term : sort:string -> t -> Nominal.Term.t Fmt.t
-
-  (** Parse a term using this concrete syntax. *)
-  val parse_term
-    :  ?input:Provenance.Parse_input.t
-    -> sort:string
-    -> Sort_def.t String.Map.t
-    -> t
-    -> Nominal.Term.t Lvca_parsing.t
 end
 
 module Make (Input : sig
@@ -164,7 +146,4 @@ module Make (Input : sig
 end) : sig
   (** Pretty-print a term using this concrete syntax. *)
   val pp_term : Nominal.Term.t Fmt.t
-
-  (** Parse a term using this concrete syntax. *)
-  val parse_term : Provenance.Parse_input.t -> Nominal.Term.t Lvca_parsing.t
 end

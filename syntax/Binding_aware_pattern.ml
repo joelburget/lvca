@@ -318,30 +318,31 @@ let check check_prim lang sort =
   check sort
 ;;
 
-let parse reserved_words =
-  let open Lvca_parsing in
-  let open C_comment_parser in
+let parse =
+  let open Lvca_parsing.Parser in
+  let open Construction in
   let pat_to_ident = function Var (info, name) -> Some (info, name) | _ -> None in
   fix (fun pat ->
       let slot =
-        sep_by1 (char '.') pat
-        >>= fun pats ->
+        let+ pats = sep_by1 (symbol ".") pat in
         let binders_pats, pat = Util.List.unsnoc pats in
         let f = pat_to_ident >> Option.map ~f:(fun (info, name) -> info, name) in
         match binders_pats |> List.map ~f |> Option.all with
         | None ->
-          fail
+          failwith (* TODO: raise *)
             "found an operator pattern where only a variable is allowed (left of a `.`)"
-        | Some binders -> return (Scope (binders, pat))
+        | Some binders -> Scope (binders, pat)
       in
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
-        [ (Primitive.All.parse >>| fun prim -> Primitive prim)
-        ; (let+ range, ident = lower_identifier reserved_words in
+        [ (Primitive.All.parse >>| fun (prov, prim) -> Primitive (prov, prim))
+        ; (let+ range, ident = ranged lower_identifier in
            Var (Provenance.of_range range, ident))
-        ; (let* range, ident = upper_identifier reserved_words in
-           let+ range', slots = parens (sep_end_by (char ';') slot) in
-           let range = Opt_range.union range range' in
+        ; (let+ start = mark
+           and+ ident = upper_identifier
+           and+ slots = parens (sep_end_by (symbol ";") slot)
+           and+ finish = mark in
+           let range = Opt_range.mk start finish in
            Operator (Provenance.of_range range, ident, slots))
         ])
   <?> "binding-aware pattern"
@@ -351,7 +352,7 @@ module Properties = struct
   open Util
   open Property_result
 
-  let parse = Lvca_parsing.parse_string (parse String.Set.empty)
+  let parse = Lvca_parsing.Parser.parse_string parse
   let to_string = Fmt.to_to_string pp
 
   let string_round_trip1 t =
@@ -387,16 +388,12 @@ let%test_module "Parsing" =
 
     let ( = ) = equivalent
     let here = Provenance.of_here [%here]
-    let parse = parse String.Set.empty
-
-    let parse_exn =
-      Lvca_parsing.(parse_string (whitespace *> parse)) >> Result.ok_or_failwith
-    ;;
+    let parse_exn = Lvca_parsing.Parser.parse_string_or_failwith parse
 
     let%test _ = parse_exn "tm " = Var (here, "tm")
 
     let print_parse tm =
-      match Lvca_parsing.parse_string parse tm with
+      match Lvca_parsing.Parser.parse_string parse tm with
       | Ok pat -> Fmt.pr "%a" pp pat
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
@@ -462,9 +459,7 @@ let%test_module "Parsing" =
 
 let%test_module "check" =
   (module struct
-    let parse' p str =
-      Lvca_parsing.(parse_string (whitespace *> p) str) |> Result.ok_or_failwith
-    ;;
+    let parse' = Lvca_parsing.Parser.parse_string_or_failwith
 
     let lang_desc =
       {|
@@ -498,8 +493,8 @@ test := Foo(term[term]. term);
     let language = parse' Abstract_syntax.parse lang_desc
 
     let print_check_pattern sort_str pat_str =
-      let sort = parse' (Sort.parse String.Set.empty) sort_str in
-      let pat = parse' (parse String.Set.empty) pat_str in
+      let sort = parse' Sort.parse sort_str in
+      let pat = parse' parse pat_str in
       let pp ppf pat = Fmt.pf ppf "pattern: %a" pp pat in
       match check Primitive.All.check language sort pat with
       | Error failure -> Fmt.epr "%a" (Check_failure.pp pp) failure
@@ -643,14 +638,8 @@ test := Foo(term[term]. term);
 
 let%test_module "check" =
   (module struct
-    let parse_pattern str =
-      Lvca_parsing.parse_string (parse String.Set.empty) str |> Result.ok_or_failwith
-    ;;
-
-    let parse_term str =
-      Lvca_parsing.parse_string (Nominal.Term.parse' String.Set.empty) str
-      |> Result.ok_or_failwith
-    ;;
+    let parse_pattern = Lvca_parsing.Parser.parse_string_or_failwith parse
+    let parse_term = Lvca_parsing.Parser.parse_string_or_failwith Nominal.Term.parse'
 
     let print_match pat_str tm_str =
       let pattern = parse_pattern pat_str in

@@ -2,8 +2,6 @@ open Base
 open Lvca_syntax
 open Lvca_util
 
-let reserved = String.Set.empty
-
 module Typing_rule = struct
   type t =
     { tm : Binding_aware_pattern.t
@@ -42,25 +40,26 @@ module Typing_clause = struct
   ;;
 
   module Parse = struct
-    open Lvca_parsing
+    open Lvca_parsing.Parser
+    open Construction
 
     type arrow_dir =
       | Left_arr
       | Right_arr
 
     let t =
-      lift3
-        (fun (_, tm) (_, dir) (_, ty) ->
-          match dir with
-          | Left_arr -> Checking_rule { tm; ty }
-          | Right_arr -> Inference_rule { tm; ty })
-        (Binding_aware_pattern.parse reserved)
-        (choice
-           ~failure_msg:"looking for <= or =>"
-           C_comment_parser.
-             [ (string "<=" >>| fun _ -> Left_arr); (string "=>" >>| fun _ -> Right_arr) ])
-        (Binding_aware_pattern.parse reserved)
-      <?> "typing clause"
+      let p =
+        let+ tm = Binding_aware_pattern.parse
+        and+ dir =
+          choice
+            ~failure_msg:"looking for <= or =>"
+            [ (symbol "<=" >>| fun _ -> Left_arr); (symbol "=>" >>| fun _ -> Right_arr) ]
+        and+ ty = Binding_aware_pattern.parse in
+        match dir with
+        | Left_arr -> Checking_rule { tm; ty }
+        | Right_arr -> Inference_rule { tm; ty }
+      in
+      p <?> "typing clause"
     ;;
   end
 
@@ -70,11 +69,7 @@ module Typing_clause = struct
     (module struct
       let ( = ) = equivalent
       let here = Provenance.of_here [%here]
-
-      let parse_exn =
-        Lvca_parsing.(parse_string (whitespace *> parse)) >> Result.ok_or_failwith
-      ;;
-
+      let parse_exn = Lvca_parsing.Parser.parse_string_or_failwith parse
       let print_parse = parse_exn >> Fmt.pr "%a" pp
 
       let%test _ =
@@ -114,25 +109,25 @@ module Hypothesis = struct
   ;;
 
   module Parse = struct
-    open Lvca_parsing
-    open C_comment_parser
+    open Lvca_parsing.Parser
+    open Construction
 
     let typed_term =
-      lift3
-        (fun (_, ident) _ (_, tm) -> ident, tm)
-        (lower_identifier reserved)
-        (char ':')
-        (Binding_aware_pattern.parse reserved)
-      <?> "typed pattern"
+      let p =
+        let+ ident = lower_identifier <* symbol ":"
+        and+ tm = Binding_aware_pattern.parse in
+        ident, tm
+      in
+      p <?> "typed pattern"
     ;;
 
     let context =
-      string "ctx"
+      keyword "ctx"
       *> choice
-           [ (let%bind _ = char ',' in
-              let%bind _, ctx_entries = sep_by1 (char ',') typed_term in
+           ~failure_msg:"Hypothesis"
+           [ (let+ ctx_entries = symbol "," *> sep_by1 (symbol ",") typed_term in
               match String.Map.of_alist ctx_entries with
-              | `Ok context -> return context
+              | `Ok context -> context
               | `Duplicate_key str ->
                 raise
                   (StaticsParseError (Printf.sprintf "duplicate name in context: %s" str)))
@@ -142,23 +137,19 @@ module Hypothesis = struct
     ;;
 
     let t =
-      lift3
-        (fun (_, ctx) _ (_, clause) -> ctx, clause)
-        context
-        (string ">>")
-        Typing_clause.Parse.t
-      <?> "hypothesis"
+      let p =
+        let+ ctx = context <* symbol ">>"
+        and+ clause = Typing_clause.Parse.t in
+        ctx, clause
+      in
+      p <?> "hypothesis"
     ;;
   end
 
   let%test_module "Parsing" =
     (module struct
       let here = Provenance.of_here [%here]
-
-      let parse_exn =
-        Lvca_parsing.(parse_string (whitespace *> Parse.t)) >> Result.ok_or_failwith
-      ;;
-
+      let parse_exn = Lvca_parsing.Parser.parse_string_or_failwith Parse.t
       let print_parse = parse_exn >> pp Fmt.stdout
 
       let%test _ =
@@ -199,26 +190,26 @@ module Rule = struct
   let ( = ) = equivalent ~info_eq:Provenance.( = )
 
   module Parse = struct
-    open Lvca_parsing
-    open C_comment_parser
+    open Lvca_parsing.Parser
+    open Construction
 
-    let line : string option Lvca_parsing.t =
-      lift3
-        (fun _ _ (_, ident) -> ident)
-        (string "--")
-        (many (char '-'))
-        (option None ((fun ident -> Some ident) <$> parens (lower_identifier reserved)))
-      <?> "line"
+    let line : string option Lvca_parsing.Parser.t =
+      let p =
+        let+ _ = symbol "--" (* TODO: allow longer separators *)
+        and+ ident = option (parens lower_identifier) in
+        ident
+      in
+      p <?> "line"
     ;;
 
     let t =
-      lift3
-        (fun (_, hypotheses) (_, name) (_, conclusion) ->
-          { hypotheses; name; conclusion })
-        (many Hypothesis.Parse.t)
-        line
-        Hypothesis.Parse.t
-      <?> "typing rule"
+      let p =
+        let+ hypotheses = plus Hypothesis.Parse.t
+        and+ name = line
+        and+ conclusion = Hypothesis.Parse.t in
+        { hypotheses; name; conclusion }
+      in
+      p <?> "typing rule"
     ;;
   end
 end
@@ -235,14 +226,11 @@ end
 
 type t = Rule.t list
 
-let parse = Lvca_parsing.many Rule.Parse.t
+let parse = Lvca_parsing.Parser.Construction.plus Rule.Parse.t
 
 let%test_module "Parsing" =
   (module struct
-    let parse_exn =
-      Lvca_parsing.(parse_string (whitespace *> parse)) >> Result.ok_or_failwith
-    ;;
-
+    let parse_exn = Lvca_parsing.Parser.parse_string_or_failwith parse
     let print_parse = parse_exn >> Fn.const "parsed" >> Stdio.print_string
 
     let%expect_test _ =

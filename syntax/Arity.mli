@@ -9,4 +9,4 @@ val pp : t Fmt.t
 (** Instantiate concrete vars in an arity *)
 val instantiate : Sort.t Lvca_util.String.Map.t -> t -> t
 
-val parse : t Lvca_parsing.t
+val parse : t Lvca_parsing.Parser.t

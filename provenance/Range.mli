@@ -3,6 +3,9 @@ type t =
   ; finish : int
   }
 
+include Base.Comparable.S with type t := t
+include Base.Sexpable.S with type t := t
+
 type Stdlib.Format.stag += Stag of t
 
 val mk : int -> int -> t

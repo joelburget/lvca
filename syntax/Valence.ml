@@ -33,9 +33,10 @@ let kind_check env (Valence (binding_slots, value_sort)) =
 ;;
 
 let parse =
-  let open Lvca_parsing in
+  let open Lvca_parsing.Parser in
+  let open Construction in
   let t =
-    sep_by1 (C_comment_parser.char '.') Sort_slot.parse
+    sep_by1 (symbol ".") Sort_slot.parse
     >>= fun slots ->
     let binders, body_slot = List.unsnoc slots in
     match body_slot with

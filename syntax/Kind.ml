@@ -20,24 +20,30 @@ let pp ppf (Kind (info, k)) =
 ;;
 
 module Parse = struct
-  open Lvca_parsing
-  open C_comment_parser
+  open Lvca_parsing.Parser
+  open Construction
 
   let t =
     let p =
-      let+ location, stars = sep_by1 (string "->") (char '*') in
+      let+ stars = sep_by1 (symbol "->") (symbol "*") in
+      let location =
+        stars
+        |> List.map ~f:Lvca_parsing.Token_stream.Token.range
+        |> Lvca_provenance.Opt_range.list_range
+      in
       Kind (Provenance.of_range location, List.length stars)
     in
     p <?> "kind"
   ;;
 
   let decl =
-    lift3
-      (fun (_, ident) _colon (_, kind) -> ident, kind)
-      (lower_identifier Lvca_util.String.Set.empty)
-      (char ':')
-      t
-    <?> "kind declaration"
+    let p =
+      let+ ident = lower_identifier
+      and+ _ = symbol ":"
+      and+ kind = t in
+      ident, kind
+    in
+    p <?> "kind declaration"
   ;;
 
   let%test_module "parsing" =
@@ -45,7 +51,7 @@ module Parse = struct
       let pp_decl ppf (name, decl) = Fmt.pf ppf "%s: %a" name pp decl
 
       let%expect_test _ =
-        let x = parse_string_or_failwith (junk *> decl) "foo: * -> *" in
+        let x = parse_string_or_failwith decl "foo: * -> *" in
         Fmt.pr "%a" pp_decl x;
         [%expect {|foo: * -> *|}]
       ;;
@@ -53,7 +59,7 @@ module Parse = struct
       let%expect_test _ =
         let x =
           parse_string_or_failwith
-            (junk *> many decl)
+            (star decl)
             {|
             foo: * -> *  // comment
             bar: * -> *

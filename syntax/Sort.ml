@@ -66,35 +66,35 @@ let split = function Name (_, name) -> name, [] | Ap (_, name, ts) -> name, ts
 
 let name = split >> fst
 
-let parse reserved_word =
-  let open Lvca_parsing in
-  let open C_comment_parser in
+let parse =
+  let open Lvca_parsing.Parser in
+  let open Construction in
   fix (fun sort ->
       let atomic_sort =
         choice
           ~failure_msg:"looking for parens or an identifier"
           [ parens sort
-          ; (let+ loc, value = lower_identifier reserved_word in
-             Name (Provenance.of_range loc, value))
+          ; (let+ range, value = ranged lower_identifier in
+             Name (Provenance.of_range range, value))
           ]
       in
-      let* range, atoms = many1 atomic_sort in
+      let* atoms = plus atomic_sort in
       match atoms with
       (* A single ap is just parenthesized. An ap applied to things is a problem. *)
-      | [ (Ap _ as atom) ] -> return ~range atom
+      | [ (Ap _ as atom) ] -> eps atom
       | Ap _ :: _ ->
         fail
           "Higher-order sorts are not allowed. The head of a sort application must be \
            concrete"
-      | [ (Name _ as value) ] -> return ~range value
-      | Name (info, name) :: args -> return ~range (Ap (info, name, args))
+      | [ (Name _ as value) ] -> eps value
+      | Name (info, name) :: args -> eps (Ap (info, name, args))
       | [] -> assert false)
 ;;
 
 let%test_module "Sort_Parser" =
   (module struct
     let parse_with parser str =
-      match Lvca_parsing.parse_string parser str with
+      match Lvca_parsing.Parser.parse_string parser str with
       | Ok value -> value
       | Error msg -> failwith msg
     ;;
@@ -103,7 +103,6 @@ let%test_module "Sort_Parser" =
     let abc = mk_Ap "a" [ mk_Name "b"; mk_Name "c" ]
     let abcd = mk_Ap "a" [ mk_Ap "b" [ mk_Name "c" ]; mk_Name "d" ]
     let ( = ) = equivalent ~info_eq:(fun _ _ -> true)
-    let parse = parse String.Set.empty
 
     let%test_unit _ = assert (parse_with parse "a" = a)
     let%test_unit _ = assert (parse_with parse "(a)" = a)

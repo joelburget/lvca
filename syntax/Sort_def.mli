@@ -9,5 +9,5 @@ val ( = ) : t -> t -> bool
 val binds_vars : t -> bool
 val kind_check : Int.Set.t String.Map.t -> string -> t -> Int.Set.t String.Map.t
 val pp : name:string -> t Fmt.t
-val parse : (string * t) Lvca_parsing.t
+val parse : (string * t) Lvca_parsing.Parser.t
 val find_operator_def : t -> string -> Operator_def.t option

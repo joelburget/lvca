@@ -199,18 +199,20 @@ let check lang ~pattern_sort ~var_sort =
   check pattern_sort
 ;;
 
-let parse reserved_word =
-  let open Lvca_parsing in
-  let open C_comment_parser in
+let parse =
+  let open Lvca_parsing.Parser in
+  let open Construction in
   fix (fun pat ->
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive_impl.All.parse >>| fun prim -> Primitive prim)
-        ; (let+ range, ident = lower_identifier reserved_word in
+        ; (let+ range, ident = ranged lower_identifier in
            Var (Provenance.of_range range, ident))
-        ; (let* range, ident = upper_identifier reserved_word in
-           let+ range', children = parens (sep_end_by (char ';' <* whitespace) pat) in
-           let range = Opt_range.union range range' in
+        ; (let+ start = mark
+           and+ ident = upper_identifier
+           and+ children = parens (sep_end_by (symbol ";") pat)
+           and+ finish = mark in
+           let range = Opt_range.mk start finish in
            Operator (Provenance.of_range range, ident, children))
         ])
   <?> "pattern"
@@ -225,7 +227,7 @@ let%test_module "Parsing" =
     ;;
 
     let print_parse tm =
-      match Lvca_parsing.parse_string (parse String.Set.empty) tm with
+      match Lvca_parsing.Parser.parse_string parse tm with
       | Ok pat -> Fmt.pr "%a" pp pat
       | Error msg -> Fmt.pr "failed: %s\n" msg
     ;;
@@ -316,7 +318,7 @@ let%test_module "Parsing" =
 module Properties = struct
   open Property_result
 
-  let parse = Lvca_parsing.parse_string (parse String.Set.empty)
+  let parse = Lvca_parsing.Parser.parse_string parse
   let to_string = Fmt.to_to_string pp
 
   let json_round_trip1 t =
@@ -360,16 +362,9 @@ end
 
 let%test_module "check" =
   (module struct
-    let parse_lang lang_str =
-      Lvca_parsing.(parse_string (whitespace *> Abstract_syntax.parse) lang_str)
-      |> Result.ok_or_failwith
-    ;;
-
-    let parse_pattern str =
-      Lvca_parsing.parse_string (parse String.Set.empty) str |> Result.ok_or_failwith
-    ;;
-
-    let parse_sort str = Lvca_parsing.(parse_string (Sort.parse String.Set.empty) str)
+    let parse_lang = Lvca_parsing.Parser.parse_string_or_failwith Abstract_syntax.parse
+    let parse_pattern = Lvca_parsing.Parser.parse_string_or_failwith parse
+    let parse_sort str = Lvca_parsing.Parser.(parse_string Sort.parse str)
 
     let lang_desc =
       {|

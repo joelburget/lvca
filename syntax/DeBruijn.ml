@@ -134,13 +134,14 @@ module Kernel = struct
     | Some tm -> Nominal.Term.pp ppf tm
   ;;
 
-  let parse reserved_words =
-    let open Lvca_parsing in
-    Nominal.Term.parse' reserved_words
-    >>= fun tm ->
+  let parse =
+    let open Lvca_parsing.Parser in
+    let open Construction in
+    let+ tm = Nominal.Term.parse' in
     match of_nominal tm with
-    | Ok tm -> return tm
-    | Error _scope -> fail "DeBruijn.parse: failed to convert from nominal"
+    | Ok tm -> tm
+    | Error _scope ->
+      failwith (* TODO: raise *) "DeBruijn.parse: failed to convert from nominal"
   ;;
 end
 

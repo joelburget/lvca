@@ -30,7 +30,7 @@ module Typing_clause : sig
 
   val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
-  val parse : t Lvca_parsing.t
+  val parse : t Lvca_parsing.Parser.t
 end
 
 (** A hypothesis contains a set of variables (and their types) that must appear in the
@@ -42,9 +42,9 @@ module Hypothesis : sig
   val ( = ) : t -> t -> bool
 
   module Parse : sig
-    val typed_term : (string * Binding_aware_pattern.t) Lvca_parsing.t
-    val context : Binding_aware_pattern.t String.Map.t Lvca_parsing.t
-    val t : t Lvca_parsing.t
+    val typed_term : (string * Binding_aware_pattern.t) Lvca_parsing.Parser.t
+    val context : Binding_aware_pattern.t String.Map.t Lvca_parsing.Parser.t
+    val t : t Lvca_parsing.Parser.t
   end
 end
 
@@ -60,8 +60,8 @@ module Rule : sig
   val ( = ) : t -> t -> bool
 
   module Parse : sig
-    val line : string option Lvca_parsing.t
-    val t : t Lvca_parsing.t
+    val line : string option Lvca_parsing.Parser.t
+    val t : t Lvca_parsing.Parser.t
   end
 end
 
@@ -74,4 +74,4 @@ end
 
 type t = Rule.t list
 
-val parse : t Lvca_parsing.t
+val parse : t Lvca_parsing.Parser.t

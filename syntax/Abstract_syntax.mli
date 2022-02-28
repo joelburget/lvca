@@ -64,4 +64,4 @@ val pp : t Fmt.t
 (** Check that each sort in the syntax has a consistent arity. *)
 val kind_check : t -> (kind_map, kind_mismap) Result.t
 
-val parse : t Lvca_parsing.t
+val parse : t Lvca_parsing.Parser.t

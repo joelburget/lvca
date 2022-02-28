@@ -61,6 +61,16 @@ type t =
 
 type Stdlib.Format.stag += Stag of t
 
+let unsafe_parse_located = function
+  | Located (Parse_located located) -> located
+  | _ -> failwith "Expected Located (Parse_located _)"
+;;
+
+let unsafe_range t =
+  let Parse_located.{ range; _ } = unsafe_parse_located t in
+  range
+;;
+
 let open_stag ppf rng = Stdlib.Format.pp_open_stag ppf (Stag rng)
 let close_stag ppf _ = Stdlib.Format.pp_close_stag ppf ()
 let fmt_stag prov = Lvca_util.Format.fmt_stag (Stag prov)
@@ -92,27 +102,4 @@ let stag_functions =
     ; print_open_stag = (fun _ -> ())
     ; print_close_stag = (fun _ -> ())
     }
-;;
-
-let make0 ?input f p = Lvca_parsing.make0 (fun ~info -> f ~info:(of_range ?input info)) p
-let make1 ?input f p = Lvca_parsing.make1 (fun ~info -> f ~info:(of_range ?input info)) p
-
-let make2 ?input f p1 p2 =
-  Lvca_parsing.make2 (fun ~info -> f ~info:(of_range ?input info)) p1 p2
-;;
-
-let make3 ?input f p1 p2 p3 =
-  Lvca_parsing.make3 (fun ~info -> f ~info:(of_range ?input info)) p1 p2 p3
-;;
-
-let make4 ?input f p1 p2 p3 p4 =
-  Lvca_parsing.make4 (fun ~info -> f ~info:(of_range ?input info)) p1 p2 p3 p4
-;;
-
-let make5 ?input f p1 p2 p3 p4 p5 =
-  Lvca_parsing.make5 (fun ~info -> f ~info:(of_range ?input info)) p1 p2 p3 p4 p5
-;;
-
-let make6 ?input f p1 p2 p3 p4 p5 p6 =
-  Lvca_parsing.make6 (fun ~info -> f ~info:(of_range ?input info)) p1 p2 p3 p4 p5 p6
 ;;

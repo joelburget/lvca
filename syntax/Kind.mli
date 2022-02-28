@@ -9,6 +9,6 @@ val info : t -> Provenance.t
 val pp : t Fmt.t
 
 module Parse : sig
-  val t : t Lvca_parsing.t
-  val decl : (string * t) Lvca_parsing.t
+  val t : t Lvca_parsing.Parser.t
+  val decl : (string * t) Lvca_parsing.Parser.t
 end

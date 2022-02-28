@@ -18,7 +18,7 @@ let rec equivalent ?(info_eq = fun _ _ -> true) t1 t2 =
 ;;
 
 let ( = ) = equivalent ~info_eq:Provenance.( = )
-(* let info = function Operator (i, _, _) -> i | Primitive p -> Primitive.All.info p *)
+let info = function Operator (i, _, _) -> i | Primitive p -> Primitive.All.info p
 
 type de_bruijn_conversion_error =
   | Scope_encountered of DeBruijn.scope
@@ -97,17 +97,19 @@ let rec select_path ~path tm =
 ;;
 
 let parse =
-  let open Lvca_parsing in
-  let open C_comment_parser in
+  let open Lvca_parsing.Parser in
+  let open Construction in
   fix (fun term ->
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
-        [ (Primitive.All.parse >>| fun prim -> Primitive prim)
+        [ (Primitive.All.parse >>| fun p -> Primitive p)
         ; (let p =
-             let* start, ident = upper_identifier Lvca_util.String.Set.empty in
-             let* finish, children = parens (sep_end_by (char ';') term) in
-             let range = Opt_range.union start finish in
-             return ~range (Operator (Provenance.of_range range, ident, children))
+             let+ start = mark
+             and+ ident = upper_identifier
+             and+ children = parens (sep_end_by (symbol ";") term)
+             and+ finish = mark in
+             let range = Opt_range.mk start finish in
+             Operator (Provenance.of_range range, ident, children)
            in
            p <?> "term body")
         ])

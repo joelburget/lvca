@@ -1,4 +1,9 @@
-type t = Range.t option
+module T = struct
+  type t = Range.t Base.Option.t [@@deriving compare, sexp]
+end
+
+include T
+include Base.Comparable.Make (T)
 
 let mk start finish = Some (Range.mk start finish)
 

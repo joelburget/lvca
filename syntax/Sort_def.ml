@@ -72,45 +72,42 @@ let pp ~name ppf (Sort_def (sort_vars, operator_defs, var_names)) =
 ;;
 
 let parse =
-  let open Lvca_parsing in
-  let open C_comment_parser in
-  let bar = char '|' in
+  let open Lvca_parsing.Parser in
+  let open Construction in
+  let bar = symbol "|" in
   let sort_var_decl =
     choice
       ~failure_msg:"looking for a (lower-case) identifier or parens"
-      [ (lower_identifier String.Set.empty >>| fun name -> name, None)
+      [ (lower_identifier >>| fun name -> name, None)
       ; (parens Kind.Parse.decl >>| fun (name, kind) -> name, Some kind)
       ]
     <?> "sort variable declaration"
   in
   let p =
-    let* _, name = lower_identifier String.Set.empty in
-    let* _, vars = many sort_var_decl in
-    let* _ = string ":=" in
-    let* _, op_defs = option '|' bar *> sep_by bar Operator_def.parse in
-    let* _, var_names =
+    let+ name = lower_identifier
+    and+ vars = star sort_var_decl
+    and+ _ = symbol ":="
+    and+ op_defs = option bar *> sep_by bar Operator_def.parse
+    and+ var_names =
       choice
         ~failure_msg:"Expected a `;` or `\\` variables list"
-        [ char ';' *> return None
-        ; Option.some
-          <$> char '\\' *> sep_by (char ',') (lower_identifier String.Set.empty)
+        [ symbol ";" *> return None
+        ; Option.some <$> symbol "\\" *> sep_by (symbol ",") lower_identifier
         ]
     in
     let var_names = match var_names with None -> [] | Some vs -> vs in
-    return (name, Sort_def (vars, op_defs, var_names))
+    name, Sort_def (vars, op_defs, var_names)
   in
   p <?> "sort definition"
 ;;
 
 let%test_module _ =
   (module struct
-    let test_parse =
-      Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse))
-    ;;
+    let test_parse = Lvca_parsing.Parser.parse_string_or_failwith parse
 
     let parse_print str =
       let pp ppf (name, sort_def) = pp ppf ~name sort_def in
-      str |> test_parse |> Fmt.pr "%a\n" pp
+      Fmt.pr "%a@." pp (test_parse str)
     ;;
 
     let%expect_test _ =

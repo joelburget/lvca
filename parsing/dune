@@ -2,7 +2,6 @@
  (name lvca_parsing)
  (public_name lvca.parsing)
  (inline_tests)
- (libraries angstrom base fmt lvca_util lvca_provenance)
- (wrapped false)
+ (libraries base fmt lvca_util lvca_provenance char-class taparse)
  (preprocess
   (pps ppx_jane)))

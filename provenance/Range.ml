@@ -1,13 +1,27 @@
-type t =
-  { start : int
-  ; finish : int
-  }
+open Base
+
+module T = struct
+  type t =
+    { start : int
+    ; finish : int
+    }
+  [@@deriving compare, sexp]
+end
+
+include T
+include Comparable.Make (T)
 
 type Stdlib.Format.stag += Stag of t
 
 let mk start finish = { start; finish }
-let extend_to { start; finish } pos = { start = min start pos; finish = max finish pos }
-let union r1 r2 = { start = min r1.start r2.start; finish = max r1.finish r2.finish }
+
+let extend_to { start; finish } pos =
+  { start = Int.min start pos; finish = Int.max finish pos }
+;;
+
+let union r1 r2 =
+  { start = Int.min r1.start r2.start; finish = Int.max r1.finish r2.finish }
+;;
 
 let list_range =
   let open Base in
@@ -36,20 +50,20 @@ let list_range_nonempty lst =
 ;;
 
 let intersect r1 r2 =
-  let start = max r1.start r2.start in
-  let finish = min r1.finish r2.finish in
-  if start >= finish then None else Some { start; finish }
+  let start = Int.max r1.start r2.start in
+  let finish = Int.min r1.finish r2.finish in
+  if Int.(start >= finish) then None else Some { start; finish }
 ;;
 
-let is_before x y = x.finish <= y.start
-let is_subset x y = x.start >= y.start && x.finish <= y.finish
-let ( = ) x y = x.start = y.start && x.finish = y.finish
+let is_before x y = Int.(x.finish <= y.start)
+let is_subset x y = Int.(x.start >= y.start && x.finish <= y.finish)
+let ( = ) x y = Int.(x.start = y.start && x.finish = y.finish)
 let pp ppf { start; finish } = Fmt.pf ppf "{%u,%u}" start finish
-let open_stag ppf rng = Format.pp_open_stag ppf (Stag rng)
-let close_stag ppf _ = Format.pp_close_stag ppf ()
+let open_stag ppf rng = Stdlib.Format.pp_open_stag ppf (Stag rng)
+let close_stag ppf _ = Stdlib.Format.pp_close_stag ppf ()
 
 let stag_functions =
-  Format.
+  Stdlib.Format.
     { mark_open_stag = (function Stag rng -> Fmt.str "<%a>" pp rng | _ -> "")
     ; mark_close_stag = (function Stag rng -> Fmt.str "</%a>" pp rng | _ -> "")
     ; print_open_stag = (fun _ -> ())

@@ -9,6 +9,7 @@ type t =
 
 val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
 val ( = ) : t -> t -> bool
+val info : t -> Provenance.t
 
 (** {1 info} *)
 
@@ -31,7 +32,7 @@ val to_nominal : t -> Nominal.Term.t
 val pp : t Fmt.t
 
 (** {1 Parsing} *)
-val parse : t Lvca_parsing.t
+val parse : t Lvca_parsing.Parser.t
 
 (** {1 Misc} *)
 val hash : t -> string

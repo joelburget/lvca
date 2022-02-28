@@ -27,11 +27,13 @@ let pp ppf (Operator_def (info, name, arity)) =
 ;;
 
 let parse =
-  let open Lvca_parsing in
+  let open Lvca_parsing.Parser in
+  let open Construction in
   let p =
-    let* _, ident = C_comment_parser.upper_identifier Lvca_util.String.Set.empty in
-    let+ location, arity = Arity.parse in
-    Operator_def (Provenance.of_range location, ident, arity)
+    (* TODO: include range in provenance *)
+    let+ ident = upper_identifier
+    and+ (Arity (prov, _) as arity) = Arity.parse in
+    Operator_def (prov, ident, arity)
   in
   p <?> "operator definition"
 ;;
@@ -44,8 +46,7 @@ let%test_module "parsing" =
       let info1 = Provenance.of_range (Opt_range.mk 0 5) in
       let info2 = Provenance.of_range (Opt_range.mk 3 5) in
       let parsed =
-        Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse))
-          "Foo()  // comment"
+        Lvca_parsing.Parser.(parse_string_or_failwith parse) "Foo()  // comment"
       in
       assert (parsed = Operator_def (info1, "Foo", Arity (info2, [])))
     ;;

@@ -154,12 +154,14 @@ let kind_check { externals; sort_defs } =
 ;;
 
 let parse =
-  let open Lvca_parsing in
-  lift2
-    (fun (_, externals) (_, sort_defs) -> { externals; sort_defs })
-    (many Kind.Parse.decl)
-    (many1 Sort_def.parse)
-  <?> "abstract syntax"
+  let open Lvca_parsing.Parser in
+  let open Construction in
+  let p =
+    let+ externals = star Kind.Parse.decl
+    and+ sort_defs = plus Sort_def.parse in
+    { externals; sort_defs }
+  in
+  p <?> "abstract syntax"
 ;;
 
 let%test_module _ =
@@ -182,7 +184,7 @@ let%test_module _ =
 
     let%test_unit _ =
       let parsed =
-        Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse))
+        Lvca_parsing.Parser.(parse_string_or_failwith parse)
           {|
 // comment
 integer : *
@@ -208,9 +210,7 @@ empty := ;
     ;;
 
     let kind_check str =
-      let lang =
-        Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse) str)
-      in
+      let lang = Lvca_parsing.Parser.(parse_string_or_failwith parse str) in
       match kind_check lang with
       | Ok map ->
         Stdio.printf "okay\n";
@@ -253,7 +253,7 @@ let%test_module "Parser" =
   (module struct
     open Lvca_provenance
 
-    let parse = Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse))
+    let parse = Lvca_parsing.Parser.(parse_string_or_failwith parse)
     let tm_sort = Sort.mk_Name "tm"
     let tm_valence = Valence.Valence ([], tm_sort)
     let ty_sort = Sort.mk_Name "ty"

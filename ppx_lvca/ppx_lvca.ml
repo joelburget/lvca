@@ -4,12 +4,13 @@ open Lvca_syntax
 open Lvca_util
 open Syntax_quoter
 
-let parse p = Lvca_parsing.(parse_string (whitespace *> p))
+let parse = Lvca_parsing.Parser.parse_string_or_failwith
 
 let parse_module_name =
-  let open Lvca_parsing in
+  let open Lvca_parsing.Parser in
+  let open Construction in
   sep_by1
-    (No_junk.char '.')
+    (symbol '.')
     (No_junk.satisfy Char.is_uppercase
     >>= fun c0 ->
     many (C_comment_parser.satisfy Char.(fun c -> is_alphanum c || c = '_' || c = '\''))

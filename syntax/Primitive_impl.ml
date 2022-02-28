@@ -6,7 +6,7 @@ module type Base_plain_s = sig
 
   val ( = ) : t -> t -> bool
   val pp : t Fmt.t
-  val parse : t Lvca_parsing.t
+  val parse : (Lvca_provenance.Opt_range.t * t) Lvca_parsing.Parser.t
   val jsonify : t Json.serializer
   val unjsonify : t Json.deserializer
 end
@@ -18,7 +18,7 @@ module Make (Base_plain : Base_plain_s) : sig
   val equivalent : ?info_eq:(Provenance.t -> Provenance.t -> bool) -> t -> t -> bool
   val ( = ) : t -> t -> bool
   val pp : t Fmt.t
-  val parse : t Lvca_parsing.t
+  val parse : t Lvca_parsing.Parser.t
   val jsonify : t Json.serializer
   val unjsonify : t Json.deserializer
 end = struct
@@ -39,9 +39,8 @@ end = struct
   ;;
 
   let parse =
-    let open Lvca_parsing in
-    let+ location, value = Base_plain.parse in
-    Provenance.of_range location, value
+    Lvca_parsing.Parser.Construction.(
+      Base_plain.parse >>| fun (range, x) -> Provenance.of_range range, x)
   ;;
 end
 
@@ -50,7 +49,12 @@ module Integer_plain = struct
 
   let pp ppf x = Fmt.string ppf (Z.to_string x)
   let ( = ) x1 x2 = (Z.Compare.(x1 = x2) [@warning "-44"])
-  let parse = Lvca_parsing.(C_comment_parser.integer_lit >>| Z.of_string <?> "integer")
+
+  let parse =
+    Lvca_parsing.Parser.(
+      Construction.(ranged integer_lit >>| Tuple2.map2 ~f:Z.of_string <?> "integer"))
+  ;;
+
   let jsonify i = Json.string (Z.to_string i)
 
   let unjsonify =
@@ -69,10 +73,9 @@ module Float_plain = struct
   let ( = ) = Float.( = )
 
   let parse =
-    let open Lvca_parsing in
-    C_comment_parser.integer_or_float_lit
-    >>= (function First _ -> fail "TODO" | Second f -> return f)
-    <?> "float"
+    let open Lvca_parsing.Parser in
+    let open Construction in
+    ranged float_lit >>| Tuple2.map2 ~f:Base.Float.of_string <?> "float"
   ;;
 
   let jsonify f = Json.float f
@@ -86,7 +89,7 @@ module Char_plain = struct
 
   let pp = Fmt.quote ~mark:"\'" Fmt.char
   let ( = ) = Char.( = )
-  let parse = Lvca_parsing.(C_comment_parser.char_lit <?> "char")
+  let parse = Lvca_parsing.Parser.(Construction.(ranged char_lit <?> "char"))
   let jsonify c = Json.string (Char.to_string c)
 
   let unjsonify =
@@ -105,7 +108,11 @@ module Int32_plain = struct
 
   let pp = Fmt.int32
   let ( = ) = Int32.( = )
-  let parse = Lvca_parsing.(C_comment_parser.integer_lit >>| Int32.of_string <?> "int32")
+
+  let parse =
+    Lvca_parsing.Parser.(
+      Construction.(ranged integer_lit >>| Tuple2.map2 ~f:Int32.of_string <?> "int32"))
+  ;;
 
   (* TODO: remove exns *)
   let jsonify = Int32.to_int_exn >> Json.int
@@ -119,7 +126,7 @@ module String_plain = struct
 
   let pp = Fmt.(quote string)
   let ( = ) = String.( = )
-  let parse = Lvca_parsing.(C_comment_parser.string_lit <?> "string")
+  let parse = Lvca_parsing.Parser.(Construction.(ranged string_lit <?> "string"))
   let jsonify s = Json.string s
   let unjsonify = Json.(function String s -> Some s | _ -> None)
 end
@@ -153,16 +160,18 @@ module All_plain = struct
   ;;
 
   let parse =
-    let open Lvca_parsing in
-    let open C_comment_parser in
+    let open Lvca_parsing.Parser in
+    let open Construction in
     (* TODO(25) This doesn't currently parse int32s. *)
+    let f = (* Note: all ints parse to Integer *) function
+      | Either.First i -> Integer (Z.of_string i)
+      | Second f -> Float (Base.Float.of_string f)
+    in
     choice
       ~failure_msg:"looking for an integer, float, string, or character literal"
-      [ (integer_or_float_lit
-        >>| function First i -> Integer (Z.of_string i) | Second f -> Float f)
-        (* Note: all ints parse to Integer *)
-      ; (string_lit >>| fun s -> String s)
-      ; (char_lit >>| fun c -> Char c)
+      [ ranged integer_or_float_lit >>| Tuple2.map2 ~f
+      ; ranged string_lit >>| Tuple2.map2 ~f:(fun s -> String s)
+      ; ranged char_lit >>| Tuple2.map2 ~f:(fun c -> Char c)
       ]
     <?> "primitive"
   ;;
@@ -259,7 +268,7 @@ module All = struct
 
     let string_round_trip1 : t -> Property_result.t =
      fun t ->
-      match t |> to_string |> Lvca_parsing.parse_string parse with
+      match t |> to_string |> Lvca_parsing.Parser.parse_string parse with
       | Ok prim -> Property_result.check (prim = t) (Fmt.str "%a <> %a" pp prim pp t)
       | Error msg -> Failed (Fmt.str {|parse_string "%s": %s|} (to_string t) msg)
    ;;
@@ -267,14 +276,14 @@ module All = struct
     (* Note: +1 -> 1. If the first round-trip isn't equal, try once more. *)
     let string_round_trip2 : string -> Property_result.t =
      fun str ->
-      match Lvca_parsing.parse_string parse str with
+      match Lvca_parsing.Parser.parse_string parse str with
       | Error _ -> Uninteresting
       | Ok prim ->
         let str' = to_string prim in
         if Base.String.(str' = str)
         then Ok
         else (
-          match Lvca_parsing.parse_string parse str with
+          match Lvca_parsing.Parser.parse_string parse str with
           | Error msg -> Failed msg
           | Ok prim' ->
             let str'' = to_string prim' in
@@ -290,11 +299,10 @@ end
 let%test_module "Parsing" =
   (module struct
     open All
-    open Lvca_provenance
 
     let print_parse str =
-      match Lvca_parsing.parse_string_pos parse str with
-      | Ok (range, prim) -> Fmt.pr "%a %a" pp prim Opt_range.pp range
+      match Lvca_parsing.Parser.parse_string parse str with
+      | Ok prim -> Fmt.pr "%a@." pp prim
       | Error msg -> Fmt.pr "%s" msg
     ;;
 
@@ -329,8 +337,8 @@ let%test_module "Parsing" =
     ;;
 
     let print_parse str =
-      match Lvca_parsing.parse_string_pos Int32.parse str with
-      | Ok (range, prim) -> Fmt.pr "%a %a@." Int32.pp prim Opt_range.pp range
+      match Lvca_parsing.Parser.parse_string Int32.parse str with
+      | Ok prim -> Fmt.pr "%a@." Int32.pp prim
       | Error msg -> Fmt.pr "%s" msg
     ;;
 

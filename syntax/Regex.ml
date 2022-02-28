@@ -1,8 +1,5 @@
 open Base
 
-(* TODO: safe_char is too restrictive *)
-let safe_char = Angstrom.satisfy Char.(fun c -> is_alphanum c || c = '_')
-
 module Class_base = struct
   type t =
     | Word (* \w / \W *)
@@ -55,23 +52,6 @@ module Class = struct
   ;;
 
   let pp ppf cls = Fmt.pf ppf {|\%c|} (to_char cls)
-
-  let parse =
-    let open Angstrom in
-    let open Angstrom.Let_syntax in
-    let p =
-      let* _ = char '\\' in
-      choice
-        [ char 'w' *> return (Pos Word)
-        ; char 'W' *> return (Neg Word)
-        ; char 'd' *> return (Pos Digit)
-        ; char 'D' *> return (Neg Digit)
-        ; char 's' *> return (Pos Whitespace)
-        ; char 'S' *> return (Neg Whitespace)
-        ]
-    in
-    p <?> "class"
-  ;;
 end
 
 module Set_member = struct
@@ -95,24 +75,6 @@ module Set_member = struct
     | Single_char c -> Fmt.char ppf c
     | Range (r1, r2) -> Fmt.pf ppf "%c-%c" r1 r2
   ;;
-
-  let to_angstrom =
-    let open Angstrom in
-    function
-    | Single_char c -> char c
-    | Range (c1, c2) -> Angstrom.satisfy Char.(fun c -> c >= c1 && c <= c2)
-  ;;
-
-  let parse =
-    let open Angstrom in
-    let open Angstrom.Let_syntax in
-    let p =
-      let* c1 = safe_char in
-      choice
-        [ (char '-' *> safe_char >>| fun c2 -> Range (c1, c2)); return (Single_char c1) ]
-    in
-    p <?> "set member"
-  ;;
 end
 
 module Set = struct
@@ -121,17 +83,6 @@ module Set = struct
   let ( = ) a b = List.equal Set_member.( = ) a b
   let debug_pp ppf = Fmt.(pf ppf "[%a]" (list Set_member.pp ~sep:semi))
   let pp = Fmt.(list Set_member.pp ~sep:nop)
-
-  let parse =
-    let open Angstrom in
-    char '[' *> many Set_member.parse <* char ']' <?> "set"
-  ;;
-
-  let to_angstrom members =
-    Angstrom.choice
-      ~failure_msg:(Fmt.str "to_angstrom %a" pp members)
-      (List.map members ~f:Set_member.to_angstrom)
-  ;;
 end
 
 (* Question: do we support octal escapes (\40)? The lex manual points out
@@ -159,46 +110,6 @@ let rec ( = ) a b =
   | Choice a, Choice b | Concat a, Concat b -> List.equal ( = ) a b
   | Any, Any -> true
   | _ -> false
-;;
-
-let parse =
-  let open Angstrom in
-  let open Angstrom.Let_syntax in
-  let int_literal = take_while1 Char.is_digit >>| Int.of_string in
-  let prec3 =
-    choice
-      [ (Set.parse >>| fun set -> Set set)
-      ; (Class.parse >>| fun cls -> Class cls)
-      ; (char '*' >>| fun _ -> Any)
-      ; (safe_char >>| fun c -> Char c)
-      ]
-    <?> "regex (precedence 3)"
-  in
-  let prec2 =
-    let* atom = prec3 in
-    option
-      atom
-      (choice
-         [ (char '*' >>| fun _ -> Star atom)
-         ; (char '+' >>| fun _ -> Plus atom)
-         ; (char '?' >>| fun _ -> Option atom)
-         ; (char '{' *> int_literal <* char '}' >>| fun i -> Count (atom, i))
-           (* TODO: handle too-large literals *)
-         ])
-  in
-  let prec2 = prec2 <?> "regex (precedence 2)" in
-  let prec1 =
-    many1 prec2
-    >>| function
-    | [] -> failwith "invalid count (result of many1)" | [ t ] -> t | ts -> Concat ts
-  in
-  let prec1 = prec1 <?> "regex (precedence 1)" in
-  let prec0 =
-    sep_by1 (char '|') prec1
-    >>| function
-    | [] -> failwith "invalid count (result of many1)" | [ t ] -> t | ts -> Choice ts
-  in
-  prec0 <?> "regex"
 ;;
 
 (* Create a character set from a string *)
@@ -318,27 +229,6 @@ let rec pp' precedence ppf =
 
     This has no delimiters, ie it returns "abc", not "/abc/". *)
 let pp = pp' 0
-
-let rec to_angstrom t =
-  let open Angstrom in
-  match t with
-  | Char c -> char c >>| String.of_char
-  | Class cls -> satisfy (Class.to_predicate cls) >>| String.of_char
-  | Set set -> Set.to_angstrom set >>| String.of_char
-  | Star t -> many (to_angstrom t) >>| String.concat
-  | Plus t -> many1 (to_angstrom t) >>| String.concat
-  | Count (t, n) -> count n (to_angstrom t) >>| String.concat
-  | Option t -> option "" (to_angstrom t)
-  | Choice ts ->
-    choice ~failure_msg:(Fmt.str "to_angstrom %a" pp t) (List.map ts ~f:to_angstrom)
-  | Any -> any_char >>| String.of_char
-  | Concat ts ->
-    (match List.map ~f:to_angstrom ts with
-    | [] -> fail "empty regex"
-    | [ p ] -> p
-    | p :: ps ->
-      List.fold ps ~init:p ~f:(fun p1 p2 -> p1 >>= fun r1 -> p2 >>| fun r2 -> r1 ^ r2))
-;;
 
 (* TODO: is this okay? *)
 let to_nonbinding re =
@@ -466,63 +356,5 @@ let%test_module "matching" =
       print_matches (Plus (Class (Neg Whitespace))) "hello world";
       [%expect {| (Group (hello (0 5))) |}]
     ;;
-  end)
-;;
-
-let%test_module "parsing" =
-  (module struct
-    let parse_exn p str =
-      Angstrom.parse_string ~consume:All p str |> Result.ok_or_failwith
-    ;;
-
-    let%test_module "Class parsing" =
-      (module struct
-        open Class
-
-        let parse = parse_exn parse
-
-        let%test _ = parse {|\w|} = Pos Word
-        let%test _ = parse {|\W|} = Neg Word
-        let%test _ = parse {|\s|} = Pos Whitespace
-        let%test _ = parse {|\S|} = Neg Whitespace
-        let%test _ = parse {|\d|} = Pos Digit
-        let%test _ = parse {|\D|} = Neg Digit
-      end)
-    ;;
-
-    let%test_module "Set_member parsing" =
-      (module struct
-        open Set_member
-
-        let parse = parse_exn parse
-
-        let%test _ = parse "c" = Single_char 'c'
-        let%test _ = parse "a-b" = Range ('a', 'b')
-      end)
-    ;;
-
-    let%test_module "Set parsing" =
-      (module struct
-        open Set
-
-        let parse = parse_exn parse
-
-        let%test _ = parse "[]" = []
-        let%test _ = parse "[a]" = [ Single_char 'a' ]
-        let%test _ = parse "[a-b]" = [ Range ('a', 'b') ]
-      end)
-    ;;
-
-    let parse = parse_exn parse
-
-    let%test _ = parse "c" = Char 'c'
-    let%test _ = parse "[ab]" = Set [ Single_char 'a'; Single_char 'b' ]
-    let%test _ = parse "a*" = Star (Char 'a')
-    let%test _ = parse "a+" = Plus (Char 'a')
-    let%test _ = parse "a{5}" = Count (Char 'a', 5)
-    let%test _ = parse "a?" = Option (Char 'a')
-    let%test _ = parse "a|b" = Choice [ Char 'a'; Char 'b' ]
-    let%test _ = parse "*" = Any
-    let%test _ = parse "ab" = re_str "ab"
   end)
 ;;

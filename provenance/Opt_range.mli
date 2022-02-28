@@ -1,5 +1,8 @@
 type t = Range.t option
 
+include Base.Comparable.S with type t := t
+include Base.Sexpable.S with type t := t
+
 val mk : int -> int -> t
 
 (** Extend this range to include the given position *)

@@ -19,9 +19,6 @@ open Lvca_util
 module Directed_graph = Directed_graph.Make (String)
 
 let pp_set = Fmt.(braces (list string ~sep:comma))
-let reserved_words = Lvca_util.String.Set.empty
-let lower_ident = Lvca_parsing.C_comment_parser.lower_identifier reserved_words
-let upper_ident = Lvca_parsing.C_comment_parser.upper_identifier reserved_words
 let string_sort = List.sort ~compare:String.compare
 
 (*
@@ -56,17 +53,18 @@ module Operator_fixity = struct
   let info (i, _, _) = i
 
   let parse =
-    let open Lvca_parsing in
-    let open C_comment_parser in
-    let* _, lparens = option' (string "()") in
-    let* range, lit = string_lit in
-    let* _, rparens = option' (string "()") in
+    let open Lvca_parsing.Parser in
+    let open Construction in
+    let+ lparens = option (parens (eps "()"))
+    and+ range, lit = ranged string_lit
+    and+ rparens = option (parens (eps "()")) in
     let info = Provenance.of_range range in
     match lparens, rparens with
-    | Some _, None -> return (info, Fixity.Left, lit)
-    | None, None -> return (info, Fixity.None, lit)
-    | None, Some _ -> return (info, Fixity.Right, lit)
-    | Some _, Some _ -> fail "operator can't be both left and right-infix"
+    | Some _, None -> info, Fixity.Left, lit
+    | None, None -> info, Fixity.None, lit
+    | None, Some _ -> info, Fixity.Right, lit
+    | Some _, Some _ ->
+      failwith (* TODO: raise *) "operator can't be both left and right-infix"
   ;;
 
   let pp ppf (info, fixity, lit) =
@@ -84,12 +82,19 @@ module Operator_ranking = struct
 
   let info (i, _) = i
 
-  let parse =
-    let open Lvca_parsing in
-    let char = C_comment_parser.char in
-    let level = sep_by1 (char '=') Operator_fixity.parse in
-    let+ range, levels = sep_by1 (char '>') level in
-    Provenance.of_range range, levels
+  let parse : t Lvca_parsing.Parser.t =
+    let open Lvca_parsing.Parser in
+    let open Construction in
+    let level : Operator_fixity.t list Construction.t =
+      sep_by1 (symbol "=") Operator_fixity.parse
+    in
+    let levels : Operator_fixity.t list list Construction.t =
+      sep_by1 (symbol ">") level
+    in
+    let+ start = mark
+    and+ levels
+    and+ finish = mark in
+    Provenance.of_range (Opt_range.mk start finish), levels
   ;;
 
   let pp_level = Fmt.(hovbox (list Operator_fixity.pp ~sep:(any "@ =@ ")))
@@ -139,15 +144,15 @@ module Sequence_item = struct
   ;;
 
   let parse =
-    let open Lvca_parsing in
-    let open C_comment_parser in
+    let open Lvca_parsing.Parser in
+    let open Construction in
     choice
       ~failure_msg:"looking for a variable or literal"
-      [ (let+ range, _ = char '_' in
+      [ (let+ _, _, range = symbol "_" in
          Space (Provenance.of_range range))
-      ; (let+ range, str = lower_ident in
+      ; (let+ range, str = ranged lower_identifier in
          Var (Provenance.of_range range, str))
-      ; (let+ range, str = string_lit in
+      ; (let+ range, str = ranged string_lit in
          Literal (Provenance.of_range range, str))
       ]
     <?> "sequence item"
@@ -185,9 +190,10 @@ module Operator_concrete_syntax_row = struct
   ;;
 
   let parse =
-    let open Lvca_parsing in
+    let open Lvca_parsing.Parser in
+    let open Construction in
     let p =
-      let+ range, items = many1 Sequence_item.parse in
+      let+ range, items = ranged (plus Sequence_item.parse) in
       Provenance.of_range range, items
     in
     p <?> "operator concrete syntax"
@@ -208,15 +214,16 @@ module Variable_syntax_row = struct
   let info t = t.info
 
   let parse =
-    let open Lvca_parsing in
-    let open C_comment_parser in
+    let open Lvca_parsing.Parser in
+    let open Construction in
     let p =
-      lift2
-        (fun (ident_range, var_name) (re_range, re) ->
-          let info = Opt_range.union ident_range re_range |> Provenance.of_range in
-          { info; var_name; re })
-        (lower_ident <* char '~')
-        (char '/' *> of_angstrom Regex.parse <* char '/')
+      let+ ident_range, var_name = ranged lower_identifier <* symbol "~"
+      and+ re_start = mark
+      and+ re = (* symbol "/" *> Regex.parse <* symbol "/" *) failwith "TODO"
+      and+ re_end = mark in
+      let re_range = Opt_range.mk re_start re_end in
+      let info = Opt_range.union ident_range re_range |> Provenance.of_range in
+      { info; var_name; re }
     in
     p <?> "variable regex"
   ;;
@@ -236,16 +243,6 @@ module Operator_pattern_slot = struct
 
   let vars { variable_names; body_name; _ } = body_name :: variable_names
 
-  let build_exn env { info = _; variable_names; body_name } =
-    let pats =
-      List.map variable_names ~f:(fun name ->
-          match Map.find_exn env name |> Nominal.Term.to_pattern with
-          | Ok pat -> pat
-          | Error _scope -> failwith "TODO: Operator_pattern_slot.build_exn Error")
-    in
-    Nominal.Scope.Scope (pats, Map.find_exn env body_name)
-  ;;
-
   let pp ppf { info; variable_names; body_name } =
     Provenance.fmt_stag
       info
@@ -255,12 +252,15 @@ module Operator_pattern_slot = struct
   ;;
 
   let parse =
-    let open Lvca_parsing in
-    let open C_comment_parser in
+    let open Lvca_parsing.Parser in
+    let open Construction in
     let p =
-      let+ pos, idents = sep_end_by1 (char '.') lower_ident in
+      let+ start = mark
+      and+ idents = sep_end_by1 (symbol ".") lower_identifier
+      and+ finish = mark in
       let variable_names, body_name = List.unsnoc idents in
-      { info = Provenance.of_range pos; variable_names; body_name }
+      let info = Provenance.of_range (Opt_range.mk start finish) in
+      { info; variable_names; body_name }
     in
     p <?> "operator pattern slot"
   ;;
@@ -275,13 +275,6 @@ module Operator_pattern = struct
 
   let vars { slots; _ } = slots |> List.map ~f:Operator_pattern_slot.vars |> List.concat
 
-  let build_exn env { info; name; slots } =
-    Nominal.Term.Operator
-      ( Provenance.calculated_here [%here] [ info ]
-      , name
-      , List.map slots ~f:(Operator_pattern_slot.build_exn env) )
-  ;;
-
   let pp ppf { info; name; slots } =
     let pp' ppf () =
       Fmt.(pf ppf "@[%s(%a)@]" name (list Operator_pattern_slot.pp ~sep:semi) slots)
@@ -290,15 +283,15 @@ module Operator_pattern = struct
   ;;
 
   let parse =
-    let open Lvca_parsing in
-    let open C_comment_parser in
+    let open Lvca_parsing.Parser in
+    let open Construction in
     let p =
-      lift2
-        (fun (name_range, name) (slots_range, slots) ->
-          let info = Opt_range.union name_range slots_range |> Provenance.of_range in
-          { info; name; slots })
-        upper_ident
-        (parens (sep_by (char ';') Operator_pattern_slot.parse))
+      let+ start = mark
+      and+ name = upper_identifier
+      and+ slots = parens (sep_by (symbol ";") Operator_pattern_slot.parse)
+      and+ finish = mark in
+      let info = Provenance.of_range (Opt_range.mk start finish) in
+      { info; name; slots }
     in
     p <?> "operator pattern"
   ;;
@@ -312,7 +305,6 @@ module Operator_syntax_row = struct
     }
 
   let info t = t.info
-  let name { pattern = { name; _ }; _ } = name
 
   let keywords { concrete_syntax; _ } =
     Operator_concrete_syntax_row.keywords concrete_syntax
@@ -442,17 +434,17 @@ module Operator_syntax_row = struct
   ;;
 
   let parse =
-    let open Lvca_parsing in
-    let open C_comment_parser in
+    let open Lvca_parsing.Parser in
+    let open Construction in
     let p =
-      lift2
-        (fun (pat_range, pattern) (syntax_range, concrete_syntax) ->
-          let range = Opt_range.union pat_range syntax_range in
-          let info = Provenance.of_range range in
-          { info; pattern; concrete_syntax })
+      let+ start = mark
+      and+ pattern = Operator_pattern.parse <* symbol "~"
+      and+ concrete_syntax =
         (* TODO: don't parse any pattern -- just operator patterns *)
-        (Operator_pattern.parse <* char '~')
         Operator_concrete_syntax_row.parse
+      and+ finish = mark in
+      let info = Provenance.of_range (Opt_range.mk start finish) in
+      { info; pattern; concrete_syntax }
     in
     p <?> "operator syntax row"
   ;;
@@ -475,7 +467,8 @@ module Operator_syntax = struct
   type t = (Operator_syntax_row.t, Variable_syntax_row.t) Either.t [@@warning "-34"]
 
   let parse =
-    let open Lvca_parsing in
+    let open Lvca_parsing.Parser in
+    let open Construction in
     choice
       ~failure_msg:"looking for an operator or variable syntax row"
       [ Variable_syntax_row.parse >>| Either.Second.return
@@ -488,16 +481,6 @@ module Operator_syntax = struct
     | Either.First row -> Operator_syntax_row.pp ppf row
     | Second row -> Variable_syntax_row.pp ppf row
   ;;
-end
-
-module Binary_operator_info = struct
-  type t =
-    { pattern : Operator_pattern.t
-    ; v1 : string
-    ; op_name : string
-    ; v2 : string
-    ; fixity : Fixity.t
-    }
 end
 
 module Sort_syntax = struct
@@ -528,72 +511,29 @@ module Sort_syntax = struct
 
   let operator_names operator_infos = operator_infos |> Map.keys |> String.Set.of_list
 
-  type pre_binary_operator_info =
-    { pattern : Operator_pattern.t
-    ; v1 : string
-    ; op_name : string
-    ; v2 : string
-    }
-
-  type partition =
-    { binary_operators : pre_binary_operator_info list
-    ; prefix_rows : Operator_syntax_row.t list
-    }
-
-  (* Partition the rows of this sort into:
-     a. Binary operators
-     b. "Prefix rows", which begin with a literal
-   *)
-  let partition_operator_rows operator_rows operator_names =
-    let binary_operators, prefix_rows =
-      List.partition_map operator_rows ~f:(fun row ->
-          match Operator_syntax_row.is_binary_operator operator_names row with
-          | Some (v1, l, v2) ->
-            Either.First { pattern = row.pattern; v1; op_name = l; v2 }
-            (* TODO: Just use everything which is not a binary operator? *)
-          | None -> Either.Second row)
-    in
-    { binary_operators; prefix_rows }
-  ;;
-
-  let level_operator_rows
-      (operator_ranking : Operator_fixity.t list list)
-      (binary_operators : pre_binary_operator_info list)
-      : Binary_operator_info.t list list
-    =
-    List.map operator_ranking ~f:(fun operator_fixities ->
-        let operator_fixities =
-          operator_fixities
-          |> List.map ~f:(fun (_, fixity, name) -> name, fixity)
-          |> String.Map.of_alist_exn
-        in
-        List.filter_map binary_operators ~f:(fun { pattern; v1; op_name; v2 } ->
-            Map.find operator_fixities op_name
-            |> Option.map ~f:(fun fixity ->
-                   Binary_operator_info.{ fixity; pattern; v1; op_name; v2 })))
-  ;;
-
   let parse =
-    let open Lvca_parsing in
-    let open C_comment_parser in
+    let open Lvca_parsing.Parser in
+    let open Construction in
     let p =
-      let* name_info, name = lower_ident in
-      let* _ = char ':' in
-      let* ops_info, operators = many (char '|' *> Operator_syntax.parse) in
-      let* _, operator_ranking =
+      let+ start = mark
+      and+ name_info, name = ranged lower_identifier
+      and+ _ = symbol ":"
+      and+ operators = star (symbol "|" *> Operator_syntax.parse)
+      and+ operator_ranking =
         choice
           ~failure_msg:"Expected a `;` or `\\` operator ranking"
-          [ char ';' *> return None; Option.some <$> char '\\' *> Operator_ranking.parse ]
-      in
-      let range = Opt_range.union name_info ops_info in
+          [ symbol ";" *> return None
+          ; Option.some <$> symbol "\\" *> Operator_ranking.parse
+          ]
+      and+ finish = mark in
+      let range = Opt_range.mk start finish in
       let info = Provenance.of_range range in
       let name = Provenance.of_range name_info, name in
       let operators, vars = List.partition_map operators ~f:Fn.id in
       match vars with
-      | [] -> return ~range { info; name; operators; variables = None; operator_ranking }
-      | [ row ] ->
-        return ~range { info; name; operators; variables = Some row; operator_ranking }
-      | _ -> fail "Only one variable row is allowed in a sort"
+      | [] -> { info; name; operators; variables = None; operator_ranking }
+      | [ row ] -> { info; name; operators; variables = Some row; operator_ranking }
+      | _ -> failwith (* TODO: raise *) "Only one variable row is allowed in a sort"
     in
     p <?> "sort syntax"
   ;;
@@ -712,7 +652,11 @@ let build_unordered ordered =
   |> String.Map.of_alist
 ;;
 
-let parse = Lvca_parsing.(many1 Sort_syntax.parse <?> "parse / pretty definition")
+let parse =
+  Lvca_parsing.Parser.Construction.(
+    plus Sort_syntax.parse <?> "parse / pretty definition")
+;;
+
 let pp = Fmt.(list Sort_syntax.pp ~sep:(any "@.@."))
 
 (* Find the sort of a variable in a pattern. *)
@@ -946,249 +890,20 @@ module Pp_term = struct
   ;;
 end
 
-module Parse_term = struct
-  open Lvca_parsing
-
-  type dispatch =
-    { map :
-        (Provenance.Parse_input.t -> dispatch -> Nominal.Term.t Lvca_parsing.t)
-        String.Map.t
-    }
-
-  let build_slot env Operator_pattern_slot.{ info = _; variable_names; body_name } =
-    let pats =
-      List.map variable_names ~f:(fun name ->
-          match Map.find_exn env name with
-          | Nominal.Term.Var (info, name) -> Pattern.Var (info, name)
-          | _ -> failwith "TODO build_slot non-var")
-    in
-    Nominal.Scope.Scope (pats, Map.find_exn env body_name)
-  ;;
-
-  let build_operator range env Operator_pattern.{ info = _; name; slots } input =
-    Nominal.Term.Operator
-      (Provenance.of_range ~input range, name, List.map slots ~f:(build_slot env))
-  ;;
-
-  let sequence_items var_parsers pattern items0 input =
-    let rec go env range = function
-      | [] -> return (build_operator range env pattern input)
-      | item :: items ->
-        (match item with
-        | Sequence_item.Space _ -> go env range items
-        | Literal (_, s) ->
-          let* range', _ = C_comment_parser.string s in
-          go env (Opt_range.union range range') items
-        | Var (_, name) ->
-          let* range', data = Map.find_exn var_parsers name in
-          let env = Map.set env ~key:name ~data in
-          go env (Opt_range.union range range') items)
-    in
-    go String.Map.empty None items0
-  ;;
-
-  let builtin_sort_parsers =
-    let open Nominal.Term in
-    let open Primitive in
-    Lvca_util.String.Map.of_alist_exn
-      [ ( "char"
-        , let+ _range, (prov, c) = Char.parse in
-          Primitive (prov, Char c) )
-      ; ( "integer"
-        , let+ _range, (prov, i) = Integer.parse in
-          Primitive (prov, Integer i) )
-      ; ( "int32"
-        , let+ _range, (prov, i) = Int32.parse in
-          Primitive (prov, Int32 i) )
-      ; ( "float"
-        , let+ _range, (prov, f) = Float.parse in
-          Primitive (prov, Float f) )
-      ; ( "string"
-        , let+ _range, (prov, s) = String.parse in
-          Primitive (prov, String s) )
-      ]
-  ;;
-
-  (* Find the appropriate sort parser *)
-  let sort sort_name self dispatch input sort =
-    let sort_name' = Sort.name sort in
-    match Map.find builtin_sort_parsers sort_name' with
-    | Some parser -> parser
-    | None ->
-      if String.(sort_name' = sort_name)
-      then self
-      else Map.find_exn dispatch.map sort_name' input dispatch
-  ;;
-
-  let sort_mapping slots valences =
-    List.zip_exn slots valences
-    |> List.bind
-         ~f:(fun
-              ( Operator_pattern_slot.{ info = _; variable_names; body_name }
-              , Valence.Valence (sort_slots, sort') )
-            ->
-           let slot_sorts =
-             List.map sort_slots ~f:(function
-                 | Sort_binding s -> s
-                 | Sort_pattern _ ->
-                   failwith "TODO: prefix_operator_syntax_row Sort_pattern")
-           in
-           (body_name, sort') :: List.zip_exn variable_names slot_sorts)
-    |> String.Map.of_alist_exn
-  ;;
-
-  let prefix_operator_syntax_row
-      sort
-      (Operator_def.Operator_def (_, name, Arity (_, valences)))
-      Operator_syntax_row.{ info = _; pattern; concrete_syntax = _, items }
-      input
-    =
-    let var_parsers = sort_mapping pattern.slots valences |> Map.map ~f:(sort input) in
-    sequence_items var_parsers pattern items input <?> name
-  ;;
-
-  let var_parser keywords re =
-    let* pos, name = Lvca_parsing.(of_angstrom (Regex.to_angstrom re) <* whitespace) in
-    if Set.mem keywords name
-    then fail (Fmt.str "%S is a keyword" name)
-    else return (Nominal.Term.Var (Provenance.of_range pos, name))
-  ;;
-
-  let sort_syntax keywords (sort_name, sort_def, sort_syntax) self dispatch input =
-    let Sort_syntax.{ operators; operator_ranking; variables; _ } = sort_syntax in
-    let failure_msg =
-      let operator_names = List.map operators ~f:Operator_syntax_row.name in
-      match variables with
-      | None ->
-        Fmt.str "looking for an operator from `%s` (%a)" sort_name pp_set operator_names
-      | Some _ ->
-        Fmt.str
-          "looking for an operator from `%s` (%a) or a variable"
-          sort_name
-          pp_set
-          operator_names
-    in
-    let operator_names =
-      sort_syntax |> Sort_syntax.operator_infos |> Sort_syntax.operator_names
-    in
-    let Sort_syntax.{ binary_operators; prefix_rows } =
-      Sort_syntax.partition_operator_rows operators operator_names
-    in
-    let operator_ranking =
-      match operator_ranking with Some (_, ranking) -> ranking | None -> []
-    in
-    let sort = sort sort_name self dispatch in
-    let find_op_def_exn op_name =
-      Sort_def.find_operator_def sort_def op_name
-      |> Option.get_invariant [%here] (fun () -> "TODO: find_op_def_exn")
-    in
-    let mk_prefix_parser op =
-      let op_def = find_op_def_exn (Operator_syntax_row.name op) in
-      prefix_operator_syntax_row sort op_def op input
-    in
-    let prefix_rows' = List.map prefix_rows ~f:mk_prefix_parser in
-    let prefix_parser =
-      match variables, prefix_rows' with
-      | None, [] -> None
-      | None, _ -> Some (choice ~failure_msg prefix_rows')
-      | Some Variable_syntax_row.{ re; _ }, _ ->
-        Some (choice ~failure_msg (var_parser keywords re :: prefix_rows'))
-    in
-    let mk_level_parser higher_prec rows =
-      let op_name =
-        rows
-        |> List.map
-             ~f:(fun Binary_operator_info.{ pattern; v1; op_name; v2; fixity = _ } ->
-               C_comment_parser.string op_name >>| fun _ -> pattern, v1, v2)
-        |> choice ~failure_msg:"operator name"
-      in
-      let Binary_operator_info.{ fixity; _ } (* XXX what if different fixities *) =
-        List.hd_exn rows
-      in
-      let op_rhs_pair =
-        op_name >>= fun op_info -> higher_prec >>| fun tm -> op_info, tm
-      in
-      let* _, init = higher_prec in
-      let* _, pairs = many op_rhs_pair in
-      let fold_pairs =
-        List.fold ~init ~f:(fun t1 ((pattern, v1_name, v2_name), t2) ->
-            let env = String.Map.of_alist_exn [ v1_name, t1; v2_name, t2 ] in
-            Operator_pattern.build_exn env pattern)
-      in
-      match fixity with
-      | Fixity.Left -> pairs |> fold_pairs |> return
-      | None ->
-        (match pairs with
-        | [ ((pattern, v1_name, v2_name), t2) ] ->
-          let env = String.Map.of_alist_exn [ v1_name, init; v2_name, t2 ] in
-          return (Operator_pattern.build_exn env pattern)
-        | _ -> fail "Don't know how to parse operators with no fixity")
-      | Right -> pairs |> List.rev |> fold_pairs |> return
-    in
-    let highest_prec =
-      match prefix_parser with
-      | Some p ->
-        let failure_msg =
-          let open Fmt in
-          str
-            "looking for a parenthesized %s (or one with a literal prefix: {%a})"
-            sort_name
-            (list ~sep:semi Operator_syntax_row.pp)
-            prefix_rows
-        in
-        choice ~failure_msg [ C_comment_parser.parens self; p ]
-      | None -> C_comment_parser.parens self
-    in
-    let operator_levels =
-      Sort_syntax.level_operator_rows operator_ranking binary_operators
-    in
-    List.fold operator_levels ~init:highest_prec ~f:mk_level_parser <?> sort_name
-  ;;
-
-  let lang abstract_syntax concrete_syntax =
-    let keywords = unordered_keywords concrete_syntax in
-    let map =
-      Map.mapi
-        abstract_syntax
-        ~f:(fun ~key:sort_name ~data:abstract_sort input dispatch ->
-          fix
-          @@ fun self ->
-          let concrete_sort = Map.find_exn concrete_syntax sort_name in
-          sort_syntax
-            keywords
-            (sort_name, abstract_sort, concrete_sort)
-            self
-            dispatch
-            input)
-    in
-    { map }
-  ;;
-end
-
 module Unordered = struct
   type t = Sort_syntax.t String.Map.t
 
   let build = build_unordered
   let keywords = unordered_keywords
   let pp_term ~sort lang = Pp_term.pp_term lang sort
-
-  let parse_term ?(input = Provenance.Parse_input.Input_unknown) ~sort abstract concrete =
-    let parser = Parse_term.lang abstract concrete in
-    Map.find_exn parser.map sort input parser
-  ;;
 end
 
 module Make (Input : sig
-  val abstract : Sort_def.t String.Map.t
   val concrete : Unordered.t
   val start_sort : string
 end) =
 struct
   let pp_term = Unordered.pp_term ~sort:Input.start_sort Input.concrete
-
-  let parse_term input =
-    Unordered.parse_term ~input ~sort:Input.start_sort Input.abstract Input.concrete
-  ;;
 end
 
 let%test_module "parsing / pretty-printing" =
@@ -1197,7 +912,7 @@ let%test_module "parsing / pretty-printing" =
 
     let%test_module "Operator_fixity" =
       (module struct
-        let parse = Lvca_parsing.parse_string_or_failwith Operator_fixity.parse
+        let parse = Lvca_parsing.Parser.parse_string_or_failwith Operator_fixity.parse
         let parse_print = parse >> Operator_fixity.pp Fmt.stdout
 
         let%expect_test _ =
@@ -1219,7 +934,7 @@ let%test_module "parsing / pretty-printing" =
 
     let%test_module "Operator_ranking" =
       (module struct
-        let parse = Lvca_parsing.parse_string_or_failwith Operator_ranking.parse
+        let parse = Lvca_parsing.Parser.parse_string_or_failwith Operator_ranking.parse
         let parse_print = parse >> Operator_ranking.pp Fmt.stdout
 
         let%expect_test _ =
@@ -1231,7 +946,7 @@ let%test_module "parsing / pretty-printing" =
 
     let%test_module "Sequence_item" =
       (module struct
-        let parse = Lvca_parsing.parse_string_or_failwith Sequence_item.parse
+        let parse = Lvca_parsing.Parser.parse_string_or_failwith Sequence_item.parse
         let parse_print = parse >> Sequence_item.pp Fmt.stdout
 
         let%expect_test _ =
@@ -1249,7 +964,7 @@ let%test_module "parsing / pretty-printing" =
     let%test_module "Operator_concrete_syntax_row" =
       (module struct
         let parse =
-          Lvca_parsing.parse_string_or_failwith Operator_concrete_syntax_row.parse
+          Lvca_parsing.Parser.parse_string_or_failwith Operator_concrete_syntax_row.parse
         ;;
 
         let parse_print = parse >> Operator_concrete_syntax_row.pp Fmt.stdout
@@ -1263,7 +978,10 @@ let%test_module "parsing / pretty-printing" =
 
     let%test_module "Operator_pattern_slot" =
       (module struct
-        let parse = Lvca_parsing.parse_string_or_failwith Operator_pattern_slot.parse
+        let parse =
+          Lvca_parsing.Parser.parse_string_or_failwith Operator_pattern_slot.parse
+        ;;
+
         let parse_print = parse >> Operator_pattern_slot.pp Fmt.stdout
 
         let%expect_test _ =
@@ -1280,7 +998,7 @@ let%test_module "parsing / pretty-printing" =
 
     let%test_module "Operator_pattern" =
       (module struct
-        let parse = Lvca_parsing.parse_string_or_failwith Operator_pattern.parse
+        let parse = Lvca_parsing.Parser.parse_string_or_failwith Operator_pattern.parse
         let parse_print = parse >> Operator_pattern.pp Fmt.stdout
 
         let%expect_test _ =
@@ -1292,7 +1010,7 @@ let%test_module "parsing / pretty-printing" =
 
     let%test_module "Operator_syntax_row" =
       (module struct
-        let parse = Lvca_parsing.parse_string_or_failwith Operator_syntax_row.parse
+        let parse = Lvca_parsing.Parser.parse_string_or_failwith Operator_syntax_row.parse
         let parse_print = parse >> Operator_syntax_row.pp Fmt.stdout
 
         let%expect_test _ =
@@ -1304,7 +1022,7 @@ let%test_module "parsing / pretty-printing" =
 
     let%test_module "Variable_syntax_row" =
       (module struct
-        let parse = Lvca_parsing.parse_string_or_failwith Variable_syntax_row.parse
+        let parse = Lvca_parsing.Parser.parse_string_or_failwith Variable_syntax_row.parse
         let parse_print = parse >> Variable_syntax_row.pp Fmt.stdout
 
         let%expect_test _ =
@@ -1316,7 +1034,7 @@ let%test_module "parsing / pretty-printing" =
 
     let%test_module "Operator_syntax" =
       (module struct
-        let parse = Lvca_parsing.parse_string_or_failwith Operator_syntax.parse
+        let parse = Lvca_parsing.Parser.parse_string_or_failwith Operator_syntax.parse
         let parse_print = parse >> Operator_syntax.pp Fmt.stdout
 
         let%expect_test _ =
@@ -1333,7 +1051,7 @@ let%test_module "parsing / pretty-printing" =
 
     let%test_module "Sort_syntax" =
       (module struct
-        let parse = Lvca_parsing.parse_string_or_failwith Sort_syntax.parse
+        let parse = Lvca_parsing.Parser.parse_string_or_failwith Sort_syntax.parse
         let parse_print = parse >> Sort_syntax.pp Fmt.stdout
 
         let expr_defn =
@@ -1359,7 +1077,7 @@ let%test_module "parsing / pretty-printing" =
       end)
     ;;
 
-    let mk_concrete = Lvca_parsing.parse_string_or_failwith parse
+    let mk_concrete = Lvca_parsing.Parser.parse_string_or_failwith parse
     let parse_print str = pp Fmt.stdout (mk_concrete str)
 
     let lang_abstract_defn =
@@ -1411,7 +1129,7 @@ val:
 
     let mk_abstract str =
       match
-        Lvca_parsing.parse_string_or_failwith Abstract_syntax.parse str
+        Lvca_parsing.Parser.parse_string_or_failwith Abstract_syntax.parse str
         |> Abstract_syntax.mk_unordered
       with
       | `Duplicate_key k -> failwith (Fmt.str "duplicate key %s" k)
@@ -1531,11 +1249,7 @@ foo:
     let%test_module "pp_term" =
       (module struct
         let go sort tm =
-          let tm =
-            Lvca_parsing.parse_string_or_failwith
-              (Nominal.Term.parse' String.Set.empty)
-              tm
-          in
+          let tm = Lvca_parsing.Parser.parse_string_or_failwith Nominal.Term.parse' tm in
           Pp_term.pp_term lang_concrete sort Fmt.stdout tm
         ;;
 
@@ -1598,17 +1312,8 @@ foo:
 
     let%test_module "Parse_term" =
       (module struct
-        let lang_abstract = mk_abstract lang_abstract_defn
-
-        let parser ~sort =
-          Unordered.parse_term
-            ~input:(Buffer_name "test")
-            ~sort
-            lang_abstract
-            lang_concrete
-        ;;
-
-        let parse sort = Lvca_parsing.parse_string_or_failwith (parser ~sort)
+        let parser ~sort:_ = failwith "TODO"
+        let parse sort = Lvca_parsing.Parser.parse_string_or_failwith (parser ~sort)
         let parse_print start_sort = parse start_sort >> Nominal.Term.pp Fmt.stdout
 
         (*
@@ -1692,17 +1397,6 @@ foo:
 
     let%test_module "primitives" =
       (module struct
-        let abstract_defn =
-          {|expr :=
-  | Char(char)
-  | Integer(integer)
-  | Int32(int32)
-  | Float(float)
-  | String(string)
-  ;
-      |}
-        ;;
-
         let concrete_defn =
           {|expr:
   | Char(c)    ~ c
@@ -1714,14 +1408,9 @@ foo:
 |}
         ;;
 
-        let abstract = mk_abstract abstract_defn
         let concrete = mk_concrete' concrete_defn
-
-        let parser ~sort =
-          Unordered.parse_term ~input:(Buffer_name "test") ~sort abstract concrete
-        ;;
-
-        let parse sort = Lvca_parsing.parse_string_or_failwith (parser ~sort)
+        let parser ~sort:_ = failwith "TODO"
+        let parse sort = Lvca_parsing.Parser.parse_string_or_failwith (parser ~sort)
         let parse_print = parse "expr" >> Fmt.pr "%a@." Nominal.Term.pp
 
         let%expect_test _ =
@@ -1740,11 +1429,7 @@ foo:
         ;;
 
         let go tm =
-          let tm =
-            Lvca_parsing.parse_string_or_failwith
-              (Nominal.Term.parse' String.Set.empty)
-              tm
-          in
+          let tm = Lvca_parsing.Parser.parse_string_or_failwith Nominal.Term.parse' tm in
           Fmt.pr "%a@." (Pp_term.pp_term concrete "expr") tm
         ;;
 

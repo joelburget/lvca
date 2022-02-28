@@ -23,10 +23,10 @@ let instantiate env (Arity (info, valences)) =
 ;;
 
 let parse =
-  let open Lvca_parsing in
-  let open C_comment_parser in
+  let open Lvca_parsing.Parser in
+  let open Construction in
   let p =
-    let+ _, valences = parens (sep_by (char ';') Valence.parse) in
+    let+ valences = parens (sep_by (symbol ";") Valence.parse) in
     Arity (Provenance.of_here [%here], valences)
   in
   p <?> "arity"
@@ -40,7 +40,7 @@ let%test_module "parsing" =
     let integer = Sort.Name (none, "integer")
     let integer_v = Valence.Valence ([], integer)
     let ( = ) = equivalent
-    let go = Lvca_parsing.(parse_string_or_failwith (C_comment_parser.junk *> parse))
+    let go = Lvca_parsing.Parser.(parse_string_or_failwith parse)
 
     let%test_unit _ = assert (go "(integer)" = Arity (none, [ integer_v ]))
     let%test_unit _ = assert (go "(tm; tm)" = Arity (none, [ tm_v; tm_v ]))
@@ -63,7 +63,7 @@ let%test_module "parsing" =
     ;;
 
     let expect_okay str =
-      match Lvca_parsing.parse_string parse str with
+      match Lvca_parsing.Parser.parse_string parse str with
       | Ok _ -> ()
       | Error msg -> Stdio.print_string msg
     ;;

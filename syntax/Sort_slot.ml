@@ -30,12 +30,19 @@ let kind_check env = function
 ;;
 
 let parse =
-  let open Lvca_parsing in
-  let* _, sort = Sort.parse Lvca_util.String.Set.empty in
-  choice
-    [ (C_comment_parser.brackets (Sort.parse Lvca_util.String.Set.empty)
-      >>| fun var_sort -> Sort_pattern { pattern_sort = sort; var_sort })
-    ; return (Sort_binding sort)
-    ]
-  <?> "sort slot"
+  let open Lvca_parsing.Parser in
+  let open Construction in
+  let p =
+    let+ sort = Sort.parse
+    and+ continuation =
+      choice
+        ~failure_msg:"sort slot"
+        [ (brackets Sort.parse
+          >>| fun var_sort sort -> Sort_pattern { pattern_sort = sort; var_sort })
+        ; return (fun sort -> Sort_binding sort)
+        ]
+    in
+    continuation sort
+  in
+  p <?> "sort slot"
 ;;

@@ -18,4 +18,4 @@ val instantiate : t String.Map.t -> t -> t
 val split : t -> string * t list
 val name : t -> string
 val kind_check : Int.Set.t String.Map.t -> t -> Int.Set.t String.Map.t
-val parse : String.Set.t -> t Lvca_parsing.t
+val parse : t Lvca_parsing.Parser.t

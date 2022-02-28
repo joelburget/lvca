@@ -11,5 +11,5 @@ val pp : t Fmt.t
 (** Instantiate concrete vars in a valence *)
 val instantiate : Sort.t String.Map.t -> t -> t
 
-val parse : t Lvca_parsing.t
+val parse : t Lvca_parsing.Parser.t
 val kind_check : Int.Set.t String.Map.t -> t -> Int.Set.t String.Map.t

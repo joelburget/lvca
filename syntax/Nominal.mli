@@ -97,8 +97,8 @@ module Term : sig
     -> t
     -> check_failure option
 
-  val parse : Lvca_util.String.Set.t -> parse_prim:t Lvca_parsing.t -> t Lvca_parsing.t
-  val parse' : Lvca_util.String.Set.t -> t Lvca_parsing.t
+  val parse : parse_prim:t Lvca_parsing.Parser.t -> t Lvca_parsing.Parser.t
+  val parse' : t Lvca_parsing.Parser.t
 
   module Properties : sig
     include Properties_intf.Parse_pretty_s with type t := t
@@ -136,8 +136,8 @@ val of_pattern : (, 'prim) Pattern.t -> (, 'prim) t
   (* TODO:
   val free_vars : (_, _) t -> String.Set.t
 
-  val parse : parse_prim:Opt_range.t t Lvca_parsing.t -> Opt_range.t t Lvca_parsing.t
-  val parse' : Opt_range.t t Lvca_parsing.t
+  val parse : parse_prim:Opt_range.t t Lvca_parsing.Parser.t -> Opt_range.t t Lvca_parsing.Parser.t
+  val parse' : Opt_range.t t Lvca_parsing.Parser.t
 
   module Properties : Properties_intf.S with type  t := unit t
   *)
@@ -185,7 +185,7 @@ module Convertible : sig
     val pp : t Fmt.t
 
     val to_string : t -> string
-    val parse : t Lvca_parsing.t
+    val parse : t Lvca_parsing.Parser.t
   end
 
   (** Derive helpers (an extended language object) from the basics. *)

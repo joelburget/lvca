@@ -358,10 +358,9 @@ let infer env term = infer_trace (fun _ -> ()) env term
 
 let%test_module "check / infer" =
   (module struct
-    let reserved = Lvca_util.String.Set.empty
-    let parse p = Lvca_parsing.(parse_string (whitespace *> p))
+    let parse = Lvca_parsing.Parser.parse_string
     let parse_statics = parse Statics.parse
-    let parse_tm = parse (Nominal.Term.parse' reserved)
+    let parse_tm = parse Nominal.Term.parse'
 
     let rules =
       {|
