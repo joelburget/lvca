@@ -1,124 +1,67 @@
 open Base
-open Lexing
-open Construction
 open Lvca_provenance
+open Taparse_regex
 
-type 'a t = 'a Lexing.t
+exception Lexer_err of int
 
-let space : (char * int) Construction.t = tok (Char_class.of_string " \t\n\r")
+let escaped_char = Regex.(chr '\\' >>> any)
 
-let tok' : char -> (char * int) Construction.t =
- fun c -> tok (Char_class.Char.singleton c)
+let lexer : Token_stream.Token_tag.t Lexing.t =
+  let alphanum, digit, lowercase, uppercase, whitespace =
+    Char_class.Common.(alphanum, digit, lowercase, uppercase, whitespace)
+  in
+  let single_quoted =
+    let non_escaped = Char_class.(negate (of_string "'\\")) in
+    Regex.(chr '\'' >>> star (escaped_char || char_class non_escaped) >>> chr '\'')
+  in
+  let double_quoted =
+    let non_escaped = Char_class.(negate (of_string "\"\\")) in
+    Regex.(chr '"' >>> star (escaped_char || char_class non_escaped) >>> chr '"')
+  in
+  Regex.
+    [ char_class whitespace, Return Whitespace
+    ; ( str "//" >>> star (char_class Char_class.(negate (Char.singleton '\n')))
+      , Return Comment )
+    ; ( star (char_class digit) >>> chr '.' >>> star (char_class digit)
+      , Return (Literal Floating) )
+    ; plus (char_class digit), Return (Literal Integer)
+    ; char_class lowercase >>> star (char_class alphanum), Return Lower_ident
+    ; char_class uppercase >>> star (char_class alphanum), Return Upper_ident
+    ; single_quoted, Return (Literal Single_quoted)
+    ; double_quoted, Return (Literal Double_quoted)
+    ; char_class (Char_class.of_string "{}[]()"), Return Symbol
+      (* TODO ; str "", Return Keyword *)
+    ]
 ;;
 
-let tok'' : char -> char t = fun c -> tok' c ==> fun (c, i) -> c, Opt_range.mk i (i + 1)
-let cons (c, cs) = c :: cs
-
-let aggregate_ranges : ('a * int) list -> 'a list * Opt_range.t =
- fun cs ->
-  let cs, poss = List.unzip cs in
-  match cs with
-  | [] -> [], None
-  | _ -> cs, Opt_range.mk (List.hd_exn poss) (List.last_exn poss)
+let lex_exn str =
+  let filter_toks =
+    List.filter_map ~f:(fun (Lexing.{ start; finish }, action) ->
+        match action with
+        | Lexing.Return token_tag ->
+          Some
+            ( token_tag
+            , String.sub ~pos:start ~len:(finish - start) str
+            , Opt_range.mk start finish )
+        | Error _err -> raise (Lexer_err 0 (* TODO *))
+        | _ -> None)
+  in
+  match Lexing.lex lexer str with
+  | Ok toks -> filter_toks toks
+  | Error err -> raise (Lexer_err err)
 ;;
 
-let aggregate_string : (char * int) list -> string * Opt_range.t =
- fun cs ->
-  let cs, range = aggregate_ranges cs in
-  String.of_char_list cs, range
+let lex str = try Ok (lex_exn str) with Lexer_err err -> Error err
+
+let%expect_test _ =
+  let pp = Fmt.(brackets (list ~sep:semi Token_stream.Token.pp)) in
+  Fmt.pr "%a" pp (lex_exn {|1.1 abc Abc ("str \" str") ['c'] {'\''} // comment|});
+  [%expect
+    {|
+    [Literal Floating "1.1"; Whitespace " "; Lower_ident "abc"; Whitespace " ";
+     Upper_ident "Abc"; Whitespace " "; Symbol "(";
+     Literal Double_quoted "\"str \\\" str\""; Symbol ")"; Whitespace " ";
+     Symbol "["; Literal Single_quoted "'c'"; Symbol "]"; Whitespace " ";
+     Symbol "{"; Literal Single_quoted "'\\''"; Symbol "}"; Whitespace " ";
+     Comment "// comment"] |}]
 ;;
-
-let to_str' : (char * Opt_range.t) * (char * Opt_range.t) list -> string * Opt_range.t =
- fun (c, cs) ->
-  let cs, ranges = List.unzip (c :: cs) in
-  String.of_char_list cs, Opt_range.list_range ranges
-;;
-
-let to_str : (char * Opt_range.t) list -> string * Opt_range.t = function
-  | [] -> "", None
-  | c :: cs -> to_str' (c, cs)
-;;
-
-let whitespace1 = plus space ==> aggregate_string
-
-let string str : string t =
-  match String.to_list str with
-  | [] -> eps ("", None)
-  | c :: cs ->
-    List.fold_right
-      cs
-      ~f:(fun c cs -> tok' c ++ cs ==> cons)
-      ~init:(tok' c ==> List.return)
-    ==> aggregate_string
-;;
-
-let comment : string t =
-  string "//" ++ star (failwith "TODO: non-newline")
-  ==> fun ((str, pos), charposs) ->
-  let cs, poss = List.unzip charposs in
-  str ^ String.of_char_list cs, Opt_range.union pos (List.last poss)
-;;
-
-let charset ~failure_msg s : char t =
-  s |> String.to_list |> List.map ~f:tok'' |> choice ~failure_msg
-;;
-
-let lower_char : char t = charset ~failure_msg:"lower" "abcdefghijklmnopqrstuvwxyz"
-(* TODO: use char classes *)
-
-let upper_char : char t = charset ~failure_msg:"upper" "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-let char : char t = lower_char <|> upper_char (* TODO: alphanum+ *)
-
-let digit : (char * Opt_range.t) Construction.t =
-  charset ~failure_msg:"digit" "0123456789"
-;;
-
-let lower_ident : string t = lower_char ++ star char ==> to_str'
-let upper_ident : string t = upper_char ++ star char ==> to_str'
-let keyword = choice ~failure_msg:"keyword" [ (* TODO *) ]
-let digits : (char * Opt_range.t) list Construction.t = plus digit
-let int_literal = digits ==> to_str
-let mk_string chars = chars |> List.map ~f:fst |> String.of_char_list
-let mark = failwith "TODO"
-
-let float_literal : string t =
-  let+ start = mark
-  and+ (digits1, _), digits2 = digits ++ tok' '.' ++ option digits
-  and+ finish = mark in
-  let digits2 = Base.Option.value digits2 ~default:[] in
-  mk_string digits1 ^ "." ^ mk_string digits2, Opt_range.mk start finish
-;;
-
-let single_quoted_literal = failwith "TODO"
-let double_quoted_literal = failwith "TODO"
-let symbol = failwith "TODO"
-
-let mk_tok
-    : (string -> Token_stream.Token_tag.t) -> string * Opt_range.t -> Token_stream.Token.t
-  =
- fun mk_tag (str, range) -> mk_tag str, str, range
-;;
-
-let mk_tok' : Token_stream.Token_tag.t -> string * Opt_range.t -> Token_stream.Token.t =
- fun tag -> mk_tok (fun _ -> tag)
-;;
-
-let lexer_construction : Token_stream.Token.t Construction.t =
-  choice
-    ~failure_msg:"symbol, comment, identifier, literal, or keyword"
-    Token_stream.Token_tag.
-      [ symbol ==> mk_tok (fun str -> Symbol str)
-      ; comment ==> mk_tok' Comment
-      ; upper_ident ==> mk_tok' Upper_ident
-      ; lower_ident ==> mk_tok' Lower_ident
-      ; int_literal ==> mk_tok' (Literal Integer)
-      ; float_literal ==> mk_tok' (Literal Floating)
-      ; single_quoted_literal ==> mk_tok' (Literal Single_quoted)
-      ; double_quoted_literal ==> mk_tok' (Literal Double_quoted)
-      ; keyword ==> mk_tok (fun str -> Keyword str)
-      ; whitespace1 ==> mk_tok' Whitespace
-      ]
-;;
-
-let lex stream = Lexing.parse_exn (plus lexer_construction) stream
-let lex' str = lex (Char_stream.make_stream str)
