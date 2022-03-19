@@ -103,3 +103,38 @@ let stag_functions =
     ; print_close_stag = (fun _ -> ())
     }
 ;;
+
+module Test_setup = struct
+  open Stdlib.Format
+
+  type t = formatter_stag_functions
+
+  let setup () =
+    let stag_fns = get_formatter_stag_functions () in
+    set_formatter_stag_functions stag_functions;
+    set_tags true;
+    set_mark_tags true;
+    stag_fns
+  ;;
+
+  let teardown stag_fns =
+    set_formatter_stag_functions stag_fns;
+    set_tags false;
+    set_mark_tags false
+  ;;
+end
+
+let%test_module _ =
+  (module struct
+    let x = Test_setup.setup ()
+
+    let%expect_test _ =
+      Stdlib.Format.open_stag (Stag (Indexed 0));
+      Fmt.pr "here@.";
+      Stdlib.Format.close_stag ();
+      [%expect {| <0>here</0> |}]
+    ;;
+
+    let () = Test_setup.teardown x
+  end)
+;;

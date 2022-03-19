@@ -637,6 +637,8 @@ end
 
 let%test_module "Nominal" =
   (module struct
+    let stag_fns = Provenance.Test_setup.setup ()
+
     let print_serialize tm =
       tm
       |> Term.serialize
@@ -774,11 +776,14 @@ let%test_module "Nominal" =
       [%expect
         {| <{ input = Input_unknown; range = {0,47} }>Foo(<{ input = Input_unknown; range = {4,13} }>Lam(<{ input = Input_unknown; range = {8,9} }>a</{ input = Input_unknown; range = {8,9} }>. <{ input = Input_unknown; range = {11,12} }>a</{ input = Input_unknown; range = {11,12} }>)</{ input = Input_unknown; range = {4,13} }>; <{ input = Input_unknown; range = {15,24} }>Lam(<{ input = Input_unknown; range = {19,20} }>b</{ input = Input_unknown; range = {19,20} }>. <{ input = Input_unknown; range = {22,23} }>b</{ input = Input_unknown; range = {22,23} }>)</{ input = Input_unknown; range = {15,24} }>; <{ input = Input_unknown; range = {26,35} }>Lam(<{ input = Input_unknown; range = {30,31} }>a</{ input = Input_unknown; range = {30,31} }>. <{ input = Input_unknown; range = {33,34} }>b</{ input = Input_unknown; range = {33,34} }>)</{ input = Input_unknown; range = {26,35} }>; <{ input = Input_unknown; range = {37,46} }>Lam(<{ input = Input_unknown; range = {41,42} }>b</{ input = Input_unknown; range = {41,42} }>. <{ input = Input_unknown; range = {44,45} }>b</{ input = Input_unknown; range = {44,45} }>)</{ input = Input_unknown; range = {37,46} }>)</{ input = Input_unknown; range = {0,47} }> |}]
     ;;
+
+    let () = Provenance.Test_setup.teardown stag_fns
   end)
 ;;
 
 let%test_module "TermParser" =
   (module struct
+    let stag_fns = Provenance.Test_setup.setup ()
     let ( = ) = Result.equal Term.equivalent String.( = )
     let parse = Lvca_parsing.Parser.parse_string Term.parse'
 
@@ -917,6 +922,8 @@ Match(x; Match_lines(
     let parse_exn = parse >> Result.ok_or_failwith
 
     let%test _ = parse_exn "tm " = Var (here, "tm")
+
+    let () = Provenance.Test_setup.teardown stag_fns
   end)
 ;;
 

@@ -908,7 +908,6 @@ end
 
 let%test_module "parsing / pretty-printing" =
   (module struct
-    let () = Stdlib.Format.set_tags false
 
     let%test_module "Operator_fixity" =
       (module struct
@@ -1316,15 +1315,6 @@ foo:
         let parse sort = Lvca_parsing.Parser.parse_string_or_failwith (parser ~sort)
         let parse_print start_sort = parse start_sort >> Nominal.Term.pp Fmt.stdout
 
-        (*
-        let () =
-          let open Stdlib.Format in
-          set_formatter_stag_functions Provenance.stag_functions;
-          set_tags true;
-          set_mark_tags true
-        ;;
-           *)
-
         let%expect_test _ =
           parse_print "val" "true";
           [%expect {|True()|}]
@@ -1351,11 +1341,6 @@ foo:
         let%expect_test _ =
           parse_print "expr" "true";
           [%expect {|Val(True())|}]
-        ;;
-
-        let () =
-          Stdlib.Format.set_tags false;
-          Stdlib.Format.set_mark_tags false
         ;;
 
         let%expect_test _ =

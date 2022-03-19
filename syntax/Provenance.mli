@@ -57,3 +57,10 @@ val fmt_stag : t -> 'a Fmt.t -> 'a Fmt.t
 
 (** For testing only: used to enable outputting of the [Stag] semantic tag. *)
 val stag_functions : Stdlib.Format.formatter_stag_functions
+
+module Test_setup : sig
+  type t = Stdlib.Format.formatter_stag_functions
+
+  val setup : unit -> t
+  val teardown : t -> unit
+end

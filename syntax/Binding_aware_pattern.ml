@@ -380,11 +380,7 @@ end
 
 let%test_module "Parsing" =
   (module struct
-    let () =
-      Format.set_formatter_stag_functions Provenance.stag_functions;
-      Format.set_tags true;
-      Format.set_mark_tags true
-    ;;
+    let stag_fns = Provenance.Test_setup.setup ()
 
     let ( = ) = equivalent
     let here = Provenance.of_here [%here]
@@ -454,6 +450,8 @@ let%test_module "Parsing" =
       [%expect
         {| failed: binding-aware pattern: looking for a primitive or identifier (for a var or operator) |}]
     ;;
+
+    let () = Provenance.Test_setup.teardown stag_fns
   end)
 ;;
 

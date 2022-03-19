@@ -220,11 +220,7 @@ let parse =
 
 let%test_module "Parsing" =
   (module struct
-    let () =
-      Format.set_formatter_stag_functions Provenance.stag_functions;
-      Format.set_tags true;
-      Format.set_mark_tags true
-    ;;
+    let stag_fns = Provenance.Test_setup.setup ()
 
     let print_parse tm =
       match Lvca_parsing.Parser.parse_string parse tm with
@@ -312,6 +308,8 @@ let%test_module "Parsing" =
       [%expect
         {| failed: pattern: looking for a primitive or identifier (for a var or operator) |}]
     ;;
+
+    let () = Provenance.Test_setup.teardown stag_fns
   end)
 ;;
 
