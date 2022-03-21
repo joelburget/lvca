@@ -26,8 +26,8 @@ let parse =
   let open Lvca_parsing.Parser in
   let open Construction in
   let p =
-    let+ valences = parens (sep_by (symbol ";") Valence.parse) in
-    Arity (Provenance.of_here [%here], valences)
+    let+ range, valences = parens (sep_by (symbol ";") Valence.parse) in
+    Arity (Provenance.of_range range, valences)
   in
   p <?> "arity"
 ;;
@@ -40,7 +40,7 @@ let%test_module "parsing" =
     let integer = Sort.Name (none, "integer")
     let integer_v = Valence.Valence ([], integer)
     let ( = ) = equivalent
-    let go = Lvca_parsing.Parser.(parse_string_or_failwith parse)
+    let go = Lvca_parsing.Parser.parse_string_or_failwith parse
 
     let%test_unit _ = assert (go "(integer)" = Arity (none, [ integer_v ]))
     let%test_unit _ = assert (go "(tm; tm)" = Arity (none, [ tm_v; tm_v ]))

@@ -104,11 +104,9 @@ let parse =
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive.All.parse >>| fun p -> Primitive p)
         ; (let p =
-             let+ start = mark
-             and+ ident = upper_identifier
-             and+ children = parens (sep_end_by (symbol ";") term)
-             and+ finish = mark in
-             let range = Opt_range.mk start finish in
+             let+ range1, ident = upper_identifier
+             and+ range2, children = parens (sep_end_by (symbol ";") term) in
+             let range = Opt_range.union range1 range2 in
              Operator (Provenance.of_range range, ident, children)
            in
            p <?> "term body")

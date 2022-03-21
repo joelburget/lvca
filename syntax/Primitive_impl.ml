@@ -52,7 +52,7 @@ module Integer_plain = struct
 
   let parse =
     Lvca_parsing.Parser.(
-      Construction.(ranged integer_lit >>| Tuple2.map2 ~f:Z.of_string <?> "integer"))
+      Construction.(integer_lit >>| Tuple2.map2 ~f:Z.of_string <?> "integer"))
   ;;
 
   let jsonify i = Json.string (Z.to_string i)
@@ -75,7 +75,7 @@ module Float_plain = struct
   let parse =
     let open Lvca_parsing.Parser in
     let open Construction in
-    ranged float_lit >>| Tuple2.map2 ~f:Base.Float.of_string <?> "float"
+    float_lit >>| Tuple2.map2 ~f:Base.Float.of_string <?> "float"
   ;;
 
   let jsonify f = Json.float f
@@ -89,7 +89,7 @@ module Char_plain = struct
 
   let pp = Fmt.quote ~mark:"\'" Fmt.char
   let ( = ) = Char.( = )
-  let parse = Lvca_parsing.Parser.(Construction.(ranged char_lit <?> "char"))
+  let parse = Lvca_parsing.Parser.(Construction.(char_lit <?> "char"))
   let jsonify c = Json.string (Char.to_string c)
 
   let unjsonify =
@@ -111,7 +111,7 @@ module Int32_plain = struct
 
   let parse =
     Lvca_parsing.Parser.(
-      Construction.(ranged integer_lit >>| Tuple2.map2 ~f:Int32.of_string <?> "int32"))
+      Construction.(integer_lit >>| Tuple2.map2 ~f:Int32.of_string <?> "int32"))
   ;;
 
   (* TODO: remove exns *)
@@ -126,7 +126,7 @@ module String_plain = struct
 
   let pp = Fmt.(quote string)
   let ( = ) = String.( = )
-  let parse = Lvca_parsing.Parser.(Construction.(ranged string_lit <?> "string"))
+  let parse = Lvca_parsing.Parser.(Construction.(string_lit <?> "string"))
   let jsonify s = Json.string s
   let unjsonify = Json.(function String s -> Some s | _ -> None)
 end
@@ -169,9 +169,9 @@ module All_plain = struct
     in
     choice
       ~failure_msg:"looking for an integer, float, string, or character literal"
-      [ ranged integer_or_float_lit >>| Tuple2.map2 ~f
-      ; ranged string_lit >>| Tuple2.map2 ~f:(fun s -> String s)
-      ; ranged char_lit >>| Tuple2.map2 ~f:(fun c -> Char c)
+      [ integer_or_float_lit >>| Tuple2.map2 ~f
+      ; string_lit >>| Tuple2.map2 ~f:(fun s -> String s)
+      ; char_lit >>| Tuple2.map2 ~f:(fun c -> Char c)
       ]
     <?> "primitive"
   ;;
@@ -302,38 +302,50 @@ let%test_module "Parsing" =
 
     let print_parse str =
       match Lvca_parsing.Parser.parse_string parse str with
-      | Ok prim -> Fmt.pr "%a@." pp prim
+      | Ok prim -> Fmt.pr "%a %a@." pp prim Provenance.pp (info prim)
       | Error msg -> Fmt.pr "%s" msg
     ;;
 
     let%expect_test _ =
       print_parse "123";
-      [%expect {| 123 {0,3} |}]
+      [%expect {| 123 { input = Input_unknown; range = {0,3} } |}]
     ;;
 
     let%expect_test _ =
       print_parse {|"abc"|};
-      [%expect {| "abc" {0,5} |}]
+      [%expect {| "abc" { input = Input_unknown; range = {0,5} } |}]
+    ;;
+
+    let%expect_test _ =
+      print_parse {|"\""|};
+      [%expect {| "\"" { input = Input_unknown; range = {0,4} } |}]
     ;;
 
     let%expect_test _ =
       print_parse "1.1";
-      [%expect {| 1.100000 {0,3} |}]
+      [%expect {| 1.100000 { input = Input_unknown; range = {0,3} } |}]
     ;;
 
     let%expect_test _ =
       print_parse {|'c'|};
-      [%expect {| 'c' {0,3} |}]
+      [%expect {| 'c' { input = Input_unknown; range = {0,3} } |}]
     ;;
+
+    (* TODO (char_lit error)
+    let%expect_test _ =
+      print_parse {|'\\'|};
+      [%expect {| '\\' {0,4} |}]
+    ;;
+    *)
 
     let%expect_test _ =
       print_parse "0.00000";
-      [%expect {| 0.000000 {0,7} |}]
+      [%expect {| 0.000000 { input = Input_unknown; range = {0,7} } |}]
     ;;
 
     let%expect_test _ =
       print_parse "-0.00000";
-      [%expect {| -0.000000 {0,8} |}]
+      [%expect {| -0.000000 { input = Input_unknown; range = {0,8} } |}]
     ;;
 
     let print_parse str =
@@ -346,8 +358,8 @@ let%test_module "Parsing" =
       print_parse "1";
       print_parse "3";
       [%expect {|
-        1 {0,1}
-        3 {0,1} |}]
+        1
+        3 |}]
     ;;
 
     (* TODO: are floats a good idea?

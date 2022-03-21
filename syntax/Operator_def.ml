@@ -31,7 +31,7 @@ let parse =
   let open Construction in
   let p =
     (* TODO: include range in provenance *)
-    let+ ident = upper_identifier
+    let+ _, ident = upper_identifier
     and+ (Arity (prov, _) as arity) = Arity.parse in
     Operator_def (prov, ident, arity)
   in
@@ -46,7 +46,7 @@ let%test_module "parsing" =
       let info1 = Provenance.of_range (Opt_range.mk 0 5) in
       let info2 = Provenance.of_range (Opt_range.mk 3 5) in
       let parsed =
-        Lvca_parsing.Parser.(parse_string_or_failwith parse) "Foo()  // comment"
+        Lvca_parsing.Parser.parse_string_or_failwith parse "Foo()  // comment"
       in
       assert (parsed = Operator_def (info1, "Foo", Arity (info2, [])))
     ;;

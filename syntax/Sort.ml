@@ -73,21 +73,21 @@ let parse =
       let atomic_sort =
         choice
           ~failure_msg:"looking for parens or an identifier"
-          [ parens sort
-          ; (let+ range, value = ranged lower_identifier in
+          [ parens sort >>| snd
+          ; (let+ range, value = lower_identifier in
              Name (Provenance.of_range range, value))
           ]
       in
-      let* atoms = plus atomic_sort in
+      let+ atoms = plus atomic_sort in
       match atoms with
       (* A single ap is just parenthesized. An ap applied to things is a problem. *)
-      | [ (Ap _ as atom) ] -> eps atom
+      | [ (Ap _ as atom) ] -> atom
       | Ap _ :: _ ->
-        fail
+        failwith (* TODO: raise *)
           "Higher-order sorts are not allowed. The head of a sort application must be \
            concrete"
-      | [ (Name _ as value) ] -> eps value
-      | Name (info, name) :: args -> eps (Ap (info, name, args))
+      | [ (Name _ as value) ] -> value
+      | Name (info, name) :: args -> Ap (info, name, args)
       | [] -> assert false)
 ;;
 

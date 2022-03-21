@@ -136,9 +136,8 @@ let kind_check { externals; sort_defs } =
     |> Map.map ~f:Int.Set.singleton
   in
   let mismap =
-    sort_defs
-    |> List.fold ~init:env ~f:(fun env (sort_name, sort_def) ->
-           Sort_def.kind_check env sort_name sort_def)
+    List.fold sort_defs ~init:env ~f:(fun env (sort_name, sort_def) ->
+        Sort_def.kind_check env sort_name sort_def)
   in
   let fine_vars, mismapped_vars =
     mismap
@@ -153,13 +152,42 @@ let kind_check { externals; sort_defs } =
   | _ -> Error (String.Map.of_alist_exn mismapped_vars)
 ;;
 
+module Decl = struct
+  type t =
+    | Sort_def of string * Sort_def.t
+    | Kind of string * Kind.t
+
+  let sort_def d name = Sort_def (name, d)
+  let kind d name = Kind (name, d)
+end
+
 let parse =
   let open Lvca_parsing.Parser in
   let open Construction in
+  let process decls =
+    let rec go externals sort_defs sort_def_seen = function
+      | [] -> externals, sort_defs
+      | Decl.Kind (name, kind) :: decls ->
+        if sort_def_seen
+        then failwith "Externals must come before sort defs" (* TODO: proper error *)
+        else go ((name, kind) :: externals) sort_defs false decls
+      | Sort_def (name, sort_def) :: decls ->
+        go externals ((name, sort_def) :: sort_defs) true decls
+    in
+    let externals, sort_defs = go [] [] false decls in
+    { externals = List.rev externals; sort_defs = List.rev sort_defs }
+  in
   let p =
-    let+ externals = star Kind.Parse.decl
-    and+ sort_defs = plus Sort_def.parse in
-    { externals; sort_defs }
+    let p' =
+      let+ _, ident = lower_identifier
+      and+ continuation =
+        choice
+          ~failure_msg:"Expected a kind declaration or sort definition"
+          [ Decl.kind <$> symbol ":" *> Kind.Parse.t; Decl.sort_def <$> Sort_def.parse' ]
+      in
+      continuation ident
+    in
+    process <$> plus p'
   in
   p <?> "abstract syntax"
 ;;
@@ -184,7 +212,8 @@ let%test_module _ =
 
     let%test_unit _ =
       let parsed =
-        Lvca_parsing.Parser.(parse_string_or_failwith parse)
+        Lvca_parsing.Parser.parse_string_or_failwith
+          parse
           {|
 // comment
 integer : *
@@ -210,7 +239,7 @@ empty := ;
     ;;
 
     let kind_check str =
-      let lang = Lvca_parsing.Parser.(parse_string_or_failwith parse str) in
+      let lang = Lvca_parsing.Parser.parse_string_or_failwith parse str in
       match kind_check lang with
       | Ok map ->
         Stdio.printf "okay\n";
@@ -253,7 +282,7 @@ let%test_module "Parser" =
   (module struct
     open Lvca_provenance
 
-    let parse = Lvca_parsing.Parser.(parse_string_or_failwith parse)
+    let parse = Lvca_parsing.Parser.parse_string_or_failwith parse
     let tm_sort = Sort.mk_Name "tm"
     let tm_valence = Valence.Valence ([], tm_sort)
     let ty_sort = Sort.mk_Name "ty"

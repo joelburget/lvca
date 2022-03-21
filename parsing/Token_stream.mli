@@ -6,6 +6,9 @@ module Literal : sig
     | Single_quoted
     | Integer
     | Floating
+    | Regex
+
+  val pp : t Fmt.t
 
   include Sexpable.S with type t := t
   include Comparable.S with type t := t
@@ -18,8 +21,10 @@ module Token_tag : sig
     | Lower_ident
     | Upper_ident
     | Literal of Literal.t
-    | Keyword
+    | Keyword of string
     | Whitespace
+
+  val pp : t Fmt.t
 
   include Sexpable.S with type t := t
   include Comparable.S with type t := t
@@ -34,6 +39,7 @@ module Token : sig
        and type tag = Token_tag.t
        and type set = token_set
 
+  val pp : t Fmt.t
   val range : t -> Lvca_provenance.Opt_range.t
 end
 

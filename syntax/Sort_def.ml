@@ -71,32 +71,46 @@ let pp ~name ppf (Sort_def (sort_vars, operator_defs, var_names)) =
       var_names
 ;;
 
-let parse =
+let parse' =
   let open Lvca_parsing.Parser in
   let open Construction in
   let bar = symbol "|" in
   let sort_var_decl =
     choice
       ~failure_msg:"looking for a (lower-case) identifier or parens"
-      [ (lower_identifier >>| fun name -> name, None)
-      ; (parens Kind.Parse.decl >>| fun (name, kind) -> name, Some kind)
+      [ (lower_identifier >>| fun (_range, name) -> name, None)
+      ; (parens Kind.Parse.decl >>| fun (_range, (name, kind)) -> name, Some kind)
       ]
     <?> "sort variable declaration"
   in
   let p =
-    let+ name = lower_identifier
-    and+ vars = star sort_var_decl
+    let+ vars = star sort_var_decl
     and+ _ = symbol ":="
-    and+ op_defs = option bar *> sep_by bar Operator_def.parse
+    and+ op_defs =
+      choice
+        ~failure_msg:"Expected a set of operator definitions"
+        [ bar *> sep_by bar Operator_def.parse; sep_by bar Operator_def.parse ]
     and+ var_names =
       choice
-        ~failure_msg:"Expected a `;` or `\\` variables list"
+        ~failure_msg:{|Expected a `;` or `\` variables list|}
         [ symbol ";" *> return None
-        ; Option.some <$> symbol "\\" *> sep_by (symbol ",") lower_identifier
+        ; (symbol "\\" *> sep_by (symbol ",") lower_identifier
+          >>| fun idents -> idents |> List.map ~f:snd |> Option.some)
         ]
     in
     let var_names = match var_names with None -> [] | Some vs -> vs in
-    name, Sort_def (vars, op_defs, var_names)
+    Sort_def (vars, op_defs, var_names)
+  in
+  p <?> "sort definition (sans identifier)"
+;;
+
+let parse =
+  let open Lvca_parsing.Parser in
+  let open Construction in
+  let p =
+    let+ _, name = lower_identifier
+    and+ sort_def = parse' in
+    name, sort_def
   in
   p <?> "sort definition"
 ;;

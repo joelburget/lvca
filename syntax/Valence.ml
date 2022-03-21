@@ -36,13 +36,12 @@ let parse =
   let open Lvca_parsing.Parser in
   let open Construction in
   let t =
-    sep_by1 (symbol ".") Sort_slot.parse
-    >>= fun slots ->
+    let+ slots = sep_by1 (symbol ".") Sort_slot.parse in
     let binders, body_slot = List.unsnoc slots in
     match body_slot with
-    | Sort_slot.Sort_binding body_sort -> return (Valence (binders, body_sort))
+    | Sort_slot.Sort_binding body_sort -> Valence (binders, body_sort)
     | _ ->
-      fail
+      failwith (* TODO: raise *)
         (Fmt.str
            "Expected a simple sort, instead found a pattern sort (%a)"
            Sort_slot.pp

@@ -38,7 +38,8 @@ let parse =
       choice
         ~failure_msg:"sort slot"
         [ (brackets Sort.parse
-          >>| fun var_sort sort -> Sort_pattern { pattern_sort = sort; var_sort })
+          >>| fun (_range, var_sort) sort ->
+          Sort_pattern { pattern_sort = sort; var_sort })
         ; return (fun sort -> Sort_binding sort)
         ]
     in

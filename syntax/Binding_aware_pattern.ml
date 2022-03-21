@@ -176,7 +176,7 @@ let rec match_term pat tm =
         | Some list ->
           (match Lvca_util.String.Map.strict_unions list with
           | `Ok result -> Some result
-          | `Duplicate_key _k -> failwith "TODO")
+          | `Duplicate_key _k -> failwith "TODO: match_term `Duplicate_key")
         | None -> None))
     else None
   | _, _ -> None
@@ -336,13 +336,11 @@ let parse =
       choice
         ~failure_msg:"looking for a primitive or identifier (for a var or operator)"
         [ (Primitive.All.parse >>| fun (prov, prim) -> Primitive (prov, prim))
-        ; (let+ range, ident = ranged lower_identifier in
+        ; (let+ range, ident = lower_identifier in
            Var (Provenance.of_range range, ident))
-        ; (let+ start = mark
-           and+ ident = upper_identifier
-           and+ slots = parens (sep_end_by (symbol ";") slot)
-           and+ finish = mark in
-           let range = Opt_range.mk start finish in
+        ; (let+ range1, ident = upper_identifier
+           and+ range2, slots = parens (sep_end_by (symbol ";") slot) in
+           let range = Opt_range.union range1 range2 in
            Operator (Provenance.of_range range, ident, slots))
         ])
   <?> "binding-aware pattern"
@@ -382,16 +380,22 @@ let%test_module "Parsing" =
   (module struct
     let stag_fns = Provenance.Test_setup.setup ()
 
+    (*
     let ( = ) = equivalent
     let here = Provenance.of_here [%here]
     let parse_exn = Lvca_parsing.Parser.parse_string_or_failwith parse
-
-    let%test _ = parse_exn "tm " = Var (here, "tm")
+       *)
 
     let print_parse tm =
       match Lvca_parsing.Parser.parse_string parse tm with
       | Ok pat -> Fmt.pr "%a" pp pat
       | Error msg -> Fmt.pr "failed: %s\n" msg
+    ;;
+
+    (* let%test _ = parse_exn "tm " = Var (here, "tm") *)
+    let%expect_test _ =
+      print_parse "v ";
+      [%expect]
     ;;
 
     let%expect_test _ =

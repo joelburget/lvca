@@ -4,21 +4,16 @@ open Lvca_syntax
 open Lvca_util
 open Syntax_quoter
 
-let parse = Lvca_parsing.Parser.parse_string_or_failwith
+let parse = Lvca_parsing.Parser.parse_string
 
 let parse_module_name =
   let open Lvca_parsing.Parser in
   let open Construction in
-  sep_by1
-    (symbol '.')
-    (No_junk.satisfy Char.is_uppercase
-    >>= fun c0 ->
-    many (C_comment_parser.satisfy Char.(fun c -> is_alphanum c || c = '_' || c = '\''))
-    >>| fun cs -> String.of_char_list (c0 :: cs))
+  sep_by1 (symbol ".") upper_identifier
 ;;
 
 let expand_nominal ~(loc : Location.t) ~path:_ (str : string) : expression =
-  match parse (Nominal.Term.parse' String.Set.empty) str with
+  match parse Nominal.Term.parse' str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> Exp.nominal ~loc tm
 ;;
@@ -30,7 +25,7 @@ let expand_nonbinding ~(loc : Location.t) ~path:_ str : expression =
 ;;
 
 let expand_pattern ~(loc : Location.t) ~path:_ str : expression =
-  match parse (Pattern.parse String.Set.empty) str with
+  match parse Pattern.parse str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok tm -> Exp.pattern ~loc tm
 ;;
@@ -66,11 +61,13 @@ let expand_abstract_syntax ~(loc : Location.t) ~path:_ str : expression =
   | Ok syntax -> Exp.language ~loc syntax
 ;;
 
+(*
 let expand_concrete_syntax ~(loc : Location.t) ~path:_ str : expression =
   match parse Concrete.parse str with
   | Error msg -> Location.raise_errorf ~loc "%s" msg
   | Ok syntax -> Exp.Concrete.t ~loc syntax
 ;;
+   *)
 
 let expand_module ~(loc : Location.t) ~path:_ str exprs expr_opt : module_expr =
   let module Builder_context = struct
@@ -143,6 +140,7 @@ let abstract_syntax_extension =
     expand_abstract_syntax
 ;;
 
+(*
 let concrete_syntax_extension =
   Extension.declare
     "lvca.concrete_syntax"
@@ -150,6 +148,7 @@ let concrete_syntax_extension =
     Ast_pattern.(single_expr_payload (estring __))
     expand_concrete_syntax
 ;;
+   *)
 
 let abstract_syntax_module_extension =
   Extension.declare
@@ -177,6 +176,6 @@ let () =
       ; Context_free.Rule.extension abstract_syntax_extension
       ; Context_free.Rule.extension abstract_syntax_module_extension
       ; Context_free.Rule.extension abstract_syntax_module_sig_extension
-      ; Context_free.Rule.extension concrete_syntax_extension
+        (* ; Context_free.Rule.extension concrete_syntax_extension *)
       ]
 ;;

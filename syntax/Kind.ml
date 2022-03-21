@@ -26,11 +26,7 @@ module Parse = struct
   let t =
     let p =
       let+ stars = sep_by1 (symbol "->") (symbol "*") in
-      let location =
-        stars
-        |> List.map ~f:Lvca_parsing.Token_stream.Token.range
-        |> Lvca_provenance.Opt_range.list_range
-      in
+      let location = stars |> List.map ~f:fst |> Lvca_provenance.Opt_range.list_range in
       Kind (Provenance.of_range location, List.length stars)
     in
     p <?> "kind"
@@ -38,7 +34,7 @@ module Parse = struct
 
   let decl =
     let p =
-      let+ ident = lower_identifier
+      let+ _, ident = lower_identifier
       and+ _ = symbol ":"
       and+ kind = t in
       ident, kind

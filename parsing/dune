@@ -2,6 +2,13 @@
  (name lvca_parsing)
  (public_name lvca.parsing)
  (inline_tests)
- (libraries base fmt lvca_util lvca_provenance char-class taparse)
+ (libraries
+  base
+  fmt
+  lvca_util
+  lvca_provenance
+  char-class
+  taparse
+  taparse-regex)
  (preprocess
   (pps ppx_jane)))
