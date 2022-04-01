@@ -1,0 +1,7 @@
+(library
+ (name lvca_sqlite)
+ (public_name lvca.sqlite)
+ (inline_tests)
+ (libraries base sqlite3 lvca_syntax)
+ (preprocess
+  (pps ppx_jane)))
