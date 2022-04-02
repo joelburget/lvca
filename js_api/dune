@@ -1,0 +1,8 @@
+(executable
+ (name main)
+ ; Doesn't result in an error: (libraries digestif.ocaml js_of_ocaml)
+ ; Does result in an error:
+ (libraries digestif.ocaml js_of_ocaml lvca_syntax)
+ (modes js)
+ (preprocess
+  (pps js_of_ocaml-ppx)))
